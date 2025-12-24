@@ -23,11 +23,17 @@ $acceptedAppointments = getCount($pdo, "SELECT COUNT(*) FROM service_requests WH
 $completedAppointments = getCount($pdo, "SELECT COUNT(*) FROM service_requests WHERE category_slug = ? AND service_status = ?", ['appointment', 'Completed']);
 $totalServiceRequests = getCount($pdo, "SELECT COUNT(*) FROM service_requests WHERE category_slug != ?", ['appointment']);
 
+
 // TODAY SNAPSHOT
 $today = date('Y-m-d');
 $todayAppointments = getCount($pdo, "SELECT COUNT(*) FROM service_requests WHERE category_slug = ? AND DATE(created_at) = ?", ['appointment', $today]);
 $todayServices = getCount($pdo, "SELECT COUNT(*) FROM service_requests WHERE category_slug != ? AND DATE(created_at) = ?", ['appointment', $today]);
 $todayPayments = getCount($pdo, "SELECT COUNT(*) FROM service_requests WHERE payment_status = ? AND DATE(created_at) = ?", ['Paid', $today]);
+// Total online payment collected today (Paid, Online)
+$stmtOnlineAmt = $pdo->prepare("SELECT SUM(total_amount) FROM service_requests WHERE payment_status = 'Paid' AND tracking_id LIKE 'VDSK%' AND DATE(created_at) = ?");
+$stmtOnlineAmt->execute([$today]);
+$todayOnlinePayment = $stmtOnlineAmt->fetchColumn();
+if ($todayOnlinePayment === null) $todayOnlinePayment = 0;
 
 // RECENT ACTIVITY
 $recentSql = "SELECT id, created_at, category_slug, customer_name, tracking_id, service_status FROM service_requests ORDER BY created_at DESC LIMIT 10";
@@ -216,6 +222,7 @@ $recentRows = $recentStmt->fetchAll(PDO::FETCH_ASSOC);
     </div>
 
     <!-- SECTION C: Today Snapshot -->
+
     <div class="summary-cards" style="gap:18px;margin-bottom:32px;flex-wrap:wrap;">
         <div class="summary-card">
             <div class="summary-count" style="font-size:2.2em;font-weight:700;color:#800000;"><?php echo $todayAppointments; ?></div>
@@ -228,6 +235,10 @@ $recentRows = $recentStmt->fetchAll(PDO::FETCH_ASSOC);
         <div class="summary-card">
             <div class="summary-count" style="font-size:2.2em;font-weight:700;color:#800000;"><?php echo $todayPayments; ?></div>
             <div class="summary-label" style="font-size:1em;color:#444;">Today's Payments (Paid)</div>
+        </div>
+        <div class="summary-card">
+            <div class="summary-count" style="font-size:2.2em;font-weight:700;color:#800000;">₹<?php echo number_format($todayOnlinePayment, 2); ?></div>
+            <div class="summary-label" style="font-size:1em;color:#444;">Online Payment Collected Today</div>
         </div>
     </div>
 
