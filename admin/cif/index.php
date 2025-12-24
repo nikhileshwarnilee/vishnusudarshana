@@ -1,26 +1,54 @@
-$msg = '';
-
-// Handle delete enquiry
-if (isset($_GET['delete_enquiry']) && $selected_client_id > 0) {
-    $del_id = (int)$_GET['delete_enquiry'];
-    $stmt = $pdo->prepare('DELETE FROM cif_enquiries WHERE id = ? AND client_id = ?');
-    $stmt->execute([$del_id, $selected_client_id]);
-    $msg = 'Enquiry deleted!';
-    header('Location: index.php?client_id=' . $selected_client_id);
+<?php
+// AJAX: live search for client name
+if (isset($_GET['ajax_search_client']) && isset($_GET['name'])) {
+    require_once __DIR__ . '/../../config/db.php';
+    $name = trim($_GET['name']);
+    $out = [];
+    if (strlen($name) >= 3) {
+        $stmt = $pdo->prepare('SELECT id, name, mobile FROM cif_clients WHERE name LIKE ? ORDER BY name ASC LIMIT 10');
+        $stmt->execute(['%' . $name . '%']);
+        $out = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+    header('Content-Type: application/json');
+    echo json_encode($out);
     exit;
 }
-
-<?php
 // admin/cif/index.php
 // CIF main page styled like Appointments
 
 require_once __DIR__ . '/../../config/db.php';
 
 
+$selected_client_id = isset($_GET['client_id']) ? (int)$_GET['client_id'] : 0;
+$show_add_client = isset($_GET['add_client']);
 $msg = '';
 $edit_enquiry_id = isset($_GET['edit_enquiry']) ? (int)$_GET['edit_enquiry'] : 0;
 
-// Handle update enquiry notes
+// Handle add client + enquiry
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_client_and_enquiry'])) {
+    $name = trim($_POST['name']);
+    $mobile = trim($_POST['mobile']);
+    $address = trim($_POST['address'] ?? '');
+    $dob = $_POST['dob'] ?? null;
+    $birth_time = $_POST['birth_time'] ?? null;
+    $birth_place = trim($_POST['birth_place'] ?? '');
+    $category_id = (int)$_POST['category_id'];
+    $enquiry_date = $_POST['enquiry_date'] ?? date('Y-m-d');
+    $notes = trim($_POST['notes'] ?? '');
+    if ($name !== '' && $mobile !== '' && $category_id > 0 && $enquiry_date) {
+        $stmt = $pdo->prepare('INSERT INTO cif_clients (name, mobile, address, dob, birth_time, birth_place) VALUES (?, ?, ?, ?, ?, ?)');
+        $stmt->execute([$name, $mobile, $address, $dob, $birth_time, $birth_place]);
+        $client_id = $pdo->lastInsertId();
+        $stmt = $pdo->prepare('INSERT INTO cif_enquiries (client_id, category_id, enquiry_date, notes) VALUES (?, ?, ?, ?)');
+        $stmt->execute([$client_id, $category_id, $enquiry_date, $notes]);
+        $msg = 'Client and enquiry added!';
+        header('Location: index.php?client_id=' . $client_id);
+        exit;
+    } else {
+        $msg = 'Please fill all client and enquiry fields.';
+        $show_add_client = true;
+    }
+}
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_enquiry_notes'])) {
     $enquiry_id = (int)$_POST['enquiry_id'];
     $notes = trim($_POST['notes'] ?? '');
@@ -30,6 +58,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_enquiry_notes'
     $msg = 'Notes updated!';
     $selected_client_id = $client_id;
     header('Location: index.php?client_id=' . $client_id);
+    exit;
+}
+
+// Handle delete enquiry
+if (isset($_GET['delete_enquiry']) && $selected_client_id > 0) {
+    $del_id = (int)$_GET['delete_enquiry'];
+    $stmt = $pdo->prepare('DELETE FROM cif_enquiries WHERE id = ? AND client_id = ?');
+    $stmt->execute([$del_id, $selected_client_id]);
+    $msg = 'Enquiry deleted!';
+    header('Location: index.php?client_id=' . $selected_client_id);
     exit;
 }
 
@@ -50,7 +88,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_enquiry'])) {
         $msg = 'Please fill all enquiry fields.';
     }
 }
-$selected_client_id = isset($_GET['client_id']) ? (int)$_GET['client_id'] : 0;
+
 $edit_id = isset($_GET['edit']) ? (int)$_GET['edit'] : 0;
 $edit_client = null;
 
@@ -150,17 +188,72 @@ h1 {
 
 <div class="admin-container">
     <h1>CIF Panel</h1>
-    <div class="summary-cards">
-        <div class="summary-card">
-            <div class="summary-count">0</div>
-            <div class="summary-label">CIF Example</div>
-        </div>
-        <div class="summary-card">
-            <div class="summary-count">0</div>
-            <div class="summary-label">Another Stat</div>
-        </div>
-    </div>
+    <!-- Stats removed as per request -->
     <div style="background:#fff;padding:24px;border-radius:12px;box-shadow:0 2px 8px #e0bebe22;">
+        <div style="margin-bottom:18px;">
+            <a href="index.php?add_client=1" style="padding:10px 22px;background:#28a745;color:#fff;border:none;border-radius:6px;font-weight:600;text-decoration:none;">Add Client</a>
+        </div>
+        <?php if ($show_add_client): ?>
+            <form method="post" id="addClientForm" autocomplete="off" style="position:relative;display:flex;gap:18px;align-items:center;flex-wrap:wrap;margin-bottom:24px;background:#f9eaea;padding:18px;border-radius:10px;">
+                <div style="position:relative;">
+                    <input type="text" name="name" id="clientNameInput" placeholder="Name" required style="padding:8px 12px;border-radius:6px;border:1px solid #ccc;font-size:1em;" value="<?= htmlspecialchars($_POST['name'] ?? '') ?>">
+                    <div id="clientSearchResults" style="display:none;position:absolute;top:110%;left:0;z-index:10;background:#fff;border:1px solid #ccc;border-radius:8px;box-shadow:0 2px 8px #e0bebe22;min-width:220px;max-height:220px;overflow-y:auto;"></div>
+                </div>
+                <input type="text" name="mobile" placeholder="Mobile No" required style="padding:8px 12px;border-radius:6px;border:1px solid #ccc;font-size:1em;" value="<?= htmlspecialchars($_POST['mobile'] ?? '') ?>">
+                <input type="text" name="address" placeholder="Address" style="padding:8px 12px;border-radius:6px;border:1px solid #ccc;font-size:1em;min-width:180px;" value="<?= htmlspecialchars($_POST['address'] ?? '') ?>">
+                <input type="date" name="dob" placeholder="DOB" style="padding:8px 12px;border-radius:6px;border:1px solid #ccc;font-size:1em;" value="<?= htmlspecialchars($_POST['dob'] ?? '') ?>">
+                <input type="time" name="birth_time" placeholder="Birth Time" style="padding:8px 12px;border-radius:6px;border:1px solid #ccc;font-size:1em;" value="<?= htmlspecialchars($_POST['birth_time'] ?? '') ?>">
+                <input type="text" name="birth_place" placeholder="Birth Place" style="padding:8px 12px;border-radius:6px;border:1px solid #ccc;font-size:1em;" value="<?= htmlspecialchars($_POST['birth_place'] ?? '') ?>">
+                <select name="category_id" required style="padding:8px 12px;border-radius:6px;border:1px solid #ccc;font-size:1em;">
+                    <option value="">-- Select Category --</option>
+                    <?php $categories = $pdo->query('SELECT * FROM cif_categories ORDER BY name ASC')->fetchAll();
+                    foreach ($categories as $cat): ?>
+                        <option value="<?= (int)$cat['id'] ?>" <?= (isset($_POST['category_id']) && $_POST['category_id'] == $cat['id']) ? 'selected' : '' ?>><?= htmlspecialchars($cat['name']) ?></option>
+                    <?php endforeach; ?>
+                </select>
+                <input type="date" name="enquiry_date" value="<?= htmlspecialchars($_POST['enquiry_date'] ?? date('Y-m-d')) ?>" required style="padding:8px 12px;border-radius:6px;border:1px solid #ccc;font-size:1em;">
+                <textarea name="notes" placeholder="Notes" style="padding:8px 12px;border-radius:6px;border:1px solid #ccc;font-size:1em;min-width:360px;min-height:80px;"><?= htmlspecialchars($_POST['notes'] ?? '') ?></textarea>
+                <input type="hidden" name="add_client_and_enquiry" value="1">
+                <button type="submit" style="padding:10px 22px;background:#800000;color:#fff;border:none;border-radius:6px;font-weight:600;">Add Client & Enquiry</button>
+                <a href="index.php" style="padding:10px 22px;background:#6c757d;color:#fff;border:none;border-radius:6px;font-weight:600;text-decoration:none;">Cancel</a>
+            </form>
+            <script>
+            document.getElementById('clientNameInput').addEventListener('input', function() {
+                var val = this.value.trim();
+                var resultsBox = document.getElementById('clientSearchResults');
+                if (val.length < 3) {
+                    resultsBox.style.display = 'none';
+                    resultsBox.innerHTML = '';
+                    return;
+                }
+                var xhr = new XMLHttpRequest();
+                xhr.open('GET', 'index.php?ajax_search_client=1&name=' + encodeURIComponent(val), true);
+                xhr.onload = function() {
+                    if (xhr.status === 200) {
+                        var data = JSON.parse(xhr.responseText);
+                        if (data.length > 0) {
+                            resultsBox.innerHTML = data.map(function(c) {
+                                return '<div style="padding:8px 12px;cursor:pointer;" onclick="window.location=\'index.php?client_id=' + c.id + '\'">' +
+                                    '<b>' + c.name + '</b> <span style=\'color:#888;\'>' + c.mobile + '</span>' +
+                                    '</div>';
+                            }).join('');
+                            resultsBox.style.display = 'block';
+                        } else {
+                            resultsBox.innerHTML = '<div style="padding:8px 12px;color:#888;">No matches</div>';
+                            resultsBox.style.display = 'block';
+                        }
+                    }
+                };
+                xhr.send();
+            });
+            document.addEventListener('click', function(e) {
+                var box = document.getElementById('clientSearchResults');
+                if (!box.contains(e.target) && e.target.id !== 'clientNameInput') {
+                    box.style.display = 'none';
+                }
+            });
+            </script>
+        <?php endif; ?>
         <h2 style="color:#800000;">Select Client</h2>
         <form method="get" style="margin-bottom:24px;display:flex;gap:18px;align-items:center;">
             <select name="client_id" onchange="this.form.submit()" style="padding:8px 12px;border-radius:6px;border:1px solid #ccc;font-size:1em;min-width:220px;">
