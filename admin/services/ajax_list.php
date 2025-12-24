@@ -101,8 +101,7 @@ $catMap = [
 =============================== */
 if (!$requests) {
     echo '<tr><td colspan="10" class="no-data">No service requests found.</td></tr>';
-    // Output empty pagination and metadata for JS
-    echo '<div id="pagination"></div>';
+    // Output only pagination metadata for JS
     echo '<script>window.ajaxPagination = { currentPage: ' . json_encode($page) . ', totalPages: ' . json_encode($totalPages) . ' };</script>';
     exit;
 }
@@ -156,28 +155,6 @@ foreach ($requests as $row) {
     echo '<td>' . date('d-m-Y', strtotime($row['created_at'])) . '</td>';
     echo '<td><a class="view-btn" href="view.php?id=' . (int)$row['id'] . '">View</a></td>';
     echo '</tr>';
-}
-// Pagination controls
-if ($totalPages > 1) {
-    echo '<div id="pagination" class="pagination">';
-    if ($page > 1) {
-        echo '<a href="#" data-page="'.($page-1).'">&laquo; Prev</a> ';
-    } else {
-        echo '<span class="disabled">&laquo; Prev</span> ';
-    }
-    for ($i = 1; $i <= $totalPages; $i++) {
-        if ($i == $page) {
-            echo '<span class="active">'.$i.'</span> ';
-        } else {
-            echo '<a href="#" data-page="'.$i.'">'.$i.'</a> ';
-        }
-    }
-    if ($page < $totalPages) {
-        echo '<a href="#" data-page="'.($page+1).'">Next &raquo;</a>';
-    } else {
-        echo '<span class="disabled">Next &raquo;</span>';
-    }
-    echo '</div>';
 }
 // Append pagination metadata for client-side rendering
 echo '<script>window.ajaxPagination = { currentPage: ' . json_encode($page) . ', totalPages: ' . json_encode($totalPages) . ' };</script>';

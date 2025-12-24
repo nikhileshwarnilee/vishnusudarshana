@@ -1,23 +1,5 @@
 <?php
-require_once __DIR__ . '/../../config/db.php';
-
-$categoryNames = [
-    'birth-child' => 'Birth & Child Services',
-    'marriage-matching' => 'Marriage & Matching',
-    'astrology-consultation' => 'Astrology Consultation',
-    'muhurat-event' => 'Muhurat & Event Guidance',
-    'pooja-vastu-enquiry' => 'Pooja, Ritual & Vastu Enquiry',
-];
-
-$page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
-$perPage = 10;
-$countStmt = $pdo->query("SELECT COUNT(*) FROM products");
-$total_products = (int)$countStmt->fetchColumn();
-$total_pages = max(1, ceil($total_products / $perPage));
-$offset = ($page - 1) * $perPage;
-$stmt = $pdo->prepare("SELECT * FROM products ORDER BY id DESC LIMIT $perPage OFFSET $offset");
-$stmt->execute();
-$products = $stmt->fetchAll(PDO::FETCH_ASSOC);
+// No DB logic here, all handled via AJAX
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -42,10 +24,34 @@ $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
     .status-badge { padding: 4px 12px; border-radius: 8px; font-weight: 600; font-size: 0.98em; display: inline-block; min-width: 80px; text-align: center; }
     .status-completed { background: #e5ffe5; color: #1a8917; }
     .status-cancelled { background: #ffeaea; color: #c00; }
-    .pagination { margin: 18px 0; text-align: center; }
-    .pagination a { display:inline-block;padding:8px 14px;margin:0 2px;border-radius:6px;background:#f9eaea;color:#800000;font-weight:600;text-decoration:none; }
-    .pagination a.active { background:#800000;color:#fff; }
-    .pagination span { padding:8px 6px; }
+    .pagination {
+        display: flex;
+        gap: 8px;
+        justify-content: center;
+        margin: 18px 0;
+        flex-wrap: wrap;
+    }
+    .pagination a,
+    .pagination span {
+        padding: 6px 12px;
+        border-radius: 6px;
+        border: 1px solid #ccc;
+        background: #fff;
+        cursor: pointer;
+        font-weight: 600;
+        text-decoration: none;
+        display: inline-block;
+        color: #333;
+    }
+    .pagination .page-link.current {
+        background: #800000;
+        color: #fff;
+        border-color: #800000;
+    }
+    .pagination .page-link.disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+    }
     @media (max-width: 700px) {
         .admin-container { padding: 12px 2px; }
         .service-table th, .service-table td { padding: 10px 6px; font-size: 0.97em; }
@@ -72,58 +78,98 @@ $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 <th>Actions</th>
             </tr>
         </thead>
-        <tbody>
-        <?php foreach ($products as $product): ?>
-            <tr>
-                <td><?php echo $product['id']; ?></td>
-                <td><?php echo htmlspecialchars($product['product_name']); ?></td>
-                <td><?php echo $categoryNames[$product['category_slug']] ?? $product['category_slug']; ?></td>
-                <td>₹<?php echo number_format($product['price'], 2); ?></td>
-                <td>
-                    <span class="status-badge <?php echo $product['is_active'] ? 'status-completed' : 'status-cancelled'; ?>">
-                        <?php echo $product['is_active'] ? 'Active' : 'Inactive'; ?>
-                    </span>
-                </td>
-                <td>
-                    <a href="edit.php?id=<?php echo $product['id']; ?>" class="action-btn">Edit</a>
-                    <a href="delete.php?id=<?php echo $product['id']; ?>" class="action-btn delete" onclick="return confirm('Delete this product?');">Delete</a>
-                </td>
-            </tr>
-        <?php endforeach; ?>
+        <tbody id="productTableBody">
+        <!-- AJAX loaded rows -->
         </tbody>
     </table>
-    <div class="pagination">
-        <?php
-        $maxPagesToShow = 7;
-        $startPage = max(1, $page - 2);
-        $endPage = min($total_pages, $page + 2);
-        if ($startPage > 1) {
-            echo '<a href="#" class="page-link" data-page="1">1</a>';
-            if ($startPage > 2) echo '<span>...</span>';
-        }
-        for ($i = $startPage; $i <= $endPage; $i++) {
-            echo '<a href="#" class="page-link' . ($i == $page ? ' active' : '') . '" data-page="' . $i . '">' . $i . '</a>';
-        }
-        if ($endPage < $total_pages) {
-            if ($endPage < $total_pages - 1) echo '<span>...</span>';
-            echo '<a href="#" class="page-link" data-page="' . $total_pages . '">' . $total_pages . '</a>';
-        }
-        ?>
-    </div>
+    <div id="pagination" class="pagination"></div>
     </div>
     </div>
 </div>
 <script>
-function loadProductsAjax(page) {
-    $.get(window.location.pathname, { page: page, ajax: 1 }, function(res) {
-        var html = $(res).find('#productsAjaxResult').html();
-        $('#productsAjaxResult').html(html);
-    });
+// Debounce helper
+function debounce(fn, delay) {
+    let timer = null;
+    return function(...args) {
+        clearTimeout(timer);
+        timer = setTimeout(() => fn.apply(this, args), delay);
+    };
 }
-$(document).on('click', '.page-link', function(e) {
-    e.preventDefault();
-    var page = $(this).data('page');
-    loadProductsAjax(page);
+
+document.addEventListener('DOMContentLoaded', function() {
+    const tableBody = document.getElementById('productTableBody');
+    const paginationContainer = document.getElementById('pagination');
+    let paginationState = { totalPages: 1, currentPage: 1 };
+
+    function loadTable(page = 1) {
+        fetch('ajax_list.php?page=' + page)
+            .then(r => r.text())
+            .then(html => {
+                const { rowsHtml, pagination } = parsePagination(html);
+                tableBody.innerHTML = rowsHtml;
+                if (pagination) {
+                    paginationState = pagination;
+                }
+                renderPagination();
+            });
+    }
+
+    function parsePagination(html) {
+        let pagination = null;
+        const scriptMatch = html.match(/<script[^>]*>[\s\S]*?<\/script>/i);
+        if (scriptMatch) {
+            const objMatch = scriptMatch[0].match(/window\.ajaxPagination\s*=\s*({[\s\S]*?})/);
+            if (objMatch && objMatch[1]) {
+                try {
+                    pagination = Function('return ' + objMatch[1])();
+                } catch (e) {}
+            }
+            html = html.replace(scriptMatch[0], '');
+        }
+        return { rowsHtml: html, pagination };
+    }
+
+    function renderPagination() {
+        const totalPages = Math.max(1, paginationState.totalPages || 1);
+        const currentPage = Math.max(1, Math.min(paginationState.currentPage || 1, totalPages));
+        let html = '';
+        if (totalPages <= 1) {
+            paginationContainer.innerHTML = '';
+            return;
+        }
+        // Prev
+        if (currentPage > 1) {
+            html += '<a href="#" class="page-link" data-page="' + (currentPage - 1) + '">&laquo; Previous</a> ';
+        } else {
+            html += '<span class="page-link disabled">&laquo; Previous</span> ';
+        }
+        // Page numbers
+        for (let i = 1; i <= totalPages; i++) {
+            if (i === currentPage) {
+                html += '<span class="page-link current">' + i + '</span> ';
+            } else {
+                html += '<a href="#" class="page-link" data-page="' + i + '">' + i + '</a> ';
+            }
+        }
+        // Next
+        if (currentPage < totalPages) {
+            html += '<a href="#" class="page-link" data-page="' + (currentPage + 1) + '">Next &raquo;</a>';
+        } else {
+            html += '<span class="page-link disabled">Next &raquo;</span>';
+        }
+        paginationContainer.innerHTML = html;
+        paginationContainer.querySelectorAll('.page-link[data-page]').forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                const targetPage = parseInt(link.getAttribute('data-page'), 10) || 1;
+                paginationState.currentPage = targetPage;
+                loadTable(targetPage);
+            });
+        });
+    }
+
+    // Initial load
+    loadTable(1);
 });
 </script>
 </body>
