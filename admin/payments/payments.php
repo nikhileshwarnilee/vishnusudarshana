@@ -8,7 +8,7 @@ $from = isset($_GET['from']) ? $_GET['from'] : date('Y-m-01');
 $to = isset($_GET['to']) ? $_GET['to'] : date('Y-m-t');
 
 // --- FILTERED STATS ---
-$where = "payment_status = 'Paid' AND DATE(created_at) BETWEEN :from AND :to";
+$where = "payment_status = 'Paid' AND payment_id != '' AND payment_id IS NOT NULL AND tracking_id NOT LIKE 'SR%' AND DATE(created_at) BETWEEN :from AND :to";
 
 // Number of payments
 $stmt = $pdo->prepare("SELECT COUNT(*) FROM service_requests WHERE $where");

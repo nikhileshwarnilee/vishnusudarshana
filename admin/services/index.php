@@ -331,9 +331,9 @@ $completedCount = $pdo->query(
     "SELECT COUNT(*) FROM service_requests WHERE service_status = 'Completed' AND category_slug != 'appointment'"
 )->fetchColumn();
 
-// Stats counters for online and offline service requests
-$onlineCount = $pdo->query("SELECT COUNT(*) FROM service_requests WHERE tracking_id LIKE 'AP%' OR tracking_id LIKE 'ON%'")->fetchColumn();
-$offlineCount = $pdo->query("SELECT COUNT(*) FROM service_requests WHERE tracking_id LIKE 'SR%'")->fetchColumn();
+// Stats counters for online and offline service requests (VDSK for online, SR for offline)
+$onlineCount = $pdo->query("SELECT COUNT(*) FROM service_requests WHERE tracking_id LIKE 'VDSK%' AND category_slug != 'appointment'")->fetchColumn();
+$offlineCount = $pdo->query("SELECT COUNT(*) FROM service_requests WHERE tracking_id LIKE 'SR%' AND category_slug != 'appointment'")->fetchColumn();
 
 /* ==============================
    FILTERS

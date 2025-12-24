@@ -65,9 +65,19 @@ if (count($rows) === 0) {
         $decoded = json_decode($row['selected_products'], true);
         if (is_array($decoded) && count($decoded)) {
             $names = [];
+            static $productNameCache = [];
             foreach ($decoded as $prod) {
-                if (isset($prod['name'])) {
+                if (isset($prod['name']) && $prod['name']) {
                     $names[] = htmlspecialchars($prod['name']);
+                } elseif (isset($prod['id'])) {
+                    $pid = (int)$prod['id'];
+                    if (!isset($productNameCache[$pid])) {
+                        $pstmt = $pdo->prepare('SELECT product_name FROM products WHERE id = ?');
+                        $pstmt->execute([$pid]);
+                        $prow = $pstmt->fetch();
+                        $productNameCache[$pid] = $prow ? $prow['product_name'] : 'Product#'.$pid;
+                    }
+                    $names[] = htmlspecialchars($productNameCache[$pid]);
                 }
             }
             if ($names) {
