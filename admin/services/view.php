@@ -410,6 +410,7 @@ $adminNotes = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 <div style="background:#fff;border-left:3px solid #800000;padding:10px;margin-bottom:10px;border-radius:4px;">
                     <div style="color:#333;font-size:0.98em;margin-bottom:6px;"><?php echo nl2br(htmlspecialchars($note['note_text'])); ?></div>
                     <div style="color:#999;font-size:0.85em;font-style:italic;"><?php echo date('d M Y, h:i A', strtotime($note['created_at'])); ?></div>
+                    <button type="button" onclick="sendNoteNotification('<?php echo htmlspecialchars(addslashes($request['mobile'])); ?>', '<?php echo htmlspecialchars(addslashes($note['note_text'])); ?>')" style="background:#25D366;color:#fff;border:none;border-radius:6px;padding:6px 14px;font-size:0.95em;font-weight:600;cursor:pointer;margin-top:8px;">Send Notification</button>
                 </div>
             <?php endforeach; ?>
         </div>
@@ -426,6 +427,24 @@ $adminNotes = $stmt->fetchAll(PDO::FETCH_ASSOC);
     </div>
 
     <script>
+        function sendNoteNotification(mobile, noteText) {
+            if (!mobile) {
+                alert('Customer mobile number not available.');
+                return;
+            }
+            var msg = encodeURIComponent(noteText);
+            var phone = mobile.replace(/[^0-9]/g, '');
+            if (phone.length < 10) {
+                alert('Invalid mobile number.');
+                return;
+            }
+            // If country code not present, add +91 (India) as default
+            if (phone.length === 10) {
+                phone = '91' + phone;
+            }
+            var waUrl = 'https://wa.me/' + phone + '?text=' + msg;
+            window.open(waUrl, '_blank');
+        }
     function saveNote() {
         var noteText = document.getElementById('note_text').value.trim();
         var statusEl = document.getElementById('note_status');
@@ -475,6 +494,7 @@ $adminNotes = $stmt->fetchAll(PDO::FETCH_ASSOC);
         .then(data => {
             if (data.success && data.notes) {
                 var notesContainer = document.getElementById('notes_container');
+                var mobile = <?php echo json_encode($request['mobile']); ?>;
                 if (data.notes.length > 0) {
                     var html = '<div style="background:#fef9f9;border:1px solid #f3caca;border-radius:8px;padding:12px;margin-bottom:18px;">';
                     data.notes.forEach(note => {
@@ -484,6 +504,7 @@ $adminNotes = $stmt->fetchAll(PDO::FETCH_ASSOC);
                         html += '<div style="background:#fff;border-left:3px solid #800000;padding:10px;margin-bottom:10px;border-radius:4px;">';
                         html += '<div style="color:#333;font-size:0.98em;margin-bottom:6px;">' + escapeHtml(note.note_text).replace(/\n/g, '<br>') + '</div>';
                         html += '<div style="color:#999;font-size:0.85em;font-style:italic;">' + formattedDate + '</div>';
+                        html += '<button type="button" onclick="sendNoteNotification(\'' + escapeJs(mobile) + '\', \'" + escapeJs(note.note_text) + "\')" style="background:#25D366;color:#fff;border:none;border-radius:6px;padding:6px 14px;font-size:0.95em;font-weight:600;cursor:pointer;margin-top:8px;">Send Notification</button>';
                         html += '</div>';
                     });
                     html += '</div>';
@@ -502,6 +523,10 @@ $adminNotes = $stmt->fetchAll(PDO::FETCH_ASSOC);
         var div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
+    }
+    function escapeJs(text) {
+        if (!text) return '';
+        return text.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\n/g, '\\n').replace(/\r/g, '');
     }
     </script>
 

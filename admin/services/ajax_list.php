@@ -100,14 +100,15 @@ $catMap = [
    OUTPUT
 =============================== */
 if (!$requests) {
-    echo '<tbody><tr><td colspan="10" class="no-data">No service requests found.</td></tr></tbody>';
+    echo '<tr><td colspan="10" class="no-data">No service requests found.</td></tr>';
+    // Output empty pagination and metadata for JS
     echo '<div id="pagination"></div>';
+    echo '<script>window.ajaxPagination = { currentPage: ' . json_encode($page) . ', totalPages: ' . json_encode($totalPages) . ' };</script>';
     exit;
 }
 
 echo '<tbody>';
 foreach ($requests as $row) {
-
     // Products
     $products = '-';
     if (!empty($row['selected_products'])) {
@@ -116,7 +117,6 @@ foreach ($requests as $row) {
             $names = [];
             foreach ($decoded as $prod) {
                 if (!empty($prod['id'])) {
-                    // Fetch product name from DB (cache for performance)
                     static $productNameCache = [];
                     $pid = (int)$prod['id'];
                     if (!isset($productNameCache[$pid])) {
@@ -157,8 +157,6 @@ foreach ($requests as $row) {
     echo '<td><a class="view-btn" href="view.php?id=' . (int)$row['id'] . '">View</a></td>';
     echo '</tr>';
 }
-echo '</tbody>';
-
 // Pagination controls
 if ($totalPages > 1) {
     echo '<div id="pagination" class="pagination">';
@@ -181,7 +179,6 @@ if ($totalPages > 1) {
     }
     echo '</div>';
 }
-
 // Append pagination metadata for client-side rendering
 echo '<script>window.ajaxPagination = { currentPage: ' . json_encode($page) . ', totalPages: ' . json_encode($totalPages) . ' };</script>';
 ?>
