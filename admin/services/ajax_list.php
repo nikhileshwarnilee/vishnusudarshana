@@ -102,8 +102,17 @@ foreach ($requests as $row) {
         if (is_array($decoded)) {
             $names = [];
             foreach ($decoded as $prod) {
-                if (!empty($prod['name'])) {
-                    $names[] = $prod['name'];
+                if (!empty($prod['id'])) {
+                    // Fetch product name from DB (cache for performance)
+                    static $productNameCache = [];
+                    $pid = (int)$prod['id'];
+                    if (!isset($productNameCache[$pid])) {
+                        $pstmt = $pdo->prepare('SELECT product_name FROM products WHERE id = ?');
+                        $pstmt->execute([$pid]);
+                        $prow = $pstmt->fetch();
+                        $productNameCache[$pid] = $prow ? $prow['product_name'] : 'Product#'.$pid;
+                    }
+                    $names[] = $productNameCache[$pid];
                 }
             }
             if ($names) {
@@ -125,7 +134,8 @@ foreach ($requests as $row) {
     echo '<td>₹' . number_format($row['total_amount'], 2) . '</td>';
 
     $payClass = 'payment-' . strtolower(str_replace(' ', '-', $row['payment_status']));
-    echo '<td><span class="status-badge ' . $payClass . '">' . htmlspecialchars($row['payment_status']) . '</span></td>';
+    $isOffline = !empty($row['selected_products']);
+    echo '<td><span class="status-badge ' . $payClass . '">' . ($isOffline ? 'Offline Paid' : htmlspecialchars($row['payment_status'])) . '</span></td>';
 
     $statusClass = 'status-' . strtolower(str_replace(' ', '-', $row['service_status']));
     echo '<td><span class="status-badge ' . $statusClass . '">' . htmlspecialchars($row['service_status']) . '</span></td>';

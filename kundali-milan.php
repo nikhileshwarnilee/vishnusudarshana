@@ -15,8 +15,22 @@
           <input type="date" id="groom_dob" name="groom_dob" required>
         </div>
         <div class="form-group">
-          <label for="groom_tob">Time of Birth *</label>
-          <input type="time" id="groom_tob" name="groom_tob" required>
+          <label for="groom_tob_h">Time of Birth *</label>
+          <div style="display:flex;gap:6px;align-items:center;">
+            <select id="groom_tob_h" required style="width:60px;">
+              <option value="">HH</option>
+              <?php for($h=1;$h<=12;$h++): ?><option value="<?= sprintf('%02d',$h) ?>"><?= sprintf('%02d',$h) ?></option><?php endfor; ?>
+            </select> :
+            <select id="groom_tob_m" required style="width:60px;">
+              <option value="">MM</option>
+              <?php for($m=0;$m<60;$m+=1): ?><option value="<?= sprintf('%02d',$m) ?>"><?= sprintf('%02d',$m) ?></option><?php endfor; ?>
+            </select>
+            <select id="groom_tob_ampm" required style="width:60px;">
+              <option value="AM">AM</option>
+              <option value="PM">PM</option>
+            </select>
+            <input type="hidden" id="groom_tob" name="groom_tob" required>
+          </div>
         </div>
         <div class="form-group">
           <label for="groom_place">Place of Birth *</label>
@@ -34,8 +48,22 @@
           <input type="date" id="bride_dob" name="bride_dob" required>
         </div>
         <div class="form-group">
-          <label for="bride_tob">Time of Birth *</label>
-          <input type="time" id="bride_tob" name="bride_tob" required>
+          <label for="bride_tob_h">Time of Birth *</label>
+          <div style="display:flex;gap:6px;align-items:center;">
+            <select id="bride_tob_h" required style="width:60px;">
+              <option value="">HH</option>
+              <?php for($h=1;$h<=12;$h++): ?><option value="<?= sprintf('%02d',$h) ?>"><?= sprintf('%02d',$h) ?></option><?php endfor; ?>
+            </select> :
+            <select id="bride_tob_m" required style="width:60px;">
+              <option value="">MM</option>
+              <?php for($m=0;$m<60;$m+=1): ?><option value="<?= sprintf('%02d',$m) ?>"><?= sprintf('%02d',$m) ?></option><?php endfor; ?>
+            </select>
+            <select id="bride_tob_ampm" required style="width:60px;">
+              <option value="AM">AM</option>
+              <option value="PM">PM</option>
+            </select>
+            <input type="hidden" id="bride_tob" name="bride_tob" required>
+          </div>
         </div>
         <div class="form-group">
           <label for="bride_place">Place of Birth *</label>
@@ -58,6 +86,24 @@
   </section>
 </main>
 </div>
-</style>
+
+<script>
+function updateTimeField(prefix) {
+  var h = document.getElementById(prefix+'_h').value;
+  var m = document.getElementById(prefix+'_m').value;
+  var ampm = document.getElementById(prefix+'_ampm').value;
+  if(h && m && ampm) {
+    document.getElementById(prefix).value = h+":"+m+" "+ampm;
+  } else {
+    document.getElementById(prefix).value = '';
+  }
+}
+['groom_tob','bride_tob'].forEach(function(prefix){
+  ['_h','_m','_ampm'].forEach(function(suffix){
+    var el = document.getElementById(prefix+suffix);
+    if(el) el.addEventListener('change', function(){ updateTimeField(prefix); });
+  });
+});
+</script>
 
 <?php include '/footer.php'; ?>

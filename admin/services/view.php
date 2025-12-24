@@ -336,7 +336,22 @@ $adminNotes = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     <?php
                     $grandTotal = 0;
                     foreach ($products as $prod):
-                        $name = isset($prod['name']) ? $prod['name'] : (isset($prod['product_name']) ? $prod['product_name'] : '');
+                        $name = '';
+                        if (isset($prod['name']) && $prod['name']) {
+                            $name = $prod['name'];
+                        } elseif (isset($prod['product_name']) && $prod['product_name']) {
+                            $name = $prod['product_name'];
+                        } elseif (isset($prod['id'])) {
+                            static $productNameCache = [];
+                            $pid = (int)$prod['id'];
+                            if (!isset($productNameCache[$pid])) {
+                                $pstmt = $pdo->prepare('SELECT product_name FROM products WHERE id = ?');
+                                $pstmt->execute([$pid]);
+                                $prow = $pstmt->fetch();
+                                $productNameCache[$pid] = $prow ? $prow['product_name'] : 'Product#'.$pid;
+                            }
+                            $name = $productNameCache[$pid];
+                        }
                         $qty = isset($prod['qty']) ? (int)$prod['qty'] : 1;
                         $price = isset($prod['price']) ? (float)$prod['price'] : 0;
                         $subtotal = $qty * $price;

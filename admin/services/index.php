@@ -1,4 +1,3 @@
-</style>
 <style>
 .pagination .page-link {
     display: inline-block;
@@ -23,6 +22,9 @@
     border: 1px solid #eee;
     cursor: not-allowed;
 }
+
+/* Payment clickable style */
+.payment-clickable { text-decoration: underline; color: #c00 !important; }
 </style>
 <script>
 // Debounce helper
@@ -156,6 +158,77 @@ document.addEventListener('DOMContentLoaded', function() {
         e.preventDefault();
         loadTable(getParams(1));
     });
+
+    // Payment popup logic
+    document.body.insertAdjacentHTML('beforeend', `
+    <div id="paymentModal" style="display:none;position:fixed;z-index:9999;left:0;top:0;width:100vw;height:100vh;background:rgba(0,0,0,0.25);align-items:center;justify-content:center;">
+      <div style="background:#fff;padding:24px 18px 18px 18px;border-radius:12px;max-width:400px;width:96vw;box-shadow:0 4px 24px #80000033;position:relative;">
+        <button id="closePaymentModal" style="position:absolute;top:8px;right:12px;font-size:1.3em;background:none;border:none;color:#800000;cursor:pointer;">&times;</button>
+        <h2 style="color:#800000;font-size:1.1em;margin-bottom:12px;">Add Payment</h2>
+        <div id="paymentDetails"></div>
+        <form id="addPaymentForm" style="margin-top:10px;display:none;">
+          <div style="margin-bottom:8px;">Total: <span id="modalTotal"></span></div>
+          <div style="margin-bottom:8px;">Paid: <span id="modalPaid"></span></div>
+          <div style="margin-bottom:8px;">Balance: <span id="modalBalance"></span></div>
+          <label>Paying Amount: <input type="number" id="payingAmount" name="paying_amount" min="1" step="0.01" style="width:100px;"></label>
+          <input type="hidden" id="modalServiceId" name="service_request_id">
+          <button type="submit" class="form-btn" style="margin-top:10px;">Submit Payment</button>
+        </form>
+        <div id="previousPayments" style="margin-top:18px;"></div>
+      </div>
+    </div>
+    `);
+    const modal = document.getElementById('paymentModal');
+    const closeBtn = document.getElementById('closePaymentModal');
+    closeBtn.onclick = () => { modal.style.display = 'none'; };
+    document.body.addEventListener('click', function(e) {
+        if (e.target.classList.contains('payment-clickable')) {
+            const id = e.target.getAttribute('data-id');
+            const total = parseFloat(e.target.getAttribute('data-total'));
+            const paid = parseFloat(e.target.getAttribute('data-paid'));
+            const balance = parseFloat(e.target.getAttribute('data-balance'));
+            document.getElementById('modalTotal').textContent = '₹'+total.toFixed(2);
+            document.getElementById('modalPaid').textContent = '₹'+paid.toFixed(2);
+            document.getElementById('modalBalance').textContent = '₹'+balance.toFixed(2);
+            document.getElementById('modalServiceId').value = id;
+            document.getElementById('payingAmount').value = '';
+            document.getElementById('addPaymentForm').style.display = balance > 0 ? '' : 'none';
+            // Fetch previous payments
+            fetch('ajax_get_payments.php?service_request_id='+id)
+              .then(r=>r.json()).then(data=>{
+                let html = '<b>Previous Payments:</b>';
+                if(data.length===0) html += '<div style="color:#888;">No payments yet.</div>';
+                else {
+                  html += '<ul style="padding-left:18px;">';
+                  data.forEach(p=>{
+                    html += '<li>₹'+parseFloat(p.amount).toFixed(2)+' on '+p.created_at+'</li>';
+                  });
+                  html += '</ul>';
+                }
+                document.getElementById('previousPayments').innerHTML = html;
+              });
+            modal.style.display = 'flex';
+        }
+    });
+    document.getElementById('addPaymentForm').onsubmit = function(e) {
+        e.preventDefault();
+        const id = document.getElementById('modalServiceId').value;
+        const amt = parseFloat(document.getElementById('payingAmount').value);
+        if(isNaN(amt)||amt<=0) { alert('Enter valid amount'); return; }
+        fetch('ajax_add_payment.php', {
+            method:'POST',
+            headers:{'Content-Type':'application/x-www-form-urlencoded'},
+            body:'service_request_id='+encodeURIComponent(id)+'&amount='+encodeURIComponent(amt)
+        }).then(r=>r.json()).then(res=>{
+            if(res.success) {
+                alert('Payment added!');
+                modal.style.display = 'none';
+                location.reload();
+            } else {
+                alert('Error: '+(res.error||'Unknown error'));
+            }
+        });
+    };
 });
 </script>
 <?php
@@ -513,8 +586,17 @@ h1 {
         if (is_array($decoded) && count($decoded)) {
             $names = [];
             foreach ($decoded as $prod) {
-                if (isset($prod['name'])) {
-                    $names[] = htmlspecialchars($prod['name']);
+                if (isset($prod['id'])) {
+                    // Fetch product name from DB (cache for performance)
+                    static $productNameCache = [];
+                    $pid = (int)$prod['id'];
+                    if (!isset($productNameCache[$pid])) {
+                        $pstmt = $pdo->prepare('SELECT product_name FROM products WHERE id = ?');
+                        $pstmt->execute([$pid]);
+                        $prow = $pstmt->fetch();
+                        $productNameCache[$pid] = $prow ? $prow['product_name'] : 'Product#'.$pid;
+                    }
+                    $names[] = htmlspecialchars($productNameCache[$pid]);
                 }
             }
             if ($names) {
@@ -541,11 +623,35 @@ h1 {
     <td>
         <?php
         $payClass = 'payment-' . strtolower(str_replace(' ', '-', $row['payment_status']));
+        $isOffline = !empty($row['selected_products']);
+        $offlinePaymentHtml = '';
+        if ($isOffline) {
+            // Calculate paid amount
+            $paid = 0;
+            $payments = $pdo->prepare('SELECT amount FROM service_payments WHERE service_request_id = ?');
+            $payments->execute([$row['id']]);
+            $allPayments = $payments->fetchAll(PDO::FETCH_ASSOC);
+            foreach ($allPayments as $p) $paid += (float)$p['amount'];
+            $total = (float)$row['total_amount'];
+            $balance = $total - $paid;
+            $statusText = 'Unpaid';
+            $payClass = 'payment-failed';
+            if ($paid > 0 && $balance > 0) {
+                $statusText = 'Partial Paid';
+                $payClass = 'payment-pending';
+            } elseif ($paid >= $total && $total > 0) {
+                $statusText = 'Paid';
+                $payClass = 'payment-paid';
+            }
+            $offlinePaymentHtml = '<span class="status-badge '.$payClass.' payment-clickable" style="cursor:pointer;" data-id="'.$row['id'].'" data-total="'.$total.'" data-paid="'.$paid.'" data-balance="'.$balance.'">'.$statusText.'</span>';
+            echo $offlinePaymentHtml;
+        } else {
         ?>
         <span class="status-badge <?= $payClass ?>">
             <?= htmlspecialchars($row['payment_status']) ?>
         </span>
-    </td>
+        <?php }
+</td>
     <td>
         <?php
         $statusClass = 'status-' . strtolower(str_replace(' ', '-', $row['service_status']));

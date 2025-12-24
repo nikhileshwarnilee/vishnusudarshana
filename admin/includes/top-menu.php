@@ -51,6 +51,7 @@ $menu = [
             'Service Requests'   => $baseUrl . '/admin/services/index.php',
             'Products'           => $baseUrl . '/admin/products/index.php',
             'Service Categories' => $baseUrl . '/admin/services/category.php',
+            'Offline Service Request' => $baseUrl . '/admin/services/offlineservicerequest.php',
         ]
     ],
 
