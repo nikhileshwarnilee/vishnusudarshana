@@ -62,7 +62,9 @@ $menu = [
         'icon' => '💳',
         'submenu' => [
             'All Payments'    => $baseUrl . '/admin/payments/payments.php',
-            // 'Failed Payments' removed
+            'Create Invoice'  => $baseUrl . '/admin/payments/create-invoice.php',
+            'Invoices List'   => $baseUrl . '/admin/payments/invoices.php',
+            'Collect Payment' => $baseUrl . '/admin/payments/collect-payment.php',
         ]
     ],
 
