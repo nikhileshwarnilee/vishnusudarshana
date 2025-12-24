@@ -9,6 +9,7 @@ header('Content-Type: text/html; charset=UTF-8');
 $search   = trim($_GET['search'] ?? '');
 $status   = $_GET['status'] ?? 'All';
 $category = $_GET['category'] ?? 'All';
+$type     = $_GET['type'] ?? 'all';
 $page     = max(1, (int)($_GET['page'] ?? 1));
 
 /* ===============================
@@ -42,6 +43,13 @@ if ($search !== '') {
     $params[] = "%$search%";
     $params[] = "%$search%";
     $params[] = "%$search%";
+}
+
+$requestType = $_GET['request_type'] ?? 'all';
+if ($requestType === 'online') {
+    $where[] = "(selected_products IS NULL OR selected_products = '' OR selected_products = '[]')";
+} elseif ($requestType === 'offline') {
+    $where[] = "(selected_products IS NOT NULL AND selected_products != '' AND selected_products != '[]')";
 }
 
 $whereSql = $where ? 'WHERE ' . implode(' AND ', $where) : '';
@@ -90,9 +98,12 @@ $catMap = [
    OUTPUT
 =============================== */
 if (!$requests) {
-    echo '<tr><td colspan="10" class="no-data">No service requests found.</td></tr>';
+    echo '<tbody><tr><td colspan="10" class="no-data">No service requests found.</td></tr></tbody>';
+    echo '<div id="pagination"></div>';
+    exit;
 }
 
+echo '<tbody>';
 foreach ($requests as $row) {
 
     // Products
@@ -144,6 +155,38 @@ foreach ($requests as $row) {
     echo '<td><a class="view-btn" href="view.php?id=' . (int)$row['id'] . '">View</a></td>';
     echo '</tr>';
 }
+echo '</tbody>';
+
+// Pagination controls
+if ($totalPages > 1) {
+    echo '<div id="pagination" class="pagination">';
+    if ($page > 1) {
+        echo '<a href="#" data-page="'.($page-1).'">&laquo; Prev</a> ';
+    } else {
+        echo '<span class="disabled">&laquo; Prev</span> ';
+    }
+    for ($i = 1; $i <= $totalPages; $i++) {
+        if ($i == $page) {
+            echo '<span class="active">'.$i.'</span> ';
+        } else {
+            echo '<a href="#" data-page="'.$i.'">'.$i.'</a> ';
+        }
+    }
+    if ($page < $totalPages) {
+        echo '<a href="#" data-page="'.($page+1).'">Next &raquo;</a>';
+    } else {
+        echo '<span class="disabled">Next &raquo;</span>';
+    }
+    echo '</div>';
+}
 
 // Append pagination metadata for client-side rendering
 echo '<script>window.ajaxPagination = { currentPage: ' . json_encode($page) . ', totalPages: ' . json_encode($totalPages) . ' };</script>';
+?>
+<script>
+document.getElementById('requestTypeSelect').addEventListener('change', function() {
+    const url = new URL(window.location.href);
+    url.searchParams.set('request_type', this.value);
+    window.location.href = url.toString();
+});
+</script>

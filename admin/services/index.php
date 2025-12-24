@@ -1,29 +1,177 @@
-</style>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Admin – Service Requests</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="/assets/css/style.css">
 <style>
-.pagination .page-link {
-    display: inline-block;
-    margin: 0 3px;
+body {
+    font-family: Arial, sans-serif;
+    background: #f7f7fa;
+    margin: 0;
+}
+.admin-container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 24px 12px;
+}
+h1 {
+    color: #800000;
+    margin-bottom: 18px;
+}
+
+/* SUMMARY CARDS */
+.summary-cards {
+    display: flex;
+    gap: 18px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+}
+.summary-card {
+    flex: 1 1 180px;
+    background: #fffbe7;
+    border-radius: 14px;
+    padding: 16px;
+    text-align: center;
+    box-shadow: 0 2px 8px #e0bebe22;
+}
+.summary-count {
+    font-size: 2.2em;
+    font-weight: 700;
+    color: #800000;
+}
+.summary-label {
+    font-size: 1em;
+    color: #444;
+}
+
+/* FILTER BAR */
+.filter-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 18px;
+}
+.filter-bar label {
+    font-weight: 600;
+}
+.filter-bar select,
+.filter-bar button {
     padding: 6px 12px;
     border-radius: 6px;
+    font-size: 1em;
+}
+.filter-bar button {
+    background: #800000;
+    color: #fff;
+    border: none;
+    cursor: pointer;
+}
+
+
+/* TABLE */
+.service-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: #fff;
+    box-shadow: 0 2px 12px #e0bebe22;
+    border-radius: 12px;
+    overflow: hidden;
+}
+.service-table th,
+.service-table td {
+    padding: 12px 10px;
+    border-bottom: 1px solid #f3caca;
+    text-align: left;
+}
+.service-table th {
     background: #f9eaea;
     color: #800000;
+}
+.service-table tbody tr:hover {
+    background: #f3f7fa;
+    cursor: pointer;
+}
+.status-badge {
+    padding: 4px 12px;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.9em;
+    display: inline-block;
+    min-width: 80px;
+    text-align: center;
+}
+/* Service Status Colors */
+.status-received { background: #e5f0ff; color: #0056b3; }
+.status-in-progress { background: #fffbe5; color: #b36b00; }
+.status-completed { background: #e5ffe5; color: #1a8917; }
+.status-cancelled { background: #ffeaea; color: #c00; }
+/* Payment Status Colors */
+.payment-paid { background: #e5ffe5; color: #1a8917; }
+.payment-pending { background: #f7f7f7; color: #b36b00; }
+.payment-failed { background: #ffeaea; color: #c00; }
+
+.view-btn {
+    background: #800000;
+    color: #fff;
+    padding: 6px 14px;
+    border-radius: 8px;
     text-decoration: none;
     font-weight: 600;
-    border: 1px solid #f3caca;
-    min-width: 32px;
 }
+
+.no-data {
+    text-align: center;
+    color: #777;
+    padding: 24px;
+}
+
+/* PAGINATION */
+.pagination {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    margin: 18px 0;
+    flex-wrap: wrap;
+}
+
+.pagination a,
+.pagination span {
+    padding: 6px 12px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+    background: #fff;
+    cursor: pointer;
+    font-weight: 600;
+    text-decoration: none;
+    display: inline-block;
+    color: #333;
+}
+
 .pagination .page-link.current {
     background: #800000;
     color: #fff;
-    border: 1px solid #800000;
+    border-color: #800000;
 }
+
 .pagination .page-link.disabled {
-    background: #f7f7fa;
-    color: #bbb;
-    border: 1px solid #eee;
+    opacity: 0.4;
     cursor: not-allowed;
 }
+
+/* Popup overlay and box for Unpaid button */
+#payPopupOverlay { position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.35);z-index:9999;display:flex;align-items:center;justify-content:center; }
+#payPopupOverlay .pay-popup-box { background:#fff;padding:32px 28px;border-radius:12px;box-shadow:0 2px 16px #80000033;min-width:320px;max-width:90vw;text-align:center;position:relative; }
+#payPopupOverlay .pay-popup-close { background:#800000;color:#fff;padding:8px 24px;border:none;border-radius:8px;font-weight:600;cursor:pointer; }
+
+@media (max-width: 700px) {
+    .summary-cards {
+        flex-direction: column;
+    }
+}
 </style>
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 <script>
 // Debounce helper
 function debounce(fn, delay) {
@@ -254,176 +402,6 @@ $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
 $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<title>Admin – Service Requests</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-<style>
-body {
-    font-family: Arial, sans-serif;
-    background: #f7f7fa;
-    margin: 0;
-}
-.admin-container {
-    max-width: 1100px;
-    margin: 0 auto;
-    padding: 24px 12px;
-}
-h1 {
-    color: #800000;
-    margin-bottom: 18px;
-}
-
-/* SUMMARY CARDS */
-.summary-cards {
-    display: flex;
-    gap: 18px;
-    margin-bottom: 24px;
-    flex-wrap: wrap;
-}
-.summary-card {
-    flex: 1 1 180px;
-    background: #fffbe7;
-    border-radius: 14px;
-    padding: 16px;
-    text-align: center;
-    box-shadow: 0 2px 8px #e0bebe22;
-}
-.summary-count {
-    font-size: 2.2em;
-    font-weight: 700;
-    color: #800000;
-}
-.summary-label {
-    font-size: 1em;
-    color: #444;
-}
-
-/* FILTER BAR */
-.filter-bar {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 12px;
-    margin-bottom: 18px;
-}
-.filter-bar label {
-    font-weight: 600;
-}
-.filter-bar select,
-.filter-bar button {
-    padding: 6px 12px;
-    border-radius: 6px;
-    font-size: 1em;
-}
-.filter-bar button {
-    background: #800000;
-    color: #fff;
-    border: none;
-    cursor: pointer;
-}
-
-
-/* TABLE */
-.service-table {
-    width: 100%;
-    border-collapse: collapse;
-    background: #fff;
-    box-shadow: 0 2px 12px #e0bebe22;
-    border-radius: 12px;
-    overflow: hidden;
-}
-.service-table th,
-.service-table td {
-    padding: 12px 10px;
-    border-bottom: 1px solid #f3caca;
-    text-align: left;
-}
-.service-table th {
-    background: #f9eaea;
-    color: #800000;
-}
-.service-table tbody tr:hover {
-    background: #f3f7fa;
-    cursor: pointer;
-}
-.status-badge {
-    padding: 4px 12px;
-    border-radius: 8px;
-    font-weight: 600;
-    font-size: 0.9em;
-    display: inline-block;
-    min-width: 80px;
-    text-align: center;
-}
-/* Service Status Colors */
-.status-received { background: #e5f0ff; color: #0056b3; }
-.status-in-progress { background: #fffbe5; color: #b36b00; }
-.status-completed { background: #e5ffe5; color: #1a8917; }
-.status-cancelled { background: #ffeaea; color: #c00; }
-/* Payment Status Colors */
-.payment-paid { background: #e5ffe5; color: #1a8917; }
-.payment-pending { background: #f7f7f7; color: #b36b00; }
-.payment-failed { background: #ffeaea; color: #c00; }
-
-.view-btn {
-    background: #800000;
-    color: #fff;
-    padding: 6px 14px;
-    border-radius: 8px;
-    text-decoration: none;
-    font-weight: 600;
-}
-
-.no-data {
-    text-align: center;
-    color: #777;
-    padding: 24px;
-}
-
-/* PAGINATION */
-.pagination {
-    display: flex;
-    gap: 8px;
-    justify-content: center;
-    margin: 18px 0;
-    flex-wrap: wrap;
-}
-
-.pagination a,
-.pagination span {
-    padding: 6px 12px;
-    border-radius: 6px;
-    border: 1px solid #ccc;
-    background: #fff;
-    cursor: pointer;
-    font-weight: 600;
-    text-decoration: none;
-    display: inline-block;
-    color: #333;
-}
-
-.pagination .page-link.current {
-    background: #800000;
-    color: #fff;
-    border-color: #800000;
-}
-
-.pagination .page-link.disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
-}
-
-@media (max-width: 700px) {
-    .summary-cards {
-        flex-direction: column;
-    }
-}
-</style>
-</head>
-
 <body>
 <?php include __DIR__ . '/../includes/top-menu.php'; ?>
 <div class="admin-container">
@@ -551,10 +529,13 @@ h1 {
         <?php
         $payClass = 'payment-' . strtolower(str_replace(' ', '-', $row['payment_status']));
         $isOffline = !empty($row['selected_products']);
+        if ($isOffline) {
+            // Always show Unpaid in red for offline service requests
+            echo '<button class="btn-pay" data-id="'.(int)$row['id'].'" style="background:#c00;color:#fff;padding:6px 14px;border:none;border-radius:6px;font-weight:600;cursor:pointer;">Unpaid</button>';
+        } else {
+            echo '<span class="status-badge '.$payClass.'">'.htmlspecialchars($row['payment_status']).'</span>';
+        }
         ?>
-        <span class="status-badge <?= $payClass ?>">
-            <?= $isOffline ? 'Offline Paid' : htmlspecialchars($row['payment_status']) ?>
-        </span>
     </td>
     <td>
         <?php
@@ -572,9 +553,22 @@ h1 {
 </tbody>
 </table>
 
-<!-- PAGINATION CONTROLS -->
-<div id="pagination" class="pagination"></div>
 
-</div>
-</body>
-</html>
+
+<script>
+$(document).on('click', '.btn-pay', function(e){
+    e.preventDefault();
+    var id = $(this).data('id');
+    // Simple popup for Unpaid
+    var popup = $('<div id="payPopupOverlay" style="position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.35);z-index:9999;display:flex;align-items:center;justify-content:center;"></div>');
+    var box = $('<div style="background:#fff;padding:32px 28px;border-radius:12px;box-shadow:0 2px 16px #80000033;min-width:320px;max-width:90vw;text-align:center;position:relative;">'
+        +'<div style="font-size:1.15em;color:#c00;font-weight:600;margin-bottom:12px;">This service request is currently unpaid.</div>'
+        +'<div style="color:#555;margin-bottom:18px;">Please collect payment offline and update the status accordingly in the system.</div>'
+        +'<button id="closePayPopup" style="background:#800000;color:#fff;padding:8px 24px;border:none;border-radius:8px;font-weight:600;cursor:pointer;">Close</button>'
+        +'</div>');
+    popup.append(box);
+    $('body').append(popup);
+    $('#closePayPopup').on('click', function(){ $('#payPopupOverlay').remove(); });
+    popup.on('click', function(e){ if(e.target === this) $(this).remove(); });
+});
+</script>
