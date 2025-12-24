@@ -60,7 +60,8 @@ $menu = [
         'icon' => '💳',
         'submenu' => [
             'All Payments'    => $baseUrl . '/admin/payments/index.php',
-            'Failed Payments' => $baseUrl . '/admin/payments/failed.php',
+            'Sample Payments' => $baseUrl . '/admin/payments/payments.php',
+            // 'Failed Payments' removed
         ]
     ],
 
@@ -77,8 +78,9 @@ $menu = [
     'Settings' => [
         'icon' => '⚙️',
         'submenu' => [
-            'Profile'         => $baseUrl . '/admin/settings/profile.php',
+            // 'Profile' removed
             'Change Password' => $baseUrl . '/admin/settings/password.php',
+            'Users'           => $baseUrl . '/admin/users.php',
         ]
     ],
 
