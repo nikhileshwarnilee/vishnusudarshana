@@ -45,11 +45,13 @@ if ($search !== '') {
     $params[] = "%$search%";
 }
 
+
+// Use tracking_id prefix for online/offline filter (match index.php)
 $requestType = $_GET['request_type'] ?? 'all';
 if ($requestType === 'online') {
-    $where[] = "(selected_products IS NULL OR selected_products = '' OR selected_products = '[]')";
+    $where[] = "(tracking_id LIKE 'VDSK%')";
 } elseif ($requestType === 'offline') {
-    $where[] = "(selected_products IS NOT NULL AND selected_products != '' AND selected_products != '[]')";
+    $where[] = "(tracking_id LIKE 'SR%')";
 }
 
 $whereSql = $where ? 'WHERE ' . implode(' AND ', $where) : '';

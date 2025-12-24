@@ -331,6 +331,10 @@ $completedCount = $pdo->query(
     "SELECT COUNT(*) FROM service_requests WHERE service_status = 'Completed' AND category_slug != 'appointment'"
 )->fetchColumn();
 
+// Stats counters for online and offline service requests
+$onlineCount = $pdo->query("SELECT COUNT(*) FROM service_requests WHERE tracking_id LIKE 'AP%' OR tracking_id LIKE 'ON%'")->fetchColumn();
+$offlineCount = $pdo->query("SELECT COUNT(*) FROM service_requests WHERE tracking_id LIKE 'SR%'")->fetchColumn();
+
 /* ==============================
    FILTERS
 ============================== */
@@ -380,6 +384,14 @@ if ($search !== '') {
     $params[] = "%$search%";
 }
 
+// PHP: Add logic to filter requests by tracking_id prefix (VDSK for online, SR for offline)
+$requestType = $_GET['request_type'] ?? 'all';
+if ($requestType === 'online') {
+    $where[] = "(tracking_id LIKE 'VDSK%')";
+} elseif ($requestType === 'offline') {
+    $where[] = "(tracking_id LIKE 'SR%')";
+}
+
 $whereSql = $where ? 'WHERE ' . implode(' AND ', $where) : '';
 
 // Get total count for pagination
@@ -405,14 +417,22 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
 <body>
 <?php include __DIR__ . '/../includes/top-menu.php'; ?>
 <div class="admin-container">
+    <h1>Service Requests</h1>
 
-<h1>Service Requests</h1>
 
 <!-- SUMMARY CARDS -->
 <div class="summary-cards">
     <div class="summary-card">
         <div class="summary-count"><?= $todayCount ?></div>
-        <div class="summary-label">Today’s Requests</div>
+        <div class="summary-label">Today's Requests</div>
+    </div>
+    <div class="summary-card">
+        <div class="summary-count"><?= $onlineCount ?></div>
+        <div class="summary-label">Online Requests</div>
+    </div>
+    <div class="summary-card">
+        <div class="summary-count"><?= $offlineCount ?></div>
+        <div class="summary-label">Offline Requests</div>
     </div>
     <div class="summary-card">
         <div class="summary-count"><?= $receivedCount ?></div>
@@ -430,8 +450,15 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 <!-- FILTERS -->
 <form class="filter-bar" method="get">
+    <label>Request Type</label>
+    <select name="request_type" id="requestTypeSelect">
+        <option value="all" <?= ($requestType === 'all') ? 'selected' : '' ?>>All</option>
+        <option value="online" <?= ($requestType === 'online') ? 'selected' : '' ?>>Online</option>
+        <option value="offline" <?= ($requestType === 'offline') ? 'selected' : '' ?>>Offline</option>
+    </select>
+
     <label>Category</label>
-    <select name="category" onchange="this.form.submit()">
+    <select name="category">
         <?php foreach ($categoryOptions as $k => $v): ?>
             <option value="<?= $k ?>" <?= $selectedCategory === $k ? 'selected' : '' ?>>
                 <?= $v ?>
@@ -440,7 +467,7 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
     </select>
 
     <label>Status</label>
-    <select name="status" onchange="this.form.submit()">
+    <select name="status">
         <?php foreach ($statusOptions as $s): ?>
             <option value="<?= $s ?>" <?= $selectedStatus === $s ? 'selected' : '' ?>>
                 <?= $s ?>
@@ -529,11 +556,17 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
         <?php
         $payClass = 'payment-' . strtolower(str_replace(' ', '-', $row['payment_status']));
         $isOffline = !empty($row['selected_products']);
-        if ($isOffline) {
-            // Always show Unpaid in red for offline service requests
+        // Use tracking_id prefix to determine online/offline (VDSK for online, SR for offline)
+        $trackingId = $row['tracking_id'];
+        if (strpos($trackingId, 'SR') === 0) {
+            // Offline: Always show Unpaid in red
             echo '<button class="btn-pay" data-id="'.(int)$row['id'].'" style="background:#c00;color:#fff;padding:6px 14px;border:none;border-radius:6px;font-weight:600;cursor:pointer;">Unpaid</button>';
+        } elseif (strpos($trackingId, 'VDSK') === 0) {
+            // Online: Always show Paid in green
+            echo '<span class="status-badge payment-paid" style="background:#e5ffe5;color:#1a8917;">Paid</span>';
         } else {
-            echo '<span class="status-badge '.$payClass.'">'.htmlspecialchars($row['payment_status']).'</span>';
+            // Unknown/other: show as blank or custom
+            echo '<span class="status-badge" style="background:#eee;color:#888;">-</span>';
         }
         ?>
     </td>
@@ -570,5 +603,12 @@ $(document).on('click', '.btn-pay', function(e){
     $('body').append(popup);
     $('#closePayPopup').on('click', function(){ $('#payPopupOverlay').remove(); });
     popup.on('click', function(e){ if(e.target === this) $(this).remove(); });
+});
+</script>
+<script>
+document.getElementById('requestTypeSelect').addEventListener('change', function() {
+    const url = new URL(window.location.href);
+    url.searchParams.set('request_type', this.value);
+    window.location.href = url.toString();
 });
 </script>
