@@ -93,7 +93,10 @@ $menu = [
 
 // Active state helper
 function isActivePage($url, $currentPage) {
-    return basename($url) === $currentPage;
+    // Match full path after base URL for uniqueness
+    $urlPath = parse_url($url, PHP_URL_PATH);
+    $currPath = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+    return rtrim($urlPath, '/') === rtrim($currPath, '/');
 }
 ?>
 
@@ -114,11 +117,12 @@ function isActivePage($url, $currentPage) {
                 <?php
                 $hasSubmenu = isset($item['submenu']);
                 $isActive = false;
-
+                $activeSub = null;
                 if ($hasSubmenu) {
-                    foreach ($item['submenu'] as $subUrl) {
+                    foreach ($item['submenu'] as $subLabel => $subUrl) {
                         if (isActivePage($subUrl, $currentPage)) {
                             $isActive = true;
+                            $activeSub = $subLabel;
                             break;
                         }
                     }
@@ -140,7 +144,7 @@ function isActivePage($url, $currentPage) {
 
                         <ul class="admin-top-menu-dropdown">
                             <?php foreach ($item['submenu'] as $subLabel => $subUrl): ?>
-                                <li class="<?= isActivePage($subUrl, $currentPage) ? 'active' : '' ?>">
+                                <li class="<?= ($activeSub === $subLabel) ? 'active' : '' ?>">
                                     <a href="<?= htmlspecialchars($subUrl) ?>">
                                         <?= htmlspecialchars($subLabel) ?>
                                     </a>
@@ -179,6 +183,8 @@ body {
     top: 0; left: 0; right: 0;
     background: #fffbe7;
     border-bottom: 2px solid #f3caca;
+        background: #f8f6f2;
+        border-bottom: 2px solid #e0bebe;
     box-shadow: 0 2px 10px rgba(0,0,0,0.05);
     z-index: 9999;
 }
@@ -226,6 +232,9 @@ body {
 .admin-top-menu-link:hover {
     background: #f9eaea;
     color: #b30000;
+    background: #f3e6e6;
+    color: #a00000;
+    font-weight: 700;
 }
 
 .admin-top-menu-item.has-sub:hover .admin-top-menu-dropdown {
@@ -240,6 +249,7 @@ body {
     background: #fff;
     min-width: 230px;
     border: 1px solid #f3caca;
+        border: 1px solid #e0bebe;
     box-shadow: 0 4px 16px rgba(0,0,0,0.1);
 }
 
@@ -255,6 +265,9 @@ body {
     background: #f9eaea;
     color: #b30000;
     font-weight: 600;
+    background: #f3e6e6;
+    color: #a00000;
+    font-weight: 700;
 }
 
 .admin-top-menu-mobile-toggle {
@@ -276,6 +289,7 @@ body {
         flex-direction: column;
         width: 100%;
         background: #fffbe7;
+            background: #f8f6f2;
     }
 
     .admin-top-menu-list.show {

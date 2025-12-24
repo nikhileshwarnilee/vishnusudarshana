@@ -219,6 +219,18 @@ $recentRows = $recentStmt->fetchAll(PDO::FETCH_ASSOC);
             <div class="summary-count" style="font-size:2.2em;font-weight:700;color:#800000;"><?php echo $totalServiceRequests; ?></div>
             <div class="summary-label" style="font-size:1em;color:#444;">Total Service Requests</div>
         </div>
+        <div class="summary-card" onclick="window.location.href='cif/index.php'" style="cursor:pointer;background:#e5f0ff;">
+            <div class="summary-count" style="font-size:2.2em;font-weight:700;color:#0056b3;"><span style="font-size:1.2em;">📄</span></div>
+            <div class="summary-label" style="font-size:1em;color:#0056b3;">CIF Home</div>
+        </div>
+        <div class="summary-card" onclick="window.location.href='services/service-request-list.php'" style="cursor:pointer;background:#fffbe7;">
+            <div class="summary-count" style="font-size:2.2em;font-weight:700;color:#b36b00;"><span style="font-size:1.2em;">🛠️</span></div>
+            <div class="summary-label" style="font-size:1em;color:#b36b00;">Service Request List</div>
+        </div>
+        <div class="summary-card" onclick="window.location.href='services/accepted-appointments.php'" style="cursor:pointer;background:#e5ffe5;">
+            <div class="summary-count" style="font-size:2.2em;font-weight:700;color:#1a8917;"><span style="font-size:1.2em;">✅</span></div>
+            <div class="summary-label" style="font-size:1em;color:#1a8917;">Accepted Appointments</div>
+        </div>
     </div>
 
     <!-- SECTION C: Today Snapshot -->
