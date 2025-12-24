@@ -59,8 +59,7 @@ $menu = [
     'Payments' => [
         'icon' => '💳',
         'submenu' => [
-            'All Payments'    => $baseUrl . '/admin/payments/index.php',
-            'Sample Payments' => $baseUrl . '/admin/payments/payments.php',
+            'All Payments'    => $baseUrl . '/admin/payments/payments.php',
             // 'Failed Payments' removed
         ]
     ],
