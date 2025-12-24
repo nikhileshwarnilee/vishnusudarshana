@@ -64,6 +64,16 @@ $menu = [
         ]
     ],
 
+
+    'CIF' => [
+        'icon' => '📄',
+        'submenu' => [
+            'CIF Home'   => $baseUrl . '/admin/cif/index.php',
+            'Category'   => $baseUrl . '/admin/cif/category.php',
+            'Clients'    => $baseUrl . '/admin/cif/clients.php',
+        ]
+    ],
+
     'Settings' => [
         'icon' => '⚙️',
         'submenu' => [
