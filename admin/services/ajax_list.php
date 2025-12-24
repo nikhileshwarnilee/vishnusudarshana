@@ -3,6 +3,16 @@ require_once __DIR__ . '/../../config/db.php';
 
 header('Content-Type: text/html; charset=UTF-8');
 
+// DEBUG LOGGING
+$debugLogFile = __DIR__ . '/pagination_debug.log';
+function debug_log($msg) {
+    global $debugLogFile;
+    file_put_contents($debugLogFile, date('Y-m-d H:i:s') . ' ' . $msg . "\n", FILE_APPEND);
+}
+
+debug_log('--- NEW REQUEST ---');
+debug_log('GET: ' . json_encode($_GET));
+
 /* ===============================
    READ INPUTS
 =============================== */
@@ -61,11 +71,20 @@ $whereSql = $where ? 'WHERE ' . implode(' AND ', $where) : '';
 =============================== */
 $countSql = "SELECT COUNT(*) FROM service_requests $whereSql";
 $countStmt = $pdo->prepare($countSql);
-$countStmt->execute($params);
-$totalRecords = (int)$countStmt->fetchColumn();
-$totalPages = max(1, (int)ceil($totalRecords / $perPage));
-$page = min($page, $totalPages);
-$offset  = ($page - 1) * $perPage;
+try {
+    $countStmt->execute($params);
+    $totalRecords = (int)$countStmt->fetchColumn();
+    $totalPages = max(1, (int)ceil($totalRecords / $perPage));
+    $page = min($page, $totalPages);
+    $offset  = ($page - 1) * $perPage;
+    debug_log('Count SQL: ' . $countSql);
+    debug_log('Params: ' . json_encode($params));
+    debug_log('TotalRecords: ' . $totalRecords . ', TotalPages: ' . $totalPages . ', Page: ' . $page . ', Offset: ' . $offset);
+} catch (Exception $e) {
+    debug_log('Count SQL ERROR: ' . $e->getMessage());
+    echo '<tr><td colspan="10" class="no-data">Error loading data.</td></tr>';
+    exit;
+}
 
 /* ===============================
     QUERY
@@ -82,8 +101,17 @@ $sql = "
 ";
 
 $stmt = $pdo->prepare($sql);
-$stmt->execute($params);
-$requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
+try {
+    $stmt->execute($params);
+    $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    debug_log('Main SQL: ' . $sql);
+    debug_log('Params: ' . json_encode($params));
+    debug_log('Requests found: ' . count($requests));
+} catch (Exception $e) {
+    debug_log('Main SQL ERROR: ' . $e->getMessage());
+    echo '<tr><td colspan="10" class="no-data">Error loading data.</td></tr>';
+    exit;
+}
 
 /* ===============================
    CATEGORY MAP

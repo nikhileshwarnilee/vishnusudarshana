@@ -172,140 +172,6 @@ h1 {
 }
 </style>
 <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-<script>
-// Debounce helper
-function debounce(fn, delay) {
-    let timer = null;
-    return function(...args) {
-        clearTimeout(timer);
-        timer = setTimeout(() => fn.apply(this, args), delay);
-    };
-}
-
-document.addEventListener('DOMContentLoaded', function() {
-    const form = document.querySelector('.filter-bar');
-    const searchInput = form.querySelector('input[name="search"]');
-    const tableBody = document.getElementById('serviceTableBody');
-    const paginationContainer = document.getElementById('pagination');
-    let paginationState = {
-        totalPages: <?= json_encode($totalPages) ?>,
-        currentPage: <?= json_encode($page) ?>
-    };
-
-    // AJAX load function
-    function loadTable(params) {
-        const url = 'ajax_list.php?' + new URLSearchParams(params).toString();
-        fetch(url)
-            .then(r => r.text())
-            .then(html => {
-                const { rowsHtml, pagination } = parsePagination(html);
-                tableBody.innerHTML = rowsHtml;
-                if (pagination) {
-                    paginationState = pagination;
-                }
-                renderPagination();
-            });
-    }
-
-    // Extract pagination object from AJAX response
-    function parsePagination(html) {
-        let pagination = null;
-        const scriptMatch = html.match(/<script[^>]*>[\s\S]*?<\/script>/i);
-        if (scriptMatch) {
-            const objMatch = scriptMatch[0].match(/window\.ajaxPagination\s*=\s*({[\s\S]*?})/);
-            if (objMatch && objMatch[1]) {
-                try {
-                    pagination = Function('return ' + objMatch[1])();
-                } catch (e) {
-                    // Ignore parse errors; fallback to previous pagination state
-                }
-            }
-            html = html.replace(scriptMatch[0], '');
-        }
-        return { rowsHtml: html, pagination };
-    }
-
-    // Gather current filter/search/page params
-    function getParams(pageOverride) {
-        const fd = new FormData(form);
-        const params = Object.fromEntries(fd.entries());
-        if (pageOverride) params.page = pageOverride;
-        return params;
-    }
-
-    // Debounced search resets to first page
-    const debouncedSearch = debounce(function() {
-        paginationState.currentPage = 1;
-        loadTable(getParams(1));
-    }, 300);
-
-    searchInput.addEventListener('input', debouncedSearch);
-
-    // Render pagination buttons and wire clicks
-    function renderPagination() {
-        const totalPages = Math.max(1, paginationState.totalPages || 1);
-        const currentPage = Math.max(1, Math.min(paginationState.currentPage || 1, totalPages));
-
-        if (totalPages <= 1) {
-            paginationContainer.innerHTML = '';
-            return;
-        }
-
-        let html = '';
-
-        // Prev
-        if (currentPage > 1) {
-            html += '<a href="#" class="page-link" data-page="' + (currentPage - 1) + '">&laquo; Previous</a> ';
-        } else {
-            html += '<span class="page-link disabled">&laquo; Previous</span> ';
-        }
-
-        // Page numbers
-        for (let i = 1; i <= totalPages; i++) {
-            if (i === currentPage) {
-                html += '<span class="page-link current">' + i + '</span> ';
-            } else {
-                html += '<a href="#" class="page-link" data-page="' + i + '">' + i + '</a> ';
-            }
-        }
-
-        // Next
-        if (currentPage < totalPages) {
-            html += '<a href="#" class="page-link" data-page="' + (currentPage + 1) + '">Next &raquo;</a>';
-        } else {
-            html += '<span class="page-link disabled">Next &raquo;</span>';
-        }
-
-        paginationContainer.innerHTML = html;
-
-        paginationContainer.querySelectorAll('.page-link[data-page]').forEach(link => {
-            link.addEventListener('click', function(e) {
-                e.preventDefault();
-                const targetPage = parseInt(link.getAttribute('data-page'), 10) || 1;
-                paginationState.currentPage = targetPage;
-                loadTable(getParams(targetPage));
-            });
-        });
-    }
-
-    // Initial render for first page and fetch fresh data
-    renderPagination();
-    loadTable(getParams(1));
-
-    // AJAX for filter change (category/status)
-    form.querySelectorAll('select').forEach(sel => {
-        sel.addEventListener('change', function() {
-            loadTable(getParams(1));
-        });
-    });
-
-    // AJAX for form submit (button)
-    form.addEventListener('submit', function(e) {
-        e.preventDefault();
-        loadTable(getParams(1));
-    });
-});
-</script>
 <?php
 require_once __DIR__ . '/../../config/db.php';
 
@@ -585,6 +451,87 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
 <?php endif; ?>
 </tbody>
 </table>
+
+<!-- Static Pagination Sample -->
+
+<div id="pagination" class="pagination" style="margin-top:24px;"></div>
+
+<script>
+function loadServicePage(page = 1) {
+    const form = document.querySelector('.filter-bar');
+    const tableBody = document.getElementById('serviceTableBody');
+    const paginationContainer = document.getElementById('pagination');
+    const fd = new FormData(form);
+    const params = new URLSearchParams(fd.entries());
+    params.set('page', page);
+    fetch('ajax_service_pagination.php?' + params.toString())
+        .then(r => r.text())
+        .then(html => {
+            // Extract pagination info from script
+            let match = html.match(/<script>window\.ajaxPagination\s*=\s*({[\s\S]*?})<\/script>/);
+            let pagination = { currentPage: 1, totalPages: 1 };
+            if (match && match[1]) {
+                try {
+                    pagination = Function('return ' + match[1])();
+                } catch (e) {}
+                html = html.replace(match[0], '');
+            }
+            tableBody.innerHTML = html;
+            renderPagination(pagination.currentPage, pagination.totalPages);
+        });
+}
+
+function renderPagination(currentPage, totalPages) {
+    const paginationContainer = document.getElementById('pagination');
+    let html = '';
+    currentPage = parseInt(currentPage);
+    totalPages = parseInt(totalPages);
+    if (totalPages <= 1) {
+        paginationContainer.innerHTML = '';
+        return;
+    }
+    // Prev
+    if (currentPage > 1) {
+        html += '<a href="#" class="page-link" data-page="' + (currentPage - 1) + '">&laquo; Previous</a>';
+    } else {
+        html += '<span class="page-link disabled">&laquo; Previous</span>';
+    }
+    // Page numbers (show up to 5 pages)
+    let start = Math.max(1, currentPage - 2);
+    let end = Math.min(totalPages, start + 4);
+    if (end - start < 4) start = Math.max(1, end - 4);
+    for (let i = start; i <= end; i++) {
+        if (i === currentPage) {
+            html += '<span class="page-link current">' + i + '</span>';
+        } else {
+            html += '<a href="#" class="page-link" data-page="' + i + '">' + i + '</a>';
+        }
+    }
+    // Next
+    if (currentPage < totalPages) {
+        html += '<a href="#" class="page-link" data-page="' + (currentPage + 1) + '">Next &raquo;</a>';
+    } else {
+        html += '<span class="page-link disabled">Next &raquo;</span>';
+    }
+    paginationContainer.innerHTML = html;
+    paginationContainer.querySelectorAll('.page-link[data-page]').forEach(link => {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            const page = parseInt(link.getAttribute('data-page'));
+            loadServicePage(page);
+        });
+    });
+}
+
+// Initial load
+document.addEventListener('DOMContentLoaded', function() {
+    loadServicePage(1);
+    // Filter/search submit triggers reload
+    document.querySelector('.filter-bar').addEventListener('submit', function(e) {
+        e.preventDefault();
+        loadServicePage(1);
+    });
+});
 
 
 
