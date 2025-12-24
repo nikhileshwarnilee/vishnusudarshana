@@ -9,7 +9,13 @@ $categoryNames = [
     'pooja-vastu-enquiry' => 'Pooja, Ritual & Vastu Enquiry',
 ];
 
-$stmt = $pdo->prepare("SELECT * FROM products ORDER BY id DESC");
+$page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
+$perPage = 10;
+$countStmt = $pdo->query("SELECT COUNT(*) FROM products");
+$total_products = (int)$countStmt->fetchColumn();
+$total_pages = max(1, ceil($total_products / $perPage));
+$offset = ($page - 1) * $perPage;
+$stmt = $pdo->prepare("SELECT * FROM products ORDER BY id DESC LIMIT $perPage OFFSET $offset");
 $stmt->execute();
 $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
@@ -36,21 +42,17 @@ $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
     .status-badge { padding: 4px 12px; border-radius: 8px; font-weight: 600; font-size: 0.98em; display: inline-block; min-width: 80px; text-align: center; }
     .status-completed { background: #e5ffe5; color: #1a8917; }
     .status-cancelled { background: #ffeaea; color: #c00; }
+    .pagination { margin: 18px 0; text-align: center; }
+    .pagination a { display:inline-block;padding:8px 14px;margin:0 2px;border-radius:6px;background:#f9eaea;color:#800000;font-weight:600;text-decoration:none; }
+    .pagination a.active { background:#800000;color:#fff; }
+    .pagination span { padding:8px 6px; }
     @media (max-width: 700px) {
         .admin-container { padding: 12px 2px; }
         .service-table th, .service-table td { padding: 10px 6px; font-size: 0.97em; }
         .service-table { min-width: 600px; }
     }
     </style>
-    <script>
-    // Optional: Add row highlight on hover for better UX
-    document.addEventListener('DOMContentLoaded', function() {
-        document.querySelectorAll('.service-table tbody tr').forEach(function(row) {
-            row.addEventListener('mouseenter', function() { row.style.background = '#f3f7fa'; });
-            row.addEventListener('mouseleave', function() { row.style.background = ''; });
-        });
-    });
-    </script>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 </head>
 <body>
 <?php include __DIR__ . '/../includes/top-menu.php'; ?>
@@ -58,6 +60,7 @@ $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
     <h1>Product Management</h1>
     <a href="add.php" class="add-btn">+ Add Product</a>
     <div style="overflow-x:auto;">
+    <div id="productsAjaxResult">
     <table class="service-table">
         <thead>
             <tr>
@@ -89,7 +92,39 @@ $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
         <?php endforeach; ?>
         </tbody>
     </table>
+    <div class="pagination">
+        <?php
+        $maxPagesToShow = 7;
+        $startPage = max(1, $page - 2);
+        $endPage = min($total_pages, $page + 2);
+        if ($startPage > 1) {
+            echo '<a href="#" class="page-link" data-page="1">1</a>';
+            if ($startPage > 2) echo '<span>...</span>';
+        }
+        for ($i = $startPage; $i <= $endPage; $i++) {
+            echo '<a href="#" class="page-link' . ($i == $page ? ' active' : '') . '" data-page="' . $i . '">' . $i . '</a>';
+        }
+        if ($endPage < $total_pages) {
+            if ($endPage < $total_pages - 1) echo '<span>...</span>';
+            echo '<a href="#" class="page-link" data-page="' . $total_pages . '">' . $total_pages . '</a>';
+        }
+        ?>
+    </div>
+    </div>
     </div>
 </div>
+<script>
+function loadProductsAjax(page) {
+    $.get(window.location.pathname, { page: page, ajax: 1 }, function(res) {
+        var html = $(res).find('#productsAjaxResult').html();
+        $('#productsAjaxResult').html(html);
+    });
+}
+$(document).on('click', '.page-link', function(e) {
+    e.preventDefault();
+    var page = $(this).data('page');
+    loadProductsAjax(page);
+});
+</script>
 </body>
 </html>

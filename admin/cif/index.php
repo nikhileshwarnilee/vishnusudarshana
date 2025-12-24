@@ -182,6 +182,9 @@ h1 {
     .summary-cards { flex-direction: column; }
 }
 </style>
+
+<!-- Add Select2 CSS -->
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 </head>
 <body>
 <?php include __DIR__ . '/../includes/top-menu.php'; ?>
@@ -256,13 +259,50 @@ h1 {
         <?php endif; ?>
         <h2 style="color:#800000;">Select Client</h2>
         <form method="get" style="margin-bottom:24px;display:flex;gap:18px;align-items:center;">
-            <select name="client_id" onchange="this.form.submit()" style="padding:8px 12px;border-radius:6px;border:1px solid #ccc;font-size:1em;min-width:220px;">
+            <select id="clientSelect" name="client_id" style="padding:8px 12px;border-radius:6px;border:1px solid #ccc;font-size:1em;min-width:220px;width:320px;">
                 <option value="">-- Select Client --</option>
                 <?php foreach ($clients as $c): ?>
-                    <option value="<?= (int)$c['id'] ?>" <?= $selected_client_id == $c['id'] ? 'selected' : '' ?>><?= htmlspecialchars($c['name']) ?> (<?= htmlspecialchars($c['mobile']) ?>)</option>
+                    <option value="<?= (int)$c['id'] ?>" <?= $selected_client_id == $c['id'] ? 'selected' : '' ?>><?= htmlspecialchars($c['name']) ?><?= $c['mobile'] ? ' - ' . htmlspecialchars($c['mobile']) : '' ?></option>
                 <?php endforeach; ?>
             </select>
         </form>
+<!-- Add Select2 JS -->
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script>
+$(function() {
+    $('#clientSelect').select2({
+        placeholder: '-- Select Client --',
+        allowClear: true,
+        ajax: {
+            url: 'index.php',
+            dataType: 'json',
+            delay: 250,
+            data: function(params) {
+                return {
+                    ajax_search_client: 1,
+                    name: params.term || ''
+                };
+            },
+            processResults: function(data) {
+                return {
+                    results: data.map(function(c) {
+                        return {
+                            id: c.id,
+                            text: c.name + (c.mobile ? ' - ' + c.mobile : '')
+                        };
+                    })
+                };
+            },
+            cache: true
+        },
+        minimumInputLength: 2
+    });
+    $('#clientSelect').on('change', function() {
+        this.form.submit();
+    });
+});
+</script>
 
         <?php if ($selected_client): ?>
             <h2 style="color:#800000;">Client Details</h2>

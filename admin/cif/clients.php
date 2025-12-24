@@ -48,9 +48,24 @@ if ($edit_id > 0) {
     $edit_client = $stmt->fetch();
 }
 
-// Fetch all clients
-$clients = $pdo->query('SELECT * FROM cif_clients ORDER BY id DESC')->fetchAll();
-$total_clients = count($clients);
+// Pagination and search logic
+$page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
+$search = isset($_GET['search']) ? trim($_GET['search']) : '';
+$perPage = 10;
+$where = '';
+$params = [];
+if ($search !== '') {
+    $where = "WHERE name LIKE :q OR mobile LIKE :q OR address LIKE :q OR birth_place LIKE :q";
+    $params['q'] = "%$search%";
+}
+$countStmt = $pdo->prepare("SELECT COUNT(*) FROM cif_clients $where");
+$countStmt->execute($params);
+$total_clients = (int)$countStmt->fetchColumn();
+$total_pages = max(1, ceil($total_clients / $perPage));
+$offset = ($page - 1) * $perPage;
+$listStmt = $pdo->prepare("SELECT * FROM cif_clients $where ORDER BY id DESC LIMIT $perPage OFFSET $offset");
+$listStmt->execute($params);
+$clients = $listStmt->fetchAll();
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -67,6 +82,17 @@ h1 { color: #800000; margin-bottom: 18px; }
 .summary-count { font-size: 2.2em; font-weight: 700; color: #800000; }
 .summary-label { font-size: 1em; color: #444; }
 @media (max-width: 700px) { .summary-cards { flex-direction: column; } }
+.filter-bar { display: flex; gap: 12px; align-items: center; margin-bottom: 18px; }
+.filter-bar input { min-width: 220px; padding: 7px 12px; border-radius: 6px; font-size: 1em; border: 1px solid #ddd; }
+.filter-bar .btn-main { padding: 8px 16px; background: #800000; color: #fff; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; }
+.filter-bar .btn-main:hover { background: #600000; }
+table { width: 100%; border-collapse: collapse; background: #fff; box-shadow: 0 2px 8px #e0bebe22; border-radius: 12px; overflow: hidden; }
+table th, table td { padding: 12px 10px; text-align: left; }
+table thead { background: #f9eaea; color: #800000; }
+table tbody tr:hover { background: #f1f1f1; }
+.page-link { display: inline-block; padding: 8px 14px; margin: 0 2px; border-radius: 6px; background: #f9eaea; color: #800000; font-weight: 600; text-decoration: none; }
+.page-link:hover { background: #800000; color: #fff; }
+.page-link.active { background: #800000; color: #fff; }
 </style>
 </head>
 <body>
@@ -101,8 +127,12 @@ h1 { color: #800000; margin-bottom: 18px; }
                 <a href="clients.php" style="padding:10px 22px;background:#6c757d;color:#fff;border:none;border-radius:6px;font-weight:600;text-decoration:none;">Cancel</a>
             <?php endif; ?>
         </form>
-
         <h2 style="color:#800000;">Clients List</h2>
+        <form id="clientsSearchForm" class="filter-bar" onsubmit="return false;" style="margin-bottom:18px;gap:12px;align-items:center;">
+            <input type="text" name="search" id="searchInput" value="<?= htmlspecialchars($search) ?>" placeholder="Search clients..." style="min-width:220px;padding:7px 12px;border-radius:6px;font-size:1em;border:1px solid #ddd;">
+            <button type="submit" class="btn-main">Search</button>
+        </form>
+        <div id="clientsAjaxResult">
         <table style="width:100%;border-collapse:collapse;background:#fff;box-shadow:0 2px 8px #e0bebe22;border-radius:12px;overflow:hidden;">
             <thead>
                 <tr style="background:#f9eaea;color:#800000;">
@@ -136,8 +166,49 @@ h1 { color: #800000; margin-bottom: 18px; }
                 <?php endforeach; endif; ?>
             </tbody>
         </table>
+        <div style="margin-top:18px;text-align:center;">
+            <?php
+            $maxPagesToShow = 7;
+            $startPage = max(1, $page - 2);
+            $endPage = min($total_pages, $page + 2);
+            if ($startPage > 1) {
+                echo '<a href="#" class="page-link" data-page="1" style="display:inline-block;padding:8px 14px;margin:0 2px;border-radius:6px;background:' . (1 == $page ? '#800000' : '#f9eaea') . ';color:' . (1 == $page ? '#fff' : '#800000') . ';font-weight:600;text-decoration:none;">1</a>';
+                if ($startPage > 2) echo '<span style="padding:8px 6px;">...</span>';
+            }
+            for ($i = $startPage; $i <= $endPage; $i++) {
+                echo '<a href="#" class="page-link" data-page="' . $i . '" style="display:inline-block;padding:8px 14px;margin:0 2px;border-radius:6px;background:' . ($i == $page ? '#800000' : '#f9eaea') . ';color:' . ($i == $page ? '#fff' : '#800000') . ';font-weight:600;text-decoration:none;">' . $i . '</a>';
+            }
+            if ($endPage < $total_pages) {
+                if ($endPage < $total_pages - 1) echo '<span style="padding:8px 6px;">...</span>';
+                echo '<a href="#" class="page-link" data-page="' . $total_pages . '" style="display:inline-block;padding:8px 14px;margin:0 2px;border-radius:6px;background:' . ($total_pages == $page ? '#800000' : '#f9eaea') . ';color:' . ($total_pages == $page ? '#fff' : '#800000') . ';font-weight:600;text-decoration:none;">' . $total_pages . '</a>';
+            }
+            ?>
+        </div>
+        </div>
     </div>
 </div>
-<script src="/assets/js/language.js"></script>
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script>
+function loadClientsAjax(page) {
+    var data = $('#clientsSearchForm').serialize();
+    if (page) data += '&page=' + page;
+    $.get(window.location.pathname, data + '&ajax=1', function(res) {
+        var html = $(res).find('#clientsAjaxResult').html();
+        $('#clientsAjaxResult').html(html);
+    });
+}
+$('#searchInput').on('input', function() {
+    loadClientsAjax(1);
+});
+$('#clientsSearchForm').on('submit', function() {
+    loadClientsAjax(1);
+    return false;
+});
+$(document).on('click', '.page-link', function(e) {
+    e.preventDefault();
+    var page = $(this).data('page');
+    loadClientsAjax(page);
+});
+</script>
 </body>
 </html>
