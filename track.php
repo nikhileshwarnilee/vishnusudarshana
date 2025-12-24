@@ -233,7 +233,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 </td>
                             <?php endif; ?>
                             <td>₹<?php echo number_format($row['total_amount'], 2); ?></td>
-                            <td><span class="status-badge status-<?php echo strtolower($row['payment_status']); ?>"><?php echo htmlspecialchars($row['payment_status']); ?></span></td>
+                            <td>
+                                <?php
+                                $trackingId = $row['tracking_id'];
+                                if (strpos($trackingId, 'SR') === 0) {
+                                    // Offline: Always show Unpaid in red
+                                    echo '<span class="status-badge" style="background:#c00;color:#fff;">Unpaid</span>';
+                                } elseif (strpos($trackingId, 'VDSK') === 0) {
+                                    // Online: Always show Paid in green
+                                    echo '<span class="status-badge" style="background:#e5ffe5;color:#1a8917;">Paid</span>';
+                                } else {
+                                    // Unknown/other: show as blank or custom
+                                    echo '<span class="status-badge" style="background:#eee;color:#888;">-</span>';
+                                }
+                                ?>
+                            </td>
                             <td><span class="status-badge status-<?php echo strtolower($row['service_status']); ?>"><?php echo htmlspecialchars($row['service_status']); ?></span></td>
                             <td>
                                 <div style="min-width:180px;">
