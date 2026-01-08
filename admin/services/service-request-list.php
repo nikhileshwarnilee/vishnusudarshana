@@ -402,9 +402,10 @@ include __DIR__ . '/../includes/top-menu.php';
                 <td>
                     <?php
                     $payClass = 'payment-' . strtolower(str_replace(' ', '-', $row['payment_status']));
-                    $isOffline = !empty($row['selected_products']);
                     $trackingId = $row['tracking_id'];
-                    if (strpos($trackingId, 'SR') === 0) {
+                    if (strtolower($row['payment_status']) === 'paid') {
+                        echo '<span class="status-badge payment-paid" style="background:#e5ffe5;color:#1a8917;">Paid</span>';
+                    } elseif (strpos($trackingId, 'SR') === 0) {
                         echo '<button class="btn-pay" data-id="'.(int)$row['id'].'" style="background:#c00;color:#fff;padding:6px 14px;border:none;border-radius:6px;font-weight:600;cursor:pointer;">Unpaid</button>';
                     } elseif (strpos($trackingId, 'VDSK') === 0) {
                         echo '<span class="status-badge payment-paid" style="background:#e5ffe5;color:#1a8917;">Paid</span>';

@@ -263,18 +263,8 @@ $adminNotes = $stmt->fetchAll(PDO::FETCH_ASSOC);
         <tr><th>Total Amount</th><td>₹<?php echo number_format($request['total_amount'], 2); ?></td></tr>
         <?php
         // Check actual payment status from payments table
-        $actualPaid = false;
-        $paidAmount = 0;
-        $serviceId = $request['id'];
-        $trackingId = $request['tracking_id'];
-        // Try to find a payment record for this service request (by tracking ID)
-        $stmtPay = $pdo->prepare('SELECT SUM(paid_amount) as total_paid FROM payments WHERE transaction_details = ?');
-        $stmtPay->execute([$trackingId]);
-        $paidAmount = (float)($stmtPay->fetchColumn() ?: 0);
-        $totalAmount = (float)$request['total_amount'];
-        if ($paidAmount >= $totalAmount && $totalAmount > 0) {
-            $actualPaid = true;
-        }
+        // Use payment_status field from service_requests for payment status
+        $actualPaid = (isset($request['payment_status']) && strtolower($request['payment_status']) === 'paid');
         ?>
         <tr><th>Payment Status</th><td><span class="status-badge status-<?php echo $actualPaid ? 'paid' : 'unpaid'; ?>"><?php echo $actualPaid ? 'Paid' : 'Unpaid'; ?></span></td></tr>
         <tr><th>Service Status</th><td><span class="status-badge status-<?php echo strtolower(str_replace(' ', '-', $request['service_status'])); ?>"><?php echo htmlspecialchars($request['service_status']); ?></span></td></tr>
@@ -559,7 +549,7 @@ $adminNotes = $stmt->fetchAll(PDO::FETCH_ASSOC);
             </select>
             <button type="submit" name="update_status">Update</button>
         </form>
-        <a href="index.php" style="color:#800000;text-decoration:underline;font-size:0.98em;">&larr; Back to List</a>
+        <a href="service-request-list.php" style="color:#800000;text-decoration:underline;font-size:0.98em;">&larr; Back to List</a>
     <?php endif; ?>
 </div>
 </body>

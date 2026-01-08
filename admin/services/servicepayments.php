@@ -67,16 +67,13 @@ $unionSourceWhere = 'WHERE source = "Service Request"';
 
 $unionSql = "
 	SELECT * FROM (
-		SELECT p.id, p.paid_date, p.paid_amount, p.method, p.note, p.transaction_details, c.name as customer_name, c.mobile, 'Invoice' as source, NULL as products_json
-		FROM payments p LEFT JOIN customers c ON p.customer_id = c.id $whereSqlPayments
+		SELECT p.id, p.pay_date as payment_date, p.amount as paid_amount, p.pay_method as method, p.note, p.transaction_details, NULL as customer_name, NULL as mobile, 'Service Payment' as source, NULL as products_json
+		FROM service_payments p
 		UNION ALL
-		SELECT sr.id, DATE(sr.created_at) as paid_date, sr.total_amount as paid_amount, 
-				IF(sr.tracking_id LIKE 'VDSK%', 'Online', 'Offline') as method, sr.category_slug as note, sr.tracking_id as transaction_details, 
-				sr.customer_name as customer_name, sr.mobile, 'Service Request' as source, sr.selected_products as products_json
-			FROM service_requests sr
-			$whereSqlSR
+		SELECT sr.id, sr.payment_date, sr.total_amount as paid_amount, sr.payment_method as method, sr.payment_note as note, sr.transaction_details, sr.customer_name, sr.mobile, 'Service Request' as source, sr.selected_products as products_json
+		FROM service_requests sr $whereSqlSR
 	) t $unionSourceWhere
-	ORDER BY paid_date DESC, id DESC
+	ORDER BY payment_date DESC, id DESC
 	LIMIT $perPage OFFSET $offset
 ";
 $stmt = $pdo->prepare($unionSql);
@@ -171,11 +168,18 @@ $queryStr = http_build_query(array_diff_key($_GET, ['page' => '']));
 				<td><?= htmlspecialchars($row['source']) ?></td>
 				<td><?= htmlspecialchars($row['customer_name']) ?></td>
 				<td><?= htmlspecialchars($row['mobile']) ?></td>
-				<td><?= htmlspecialchars($row['paid_date']) ?></td>
+				   <td><?= htmlspecialchars($row['payment_date'] ?? '') ?></td>
 				<td>₹<?= number_format($row['paid_amount'],2) ?></td>
-				<td><?= htmlspecialchars($row['method']) ?></td>
-				<td><?= htmlspecialchars($row['note']) ?></td>
-				<td><?= htmlspecialchars($row['transaction_details']) ?></td>
+				   <td><?= htmlspecialchars($row['method'] ?? '') ?></td>
+				   <td><?= htmlspecialchars($row['note'] ?? '') ?></td>
+				   <td><?= htmlspecialchars($row['payment_date'] ?? '') ?></td>
+				   <td><?php
+					   $td = $row['transaction_details'] ?? '';
+					   // Remove date if present (e.g., if transaction_details contains a date string)
+					   // This regex removes YYYY-MM-DD or DD-MM-YYYY or similar date patterns
+					   $td = preg_replace('/\b\d{4}-\d{2}-\d{2}\b|\b\d{2}-\d{2}-\d{4}\b/', '', $td);
+					   echo htmlspecialchars(trim($td));
+				   ?></td>
 				<td>
 					<?php if ($row['source'] === 'Service Request' && !empty($row['products_json'])): ?>
 						<?php 
