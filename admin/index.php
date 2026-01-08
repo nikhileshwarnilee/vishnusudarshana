@@ -25,12 +25,18 @@ $totalServiceRequests = getCount($pdo, "SELECT COUNT(*) FROM service_requests WH
 
 // PAYMENT SUMMARY CARDS
 $totalInvoices = getCount($pdo, "SELECT COUNT(*) FROM invoices");
-$stmt = $pdo->query("SELECT SUM(total_amount) AS billed, SUM(paid_amount) AS paid FROM invoices");
+
+// Updated payment summary cards (match dues.php)
+$stmt = $pdo->query("SELECT COALESCE(SUM(total_amount),0) AS total_invoiced, COALESCE(SUM(paid_amount),0) AS total_paid, COALESCE(SUM(total_amount - paid_amount),0) AS total_unpaid FROM invoices");
 $row = $stmt->fetch();
-$totalBilled = $row['billed'] ? $row['billed'] : 0;
-$totalPaid = $row['paid'] ? $row['paid'] : 0;
-$totalPending = $totalBilled - $totalPaid;
-$overdueCount = getCount($pdo, "SELECT COUNT(*) FROM invoices WHERE due_date < CURDATE() AND payment_status != 'Paid'");
+$total_invoiced = $row['total_invoiced'] ? $row['total_invoiced'] : 0;
+$total_paid = $row['total_paid'] ? $row['total_paid'] : 0;
+$total_unpaid = $row['total_unpaid'] ? $row['total_unpaid'] : 0;
+// Today's collection
+$today = date('Y-m-d');
+$stmt = $pdo->prepare("SELECT COALESCE(SUM(paid_amount),0) FROM payments WHERE paid_date = ?");
+$stmt->execute([$today]);
+$todays_collection = $stmt->fetchColumn();
 
 
 // TODAY SNAPSHOT
@@ -206,29 +212,28 @@ $recentRows = $recentStmt->fetchAll(PDO::FETCH_ASSOC);
     <h1 style="color:#800000;margin-bottom:18px;">Admin Dashboard</h1>
     <div style="text-align:center;color:#666;font-size:1.08rem;margin-bottom:28px;">Overview of appointments, services, and payments</div>
 
-    <!-- SECTION B: Stat Cards -->
-    <div class="summary-cards" style="gap:18px;margin-bottom:24px;flex-wrap:wrap;">
-        <!-- Payment Summary Cards -->
+    <!-- SECTION A: Payment Summary Cards (Updated) -->
+    <div class="summary-cards" style="margin-bottom:24px;">
         <div class="summary-card" style="background:#fffbe7;">
-            <div class="summary-count" style="font-size:2.2em;font-weight:700;color:#800000;"><?php echo $totalInvoices; ?></div>
-            <div class="summary-label" style="font-size:1em;color:#444;">Total Invoices</div>
-        </div>
-        <div class="summary-card" style="background:#fffbe7;">
-            <div class="summary-count" style="font-size:2.2em;font-weight:700;color:#b36b00;">₹<?php echo number_format($totalBilled,2); ?></div>
-            <div class="summary-label" style="font-size:1em;color:#b36b00;">Total Amount Billed</div>
+            <div class="summary-count" style="font-size:2.2em;font-weight:700;color:#800000;">₹<?php echo number_format($total_invoiced,2); ?></div>
+            <div class="summary-label" style="font-size:1em;color:#800000;">Total Invoiced</div>
         </div>
         <div class="summary-card" style="background:#e5ffe5;">
-            <div class="summary-count" style="font-size:2.2em;font-weight:700;color:#1a8917;">₹<?php echo number_format($totalPaid,2); ?></div>
-            <div class="summary-label" style="font-size:1em;color:#1a8917;">Total Amount Paid</div>
+            <div class="summary-count" style="font-size:2.2em;font-weight:700;color:#1a8917;">₹<?php echo number_format($total_paid,2); ?></div>
+            <div class="summary-label" style="font-size:1em;color:#1a8917;">Total Paid</div>
         </div>
         <div class="summary-card" style="background:#ffeaea;">
-            <div class="summary-count" style="font-size:2.2em;font-weight:700;color:#c00;">₹<?php echo number_format($totalPending,2); ?></div>
-            <div class="summary-label" style="font-size:1em;color:#c00;">Total Pending Amount</div>
+            <div class="summary-count" style="font-size:2.2em;font-weight:700;color:#c00;">₹<?php echo number_format($total_unpaid,2); ?></div>
+            <div class="summary-label" style="font-size:1em;color:#c00;">Total Unpaid</div>
         </div>
         <div class="summary-card" style="background:#e5f0ff;">
-            <div class="summary-count" style="font-size:2.2em;font-weight:700;color:#0056b3;"><?php echo $overdueCount; ?></div>
-            <div class="summary-label" style="font-size:1em;color:#0056b3;">Overdue Invoices</div>
+            <div class="summary-count" style="font-size:2.2em;font-weight:700;color:#0056b3;">₹<?php echo number_format($todays_collection,2); ?></div>
+            <div class="summary-label" style="font-size:1em;color:#0056b3;">Today's Collection</div>
         </div>
+    </div>
+
+    <!-- SECTION B: Stat Cards -->
+    <div class="summary-cards" style="gap:18px;margin-bottom:24px;flex-wrap:wrap;">
         <!-- Existing Service/Appointment Cards -->
         <div class="summary-card" onclick="window.location.href='services/appointments.php'" style="cursor:pointer;">
             <div class="summary-count" style="font-size:2.2em;font-weight:700;color:#800000;"><?php echo $totalAppointments; ?></div>

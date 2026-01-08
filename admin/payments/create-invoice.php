@@ -1,0 +1,483 @@
+<?php
+session_start();
+if (!isset($_SESSION['user_id'])) {
+	header('Location: ../login.php');
+	exit;
+}
+require_once __DIR__ . '/../includes/top-menu.php';
+require_once __DIR__ . '/../../config/db.php';
+?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>Create Invoice</title>
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<link rel="stylesheet" href="../../assets/css/style.css">
+	<style>
+				#addNewCustomerBtn {
+					background: linear-gradient(90deg, #007bff 60%, #0056b3 100%);
+					color: #fff;
+					border: none;
+					border-radius: 6px;
+					padding: 10px 22px;
+					font-size: 1.08em;
+					font-weight: 700;
+					cursor: pointer;
+					box-shadow: 0 2px 8px rgba(0,123,255,0.08);
+					transition: background 0.2s, box-shadow 0.2s;
+					margin-left: 4px;
+				}
+				#addNewCustomerBtn:hover {
+					background: linear-gradient(90deg, #0056b3 60%, #007bff 100%);
+					box-shadow: 0 4px 16px rgba(0,123,255,0.13);
+				}
+		body {
+			background: #f4f6fa;
+		}
+		.admin-container {
+			min-height: 100vh;
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			justify-content: flex-start;
+			padding-top: 40px;
+		}
+		.form-box {
+			background: #fff;
+			border-radius: 14px;
+			box-shadow: 0 4px 24px rgba(128,0,0,0.10), 0 1.5px 6px rgba(0,0,0,0.04);
+			padding: 38px 36px 30px 36px;
+			width: 100%;
+			max-width: 700px;
+			margin-bottom: 32px;
+			border: 1px solid #ececec;
+		}
+		.form-box h1 {
+			color: #800000;
+			font-size: 2.1em;
+			font-weight: 800;
+			margin-bottom: 18px;
+			letter-spacing: 0.5px;
+		}
+		label {
+			font-weight: 600;
+			color: #333;
+			margin-bottom: 4px;
+			display: block;
+		}
+		input[type="text"], input[type="number"], input[type="date"], textarea {
+			width: 100%;
+			padding: 11px 12px;
+			border: 1px solid #d2d2d2;
+			border-radius: 6px;
+			font-size: 1em;
+			margin-top: 6px;
+			margin-bottom: 14px;
+			background: #fafbfc;
+			transition: border 0.2s;
+		}
+		input[type="text"]:focus, input[type="number"]:focus, input[type="date"]:focus, textarea:focus {
+			border: 1.5px solid #800000;
+			outline: none;
+			background: #fff;
+		}
+		.product-row {
+			background: #f8f8fa;
+			border-radius: 7px;
+			padding: 10px 8px 10px 8px;
+			margin-bottom: 8px;
+			box-shadow: 0 1px 3px rgba(128,0,0,0.03);
+		}
+		.addProductRowBtn {
+			background: linear-gradient(90deg, #28a745 60%, #43c06d 100%);
+			color: #fff;
+			border: none;
+			border-radius: 4px;
+			padding: 8px 16px;
+			font-size: 1.3em;
+			font-weight: 700;
+			cursor: pointer;
+			box-shadow: 0 1px 2px rgba(40,167,69,0.08);
+			transition: background 0.2s;
+		}
+		.addProductRowBtn:hover {
+			background: linear-gradient(90deg, #43c06d 60%, #28a745 100%);
+		}
+		.removeProductRowBtn {
+			background: linear-gradient(90deg, #dc3545 60%, #e35d6a 100%);
+			color: #fff;
+			border: none;
+			border-radius: 4px;
+			padding: 8px 16px;
+			font-size: 1.3em;
+			font-weight: 700;
+			cursor: pointer;
+			margin-left: 2px;
+			box-shadow: 0 1px 2px rgba(220,53,69,0.08);
+			transition: background 0.2s;
+		}
+		.removeProductRowBtn:hover {
+			background: linear-gradient(90deg, #e35d6a 60%, #dc3545 100%);
+		}
+		#submitInvoiceBtn {
+			background: linear-gradient(90deg, #800000 60%, #a83232 100%);
+			color: #fff;
+			border: none;
+			border-radius: 6px;
+			padding: 13px 38px;
+			font-size: 1.13em;
+			font-weight: 800;
+			cursor: pointer;
+			box-shadow: 0 2px 8px rgba(128,0,0,0.08);
+			margin-top: 10px;
+			transition: background 0.2s;
+		}
+		#submitInvoiceBtn:hover {
+			background: linear-gradient(90deg, #a83232 60%, #800000 100%);
+		}
+		#productTotals {
+			margin-top: 18px;
+			font-weight: 700;
+			color: #333;
+			font-size: 1.08em;
+			background: #f6f6f6;
+			border-radius: 6px;
+			padding: 10px 0 10px 0;
+			text-align: right;
+		}
+		#selectedCustomerBox {
+			background: #f6f6f6;
+			border: 1px solid #e0e0e0;
+			border-radius: 6px;
+			color: #333;
+			margin-top: 10px;
+			padding: 13px 18px;
+			font-size: 1.04em;
+		}
+		.form-section {
+			margin-bottom: 28px;
+		}
+	</style>
+</head>
+
+<body>
+
+<div class="admin-container" style="display:flex; flex-direction:column; align-items:center; min-height:100vh; justify-content:flex-start; padding-top:32px;">
+	<div class="form-box" style="width:100%; max-width:700px; margin-bottom:32px; box-shadow:0 2px 12px rgba(128,0,0,0.06);">
+		   <div style="text-align:center; margin-bottom:18px;">
+			   <h1 style="margin:0; font-size:1.7em; color:#800000; font-weight:700; letter-spacing:0.5px;">Create Invoice</h1>
+		   </div>
+		   <form id="invoiceForm" method="post" autocomplete="off">
+			<div class="form-section">
+				<label for="customerSelect">Select Customer</label>
+				<div style="display:flex; gap:10px; align-items:center;">
+					<input type="text" id="customerSearch" placeholder="Search customer by name or mobile..." autocomplete="off">
+					<button type="button" id="addNewCustomerBtn"><span style="font-size:1.2em; font-weight:900; margin-right:6px;">+</span> Add New Customer</button>
+				</div>
+				<div id="customerDropdown" style="position:relative; background:#fff; border:1px solid #ccc; border-radius:4px; display:none; max-height:180px; overflow-y:auto; z-index:10;"></div>
+				<input type="hidden" name="customer_id" id="customer_id">
+				<div id="selectedCustomerBox" style="display:none;"></div>
+			</div>
+			<div class="form-section">
+				<label for="invoiceDate">Invoice Date</label>
+				<input type="date" id="invoiceDate" name="invoice_date" value="<?php echo date('Y-m-d'); ?>">
+			</div>
+			<div class="form-section">
+				<label for="invoiceNote">Invoice Note</label>
+				<textarea id="invoiceNote" name="invoice_note" rows="3" placeholder="Enter any note for this invoice..."></textarea>
+			</div>
+			<div class="form-section" style="border-top:1px solid #eee; padding-top:18px;">
+				<label>Add Product/Service</label>
+				<div id="productRows">
+					<div class="product-row" style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+						<input type="text" name="product_name[]" placeholder="Product/Service Name">
+						<input type="number" name="product_qty[]" class="product-qty" placeholder="Qty" min="1" value="1">
+						<input type="number" name="product_amount[]" class="product-amount" placeholder="Amount" min="0" step="0.01">
+						<button type="button" class="addProductRowBtn">+</button>
+					</div>
+				</div>
+				<div id="productTotals">
+					Total Qty: <span id="totalQty">1</span> &nbsp; | &nbsp; Total Amount: ₹<span id="totalAmount">0.00</span>
+				</div>
+			</div>
+			<div style="margin-top:32px; text-align:right;">
+				<button type="submit" id="submitInvoiceBtn">Submit Invoice</button>
+				<span id="invoiceSubmitMsg" style="margin-left:18px; font-weight:600;"></span>
+			</div>
+		</form>
+	</div>
+
+
+<!-- Add Customer Modal (outside form, after main content) -->
+<div id="addCustomerModalBg">
+	<div id="addCustomerModal">
+		<h2 style="margin-top:0; color:#800000; font-size:1.2em;">Add New Customer</h2>
+		<form id="addCustomerForm" autocomplete="off">
+			<label for="newCustomerName">Name</label>
+			<input type="text" id="newCustomerName" name="name" required>
+			<label for="newCustomerMobile">Mobile</label>
+			<input type="text" id="newCustomerMobile" name="mobile" required pattern="[0-9]{10,15}">
+			<label for="newCustomerAddress">Address</label>
+			<textarea id="newCustomerAddress" name="address" rows="2" required></textarea>
+			<div class="modal-actions">
+				<button type="button" id="cancelAddCustomer" style="background:#ccc; color:#333; border:none; border-radius:4px; padding:8px 16px;">Cancel</button>
+				<button type="submit" style="background:#28a745; color:#fff; border:none; border-radius:4px; padding:8px 16px; font-weight:600;">Save</button>
+			</div>
+			<div id="addCustomerMsg" style="margin-top:8px; color:#800000; font-size:0.98em;"></div>
+		</form>
+	</div>
+</div>
+
+<style>
+#addCustomerModalBg {
+	position: fixed; left: 0; top: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.18); z-index: 1000; display: none; align-items: center; justify-content: center;
+}
+#addCustomerModal {
+	background: #fff; border-radius: 8px; box-shadow: 0 2px 16px rgba(0,0,0,0.13); padding: 32px 28px 22px 28px; min-width: 320px; max-width: 95vw; width: 370px;
+}
+#addCustomerModal input, #addCustomerModal textarea {
+	width: 100%; margin-bottom: 14px; padding: 9px; border: 1px solid #ccc; border-radius: 4px;
+}
+#addCustomerModal label { font-weight: 600; color: #333; }
+#addCustomerModal .modal-actions { display: flex; gap: 12px; justify-content: flex-end; }
+</style>
+
+<style>
+.removeProductRowBtn {
+	background: #dc3545;
+	color: #fff;
+	border: none;
+	border-radius: 4px;
+	padding: 8px 14px;
+	font-size: 1.2em;
+	font-weight: 700;
+	cursor: pointer;
+}
+</style>
+
+<script>
+// --- Dynamic Customer Search Dropdown ---
+const searchInput = document.getElementById('customerSearch');
+const dropdown = document.getElementById('customerDropdown');
+const customerIdInput = document.getElementById('customer_id');
+let customerTimeout = null;
+
+searchInput.addEventListener('input', function() {
+	const val = this.value.trim();
+	if (customerTimeout) clearTimeout(customerTimeout);
+	if (!val) {
+		dropdown.style.display = 'none';
+		customerIdInput.value = '';
+		return;
+	}
+	customerTimeout = setTimeout(() => {
+		fetch('fetch_customers.php?q=' + encodeURIComponent(val))
+			.then(res => res.json())
+			.then(data => {
+				if (!Array.isArray(data) || data.length === 0) {
+					dropdown.innerHTML = '<div style="padding:10px; color:#888;">No customer found</div>';
+					dropdown.style.display = 'block';
+					return;
+				}
+				dropdown.innerHTML = data.map(c =>
+					`<div class="customer-option" data-id="${c.id}" style="padding:10px 14px; cursor:pointer; border-bottom:1px solid #f3e6e6; display:flex; flex-direction:column;">\n                        <span style=\"font-weight:600; color:#333;\">${c.name}</span>\n                        <span style=\"font-size:0.97em; color:#888;\">${c.mobile}</span>\n                    </div>`
+				).join('');
+				dropdown.style.display = 'block';
+			});
+	}, 250);
+});
+
+dropdown.addEventListener('mousedown', function(e) {
+	const opt = e.target.closest('.customer-option');
+	if (opt) {
+		// Get customer info from the option
+		const id = opt.getAttribute('data-id');
+		const name = opt.querySelector('span').textContent;
+		const mobile = opt.querySelectorAll('span')[1].textContent;
+		customerIdInput.value = id;
+		// Show selected customer below
+		const selectedBox = document.getElementById('selectedCustomerBox');
+		selectedBox.innerHTML = `<b>Selected Customer:</b><br>Name: ${name}<br>Mobile: ${mobile}`;
+		selectedBox.style.display = 'block';
+		// Clear search field
+		searchInput.value = '';
+		dropdown.style.display = 'none';
+	}
+});
+
+document.addEventListener('click', function(e) {
+		updateProductTotals();
+	if (!dropdown.contains(e.target) && e.target !== searchInput) {
+		dropdown.style.display = 'none';
+	}
+});
+
+// --- Add New Customer Modal Logic ---
+const addNewCustomerBtn = document.getElementById('addNewCustomerBtn');
+const addCustomerModalBg = document.getElementById('addCustomerModalBg');
+const addCustomerForm = document.getElementById('addCustomerForm');
+const cancelAddCustomer = document.getElementById('cancelAddCustomer');
+const addCustomerMsg = document.getElementById('addCustomerMsg');
+
+addNewCustomerBtn.addEventListener('click', function() {
+	addCustomerForm.reset();
+	addCustomerMsg.textContent = '';
+	addCustomerModalBg.style.display = 'flex';
+});
+
+cancelAddCustomer.addEventListener('click', function() {
+	addCustomerModalBg.style.display = 'none';
+});
+
+addCustomerForm.addEventListener('submit', function(e) {
+	e.preventDefault();
+	addCustomerMsg.textContent = '';
+	const formData = new FormData(addCustomerForm);
+	fetch('add_customer.php', {
+		method: 'POST',
+		body: formData
+	})
+	.then(res => res.json())
+	.then(data => {
+		if (data.success) {
+			addCustomerMsg.style.color = '#28a745';
+			addCustomerMsg.textContent = 'Customer added successfully!';
+			setTimeout(() => {
+				addCustomerModalBg.style.display = 'none';
+				// Auto-select and show the new customer
+				customerIdInput.value = data.customer.id;
+				const selectedBox = document.getElementById('selectedCustomerBox');
+				selectedBox.innerHTML = `<b>Selected Customer:</b><br>Name: ${data.customer.name}<br>Mobile: ${data.customer.mobile}`;
+				selectedBox.style.display = 'block';
+				searchInput.value = '';
+				dropdown.style.display = 'none';
+			}, 900);
+		} else {
+			addCustomerMsg.style.color = '#800000';
+			addCustomerMsg.textContent = data.error || 'Failed to add customer.';
+		}
+	})
+	.catch(() => {
+		addCustomerMsg.style.color = '#800000';
+		addCustomerMsg.textContent = 'Failed to add customer.';
+	});
+});
+
+// --- Product/Service Row Add/Remove Logic ---
+document.addEventListener('click', function(e) {
+	// Add new row
+	if (e.target.classList.contains('addProductRowBtn')) {
+			updateProductTotals();
+		const productRows = document.getElementById('productRows');
+		const row = document.createElement('div');
+		row.className = 'product-row';
+		row.style.display = 'flex';
+		row.style.gap = '10px';
+		row.style.marginTop = '10px';
+		row.style.flexWrap = 'wrap';
+		row.style.alignItems = 'center';
+		row.innerHTML = `
+			<input type="text" name="product_name[]" placeholder="Product/Service Name" style="flex:2; min-width:160px; padding:9px; border:1px solid #ccc; border-radius:4px;">
+			<input type="number" name="product_qty[]" placeholder="Qty" min="1" value="1" style="width:70px; padding:9px; border:1px solid #ccc; border-radius:4px;">
+			<input type="number" name="product_amount[]" placeholder="Amount" min="0" step="0.01" style="width:110px; padding:9px; border:1px solid #ccc; border-radius:4px;">
+			<button type="button" class="removeProductRowBtn" title="Remove">-</button>
+		`;
+		productRows.appendChild(row);
+	}
+	// Remove row (not first)
+	if (e.target.classList.contains('removeProductRowBtn')) {
+			updateProductTotals();
+		const row = e.target.closest('.product-row');
+		if (row && row.parentNode.children.length > 1) {
+			row.remove();
+		}
+	}
+});
+
+
+// --- Product/Service Totals Calculation ---
+function updateProductTotals() {
+	let totalQty = 0;
+	let totalAmount = 0;
+	document.querySelectorAll('#productRows .product-row').forEach(function(row) {
+		const qtyInput = row.querySelector('input[name="product_qty[]"]');
+		const amtInput = row.querySelector('input[name="product_amount[]"]');
+		let qty = parseFloat(qtyInput && qtyInput.value ? qtyInput.value : 0);
+		let amt = parseFloat(amtInput && amtInput.value ? amtInput.value : 0);
+		if (!isNaN(qty)) totalQty += qty;
+		if (!isNaN(qty) && !isNaN(amt)) totalAmount += qty * amt;
+	});
+	document.getElementById('totalQty').textContent = totalQty;
+	document.getElementById('totalAmount').textContent = totalAmount.toFixed(2);
+}
+
+// Listen for changes on qty/amount fields
+document.getElementById('productRows').addEventListener('input', function(e) {
+	if (e.target.name === 'product_qty[]' || e.target.name === 'product_amount[]') {
+		updateProductTotals();
+	}
+});
+
+// Initial calculation
+updateProductTotals();
+
+// Also update totals after adding/removing rows
+const origAddProductRowBtn = document.querySelector('.addProductRowBtn');
+if (origAddProductRowBtn) {
+	origAddProductRowBtn.addEventListener('click', function() {
+		setTimeout(updateProductTotals, 10);
+	});
+}
+document.getElementById('productRows').addEventListener('click', function(e) {
+	if (e.target.classList.contains('removeProductRowBtn')) {
+		setTimeout(updateProductTotals, 10);
+	}
+});
+
+
+// --- Invoice Form Submission ---
+document.getElementById('invoiceForm').addEventListener('submit', function(e) {
+	e.preventDefault();
+	const msg = document.getElementById('invoiceSubmitMsg');
+	msg.textContent = '';
+	msg.style.color = '#333';
+	const form = e.target;
+	const formData = new FormData(form);
+	// Add total qty and total amount to formData
+	formData.append('total_qty', document.getElementById('totalQty').textContent);
+	formData.append('total_amount', document.getElementById('totalAmount').textContent);
+	fetch('save_invoice.php', {
+		method: 'POST',
+		body: formData
+	})
+	.then(res => res.json())
+	.then(data => {
+		if (data.success) {
+			msg.style.color = '#28a745';
+			msg.textContent = 'Invoice created successfully!';
+			form.reset();
+			document.getElementById('selectedCustomerBox').style.display = 'none';
+			// Remove all product rows except first
+			const productRows = document.getElementById('productRows');
+			while (productRows.children.length > 1) productRows.lastChild.remove();
+			updateProductTotals();
+		} else {
+			msg.style.color = '#800000';
+			msg.textContent = data.error || 'Failed to create invoice.';
+		}
+	})
+	.catch(() => {
+		msg.style.color = '#800000';
+		msg.textContent = 'Failed to create invoice.';
+	});
+});
+
+
+
+</script>
+
+
+
+</body>
+</html>

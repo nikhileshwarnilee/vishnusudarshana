@@ -63,8 +63,8 @@ $menu = [
         'submenu' => [
             'All Payments'    => $baseUrl . '/admin/payments/payments.php',
             'Create Invoice'  => $baseUrl . '/admin/payments/create-invoice.php',
-            'Invoices List'   => $baseUrl . '/admin/payments/invoices.php',
-            'Collect Payment' => $baseUrl . '/admin/payments/collect-payment.php',
+            'Invoices List'   => $baseUrl . '/admin/payments/invoice-list.php',
+            'Customer Dues'   => $baseUrl . '/admin/payments/dues.php',
         ]
     ],
 
@@ -93,12 +93,14 @@ $menu = [
     ],
 ];
 
-// Active state helper
-function isActivePage($url, $currentPage) {
-    // Match full path after base URL for uniqueness
-    $urlPath = parse_url($url, PHP_URL_PATH);
-    $currPath = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
-    return rtrim($urlPath, '/') === rtrim($currPath, '/');
+// Active state helper (prevent redeclaration)
+if (!function_exists('isActivePage')) {
+    function isActivePage($url, $currentPage) {
+        // Match full path after base URL for uniqueness
+        $urlPath = parse_url($url, PHP_URL_PATH);
+        $currPath = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+        return rtrim($urlPath, '/') === rtrim($currPath, '/');
+    }
 }
 ?>
 
