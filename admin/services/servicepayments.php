@@ -1,6 +1,5 @@
-
 <?php
-// payments.php
+// servicepayments.php
 session_start();
 if (!isset($_SESSION['user_id'])) {
 	header('Location: ../login.php');
@@ -9,10 +8,8 @@ if (!isset($_SESSION['user_id'])) {
 require_once __DIR__ . '/../includes/top-menu.php';
 require_once __DIR__ . '/../../config/db.php';
 
-// Only show Invoice payments
-$source_filter = 'Invoice';
-
-
+// Only show Service Request payments
+$source_filter = 'Service Request';
 
 // Filters
 $where = [];
@@ -45,11 +42,9 @@ $offset = ($page - 1) * $perPage;
 $customers = $pdo->query("SELECT id, name FROM customers ORDER BY name")->fetchAll();
 
 // Get payments (invoices) and service request payments (products)
-// Build WHERE for both queries
 $whereSqlPayments = $where ? 'WHERE ' . implode(' AND ', $where) : '';
 $whereSqlSR = [];
 $paramsSR = [];
-// Always require paid status and amount for service_requests
 $whereSqlSR[] = "sr.payment_status = 'Paid'";
 $whereSqlSR[] = "sr.total_amount > 0";
 if (!empty($_GET['from_date'])) {
@@ -67,16 +62,9 @@ if (!empty($_GET['search'])) {
 }
 $whereSqlSR = $whereSqlSR ? 'WHERE ' . implode(' AND ', $whereSqlSR) : '';
 
-// Source filter logic for union
-if ($source_filter === 'Invoice') {
-	$unionSourceWhere = 'WHERE source = "Invoice"';
-} elseif ($source_filter === 'Service Request') {
-	$unionSourceWhere = 'WHERE source = "Service Request"';
-} else {
-	$unionSourceWhere = '';
-}
+// Only show Service Request payments
+$unionSourceWhere = 'WHERE source = "Service Request"';
 
-// Main query: UNION payments and service_requests
 $unionSql = "
 	SELECT * FROM (
 		SELECT p.id, p.paid_date, p.paid_amount, p.method, p.note, p.transaction_details, c.name as customer_name, c.mobile, 'Invoice' as source, NULL as products_json
@@ -109,7 +97,7 @@ $queryStr = http_build_query(array_diff_key($_GET, ['page' => '']));
 <html lang="en">
 <head>
 	<meta charset="UTF-8">
-	<title>All Payments</title>
+	<title>Service Request Payments</title>
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<link rel="stylesheet" href="../../assets/css/style.css">
 	<style>
@@ -145,7 +133,7 @@ $queryStr = http_build_query(array_diff_key($_GET, ['page' => '']));
 </head>
 <body>
 <div class="payments-container">
-	<h1 style="margin-bottom:18px; color:#800000; font-size:1.5em;">All Payments</h1>
+	<h1 style="margin-bottom:18px; color:#800000; font-size:1.5em;">Service Request Payments</h1>
 	<form class="filter-bar" method="get">
 		<input type="text" name="search" placeholder="Search customer, mobile, note, method, transaction..." value="<?= htmlspecialchars($_GET['search'] ?? '') ?>" style="min-width:180px;">
 		<label for="from_date">From:</label>
@@ -159,7 +147,6 @@ $queryStr = http_build_query(array_diff_key($_GET, ['page' => '']));
 				<option value="<?= $c['id'] ?>" <?= (isset($_GET['customer_id']) && $_GET['customer_id'] == $c['id']) ? 'selected' : '' ?>><?= htmlspecialchars($c['name']) ?></option>
 			<?php endforeach; ?>
 		</select>
-		<!-- Source filter removed: always showing Invoice payments only -->
 		<button type="submit" class="action-btn filter-btn" style="margin-left:10px;">
 			<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" style="vertical-align:middle;"><path fill="#fff" d="M3 5a1 1 0 0 1 1-1h16a1 1 0 0 1 .8 1.6l-5.6 7.47V19a1 1 0 0 1-1.45.89l-4-2A1 1 0 0 1 9 17v-4.93L3.2 6.6A1 1 0 0 1 3 5Zm3.2 1 5.3 7.07a1 1 0 0 1 .2.6V17.4l2 1V13.2a1 1 0 0 1 .2-.6L20.8 6H3.2Z"/></svg>
 			<span>Filter</span>

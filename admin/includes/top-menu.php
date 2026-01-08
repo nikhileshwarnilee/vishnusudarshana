@@ -48,9 +48,10 @@ $menu = [
     'Services' => [
         'icon' => '🛠️',
         'submenu' => [
-                // 'Service Requests'   => $baseUrl . '/admin/services/index.php',
+            // 'Service Requests'   => $baseUrl . '/admin/services/index.php',
             'Service Request List' => $baseUrl . '/admin/services/service-request-list.php',
             'Offline Service Request' => $baseUrl . '/admin/services/offlineservicerequest.php',
+            'Service Payments' => $baseUrl . '/admin/services/servicepayments.php',
             'Products'           => $baseUrl . '/admin/products/index.php',
             'Service Categories' => $baseUrl . '/admin/services/category.php',
         ]

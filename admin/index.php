@@ -1,4 +1,5 @@
 <?php
+date_default_timezone_set('Asia/Kolkata');
 session_start();
 if (!isset($_SESSION['user_id'])) {
     header('Location: login.php');
@@ -7,6 +8,11 @@ if (!isset($_SESSION['user_id'])) {
 require_once __DIR__ . '/includes/top-menu.php';
 // Database connection
 require_once __DIR__ . '/../config/db.php';
+$today = date('Y-m-d');
+// Today's Service Request payments (source: Service Request, not Invoice)
+$stmt = $pdo->prepare("SELECT COALESCE(SUM(total_amount),0) FROM service_requests WHERE payment_status = 'Paid' AND (tracking_id IS NULL OR tracking_id = '' OR tracking_id NOT LIKE 'VDSK%') AND DATE(created_at) = ?");
+$stmt->execute([$today]);
+$today_sr_offline = $stmt->fetchColumn();
 
 function getCount($pdo, $sql, $params = []) {
     $stmt = $pdo->prepare($sql);
@@ -26,17 +32,45 @@ $totalServiceRequests = getCount($pdo, "SELECT COUNT(*) FROM service_requests WH
 // PAYMENT SUMMARY CARDS
 $totalInvoices = getCount($pdo, "SELECT COUNT(*) FROM invoices");
 
-// Updated payment summary cards (match dues.php)
-$stmt = $pdo->query("SELECT COALESCE(SUM(total_amount),0) AS total_invoiced, COALESCE(SUM(paid_amount),0) AS total_paid, COALESCE(SUM(total_amount - paid_amount),0) AS total_unpaid FROM invoices");
-$row = $stmt->fetch();
-$total_invoiced = $row['total_invoiced'] ? $row['total_invoiced'] : 0;
-$total_paid = $row['total_paid'] ? $row['total_paid'] : 0;
-$total_unpaid = $row['total_unpaid'] ? $row['total_unpaid'] : 0;
-// Today's collection
+
+// --- MATCH dues.php STATS LOGIC ---
+$from_date = '';
+$to_date = '';
+// Total invoiced
+$stmt = $pdo->prepare("SELECT COALESCE(SUM(total_amount),0) as total_invoiced FROM invoices");
+$stmt->execute();
+$total_invoiced = $stmt->fetchColumn();
+// Total paid
+$stmt = $pdo->prepare("SELECT COALESCE(SUM(paid_amount),0) as total_paid FROM invoices");
+$stmt->execute();
+$total_paid = $stmt->fetchColumn();
+// Total unpaid
+$stmt = $pdo->prepare("SELECT COALESCE(SUM(total_amount - paid_amount),0) as total_unpaid FROM invoices");
+$stmt->execute();
+$total_unpaid = $stmt->fetchColumn();
+// Today's collection (from payments table, like dues.php)
 $today = date('Y-m-d');
-$stmt = $pdo->prepare("SELECT COALESCE(SUM(paid_amount),0) FROM payments WHERE paid_date = ?");
+$stmt = $pdo->prepare("SELECT COALESCE(SUM(paid_amount),0) as offline, COALESCE(SUM(CASE WHEN method='Razorpay' THEN paid_amount ELSE 0 END),0) as razorpay FROM payments WHERE paid_date = ?");
 $stmt->execute([$today]);
-$todays_collection = $stmt->fetchColumn();
+$todayRow = $stmt->fetch();
+$todays_invoice_offline = $todayRow['offline'] ? $todayRow['offline'] : 0;
+$todays_razorpay = $todayRow['razorpay'] ? $todayRow['razorpay'] : 0;
+// Add today's service request offline payments
+$stmt = $pdo->prepare("SELECT COALESCE(SUM(total_amount),0) FROM service_requests WHERE payment_status = 'Paid' AND (tracking_id IS NULL OR tracking_id = '' OR tracking_id NOT LIKE 'VDSK%') AND DATE(created_at) = ?");
+$stmt->execute([$today]);
+$today_sr_offline = $stmt->fetchColumn();
+$todays_offline = $todays_invoice_offline + $today_sr_offline;
+
+// Today's online payment collection (Razorpay/online)
+$stmt = $pdo->prepare("SELECT COALESCE(SUM(total_amount),0) FROM service_requests WHERE payment_status = 'Paid' AND tracking_id LIKE 'VDSK%' AND DATE(created_at) = ?");
+$stmt->execute([$today]);
+$todays_razorpay = $stmt->fetchColumn();
+
+// All time payment method breakdown
+$stmt = $pdo->query("SELECT COALESCE(SUM(paid_amount),0) as offline, COALESCE(SUM(CASE WHEN method='Razorpay' THEN paid_amount ELSE 0 END),0) as razorpay FROM payments");
+$allRow = $stmt->fetch();
+$all_offline = $allRow['offline'] ? $allRow['offline'] : 0;
+$all_razorpay = $allRow['razorpay'] ? $allRow['razorpay'] : 0;
 
 
 // TODAY SNAPSHOT
@@ -212,49 +246,54 @@ $recentRows = $recentStmt->fetchAll(PDO::FETCH_ASSOC);
     <h1 style="color:#800000;margin-bottom:18px;">Admin Dashboard</h1>
     <div style="text-align:center;color:#666;font-size:1.08rem;margin-bottom:28px;">Overview of appointments, services, and payments</div>
 
-    <!-- SECTION A: Payment Summary Cards (Updated) -->
-    <div class="summary-cards" style="margin-bottom:24px;">
-        <div class="summary-card" style="background:#fffbe7;">
-            <div class="summary-count" style="font-size:2.2em;font-weight:700;color:#800000;">₹<?php echo number_format($total_invoiced,2); ?></div>
-            <div class="summary-label" style="font-size:1em;color:#800000;">Total Invoiced</div>
+
+    <!-- SECTION A: Dashboard Stats by Category (Grouped) -->
+    <div style="display: flex; gap: 32px; flex-wrap: wrap; margin-bottom: 32px; justify-content: space-between;">
+        <!-- Appointments Group: Only Today's Appointments and Pending -->
+        <div style="flex:1; min-width:220px; background:#f8faff; border-radius:14px; padding:18px 14px; box-shadow:0 2px 8px #e0bebe22; margin-bottom:0;">
+            <div style="font-weight:700; color:#0056b3; margin-bottom:10px; font-size:1.08em;">Appointments (Today)</div>
+            <div class="summary-card" style="background:#e5f0ff; border:2px solid #0056b3; margin-bottom:10px;">
+                <div class="summary-count" style="color:#0056b3;"><?php echo $todayAppointments; ?></div>
+                <div class="summary-label">Today's Appointments</div>
+            </div>
+            <div class="summary-card" style="background:#e5f0ff; border:2px solid #0056b3;">
+                <div class="summary-count" style="color:#0056b3;"><?php echo getCount($pdo, "SELECT COUNT(*) FROM service_requests WHERE category_slug = ? AND service_status = ? AND DATE(created_at) = ?", ['appointment', 'Received', $today]); ?></div>
+                <div class="summary-label">Today's Pending</div>
+            </div>
         </div>
-        <div class="summary-card" style="background:#e5ffe5;">
-            <div class="summary-count" style="font-size:2.2em;font-weight:700;color:#1a8917;">₹<?php echo number_format($total_paid,2); ?></div>
-            <div class="summary-label" style="font-size:1em;color:#1a8917;">Total Paid</div>
+        <!-- Payments Group -->
+        <div style="flex:1; min-width:220px; background:#f0f7ff; border-radius:14px; padding:18px 14px; box-shadow:0 2px 8px #e0bebe22; margin-bottom:0;">
+            <div style="font-weight:700; color:#007bff; margin-bottom:10px; font-size:1.08em;">Payments (Today)</div>
+            <div class="summary-card" style="background:#e5f0ff; border:2px solid #007bff; margin-bottom:10px;">
+                <div class="summary-count" style="color:#007bff;">₹<?php echo number_format($todays_offline,2); ?></div>
+                <div class="summary-label">Offline Collection</div>
+            </div>
+            <div class="summary-card" style="background:#e5f0ff; border:2px solid #007bff;">
+                <div class="summary-count" style="color:#007bff;">₹<?php echo number_format($todays_razorpay,2); ?></div>
+                <div class="summary-label">Razorpay Collection</div>
+            </div>
         </div>
-        <div class="summary-card" style="background:#ffeaea;">
-            <div class="summary-count" style="font-size:2.2em;font-weight:700;color:#c00;">₹<?php echo number_format($total_unpaid,2); ?></div>
-            <div class="summary-label" style="font-size:1em;color:#c00;">Total Unpaid</div>
-        </div>
-        <div class="summary-card" style="background:#e5f0ff;">
-            <div class="summary-count" style="font-size:2.2em;font-weight:700;color:#0056b3;">₹<?php echo number_format($todays_collection,2); ?></div>
-            <div class="summary-label" style="font-size:1em;color:#0056b3;">Today's Collection</div>
+        <!-- Service Requests Group: Pending and Today's -->
+        <div style="flex:1; min-width:220px; background:#f8f6f2; border-radius:14px; padding:18px 14px; box-shadow:0 2px 8px #e0bebe22; margin-bottom:0;">
+            <div style="font-weight:700; color:#800000; margin-bottom:10px; font-size:1.08em;">Service Requests</div>
+            <div class="summary-card" style="background:#f8f6f2; border:2px solid #800000; margin-bottom:10px;">
+                <div class="summary-count" style="color:#800000;">
+                    <?php echo getCount($pdo, "SELECT COUNT(*) FROM service_requests WHERE category_slug != ? AND service_status = ?", ['appointment', 'Received']); ?>
+                </div>
+                <div class="summary-label">Pending Requests</div>
+            </div>
+            <div class="summary-card" style="background:#f8f6f2; border:2px solid #28a745;">
+                <div class="summary-count" style="color:#28a745;">
+                    <?php echo getCount($pdo, "SELECT COUNT(*) FROM service_requests WHERE category_slug != ? AND DATE(created_at) = ?", ['appointment', $today]); ?>
+                </div>
+                <div class="summary-label">Today's Requests</div>
+            </div>
         </div>
     </div>
 
-    <!-- SECTION B: Stat Cards -->
-    <div class="summary-cards" style="gap:18px;margin-bottom:24px;flex-wrap:wrap;">
-        <!-- Existing Service/Appointment Cards -->
-        <div class="summary-card" onclick="window.location.href='services/appointments.php'" style="cursor:pointer;">
-            <div class="summary-count" style="font-size:2.2em;font-weight:700;color:#800000;"><?php echo $totalAppointments; ?></div>
-            <div class="summary-label" style="font-size:1em;color:#444;">Total Appointments</div>
-        </div>
-        <div class="summary-card" onclick="window.location.href='services/appointments.php?status=Received'" style="cursor:pointer;">
-            <div class="summary-count" style="font-size:2.2em;font-weight:700;color:#800000;"><?php echo $pendingAppointments; ?></div>
-            <div class="summary-label" style="font-size:1em;color:#444;">Pending Appointments</div>
-        </div>
-        <div class="summary-card" onclick="window.location.href='services/accepted-appointments.php'" style="cursor:pointer;">
-            <div class="summary-count" style="font-size:2.2em;font-weight:700;color:#800000;"><?php echo $acceptedAppointments; ?></div>
-            <div class="summary-label" style="font-size:1em;color:#444;">Accepted Appointments</div>
-        </div>
-        <div class="summary-card" onclick="window.location.href='services/completed-appointments.php'" style="cursor:pointer;">
-            <div class="summary-count" style="font-size:2.2em;font-weight:700;color:#800000;"><?php echo $completedAppointments; ?></div>
-            <div class="summary-label" style="font-size:1em;color:#444;">Completed Appointments</div>
-        </div>
-        <div class="summary-card" onclick="window.location.href='services/index.php'" style="cursor:pointer;">
-            <div class="summary-count" style="font-size:2.2em;font-weight:700;color:#800000;"><?php echo $totalServiceRequests; ?></div>
-            <div class="summary-label" style="font-size:1em;color:#444;">Total Service Requests</div>
-        </div>
+
+    <!-- QUICK ACCESS CARDS -->
+    <div class="summary-cards" style="gap:18px;margin-bottom:32px;flex-wrap:wrap;">
         <div class="summary-card" onclick="window.location.href='cif/index.php'" style="cursor:pointer;background:#e5f0ff;">
             <div class="summary-count" style="font-size:2.2em;font-weight:700;color:#0056b3;"><span style="font-size:1.2em;">📄</span></div>
             <div class="summary-label" style="font-size:1em;color:#0056b3;">CIF Home</div>
@@ -269,26 +308,7 @@ $recentRows = $recentStmt->fetchAll(PDO::FETCH_ASSOC);
         </div>
     </div>
 
-    <!-- SECTION C: Today Snapshot -->
 
-    <div class="summary-cards" style="gap:18px;margin-bottom:32px;flex-wrap:wrap;">
-        <div class="summary-card">
-            <div class="summary-count" style="font-size:2.2em;font-weight:700;color:#800000;"><?php echo $todayAppointments; ?></div>
-            <div class="summary-label" style="font-size:1em;color:#444;">Today's Appointments</div>
-        </div>
-        <div class="summary-card">
-            <div class="summary-count" style="font-size:2.2em;font-weight:700;color:#800000;"><?php echo $todayServices; ?></div>
-            <div class="summary-label" style="font-size:1em;color:#444;">Today's Services</div>
-        </div>
-        <div class="summary-card">
-            <div class="summary-count" style="font-size:2.2em;font-weight:700;color:#800000;"><?php echo $todayPayments; ?></div>
-            <div class="summary-label" style="font-size:1em;color:#444;">Today's Payments (Paid)</div>
-        </div>
-        <div class="summary-card">
-            <div class="summary-count" style="font-size:2.2em;font-weight:700;color:#800000;">₹<?php echo number_format($todayOnlinePayment, 2); ?></div>
-            <div class="summary-label" style="font-size:1em;color:#444;">Online Payment Collected Today</div>
-        </div>
-    </div>
 
     <!-- SECTION D: Recent Activity Table -->
     <div style="margin-bottom:36px;">
@@ -378,33 +398,6 @@ document.getElementById('searchInput').addEventListener('input', function() {
 loadDashboardActivity(1, '');
 </script>
 
-    <!-- SECTION E: Quick Links -->
-    <div class="summary-cards" style="gap:18px;flex-wrap:wrap;margin-bottom:0;">
-        <div class="summary-card" onclick="window.location.href='services/appointments.php'" style="cursor:pointer;min-width:180px;">
-            <div class="card-icon">📅</div>
-            <div class="summary-label">Manage Appointments</div>
-        </div>
-        <div class="summary-card" onclick="window.location.href='services/accepted-appointments.php'" style="cursor:pointer;min-width:180px;">
-            <div class="card-icon">✅</div>
-            <div class="summary-label">Accepted Appointments</div>
-        </div>
-        <div class="summary-card" onclick="window.location.href='services/completed-appointments.php'" style="cursor:pointer;min-width:180px;">
-            <div class="card-icon">✔️</div>
-            <div class="summary-label">Completed Appointments</div>
-        </div>
-        <div class="summary-card" onclick="window.location.href='services/index.php'" style="cursor:pointer;min-width:180px;">
-            <div class="card-icon">🛎️</div>
-            <div class="summary-label">Service Requests</div>
-        </div>
-        <div class="summary-card" onclick="window.location.href='../admin/products/index.php'" style="cursor:pointer;min-width:180px;">
-            <div class="card-icon">📦</div>
-            <div class="summary-label">Products</div>
-        </div>
-        <div class="summary-card" onclick="window.location.href='../payment-success.php'" style="cursor:pointer;min-width:180px;">
-            <div class="card-icon">💳</div>
-            <div class="summary-label">Payments</div>
-        </div>
-    </div>
 </div>
 <script>
 // Table search filter

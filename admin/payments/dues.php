@@ -52,12 +52,15 @@ $stat->execute($statParams);
 $total_unpaid = $stat->fetchColumn();
 // Today's collection
 $today = date('Y-m-d');
-$todayWhere = $statWhere;
-$todayParams = $statParams;
+$todayWhere = [];
+$todayParams = [];
+if ($from_date) { $todayWhere[] = 'paid_date >= ?'; $todayParams[] = $from_date; }
+if ($to_date) { $todayWhere[] = 'paid_date <= ?'; $todayParams[] = $to_date; }
 $todayWhere[] = 'paid_date = ?';
 $todayParams[] = $today;
-$stat = $pdo->prepare("SELECT COALESCE(SUM(paid_amount),0) FROM payments WHERE ".($from_date||$to_date?implode(' AND ',array_map(function($w){return str_replace('invoice_date','paid_date',$w);},$statWhere)).' AND ':'').'paid_date = ?');
-$stat->execute([$today]);
+$todayWhereSql = $todayWhere ? 'WHERE ' . implode(' AND ', $todayWhere) : '';
+$stat = $pdo->prepare("SELECT COALESCE(SUM(paid_amount),0) FROM payments $todayWhereSql");
+$stat->execute($todayParams);
 $todays_collection = $stat->fetchColumn();
 
 // Pagination
@@ -81,8 +84,7 @@ $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
 $rows = $stmt->fetchAll();
 
-// For pagination
-$total = $pdo->prepare("SELECT COUNT(*) FROM customers c $whereSql");
+$total = $pdo->prepare("SELECT COUNT(DISTINCT c.id) FROM customers c LEFT JOIN invoices i ON i.customer_id = c.id $whereSql");
 $total->execute($params);
 $totalRows = $total->fetchColumn();
 $queryStr = http_build_query(array_diff_key($_GET, ['page' => '']));
@@ -180,34 +182,32 @@ $queryStr = http_build_query(array_diff_key($_GET, ['page' => '']));
 	<?php endif; ?>
 </div>
 
-<!-- Collect Payment Modal -->
+<!-- Collect Payment Modal (Modern Design) -->
 <div id="collectModalBg" style="display:none; position:fixed; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.18); z-index:1000; align-items:center; justify-content:center;">
-	<div id="collectModal" style="background:#fff; border-radius:8px; box-shadow:0 2px 16px rgba(0,0,0,0.13); padding:32px 28px 22px 28px; min-width:320px; max-width:95vw; width:370px;">
-		<h2 style="margin-top:0; color:#800000; font-size:1.2em;">Collect Payment</h2>
+	<div id="collectModal" style="background:#fff; border-radius:12px; box-shadow:0 2px 16px #80000033; padding:32px 28px 18px 28px; min-width:340px; max-width:95vw; width:370px; text-align:left; position:relative;">
+		<div style="font-size:1.18em;color:#800000;font-weight:700;margin-bottom:10px;">Collect Payment</div>
 		<form id="collectForm" autocomplete="off">
 			<input type="hidden" name="customer_id" id="collectCustomerId">
-			<div style="margin-bottom:10px;"><b>Customer:</b> <span id="collectCustomerName"></span></div>
-			<div style="margin-bottom:10px;"><b>Due Amount:</b> ₹<span id="collectDueAmount"></span></div>
-			<label>Amount to Collect</label>
-			<input type="number" name="amount" id="collectAmount" min="1" step="0.01" required>
-			<label>Note</label>
-			<textarea name="note" id="collectNote" rows="2"></textarea>
-			<label>Payment Method</label>
-			<select name="pay_method" id="collectPayMethod" required>
-				<option value="Cash">Cash</option>
-				<option value="UPI">UPI</option>
-				<option value="Bank">Bank</option>
-				<option value="Other">Other</option>
-			</select>
-			<label>Date</label>
-			<input type="date" name="pay_date" id="collectPayDate" value="<?= date('Y-m-d') ?>" required>
-			<label>Transaction Details</label>
-			<input type="text" name="transaction_details" id="collectTransactionDetails">
-			<div style="margin-top:18px; text-align:right;">
-				<button type="button" onclick="closeCollectModal()" style="background:#ccc; color:#333; border:none; border-radius:4px; padding:8px 16px;">Cancel</button>
-				<button type="submit" style="background:#28a745; color:#fff; border:none; border-radius:4px; padding:8px 16px; font-weight:600;">Submit</button>
+			<div style="margin-bottom:10px;color:#444;"><b>Customer:</b> <span id="collectCustomerName"></span></div>
+			<div style="margin-bottom:10px;color:#444;"><b>Due Amount:</b> ₹<span id="collectDueAmount"></span></div>
+			<div style="margin-bottom:10px;">Amount: <input type="number" name="amount" id="collectAmount" min="1" step="0.01" style="width:120px;padding:5px 8px;border-radius:6px;border:1px solid #ccc;" required></div>
+			<div style="margin-bottom:10px;">Method: 
+				<select name="pay_method" id="collectPayMethod" style="padding:5px 8px;border-radius:6px;border:1px solid #ccc;" required>
+					<option value="Cash">Cash</option>
+					<option value="UPI">UPI</option>
+					<option value="Bank">Bank</option>
+					<option value="Other">Other</option>
+				</select>
 			</div>
-			<div id="collectMsg" style="margin-top:8px; color:#800000; font-size:0.98em;"></div>
+			<div style="margin-bottom:10px;">Date: <input type="date" name="pay_date" id="collectPayDate" value="<?= date('Y-m-d') ?>" style="padding:5px 8px;border-radius:6px;border:1px solid #ccc;" required></div>
+			<div style="margin-bottom:10px;">Transaction/Ref: <input type="text" name="transaction_details" id="collectTransactionDetails" style="width:180px;padding:5px 8px;border-radius:6px;border:1px solid #ccc;"></div>
+			<div style="margin-bottom:10px;">Note: <input type="text" name="note" id="collectNote" style="width:180px;padding:5px 8px;border-radius:6px;border:1px solid #ccc;"></div>
+			<div style="margin-top:18px;text-align:center;">
+				<button type="submit" style="background:#1a8917;color:#fff;padding:8px 24px;border:none;border-radius:8px;font-weight:600;cursor:pointer;">Collect & Mark Paid</button>
+				&nbsp;
+				<button type="button" onclick="closeCollectModal()" style="background:#800000;color:#fff;padding:8px 24px;border:none;border-radius:8px;font-weight:600;cursor:pointer;">Cancel</button>
+			</div>
+			<div id="collectMsg" style="margin-top:10px; color:#c00; display:none;"></div>
 		</form>
 	</div>
 </div>

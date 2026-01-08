@@ -261,7 +261,22 @@ $adminNotes = $stmt->fetchAll(PDO::FETCH_ASSOC);
             echo isset($categoryTitles[$cat]) ? $categoryTitles[$cat] : htmlspecialchars($cat);
         ?></td></tr>
         <tr><th>Total Amount</th><td>₹<?php echo number_format($request['total_amount'], 2); ?></td></tr>
-        <tr><th>Payment Status</th><td><span class="status-badge status-<?php echo strtolower($request['payment_status']); ?>"><?php echo htmlspecialchars($request['payment_status']); ?></span></td></tr>
+        <?php
+        // Check actual payment status from payments table
+        $actualPaid = false;
+        $paidAmount = 0;
+        $serviceId = $request['id'];
+        $trackingId = $request['tracking_id'];
+        // Try to find a payment record for this service request (by tracking ID)
+        $stmtPay = $pdo->prepare('SELECT SUM(paid_amount) as total_paid FROM payments WHERE transaction_details = ?');
+        $stmtPay->execute([$trackingId]);
+        $paidAmount = (float)($stmtPay->fetchColumn() ?: 0);
+        $totalAmount = (float)$request['total_amount'];
+        if ($paidAmount >= $totalAmount && $totalAmount > 0) {
+            $actualPaid = true;
+        }
+        ?>
+        <tr><th>Payment Status</th><td><span class="status-badge status-<?php echo $actualPaid ? 'paid' : 'unpaid'; ?>"><?php echo $actualPaid ? 'Paid' : 'Unpaid'; ?></span></td></tr>
         <tr><th>Service Status</th><td><span class="status-badge status-<?php echo strtolower(str_replace(' ', '-', $request['service_status'])); ?>"><?php echo htmlspecialchars($request['service_status']); ?></span></td></tr>
         <tr><th>Created Date</th><td><?php echo date('d-m-Y', strtotime($request['created_at'])); ?></td></tr>
     </table>

@@ -542,17 +542,73 @@ document.getElementById('statusSelect').addEventListener('change', function() {
 $(document).on('click', '.btn-pay', function(e){
     e.preventDefault();
     var id = $(this).data('id');
-    // Simple popup for Unpaid
+    var row = $(this).closest('tr');
+    // Fetch amount and customer name from row
+    var amount = row.find('td:nth-child(6)').text().replace(/[^\d.]/g, '');
+    var customer = row.find('td:nth-child(2)').text();
     var popup = $('<div id="payPopupOverlay" style="position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.35);z-index:9999;display:flex;align-items:center;justify-content:center;"></div>');
-    var box = $('<div style="background:#fff;padding:32px 28px;border-radius:12px;box-shadow:0 2px 16px #80000033;min-width:320px;max-width:90vw;text-align:center;position:relative;">'
-        +'<div style="font-size:1.15em;color:#c00;font-weight:600;margin-bottom:12px;">This service request is currently unpaid.</div>'
-        +'<div style="color:#555;margin-bottom:18px;">Please collect payment offline and update the status accordingly in the system.</div>'
-        +'<button id="closePayPopup" style="background:#800000;color:#fff;padding:8px 24px;border:none;border-radius:8px;font-weight:600;cursor:pointer;">Close</button>'
+    var box = $('<div style="background:#fff;padding:32px 28px 18px 28px;border-radius:12px;box-shadow:0 2px 16px #80000033;min-width:340px;max-width:95vw;text-align:left;position:relative;">'
+        +'<div style="font-size:1.18em;color:#800000;font-weight:700;margin-bottom:10px;">Collect Payment</div>'
+        +'<div style="margin-bottom:10px;color:#444;">Customer: <b>'+customer+'</b></div>'
+        +'<form id="collectServicePaymentForm">'
+            +'<input type="hidden" name="service_request_id" value="'+id+'">'
+            +'<div style="margin-bottom:10px;">Amount: <input type="number" name="amount" value="'+amount+'" min="1" step="0.01" style="width:120px;padding:5px 8px;border-radius:6px;border:1px solid #ccc;" required readonly></div>'
+            +'<div style="margin-bottom:10px;">Method: '
+                +'<select name="pay_method" style="padding:5px 8px;border-radius:6px;border:1px solid #ccc;" required>'
+                    +'<option value="Cash">Cash</option>'
+                    +'<option value="UPI">UPI</option>'
+                    +'<option value="Card">Card</option>'
+                    +'<option value="Bank">Bank</option>'
+                +'</select>'
+            +'</div>'
+            +'<div style="margin-bottom:10px;">Date: <input type="date" name="pay_date" value="'+(new Date().toISOString().slice(0,10))+'" style="padding:5px 8px;border-radius:6px;border:1px solid #ccc;" required></div>'
+            +'<div style="margin-bottom:10px;">Transaction/Ref: <input type="text" name="transaction_details" style="width:180px;padding:5px 8px;border-radius:6px;border:1px solid #ccc;"></div>'
+            +'<div style="margin-bottom:10px;">Note: <input type="text" name="note" style="width:180px;padding:5px 8px;border-radius:6px;border:1px solid #ccc;"></div>'
+            +'<div style="margin-top:18px;text-align:center;">'
+                +'<button type="submit" style="background:#1a8917;color:#fff;padding:8px 24px;border:none;border-radius:8px;font-weight:600;cursor:pointer;">Collect & Mark Paid</button>'
+                +'&nbsp;'
+                +'<button type="button" id="closePayPopup" style="background:#800000;color:#fff;padding:8px 24px;border:none;border-radius:8px;font-weight:600;cursor:pointer;">Cancel</button>'
+            +'</div>'
+            +'<div id="payErrorMsg" style="color:#c00;margin-top:10px;display:none;"></div>'
+        +'</form>'
         +'</div>');
     popup.append(box);
     $('body').append(popup);
     $('#closePayPopup').on('click', function(){ $('#payPopupOverlay').remove(); });
     popup.on('click', function(e){ if(e.target === this) $(this).remove(); });
+    $('#collectServicePaymentForm').on('submit', function(ev){
+        ev.preventDefault();
+        var form = $(this);
+        var btn = form.find('button[type="submit"]');
+        btn.prop('disabled', true).text('Processing...');
+        $('#payErrorMsg').hide();
+        $.post('collect-service-payment.php', form.serialize(), function(resp){
+            btn.prop('disabled', false).text('Collect & Mark Paid');
+            if(resp.success){
+                // Update payment status in table
+                row.find('td:nth-child(7)').html('<span class="status-badge payment-paid" style="background:#e5ffe5;color:#1a8917;">Paid</span>');
+                $('#payPopupOverlay').remove();
+                // Optionally reload or show toast
+            }else{
+                var msg = resp.error||'Failed to collect payment.';
+                if(resp.log){ msg += "\n[Log] " + resp.log; }
+                if(resp.log_tail){ msg += "\n--- Error Log ---\n" + resp.log_tail; }
+                $('#payErrorMsg').text(msg).show();
+            }
+        },'json').fail(function(xhr){
+            btn.prop('disabled', false).text('Collect & Mark Paid');
+            var msg = 'Server error. Please try again.';
+            if(xhr && xhr.responseText){
+                try {
+                    var resp = JSON.parse(xhr.responseText);
+                    if(resp.error) msg = resp.error;
+                    if(resp.log) msg += "\n[Log] " + resp.log;
+                    if(resp.log_tail) msg += "\n--- Error Log ---\n" + resp.log_tail;
+                } catch(e){}
+            }
+            $('#payErrorMsg').text(msg).show();
+        });
+    });
 });
 </script>
 </body>

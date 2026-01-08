@@ -82,7 +82,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['category_slug'])) {
         $data['mobile'] ?? '',
         $data['email'] ?? '',
         json_encode($data),
-        'Paid',
+        'Unpaid',
         $selected_products,
         $total_amount,
         $tracking_id
