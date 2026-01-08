@@ -1,5 +1,3 @@
-
-
 <?php
 // collect-service-payment.php
 session_start();
