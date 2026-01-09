@@ -3,9 +3,9 @@
 // WhatsApp Cloud API reusable helper
 
 // WhatsApp Cloud API credentials (for development/testing only)
-define('WHATSAPP_TEST_MODE', true); // Set to false for production
-define('WHATSAPP_PHONE_NUMBER_ID', '937629662767540'); // Placeholder, replace with real ID
-define('WHATSAPP_ACCESS_TOKEN', 'EAAbx07ZA0plwBQBZBlqMlPatUTHy6q66RzX0n2MglWpzqI5ZCmKssAz2X62FXxbMmbz37yih3DbBQAu6K9GQZCYayK1raoCrc5nTTl7KXJ7hjz0TiRrDE3kvPr3q5CI353OBxpZA9GiUpZAFvLtmBXAZARV84DiRvyYHKFWSi7JZBBPcN8SwfbHDEVlQEPDSIEYjdU46ZBeJMRO2qyOlcnySr7EN2aHOd7ObkxZATkcyVLxPzTABbDjZBV9A5luUESjyAqF4PQTtLwulpk9M4DY4BLT'); // Placeholder, replace with real token
+define('WHATSAPP_TEST_MODE', false); // Set to false for production
+define('WHATSAPP_PHONE_NUMBER_ID', '8975224444'); // Set to your real Phone Number ID from Meta (not the phone number itself)
+define('WHATSAPP_ACCESS_TOKEN', 'EAAbx07ZA0plwBQbMvw27WkcVzklFSQaaeSoVT94gwscu52kw0zEb5uz6YLNslok8W3s0GiXRMrWPAe3K6eXRXWZCmiYprFFp8c3zVyJz5ql2JZAiwaBVJ3loWlSoUXrPXweMWfi9xXoWJGQDrgr0m53ncLlmwO8SRfkfrAPXbQBGXtdJAPWvXEs2GZCj0AZDZD');
 
 /**
  * Send WhatsApp message using WhatsApp Cloud API template
@@ -38,7 +38,8 @@ function sendWhatsAppMessage($to, $templateName, $language, $variables = []) {
 
     // Prepare template parameters (order matters as per template definition)
     $params = [];
-    foreach (['name', 'tracking_id', 'category', 'tracking_link'] as $key) {
+    // Only two variables: name and tracking_code
+    foreach (['name', 'tracking_code'] as $key) {
         $params[] = [ 'type' => 'text', 'text' => isset($variables[$key]) ? $variables[$key] : '' ];
     }
 

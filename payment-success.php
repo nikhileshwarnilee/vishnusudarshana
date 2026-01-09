@@ -171,15 +171,14 @@ try {
     if ($category === 'appointment') {
         require_once __DIR__ . '/helpers/send_whatsapp.php';
         try {
+            // Use your approved template name below (update if needed)
             sendWhatsAppMessage(
                 $mobile,
-                'appointment_booked',
+                'appointment_confirmation', // <-- update if your template name is different
                 'en',
                 [
                     'name' => $customerName,
-                    'tracking_id' => $tracking_id,
-                    'preferred_date' => $formData['preferred_date'] ?? '',
-                    'appointment_type' => $formData['appointment_type'] ?? ''
+                    'tracking_code' => $tracking_id
                 ]
             );
         } catch (Throwable $e) {
