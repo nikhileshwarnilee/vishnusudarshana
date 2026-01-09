@@ -4,7 +4,7 @@
 
 // WhatsApp Cloud API credentials (for development/testing only)
 define('WHATSAPP_TEST_MODE', false); // Set to false for production
-define('WHATSAPP_PHONE_NUMBER_ID', '8975224444'); // Set to your real Phone Number ID from Meta (not the phone number itself)
+define('WHATSAPP_PHONE_NUMBER_ID', '872295572641175'); // Correct Meta Phone Number ID
 define('WHATSAPP_ACCESS_TOKEN', 'EAAbx07ZA0plwBQbMvw27WkcVzklFSQaaeSoVT94gwscu52kw0zEb5uz6YLNslok8W3s0GiXRMrWPAe3K6eXRXWZCmiYprFFp8c3zVyJz5ql2JZAiwaBVJ3loWlSoUXrPXweMWfi9xXoWJGQDrgr0m53ncLlmwO8SRfkfrAPXbQBGXtdJAPWvXEs2GZCj0AZDZD');
 
 /**
