@@ -148,12 +148,11 @@ $queryStr = http_build_query(array_diff_key($_GET, ['page' => '']));
 		</div>
 	</div>
 	<form class="filter-bar" method="get">
-		<input type="text" name="search" placeholder="Search customer, mobile, address..." value="<?= htmlspecialchars($_GET['search'] ?? '') ?>" style="min-width:200px;">
+		<input type="text" name="search" id="searchInput" placeholder="Search customer, mobile, address..." value="<?= htmlspecialchars($_GET['search'] ?? '') ?>" style="min-width:200px;">
 		<label for="from_date">From:</label>
 		<input type="date" name="from_date" id="from_date" value="<?= htmlspecialchars($from_date) ?>">
 		<label for="to_date">To:</label>
 		<input type="date" name="to_date" id="to_date" value="<?= htmlspecialchars($to_date) ?>">
-		<button type="submit" class="action-btn collect-btn">Filter</button>
 	</form>
 	<table>
 		<tr>
@@ -262,6 +261,8 @@ function openCollectModal(id, name, due) {
 function closeCollectModal() {
 	document.getElementById('collectModalBg').style.display = 'none';
 }
+</script>
+<script>
 document.getElementById('collectForm').addEventListener('submit', function(e) {
 	e.preventDefault();
 	var formData = new FormData(this);
@@ -287,6 +288,34 @@ document.getElementById('collectForm').addEventListener('submit', function(e) {
 		msg.textContent = 'Failed to collect payment.';
 	});
 });
+
+// --- LIVE AJAX SEARCH/FILTER ---
+const searchInput = document.getElementById('searchInput');
+const fromDateInput = document.getElementById('from_date');
+const toDateInput = document.getElementById('to_date');
+
+function fetchDuesTable() {
+	const search = searchInput.value;
+	const from_date = fromDateInput.value;
+	const to_date = toDateInput.value;
+	const params = new URLSearchParams({search, from_date, to_date});
+	fetch(window.location.pathname + '?' + params.toString(), {headers: {'X-Requested-With': 'XMLHttpRequest'}})
+		.then(res => res.text())
+		.then(html => {
+			// Extract only the dues-container content
+			const parser = new DOMParser();
+			const doc = parser.parseFromString(html, 'text/html');
+			const newContainer = doc.querySelector('.dues-container');
+			if (newContainer) {
+				document.querySelector('.dues-container').innerHTML = newContainer.innerHTML;
+			}
+		});
+}
+
+searchInput.addEventListener('input', fetchDuesTable);
+fromDateInput.addEventListener('input', fetchDuesTable);
+toDateInput.addEventListener('input', fetchDuesTable);
+</script>
 </script>
 </body>
 </html>

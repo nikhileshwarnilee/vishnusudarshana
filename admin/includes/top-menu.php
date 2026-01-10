@@ -66,6 +66,7 @@ $menu = [
             'Create Invoice'  => $baseUrl . '/admin/payments/create-invoice.php',
             'Invoices List'   => $baseUrl . '/admin/payments/invoice-list.php',
             'Customer Dues'   => $baseUrl . '/admin/payments/dues.php',
+            'Capture Payments' => $baseUrl . '/admin/payments/capture-payments.php',
         ]
     ],
 
