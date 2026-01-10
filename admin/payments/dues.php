@@ -78,11 +78,23 @@ FROM customers c
 LEFT JOIN invoices i ON i.customer_id = c.id
 $whereSql
 GROUP BY c.id
-ORDER BY c.name ASC
+ORDER BY ((COALESCE(SUM(i.total_amount),0) - COALESCE(SUM(i.paid_amount),0)) > 0) DESC, (COALESCE(SUM(i.total_amount),0) - COALESCE(SUM(i.paid_amount),0)) DESC, c.name ASC
 LIMIT $perPage OFFSET $offset";
 $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
 $rows = $stmt->fetchAll();
+
+// Split into two arrays: with dues and zero dues
+$with_dues = [];
+$zero_dues = [];
+foreach ($rows as $row) {
+	if (floatval($row['unpaid_dues']) > 0) {
+		$with_dues[] = $row;
+	} else {
+		$zero_dues[] = $row;
+	}
+}
+
 
 $total = $pdo->prepare("SELECT COUNT(DISTINCT c.id) FROM customers c LEFT JOIN invoices i ON i.customer_id = c.id $whereSql");
 $total->execute($params);
@@ -154,9 +166,9 @@ $queryStr = http_build_query(array_diff_key($_GET, ['page' => '']));
 			<th>Unpaid Dues</th>
 			<th>Action</th>
 		</tr>
-		<?php if (empty($rows)): ?>
-			<tr><td colspan="8" style="text-align:center; color:#888;">No records found.</td></tr>
-		<?php else: foreach ($rows as $row): ?>
+		<?php if (empty($with_dues)): ?>
+			<tr><td colspan="8" style="text-align:center; color:#888;">No customers with dues.</td></tr>
+		<?php else: foreach ($with_dues as $row): ?>
 			<tr>
 				<td><?= htmlspecialchars($row['name']) ?></td>
 				<td><?= htmlspecialchars($row['mobile']) ?></td>
@@ -166,13 +178,40 @@ $queryStr = http_build_query(array_diff_key($_GET, ['page' => '']));
 				<td><a href="view-customer-payments.php?id=<?= $row['id'] ?>" class="paid-link">₹<?= number_format($row['paid_till_date'],2) ?></a></td>
 				<td style="color:#b30000; font-weight:700;">₹<?= number_format($row['unpaid_dues'],2) ?></td>
 				<td>
-					<?php if ($row['unpaid_dues'] > 0): ?>
-						<button type="button" class="action-btn collect-btn" onclick="openCollectModal(<?= $row['id'] ?>, '<?= htmlspecialchars(addslashes($row['name'])) ?>', <?= $row['unpaid_dues'] ?>)">Collect</button>
-					<?php endif; ?>
+					<button type="button" class="action-btn collect-btn" onclick="openCollectModal(<?= $row['id'] ?>, '<?= htmlspecialchars(addslashes($row['name'])) ?>', <?= $row['unpaid_dues'] ?>)">Collect</button>
 				</td>
 			</tr>
 		<?php endforeach; endif; ?>
 	</table>
+
+<!-- Table for customers with zero dues -->
+<h2 style="margin-top:36px; color:#228B22; font-size:1.15em;">Customers with No Dues</h2>
+<table>
+	<tr>
+		<th>Customer Name</th>
+		<th>Mobile</th>
+		<th>Address</th>
+		<th>Total Invoices</th>
+		<th>Total Invoiced Amount</th>
+		<th>Paid Till Date</th>
+		<th>Unpaid Dues</th>
+		<th>Action</th>
+	</tr>
+	<?php if (empty($zero_dues)): ?>
+		<tr><td colspan="8" style="text-align:center; color:#888;">No customers with zero dues.</td></tr>
+	<?php else: foreach ($zero_dues as $row): ?>
+		<tr>
+			<td><?= htmlspecialchars($row['name']) ?></td>
+			<td><?= htmlspecialchars($row['mobile']) ?></td>
+			<td><?= htmlspecialchars($row['address']) ?></td>
+			<td><a href="view-customer-invoices.php?id=<?= $row['id'] ?>" class="invoices-link"><?= $row['total_invoices'] ?></a></td>
+			<td><a href="view-customer-invoices.php?id=<?= $row['id'] ?>" class="invoices-link">₹<?= number_format($row['total_invoiced'],2) ?></a></td>
+			<td><a href="view-customer-payments.php?id=<?= $row['id'] ?>" class="paid-link">₹<?= number_format($row['paid_till_date'],2) ?></a></td>
+			<td style="color:#228B22; font-weight:700;">₹0.00</td>
+			<td></td>
+		</tr>
+	<?php endforeach; endif; ?>
+</table>
 	<?php if ($totalRows > $perPage): ?>
 	<div class="pagination">
 		<?php for ($p = 1; $p <= ceil($totalRows/$perPage); $p++): ?>

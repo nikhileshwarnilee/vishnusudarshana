@@ -15,23 +15,20 @@ require_once __DIR__ . '/../../config/db.php';
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<link rel="stylesheet" href="../../assets/css/style.css">
 	<style>
-				#addNewCustomerBtn {
-					background: linear-gradient(90deg, #007bff 60%, #0056b3 100%);
-					color: #fff;
-					border: none;
-					border-radius: 6px;
-					padding: 10px 22px;
-					font-size: 1.08em;
-					font-weight: 700;
-					cursor: pointer;
-					box-shadow: 0 2px 8px rgba(0,123,255,0.08);
-					transition: background 0.2s, box-shadow 0.2s;
-					margin-left: 4px;
-				}
-				#addNewCustomerBtn:hover {
-					background: linear-gradient(90deg, #0056b3 60%, #007bff 100%);
-					box-shadow: 0 4px 16px rgba(0,123,255,0.13);
-				}
+				   #addNewCustomerBtn {
+					   background: linear-gradient(90deg, #007bff 60%, #0056b3 100%);
+					   color: #fff;
+					   border: none;
+					   border-radius: 6px;
+					   padding: 7px 16px;
+					   font-size: 0.98em;
+					   font-weight: 600;
+					   cursor: pointer;
+					   box-shadow: 0 2px 8px rgba(0,123,255,0.08);
+					   transition: background 0.2s, box-shadow 0.2s;
+					   margin-left: 4px;
+					   white-space: nowrap;
+				   }
 		body {
 			background: #f4f6fa;
 		}
@@ -49,7 +46,7 @@ require_once __DIR__ . '/../../config/db.php';
 			box-shadow: 0 4px 24px rgba(128,0,0,0.10), 0 1.5px 6px rgba(0,0,0,0.04);
 			padding: 38px 36px 30px 36px;
 			width: 100%;
-			max-width: 700px;
+			max-width: 1000px;
 			margin-bottom: 32px;
 			border: 1px solid #ececec;
 		}
@@ -158,42 +155,47 @@ require_once __DIR__ . '/../../config/db.php';
 		.form-section {
 			margin-bottom: 28px;
 		}
+		.form-sections-row {
+			display: flex;
+			gap: 32px;
+			flex-wrap: wrap;
+		}
 	</style>
 </head>
 
 <body>
 
 <div class="admin-container" style="display:flex; flex-direction:column; align-items:center; min-height:100vh; justify-content:flex-start; padding-top:32px;">
-	<div class="form-box" style="width:100%; max-width:700px; margin-bottom:32px; box-shadow:0 2px 12px rgba(128,0,0,0.06);">
-		   <div style="text-align:center; margin-bottom:18px;">
-			   <h1 style="margin:0; font-size:1.7em; color:#800000; font-weight:700; letter-spacing:0.5px;">Create Invoice</h1>
-		   </div>
-		   <form id="invoiceForm" method="post" autocomplete="off">
-			<div class="form-section">
-				<label for="customerSelect">Select Customer</label>
-				<div style="display:flex; gap:10px; align-items:center;">
-					<input type="text" id="customerSearch" placeholder="Search customer by name or mobile..." autocomplete="off">
-					<button type="button" id="addNewCustomerBtn"><span style="font-size:1.2em; font-weight:900; margin-right:6px;">+</span> Add New Customer</button>
+	<div class="form-box" style="width:100%; max-width:1000px; margin-bottom:32px; box-shadow:0 2px 12px rgba(128,0,0,0.06);">
+		<div style="text-align:center; margin-bottom:18px;">
+			<h1 style="margin:0; font-size:1.7em; color:#800000; font-weight:700; letter-spacing:0.5px;">Create Invoice</h1>
+		</div>
+		<form id="invoiceForm" method="post" autocomplete="off">
+			<div class="form-sections-row" style="display:flex; gap:32px; flex-wrap:wrap;">
+				<div class="form-section" style="flex:1; min-width:320px;">
+					<label for="customerSelect">Select Customer</label>
+					<div style="display:flex; gap:10px; align-items:center;">
+						<input type="text" id="customerSearch" placeholder="Search customer by name or mobile..." autocomplete="off">
+						<button type="button" id="addNewCustomerBtn">Add Customer</button>
+					</div>
+					<div id="customerDropdown" style="position:relative; background:#fff; border:1px solid #ccc; border-radius:4px; display:none; max-height:180px; overflow-y:auto; z-index:10;"></div>
+					<input type="hidden" name="customer_id" id="customer_id">
+					<div id="selectedCustomerBox" style="display:none;"></div>
 				</div>
-				<div id="customerDropdown" style="position:relative; background:#fff; border:1px solid #ccc; border-radius:4px; display:none; max-height:180px; overflow-y:auto; z-index:10;"></div>
-				<input type="hidden" name="customer_id" id="customer_id">
-				<div id="selectedCustomerBox" style="display:none;"></div>
+				<div class="form-section" style="flex:1; min-width:320px;">
+					<label for="invoiceDate">Invoice Date</label>
+					<input type="date" id="invoiceDate" name="invoice_date" value="<?php echo date('Y-m-d'); ?>">
+					<label for="invoiceNote">Invoice Note</label>
+					<textarea id="invoiceNote" name="invoice_note" rows="3" placeholder="Enter any note for this invoice..."></textarea>
+				</div>
 			</div>
-			<div class="form-section">
-				<label for="invoiceDate">Invoice Date</label>
-				<input type="date" id="invoiceDate" name="invoice_date" value="<?php echo date('Y-m-d'); ?>">
-			</div>
-			<div class="form-section">
-				<label for="invoiceNote">Invoice Note</label>
-				<textarea id="invoiceNote" name="invoice_note" rows="3" placeholder="Enter any note for this invoice..."></textarea>
-			</div>
-			<div class="form-section" style="border-top:1px solid #eee; padding-top:18px;">
+			<div class="form-section" style="border-top:1px solid #eee; padding-top:18px; margin-top:24px;">
 				<label>Add Product/Service</label>
 				<div id="productRows">
-					<div class="product-row" style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
-						<input type="text" name="product_name[]" placeholder="Product/Service Name">
-						<input type="number" name="product_qty[]" class="product-qty" placeholder="Qty" min="1" value="1">
-						<input type="number" name="product_amount[]" class="product-amount" placeholder="Amount" min="0" step="0.01">
+					<div class="product-row" style="display:flex; gap:10px; align-items:center; flex-wrap:nowrap;">
+						<input type="text" name="product_name[]" placeholder="Product/Service Name" style="flex:2; min-width:180px;">
+						<input type="number" name="product_qty[]" class="product-qty" placeholder="Qty" min="1" value="1" style="width:80px;">
+						<input type="number" name="product_amount[]" class="product-amount" placeholder="Amount" min="0" step="0.01" style="width:120px;">
 						<button type="button" class="addProductRowBtn">+</button>
 					</div>
 				</div>
@@ -201,10 +203,11 @@ require_once __DIR__ . '/../../config/db.php';
 					Total Qty: <span id="totalQty">1</span> &nbsp; | &nbsp; Total Amount: ₹<span id="totalAmount">0.00</span>
 				</div>
 			</div>
-			<div style="margin-top:32px; text-align:right;">
-				<button type="submit" id="submitInvoiceBtn">Submit Invoice</button>
-				<span id="invoiceSubmitMsg" style="margin-left:18px; font-weight:600;"></span>
-			</div>
+			<div style="margin-top:32px; display:flex; align-items:flex-end; gap:24px; justify-content:flex-end;">
+	<!-- Collect Payment section removed. Payment will be handled after invoice creation. -->
+    <button type="submit" id="submitInvoiceBtn">Submit Invoice</button>
+    <span id="invoiceSubmitMsg" style="margin-left:18px; font-weight:600;"></span>
+</div>
 		</form>
 	</div>
 
@@ -289,21 +292,40 @@ searchInput.addEventListener('input', function() {
 });
 
 dropdown.addEventListener('mousedown', function(e) {
-	const opt = e.target.closest('.customer-option');
-	if (opt) {
-		// Get customer info from the option
-		const id = opt.getAttribute('data-id');
-		const name = opt.querySelector('span').textContent;
-		const mobile = opt.querySelectorAll('span')[1].textContent;
-		customerIdInput.value = id;
-		// Show selected customer below
-		const selectedBox = document.getElementById('selectedCustomerBox');
-		selectedBox.innerHTML = `<b>Selected Customer:</b><br>Name: ${name}<br>Mobile: ${mobile}`;
-		selectedBox.style.display = 'block';
-		// Clear search field
-		searchInput.value = '';
-		dropdown.style.display = 'none';
-	}
+    const opt = e.target.closest('.customer-option');
+    if (opt) {
+        // Get customer info from the option
+        const id = opt.getAttribute('data-id');
+        const name = opt.querySelector('span').textContent;
+        const mobile = opt.querySelectorAll('span')[1].textContent;
+        customerIdInput.value = id;
+        // Show selected customer below
+        const selectedBox = document.getElementById('selectedCustomerBox');
+        selectedBox.innerHTML = `<b>Selected Customer:</b><br>Name: ${name}<br>Mobile: ${mobile}<br><span id='customerDuesInfo' style='color:#888;'>Loading dues...</span>`;
+        selectedBox.style.display = 'block';
+        // Clear search field
+        searchInput.value = '';
+        dropdown.style.display = 'none';
+        // Fetch and show dues
+        fetch('get_customer_dues.php?id=' + encodeURIComponent(id))
+            .then(res => res.json())
+            .then(data => {
+				if (data && !data.error) {
+					document.getElementById('customerDuesInfo').innerHTML = `
+						<div style='margin-top:6px;'>
+							<b>Total Invoiced:</b> ₹${data.total_invoiced.toFixed(2)}<br>
+							<b>Total Paid:</b> ₹${data.total_paid.toFixed(2)}<br>
+							<b>Total Dues:</b> <span style='color:${data.total_dues > 0 ? '#b30000' : '#228B22'};'>₹${data.total_dues.toFixed(2)}</span>
+						</div>
+					`;
+				} else {
+					document.getElementById('customerDuesInfo').textContent = 'Could not load dues.';
+				}
+            })
+            .catch(() => {
+				document.getElementById('customerDuesInfo').textContent = 'Could not load dues.';
+            });
+    }
 });
 
 document.addEventListener('click', function(e) {
@@ -377,10 +399,11 @@ document.addEventListener('click', function(e) {
 		row.style.marginTop = '10px';
 		row.style.flexWrap = 'wrap';
 		row.style.alignItems = 'center';
+		row.style.whiteSpace = 'nowrap';
 		row.innerHTML = `
-			<input type="text" name="product_name[]" placeholder="Product/Service Name" style="flex:2; min-width:160px; padding:9px; border:1px solid #ccc; border-radius:4px;">
-			<input type="number" name="product_qty[]" placeholder="Qty" min="1" value="1" style="width:70px; padding:9px; border:1px solid #ccc; border-radius:4px;">
-			<input type="number" name="product_amount[]" placeholder="Amount" min="0" step="0.01" style="width:110px; padding:9px; border:1px solid #ccc; border-radius:4px;">
+			<input type="text" name="product_name[]" placeholder="Product/Service Name" style="flex:2; min-width:180px; padding:9px; border:1px solid #ccc; border-radius:4px;">
+			<input type="number" name="product_qty[]" placeholder="Qty" min="1" value="1" style="width:80px; padding:9px; border:1px solid #ccc; border-radius:4px;">
+			<input type="number" name="product_amount[]" placeholder="Amount" min="0" step="0.01" style="width:120px; padding:9px; border:1px solid #ccc; border-radius:4px;">
 			<button type="button" class="removeProductRowBtn" title="Remove">-</button>
 		`;
 		productRows.appendChild(row);
@@ -438,21 +461,28 @@ document.getElementById('productRows').addEventListener('click', function(e) {
 
 // --- Invoice Form Submission ---
 document.getElementById('invoiceForm').addEventListener('submit', function(e) {
-	e.preventDefault();
-	const msg = document.getElementById('invoiceSubmitMsg');
-	msg.textContent = '';
-	msg.style.color = '#333';
-	const form = e.target;
-	const formData = new FormData(form);
+    e.preventDefault();
+    const msg = document.getElementById('invoiceSubmitMsg');
+    msg.textContent = '';
+    msg.style.color = '#333';
+    const form = e.target;
+    const formData = new FormData(form);
+    // Get values for validation
+    const customerId = document.getElementById('customer_id').value;
+    const totalAmount = parseFloat(document.getElementById('totalAmount').textContent) || 0;
+    const productNames = Array.from(form.querySelectorAll('input[name="product_name[]"]')).map(i => i.value.trim()).filter(Boolean);
 	// Add total qty and total amount to formData
 	formData.append('total_qty', document.getElementById('totalQty').textContent);
 	formData.append('total_amount', document.getElementById('totalAmount').textContent);
-	fetch('save_invoice.php', {
-		method: 'POST',
-		body: formData
-	})
-	.then(res => res.json())
-	.then(data => {
+    fetch('save_invoice.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.post) {
+            alert('DEBUG POST DATA:\n' + JSON.stringify(data.post, null, 2));
+        }
 		if (data.success) {
 			msg.style.color = '#28a745';
 			msg.textContent = 'Invoice created successfully!';
@@ -462,21 +492,132 @@ document.getElementById('invoiceForm').addEventListener('submit', function(e) {
 			const productRows = document.getElementById('productRows');
 			while (productRows.children.length > 1) productRows.lastChild.remove();
 			updateProductTotals();
-		} else {
+			// Show collect payment modal/section
+			setTimeout(function() {
+				showCollectPaymentBox(customerId);
+			}, 300);
+		} else if (data.error) {
 			msg.style.color = '#800000';
 			msg.textContent = data.error || 'Failed to create invoice.';
+			alert('ERROR: ' + (data.error || 'Failed to create invoice.'));
 		}
-	})
-	.catch(() => {
-		msg.style.color = '#800000';
-		msg.textContent = 'Failed to create invoice.';
-	});
+    })
+    .catch((err) => {
+        msg.style.color = '#800000';
+        msg.textContent = 'Failed to create invoice.';
+        alert('AJAX ERROR: ' + err);
+    });
 });
 
 
 
 </script>
 
+<!-- Collect Payment Modal (Modern Design, Dues Page Style) -->
+<div id="collectPaymentModalBg" style="display:none; position:fixed; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.18); z-index:2000; align-items:center; justify-content:center;">
+	<div id="collectPaymentModal" style="background:#fff; border-radius:12px; box-shadow:0 2px 16px #80000033; padding:32px 28px 18px 28px; min-width:340px; max-width:95vw; width:370px; text-align:left; position:relative;">
+		<div style="font-size:1.18em;color:#800000;font-weight:700;margin-bottom:10px;">Collect Payment</div>
+		<form id="collectPaymentForm" autocomplete="off">
+			<input type="hidden" name="customer_id" id="collectCustomerId">
+			<div style="margin-bottom:10px;color:#444;"><b>Customer:</b> <span id="collectCustomerName"></span></div>
+			<div style="margin-bottom:10px;color:#444;"><b>Due Amount:</b> ₹<span id="collectDueAmount"></span></div>
+			<div style="margin-bottom:10px;">Amount: <input type="number" name="amount" id="collectAmount" min="1" step="0.01" style="width:120px;padding:5px 8px;border-radius:6px;border:1px solid #ccc;" required></div>
+			<div style="margin-bottom:10px;">Method: 
+				<select name="pay_method" id="collectPayMethod" style="padding:5px 8px;border-radius:6px;border:1px solid #ccc;" required>
+					<option value="Cash">Cash</option>
+					<option value="UPI">UPI</option>
+					<option value="Bank">Bank</option>
+					<option value="Other">Other</option>
+				</select>
+			</div>
+			<div style="margin-bottom:10px;">Date: <input type="date" name="pay_date" id="collectPayDate" value="" style="padding:5px 8px;border-radius:6px;border:1px solid #ccc;" required></div>
+			<div style="margin-bottom:10px;">Transaction/Ref: <input type="text" name="transaction_details" id="collectTransactionDetails" style="width:180px;padding:5px 8px;border-radius:6px;border:1px solid #ccc;"></div>
+			<div style="margin-bottom:10px;">Note: <input type="text" name="note" id="collectNote" style="width:180px;padding:5px 8px;border-radius:6px;border:1px solid #ccc;"></div>
+			<div style="margin-top:18px;text-align:center;">
+				<button type="submit" style="background:#1a8917;color:#fff;padding:8px 24px;border:none;border-radius:8px;font-weight:600;cursor:pointer;">Collect & Mark Paid</button>
+				&nbsp;
+				<button type="button" id="cancelCollectPayment" style="background:#800000;color:#fff;padding:8px 24px;border:none;border-radius:8px;font-weight:600;cursor:pointer;">Cancel</button>
+			</div>
+			<div id="collectPaymentMsg" style="margin-top:10px; color:#c00; display:none;"></div>
+		</form>
+	</div>
+</div>
+<script>
+// --- Collect Payment Modal Logic (Dues Page Style) ---
+function showCollectPaymentBox(customerId) {
+	const modalBg = document.getElementById('collectPaymentModalBg');
+	const msgBox = document.getElementById('collectPaymentMsg');
+	msgBox.style.display = 'none';
+	msgBox.textContent = '';
+	// Fetch latest dues and customer info
+	fetch('get_customer_dues.php?id=' + encodeURIComponent(customerId))
+		.then(res => res.json())
+		.then(data => {
+			if (data && !data.error) {
+				document.getElementById('collectCustomerId').value = customerId;
+				document.getElementById('collectCustomerName').textContent = data.name || '';
+				document.getElementById('collectDueAmount').textContent = data.total_dues.toFixed(2);
+					document.getElementById('collectAmount').value = '';
+				document.getElementById('collectAmount').max = data.total_dues;
+				document.getElementById('collectPayDate').value = (new Date()).toISOString().slice(0,10);
+				document.getElementById('collectPayMethod').value = 'Cash';
+				document.getElementById('collectTransactionDetails').value = '';
+				document.getElementById('collectNote').value = '';
+				modalBg.style.display = 'flex';
+			} else {
+				alert('Could not load dues.');
+			}
+		});
+}
+document.getElementById('cancelCollectPayment').onclick = function() {
+	document.getElementById('collectPaymentModalBg').style.display = 'none';
+};
+document.getElementById('collectPaymentForm').onsubmit = function(e) {
+	e.preventDefault();
+	const msgBox = document.getElementById('collectPaymentMsg');
+	msgBox.style.display = 'block';
+	msgBox.textContent = '';
+	const amount = parseFloat(document.getElementById('collectAmount').value);
+	const maxDues = parseFloat(document.getElementById('collectAmount').max);
+	if (isNaN(amount) || amount <= 0) {
+		msgBox.textContent = 'Enter a valid amount.';
+		return;
+	}
+	if (amount > maxDues) {
+		msgBox.textContent = 'Amount cannot be more than current dues.';
+		return;
+	}
+	const formData = new FormData(document.getElementById('collectPaymentForm'));
+	fetch('collect-payment.php', {
+		method: 'POST',
+		body: formData
+	})
+	.then(res => res.json())
+	.then(data => {
+		if (data.success) {
+			msgBox.style.color = '#28a745';
+			msgBox.textContent = 'Payment collected!';
+			setTimeout(() => {
+				document.getElementById('collectPaymentModalBg').style.display = 'none';
+			}, 900);
+		} else {
+			msgBox.style.color = '#800000';
+		// Prevent submit if no product/service or all product amounts are zero
+		const productAmounts = Array.from(form.querySelectorAll('input[name="product_amount[]"]')).map(i => parseFloat(i.value)).filter(a => !isNaN(a));
+		if (productNames.length === 0 || productAmounts.length === 0 || productAmounts.every(a => a <= 0)) {
+			msg.style.color = '#800000';
+			msg.textContent = 'Add at least one product/service with a valid amount.';
+			return;
+		}
+			msgBox.textContent = data.error || 'Failed to collect payment.';
+		}
+	})
+	.catch(() => {
+		msgBox.style.color = '#800000';
+		msgBox.textContent = 'Failed to collect payment.';
+	});
+};
+</script>
 
 
 </body>

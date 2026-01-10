@@ -10,12 +10,39 @@ try {
     $note = isset($_POST['invoice_note']) ? trim($_POST['invoice_note']) : '';
     $total_qty = isset($_POST['total_qty']) ? intval($_POST['total_qty']) : 0;
     $total_amount = isset($_POST['total_amount']) ? floatval($_POST['total_amount']) : 0.00;
-    $product_names = isset($_POST['product_name']) ? $_POST['product_name'] : [];
-    $product_qtys = isset($_POST['product_qty']) ? $_POST['product_qty'] : [];
-    $product_amounts = isset($_POST['product_amount']) ? $_POST['product_amount'] : [];
+    // Support both product_name[] and product_name as array (FormData sends as product_name[])
+    $product_names = [];
+    $product_qtys = [];
+    $product_amounts = [];
+    if (isset($_POST['product_name'])) {
+        $product_names = is_array($_POST['product_name']) ? $_POST['product_name'] : [$_POST['product_name']];
+    } elseif (isset($_POST['product_name[]'])) {
+        $product_names = is_array($_POST['product_name[]']) ? $_POST['product_name[]'] : [$_POST['product_name[]']];
+    }
+    if (isset($_POST['product_qty'])) {
+        $product_qtys = is_array($_POST['product_qty']) ? $_POST['product_qty'] : [$_POST['product_qty']];
+    } elseif (isset($_POST['product_qty[]'])) {
+        $product_qtys = is_array($_POST['product_qty[]']) ? $_POST['product_qty[]'] : [$_POST['product_qty[]']];
+    }
+    if (isset($_POST['product_amount'])) {
+        $product_amounts = is_array($_POST['product_amount']) ? $_POST['product_amount'] : [$_POST['product_amount']];
+    } elseif (isset($_POST['product_amount[]'])) {
+        $product_amounts = is_array($_POST['product_amount[]']) ? $_POST['product_amount[]'] : [$_POST['product_amount[]']];
+    }
 
-    if (!$customer_id || !$invoice_date || empty($product_names) || empty($product_qtys) || empty($product_amounts)) {
-        echo json_encode(['success' => false, 'error' => 'Missing required fields.']);
+
+    // Validate at least one product/service with valid name and amount > 0
+    $valid_product = false;
+    for ($i = 0; $i < count($product_names); $i++) {
+        $name = trim($product_names[$i]);
+        $amt = isset($product_amounts[$i]) ? floatval($product_amounts[$i]) : 0.00;
+        if ($name !== '' && $amt > 0) {
+            $valid_product = true;
+            break;
+        }
+    }
+    if (!$customer_id || !$invoice_date || !$valid_product) {
+        echo json_encode(['success' => false, 'error' => 'Add at least one product/service with a valid amount.']);
         exit;
     }
 
@@ -33,6 +60,14 @@ try {
         if ($name !== '') {
             $itemStmt->execute([$invoice_id, $name, $qty, $amt]);
         }
+    }
+
+    // Collect payment logic removed. Now invoice and payment are handled separately.
+
+    // DEBUG: Return all POST data for troubleshooting
+    if (isset($_GET['debug']) || isset($_POST['debug'])) {
+        echo json_encode(['post'=>$_POST]);
+        exit;
     }
 
     echo json_encode(['success' => true, 'invoice_id' => $invoice_id]);

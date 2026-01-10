@@ -35,9 +35,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_client_and_enquir
     $category_id = (int)$_POST['category_id'];
     $enquiry_date = $_POST['enquiry_date'] ?? date('Y-m-d');
     $notes = trim($_POST['notes'] ?? '');
-    if ($name !== '' && $mobile !== '' && $category_id > 0 && $enquiry_date) {
+    if ($name !== '' && $category_id > 0 && $enquiry_date) {
         $stmt = $pdo->prepare('INSERT INTO cif_clients (name, mobile, address, dob, birth_time, birth_place) VALUES (?, ?, ?, ?, ?, ?)');
-        $stmt->execute([$name, $mobile, $address, $dob, $birth_time, $birth_place]);
+        $stmt->execute([$name, $mobile, $address, $dob, $birth_time, $birth_place]); // mobile and address can be blank
         $client_id = $pdo->lastInsertId();
         $stmt = $pdo->prepare('INSERT INTO cif_enquiries (client_id, category_id, enquiry_date, notes) VALUES (?, ?, ?, ?)');
         $stmt->execute([$client_id, $category_id, $enquiry_date, $notes]);
@@ -202,7 +202,7 @@ h1 {
                     <input type="text" name="name" id="clientNameInput" placeholder="Name" required style="padding:8px 12px;border-radius:6px;border:1px solid #ccc;font-size:1em;" value="<?= htmlspecialchars($_POST['name'] ?? '') ?>">
                     <div id="clientSearchResults" style="display:none;position:absolute;top:110%;left:0;z-index:10;background:#fff;border:1px solid #ccc;border-radius:8px;box-shadow:0 2px 8px #e0bebe22;min-width:220px;max-height:220px;overflow-y:auto;"></div>
                 </div>
-                <input type="text" name="mobile" placeholder="Mobile No" required style="padding:8px 12px;border-radius:6px;border:1px solid #ccc;font-size:1em;" value="<?= htmlspecialchars($_POST['mobile'] ?? '') ?>">
+                <input type="text" name="mobile" placeholder="Mobile No" style="padding:8px 12px;border-radius:6px;border:1px solid #ccc;font-size:1em;" value="<?= htmlspecialchars($_POST['mobile'] ?? '') ?>">
                 <input type="text" name="address" placeholder="Address" style="padding:8px 12px;border-radius:6px;border:1px solid #ccc;font-size:1em;min-width:180px;" value="<?= htmlspecialchars($_POST['address'] ?? '') ?>">
                 <input type="date" name="dob" placeholder="DOB" style="padding:8px 12px;border-radius:6px;border:1px solid #ccc;font-size:1em;" value="<?= htmlspecialchars($_POST['dob'] ?? '') ?>">
                 <input type="time" name="birth_time" placeholder="Birth Time" style="padding:8px 12px;border-radius:6px;border:1px solid #ccc;font-size:1em;" value="<?= htmlspecialchars($_POST['birth_time'] ?? '') ?>">
