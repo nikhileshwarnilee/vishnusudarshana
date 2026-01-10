@@ -92,7 +92,7 @@ if ($source === 'appointment') {
             ];
             $total_amount = $appointmentProduct['price'];
         } else {
-            echo '<main class="main-content"><h2>No appointment services available</h2>';
+            echo '<main class="main-content" style="background-color:#FFD700;"><h2>No appointment services available</h2>';
             echo '<p>Please contact support to complete your appointment booking.</p>';
             echo '<a href="services.php" class="review-back-link">&larr; Back to Services</a></main>';
             require_once 'footer.php';
@@ -144,7 +144,7 @@ if ($source === 'appointment') {
                 ];
                 $total_amount = $appointmentProduct['price'];
             } else {
-                echo '<main class="main-content"><h2>No appointment services available</h2>';
+                echo '<main class="main-content" style="background-color:#FFD700;"><h2>No appointment services available</h2>';
                 echo '<p>Please contact support to complete your appointment booking.</p>';
                 echo '<a href="services.php" class="review-back-link">&larr; Back to Services</a></main>';
                 require_once 'footer.php';
@@ -161,7 +161,7 @@ if ($source === 'appointment') {
     } else {
         // Existing record path (legacy)
         if (!$appointment) {
-            echo '<main class="main-content"><h2>Appointment not found</h2>';
+            echo '<main class="main-content" style="background-color:#FFD700;"><h2>Appointment not found</h2>';
             echo '<a href="services.php" class="review-back-link">&larr; Back to Services</a></main>';
             require_once 'footer.php';
             exit;
@@ -197,7 +197,7 @@ if ($source === 'appointment') {
 
     // Validate products and total
     if (!$category || empty($product_ids) || empty($quantities)) {
-        echo '<main class="main-content"><h2>Invalid payment request</h2>';
+        echo '<main class="main-content" style="background-color:#FFD700;"><h2>Invalid payment request</h2>';
         echo '<p>Please select at least one service/product.</p>';
         echo '<a href="service-review.php?category=' . htmlspecialchars($category) . '" class="review-back-link">&larr; Back to Review</a></main>';
         require_once 'footer.php';
@@ -228,7 +228,7 @@ if ($source === 'appointment') {
         $total_amount += $line_total;
     }
     if ($total_amount <= 0) {
-        echo '<main class="main-content"><h2>Invalid total amount</h2>';
+        echo '<main class="main-content" style="background-color:#FFD700;"><h2>Invalid total amount</h2>';
         echo '<p>Total amount must be greater than zero.</p>';
         echo '<a href="service-review.php?category=' . htmlspecialchars($category) . '" class="review-back-link">&larr; Back to Review</a></main>';
         require_once 'footer.php';
@@ -250,7 +250,7 @@ if ($source === 'appointment') {
 
 // UI
 ?>
-<main class="main-content">
+<main class="main-content" style="background-color:#FFD700;">
     <h1 class="review-title">Payment Summary</h1>
     <div class="review-card">
         <h2 class="section-title">Customer Details</h2>

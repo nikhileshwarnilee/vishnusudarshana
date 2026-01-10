@@ -17,7 +17,7 @@ function getMuhurat($key, $default = '—') {
 }
 ?>
 
-<main class="main-content muhurat-page">
+<main class="main-content muhurat-page" style="background-color:#FFD700;">
     <section class="muhurat-title">
         <h1>Today's Auspicious Timings</h1>
         <p class="subtitle">(Placeholder indicators — Please consult an expert for advice)</p>

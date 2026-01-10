@@ -63,7 +63,7 @@ if (empty($pending)) {
     
     require_once 'header.php';
     ?>
-    <main class="main-content">
+    <main class="main-content" style="background-color:#FFD700;">
         <h1 class="review-title">Payment Received</h1>
 
         <div class="review-card">

@@ -78,7 +78,7 @@ unset($fields);
 
 // No PHP redirect logic here. Form will post directly to service-review.php.
 ?>
-<main class="main-content">
+<main class="main-content" style="background-color:#FFD700;">
     <h1 class="form-title"><?php echo htmlspecialchars($categories[$category]); ?> — Service Form</h1>
     <?php if ($category === 'appointment'): ?>
     <form method="post" action="service-review.php?category=<?php echo urlencode($category); ?>" class="service-form" autocomplete="off" id="appointmentForm">
@@ -217,8 +217,8 @@ function handleSelectChange(field) {
 }
 </script>
 <style>
-body { background: linear-gradient(135deg, #f7e7e7 0%, #f7f7fa 100%); }
-.main-content { max-width: 480px; margin: 0 auto; background: #fff; border-radius: 18px; box-shadow: 0 4px 24px #e0bebe33; padding: 18px 12px 28px 12px; }
+body { background: #FFD700 !important; }
+.main-content { max-width: 480px; margin: 0 auto; background: #FFD700; border-radius: 18px; box-shadow: 0 4px 24px #e0bebe33; padding: 18px 12px 28px 12px; }
 .form-title { font-size: 1.18em; font-weight: bold; margin-bottom: 18px; text-align: center; }
 .form-section { margin-bottom: 18px; }
 .form-section-title { font-size: 1.05em; color: #800000; margin-bottom: 10px; font-weight: 600; }

@@ -2,7 +2,7 @@
 session_start();
 require_once 'header.php';
 ?>
-<main class="main-content">
+<main class="main-content" style="background-color:#FFD700;">
     <div class="review-card" style="text-align:center;max-width:420px;margin:32px auto 0 auto;">
         <div style="font-size:2.5em;line-height:1;margin-bottom:10px;">❌</div>
         <h1 class="review-title" style="margin-bottom:10px;">Payment Failed</h1>

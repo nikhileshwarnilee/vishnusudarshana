@@ -20,7 +20,7 @@ function getDinVishesh($default = '—') {
 }
 ?>
 
-<main class="main-content din-vishesh-content">
+<main class="main-content din-vishesh-content" style="background-color:#FFD700;">
     <section>
         <h1>Today's Significance</h1>
         <div class="din-meta">

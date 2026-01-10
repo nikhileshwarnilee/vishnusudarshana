@@ -1,6 +1,6 @@
 <?php include 'header.php'; ?>
 
-<main class="services-main">
+<main class="services-main" style="background-color:#FFD700;">
     <section class="service-categories">
         <h1 class="services-title">Choose a Service Type</h1>
         <div class="categories-grid">

@@ -96,7 +96,7 @@ $cat = $categories[$category];
 body {
     font-family: Arial, sans-serif;
     margin: 0;
-    background: linear-gradient(135deg, #f7e7e7 0%, #f7f7fa 100%);
+    background: #FFD700;
     min-height: 10vh;
 }
 .main-content {
@@ -232,7 +232,7 @@ body {
     </style>
 </head>
 <body>
-<main class="main-content">
+<main class="main-content" style="background-color:#FFD700;">
     <!-- Service Detail Header -->
     <section class="detail-header">
         <div class="detail-icon-large">
@@ -282,9 +282,9 @@ body {
     </section>
     <!-- Proceed Button -->
     <section class="detail-section" style="text-align:center;">
-        <a class="proceed-btn maroon-btn" href="service-form.php?category=<?php echo urlencode($category); ?>">Proceed</a>
+        <a class="proceed-btn btn-soft-yellow" href="service-form.php?category=<?php echo urlencode($category); ?>">Proceed</a>
         <div class="cat-helper-text">You will be asked to fill a simple form in the next step.</div>
     </section>
-    <a href="services.php" style="display:block;text-align:center;margin-top:14px;color:#1a8917;font-size:0.98em;">&larr; Back to Services</a>
+    <a href="services.php" class="btn-soft-yellow" style="display:block;text-align:center;margin:18px auto 0 auto;">&larr; Back to Services</a>
 </main>
 <?php require_once 'footer.php'; ?>

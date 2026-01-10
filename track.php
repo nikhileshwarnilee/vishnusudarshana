@@ -65,7 +65,7 @@
     border-radius: 8px;
     font-weight: 600;
     font-size: 0.98em;
-    background: #f7e7e7;
+    background: #FFD700;
     color: #800000;
     display: inline-block;
 }
@@ -125,7 +125,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 ?>
 
-<main class="main-content">
+<main class="main-content" style="background-color:#FFD700;">
     <section class="track-hero">
         <h2>Track Your Service</h2>
         <p>Enter your mobile number or tracking ID to check your service status.</p>
