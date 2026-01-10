@@ -33,7 +33,7 @@ function getPanchangValue($key, $default = '—') {
                 </ul>
             </div>
             <div class="card-footer">
-                <a href="panchang.php" class="card-btn">View Full Panchang</a>
+                <a href="panchang.php" class="sample-btn btn-soft-yellow">View Full Panchang</a>
             </div>
         </article>
 
@@ -43,7 +43,7 @@ function getPanchangValue($key, $default = '—') {
                 <h3>Today's Significance</h3>
                 <p><strong>Significance:</strong> <?php echo getPanchangValue('dinvishesh aajchya divsache dharmik sanskrutik mahatva 10 to 20 oli'); ?></p>
             <div class="card-footer">
-                <a href="din-vishesh.php" class="card-btn">Read More</a>
+                <a href="din-vishesh.php" class="sample-btn btn-soft-yellow">Read More</a>
             </div>
         </article>
 
@@ -60,7 +60,7 @@ function getPanchangValue($key, $default = '—') {
                 </ul>
             </div>
             <div class="card-footer">
-                <a href="muhurat.php" class="card-btn">View All Timings</a>
+                <a href="muhurat.php" class="sample-btn btn-soft-yellow">View All Timings</a>
             </div>
         </article>
 

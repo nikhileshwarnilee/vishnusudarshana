@@ -1,3 +1,44 @@
+/* Soft Yellow Button Style */
+.btn-soft-yellow, .sample-btn.btn-soft-yellow {
+    background: #FFFACD;
+    color: #8B1538;
+    border: 2px solid #FFD700;
+    padding: 14px 36px;
+    font-size: 1.1rem;
+    font-weight: 700;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.18s cubic-bezier(.4,1.3,.6,1);
+    box-shadow: 0 2px 8px rgba(212,175,55,0.10);
+    outline: none;
+    margin-bottom: 8px;
+}
+.btn-soft-yellow:hover, .btn-soft-yellow:focus, .sample-btn.btn-soft-yellow:hover, .sample-btn.btn-soft-yellow:focus {
+    background: #FFD700;
+    color: #fff;
+}
+/* Global Button Style: White with Gold Border */
+button, input[type="submit"], .btn-white-gold {
+    background: #fff;
+    color: #8B1538;
+    border: 2px solid #FFD700;
+    padding: 14px 36px;
+    font-size: 1.1rem;
+    font-weight: 700;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.18s cubic-bezier(.4,1.3,.6,1);
+    box-shadow: 0 2px 8px rgba(212,175,55,0.10);
+    outline: none;
+    margin-bottom: 8px;
+}
+button:hover, button:focus,
+input[type="submit"]:hover, input[type="submit"]:focus,
+.btn-white-gold:hover, .btn-white-gold:focus {
+    background: #FFFACD;
+    color: #b8960f;
+    border-color: #d4af37;
+}
 @media (max-width: 700px) {
     .header--design-12 .header-12-content {
         flex-direction: column;
