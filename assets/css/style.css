@@ -1,3 +1,11 @@
+.header--design-12 .header-12-nav {
+    display: block;
+}
+@media (max-width: 700px) {
+    .header--design-12 .header-12-nav {
+        display: none !important;
+    }
+}
 /* --- Language icon in header --- */
 .lang-header-btn {
     background: none;
@@ -2057,4 +2065,118 @@ body, .main-content, .form-container, .status-card, .panchang-card, .detail-sect
 @keyframes contentFadeIn {
     from { opacity: 0; transform: translateY(6px); }
     to   { opacity: 1; transform: translateY(0); }
+}
+
+/* --- Header Design 12 (Side-by-Side with Divider) --- */
+.header--design-12 {
+    background: linear-gradient(90deg, #FFD700 0%, #FFFACD 100%);
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    color: #2c3e50;
+}
+
+.header--design-12 .header-12-content {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 15px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 32px;
+}
+
+.header--design-12 .header-12-logo {
+    flex-shrink: 0;
+    border-right: 3px solid #d4af37; /* gold accent */
+    padding-right: 28px;
+}
+
+.header--design-12 .header-12-logo .logo-img {
+    max-height: 64px; /* increased logo size */
+    width: auto;
+    object-fit: contain;
+}
+
+.header--design-12 .header-12-nav .nav-menu {
+    display: flex;
+    list-style: none;
+    gap: 32px;
+}
+
+.header--design-12 .header-12-nav .nav-menu a {
+    text-decoration: none;
+    color: #2c3e50;
+    font-weight: 700;
+    position: relative;
+    padding: 6px 0;
+    transition: color 0.2s ease;
+}
+
+.header--design-12 .header-12-nav .nav-menu a::before {
+    content: '';
+    position: absolute;
+    top: -6px;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background: #d4af37;
+    transform: scaleX(0);
+    transform-origin: right;
+    transition: transform 0.25s ease;
+}
+
+.header--design-12 .header-12-nav .nav-menu a:hover {
+    color: #8B1538; /* maroon */
+}
+
+.header--design-12 .header-12-nav .nav-menu a:hover::before {
+    transform: scaleX(1);
+    transform-origin: left;
+}
+
+/* Language button overrides inside design-12 */
+.header--design-12 .lang-header-btn {
+    background: #d4af37;
+    color: #1a1a1a;
+    border: none;
+    padding: 10px 18px;
+    border-radius: 8px;
+    font-weight: 700;
+    position: static; /* override absolute */
+    right: auto;
+    top: auto;
+}
+
+.header--design-12 .lang-header-btn:active,
+.header--design-12 .lang-header-btn:focus {
+    background: #b8960f;
+    color: #fff;
+}
+
+/* Responsive adjustments for design-12 */
+@media (max-width: 1024px) {
+    .header--design-12 .header-12-content {
+        flex-direction: column;
+        gap: 16px;
+        padding: 12px 16px;
+    }
+    .header--design-12 .header-12-logo {
+        border-right: none;
+        padding-right: 0;
+        border-bottom: 2px solid #d4af37;
+        padding-bottom: 10px;
+        width: 100%;
+        display: flex;
+        justify-content: center;
+    }
+    .header--design-12 .header-12-nav .nav-menu {
+        flex-wrap: wrap;
+        gap: 16px;
+        justify-content: center;
+    }
+    .header--design-12 .lang-header-btn {
+        align-self: center;
+    }
 }
