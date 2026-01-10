@@ -1,3 +1,28 @@
+/* Uniform Soft Yellow Button Style for All Buttons and Button-like Links */
+.btn-soft-yellow, .sample-btn.btn-soft-yellow, .services-online-btn, .cta-guidance-btn, .cta-guidance-btn.secondary, .card-btn, a.btn-soft-yellow, a.sample-btn.btn-soft-yellow, a.services-online-btn, a.cta-guidance-btn, a.cta-guidance-btn.secondary, a.card-btn {
+    background: #FFFACD;
+    color: #8B1538 !important;
+    border: 2px solid #FFD700;
+    padding: 14px 36px;
+    font-size: 1.1rem;
+    font-weight: 700;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.18s cubic-bezier(.4,1.3,.6,1);
+    box-shadow: 0 2px 8px rgba(212,175,55,0.10);
+    outline: none;
+    margin-bottom: 8px;
+    text-decoration: none !important;
+    display: inline-block;
+    min-width: 160px;
+    text-align: center;
+}
+.btn-soft-yellow:hover, .btn-soft-yellow:focus, .sample-btn.btn-soft-yellow:hover, .sample-btn.btn-soft-yellow:focus, .services-online-btn:hover, .services-online-btn:focus, .cta-guidance-btn:hover, .cta-guidance-btn:focus, .cta-guidance-btn.secondary:hover, .cta-guidance-btn.secondary:focus, .card-btn:hover, .card-btn:focus, a.btn-soft-yellow:hover, a.btn-soft-yellow:focus, a.sample-btn.btn-soft-yellow:hover, a.sample-btn.btn-soft-yellow:focus, a.services-online-btn:hover, a.services-online-btn:focus, a.cta-guidance-btn:hover, a.cta-guidance-btn:focus, a.cta-guidance-btn.secondary:hover, a.cta-guidance-btn.secondary:focus, a.card-btn:hover, a.card-btn:focus {
+    background: #FFD700;
+    color: #fff !important;
+    border-color: #d4af37;
+    text-decoration: none !important;
+}
 /* Soft Yellow Button Style */
 .btn-soft-yellow, .sample-btn.btn-soft-yellow {
     background: #FFFACD;
