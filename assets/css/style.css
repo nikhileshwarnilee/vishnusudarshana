@@ -787,8 +787,8 @@ body {
     bottom: 0;
     left: 0;
     right: 0;
-    background-color: #fff;
-    border-top: 2px solid #e0e0e0;
+    background: linear-gradient(90deg, #FFD700 0%, #FFFACD 100%);
+    border-top: 2px solid #d4af37;
     z-index: 99;
     display: flex;
 }
@@ -811,7 +811,7 @@ body {
     justify-content: center;
     padding: 12px 8px;
     text-decoration: none;
-    color: #666;
+    color: #8B1538;
     font-size: 12px;
     font-weight: 600;
     transition: all 0.3s ease;
@@ -826,12 +826,12 @@ body {
 
 .mobile-nav .nav-link:hover,
 .mobile-nav .nav-link:active {
-    color: var(--saffron);
-    background-color: rgba(255, 153, 51, 0.05);
+    color: #fff;
+    background: #8B1538;
 }
 
 .mobile-nav .nav-link:active .nav-icon {
-    color: var(--saffron);
+    color: #fff;
 }
 
 /* Main Content */
