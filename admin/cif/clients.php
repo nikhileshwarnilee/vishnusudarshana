@@ -7,15 +7,15 @@ $edit_id = isset($_GET['edit']) ? (int)$_GET['edit'] : 0;
 $edit_client = null;
 
 // Handle add or update
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['name'], $_POST['mobile'])) {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['name'])) {
     $name = trim($_POST['name']);
-    $mobile = trim($_POST['mobile']);
+    $mobile = trim($_POST['mobile'] ?? '');
     $address = trim($_POST['address'] ?? '');
     $dob = $_POST['dob'] ?? null;
     $birth_time = $_POST['birth_time'] ?? null;
     $birth_place = trim($_POST['birth_place'] ?? '');
     $id = isset($_POST['edit_id']) ? (int)$_POST['edit_id'] : 0;
-    if ($name !== '' && $mobile !== '') {
+    if ($name !== '') {
         if ($id > 0) {
             $stmt = $pdo->prepare('UPDATE cif_clients SET name=?, mobile=?, address=?, dob=?, birth_time=?, birth_place=? WHERE id=?');
             $stmt->execute([$name, $mobile, $address, $dob, $birth_time, $birth_place, $id]);
@@ -29,7 +29,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['name'], $_POST['mobil
             $msg = 'Client added!';
         }
     } else {
-        $msg = 'Name and mobile are required.';
+        $msg = 'Name is required.';
     }
 }
 
@@ -111,8 +111,11 @@ table tbody tr:hover { background: #f1f1f1; }
             <div style="color: var(--maroon); font-weight: 600; margin-bottom: 12px;"> <?= htmlspecialchars($msg) ?> </div>
         <?php endif; ?>
         <form method="post" style="display:flex;gap:18px;align-items:center;flex-wrap:wrap;margin-bottom:24px;">
-            <input type="text" name="name" placeholder="Name" required style="padding:8px 12px;border-radius:6px;border:1px solid #ccc;font-size:1em;" value="<?= $edit_client ? htmlspecialchars($edit_client['name']) : '' ?>">
-            <input type="text" name="mobile" placeholder="Mobile No" required style="padding:8px 12px;border-radius:6px;border:1px solid #ccc;font-size:1em;" value="<?= $edit_client ? htmlspecialchars($edit_client['mobile']) : '' ?>">
+            <div style="position:relative;">
+                <input type="text" name="name" id="clientNameInput" placeholder="Name" required style="padding:8px 12px;border-radius:6px;border:1px solid #ccc;font-size:1em;" value="<?= $edit_client ? htmlspecialchars($edit_client['name']) : '' ?>">
+                <div id="clientSearchResults" style="display:none;position:absolute;top:110%;left:0;z-index:10;background:#fff;border:1px solid #ccc;border-radius:8px;box-shadow:0 2px 8px #e0bebe22;min-width:220px;max-height:220px;overflow-y:auto;"></div>
+            </div>
+            <input type="text" name="mobile" placeholder="Mobile No" style="padding:8px 12px;border-radius:6px;border:1px solid #ccc;font-size:1em;" value="<?= $edit_client ? htmlspecialchars($edit_client['mobile']) : '' ?>">
             <input type="text" name="address" placeholder="Address" style="padding:8px 12px;border-radius:6px;border:1px solid #ccc;font-size:1em;min-width:180px;" value="<?= $edit_client ? htmlspecialchars($edit_client['address']) : '' ?>">
             <input type="date" name="dob" placeholder="DOB" style="padding:8px 12px;border-radius:6px;border:1px solid #ccc;font-size:1em;" value="<?= $edit_client && $edit_client['dob'] ? htmlspecialchars($edit_client['dob']) : '' ?>">
             <input type="time" name="birth_time" placeholder="Birth Time" style="padding:8px 12px;border-radius:6px;border:1px solid #ccc;font-size:1em;" value="<?= $edit_client && $edit_client['birth_time'] ? htmlspecialchars($edit_client['birth_time']) : '' ?>">
@@ -120,7 +123,7 @@ table tbody tr:hover { background: #f1f1f1; }
             <?php if ($edit_client): ?>
                 <input type="hidden" name="edit_id" value="<?= (int)$edit_client['id'] ?>">
             <?php endif; ?>
-            <button type="submit" style="padding:10px 22px;background:var(--maroon);color:#fff;border:none;border-radius:6px;font-weight:600;">
+            <button type="submit" style="padding:10px 22px;background:#28a745;color:#fff;border:none;border-radius:6px;font-weight:600;">
                 <?= $edit_client ? 'Update Client' : 'Add Client' ?>
             </button>
             <?php if ($edit_client): ?>
@@ -208,6 +211,45 @@ $(document).on('click', '.page-link', function(e) {
     e.preventDefault();
     var page = $(this).data('page');
     loadClientsAjax(page);
+});
+document.addEventListener('DOMContentLoaded', function() {
+  var nameInput = document.getElementById('clientNameInput');
+  var resultsBox = document.getElementById('clientSearchResults');
+  if (!nameInput || !resultsBox) return;
+
+  let lastQuery = '';
+  let hideTimeout;
+
+  nameInput.addEventListener('input', function() {
+    const q = nameInput.value.trim();
+    if (q.length < 2) {
+      resultsBox.style.display = 'none';
+      resultsBox.innerHTML = '';
+      return;
+    }
+    lastQuery = q;
+    fetch('ajax_search_clients.php?q=' + encodeURIComponent(q))
+      .then(r => r.json())
+      .then(list => {
+        if (nameInput.value.trim() !== lastQuery) return;
+        if (!list.length) {
+          resultsBox.innerHTML = '<div style="padding:8px;color:#888;">No matches found</div>';
+        } else {
+          resultsBox.innerHTML = list.map(c => {
+            let mobile = c.mobile ? ` <span style='color:#888;font-size:0.95em;'>(${c.mobile})</span>` : '';
+            return `<div style="padding:8px;cursor:pointer;" onclick="document.getElementById('clientNameInput').value='${c.name.replace(/'/g, '\'')}'">${c.name}${mobile}</div>`;
+          }).join('');
+        }
+        resultsBox.style.display = 'block';
+      });
+  });
+
+  nameInput.addEventListener('blur', function() {
+    hideTimeout = setTimeout(() => { resultsBox.style.display = 'none'; }, 200);
+  });
+  resultsBox.addEventListener('mousedown', function() {
+    clearTimeout(hideTimeout);
+  });
 });
 </script>
 </body>
