@@ -30,14 +30,22 @@ $currentPage = basename(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH));
    MENU CONFIGURATION (NO HARD PATHS)
    -------------------------------------------------- */
 
+// Reception moved after Dashboard
 $menu = [
     'Dashboard' => [
         'url'  => $baseUrl . '/admin/index.php',
-        'icon' => '🏠',
+        'icon' => '<svg width="20" height="20" fill="none" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="2" fill="#800000"/><rect x="14" y="3" width="7" height="7" rx="2" fill="#800000"/><rect x="14" y="14" width="7" height="7" rx="2" fill="#800000"/><rect x="3" y="14" width="7" height="7" rx="2" fill="#800000"/></svg>',
+    ],
+
+    'Reception' => [
+        'icon' => '<svg width="20" height="20" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="7" r="3" fill="#800000"/><rect x="6" y="12" width="12" height="5" rx="2" fill="#800000" fill-opacity=".15"/><rect x="4" y="17" width="16" height="2" rx="1" fill="#800000" fill-opacity=".25"/></svg>',
+        'submenu' => [
+            'Visitors Log' => $baseUrl . '/admin/reception/visitors-log.php',
+        ]
     ],
 
     'Appointments' => [
-        'icon' => '📅',
+        'icon' => '<svg width="20" height="20" fill="none" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" fill="#800000" fill-opacity=".08" stroke="#800000" stroke-width="2"/><path d="M8 2v4M16 2v4" stroke="#800000" stroke-width="2"/><path d="M7 13l3 3 7-7" stroke="#800000" stroke-width="2" fill="none"/></svg>',
         'submenu' => [
             'Pending Appointments'   => $baseUrl . '/admin/services/appointments.php',
             'Accepted Appointments'  => $baseUrl . '/admin/services/accepted-appointments.php',
@@ -46,7 +54,7 @@ $menu = [
     ],
 
     'Services' => [
-        'icon' => '🛠️',
+        'icon' => '<svg width="20" height="20" fill="none" viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 0 1 1.4 1.4l-8 8a1 1 0 0 1-1.4-1.4l8-8zM17.7 3.3a3 3 0 0 1 4.2 4.2l-2.1 2.1-4.2-4.2 2.1-2.1zM2.3 17.7a3 3 0 0 1 4.2 0l2.1-2.1-4.2-4.2-2.1 2.1a3 3 0 0 1 0 4.2z" fill="#800000"/></svg>',
         'submenu' => [
             // 'Service Requests'   => $baseUrl . '/admin/services/index.php',
             'Service Request List' => $baseUrl . '/admin/services/service-request-list.php',
@@ -60,7 +68,7 @@ $menu = [
     // 'Reels' menu removed
 
     'Payments' => [
-        'icon' => '💳',
+        'icon' => '<svg width="20" height="20" fill="none" viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2" fill="#800000" fill-opacity=".08" stroke="#800000" stroke-width="2"/><rect x="6" y="10" width="6" height="4" rx="1" fill="#800000"/><circle cx="18" cy="14" r="2" fill="#800000"/></svg>',
         'submenu' => [
             'All Payments'    => $baseUrl . '/admin/payments/payments.php',
             'Create Invoice'  => $baseUrl . '/admin/payments/create-invoice.php',
@@ -72,7 +80,7 @@ $menu = [
 
 
     'CIF' => [
-        'icon' => '📄',
+        'icon' => '<svg width="20" height="20" fill="none" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2" fill="#800000" fill-opacity=".08" stroke="#800000" stroke-width="2"/><path d="M8 8h8v8H8z" fill="#fff"/><path d="M8 2v4M16 2v4" stroke="#800000" stroke-width="2"/></svg>',
         'submenu' => [
             'CIF Home'   => $baseUrl . '/admin/cif/index.php',
             'Category'   => $baseUrl . '/admin/cif/category.php',
@@ -81,14 +89,14 @@ $menu = [
     ],
 
     'CRM' => [
-        'icon' => '👥',
+        'icon' => '<svg width="20" height="20" fill="none" viewBox="0 0 24 24"><circle cx="7" cy="8" r="3" fill="#800000"/><circle cx="17" cy="8" r="3" fill="#800000"/><ellipse cx="12" cy="17" rx="9" ry="5" fill="#800000" fill-opacity=".08"/></svg>',
         'submenu' => [
             'Customer Database' => $baseUrl . '/admin/crm/customerdatabase.php',
         ]
     ],
 
     'Settings' => [
-        'icon' => '⚙️',
+        'icon' => '<svg width="20" height="20" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" stroke="#800000" stroke-width="2" fill="#800000" fill-opacity=".2"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.09A1.65 1.65 0 0 0 11 3.09V3a2 2 0 0 1 4 0v.09c.28.11.53.28.74.5.21.21.39.46.5.74H15a1.65 1.65 0 0 0 1.51 1c.2 0 .39-.07.56-.18l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.09c.11.28.28.53.5.74.21.21.46.39.74.5V9a2 2 0 0 1 0 4h-.09c-.28.11-.53.28-.74.5-.21.21-.39.46-.5.74v.09z" stroke="#800000" stroke-width="2" fill="none"/></svg>',
         'submenu' => [
             // 'Profile' removed
             'Change Password' => $baseUrl . '/admin/settings/password.php',
@@ -96,9 +104,16 @@ $menu = [
         ]
     ],
 
+    'Reception' => [
+        'icon' => '<svg width="20" height="20" fill="none" viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="8" rx="2" fill="#800000" fill-opacity=".08" stroke="#800000" stroke-width="2"/><path stroke="#800000" stroke-width="2" d="M12 4v6"/></svg>',
+        'submenu' => [
+            'Visitors Log' => $baseUrl . '/admin/reception/visitors-log.php',
+        ]
+    ],
+
     'Logout' => [
         'url'  => $baseUrl . '/admin/logout.php',
-        'icon' => '🚪',
+        'icon' => '<svg width="20" height="20" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" stroke="#800000" stroke-width="2" fill="#800000" fill-opacity=".08"/><path d="M12 4v8" stroke="#800000" stroke-width="2" stroke-linecap="round"/><path d="M7 12a5 5 0 1 0 10 0" stroke="#800000" stroke-width="2" fill="none"/></svg>',
     ],
 ];
 
@@ -121,7 +136,7 @@ if (!function_exists('isActivePage')) {
 
         <!-- Logo -->
         <div class="admin-top-menu-logo">
-            Vishnusudarshana Admin
+            <img src="<?=$baseUrl?>/assets/images/logo/logomain.png" alt="Logo" style="height:38px;vertical-align:middle;">
         </div>
 
         <!-- Menu -->
@@ -151,7 +166,7 @@ if (!function_exists('isActivePage')) {
                     <?php if ($hasSubmenu): ?>
                         <a href="javascript:void(0)" class="admin-top-menu-link">
                             <span class="icon"><?= $item['icon'] ?></span>
-                            <?= htmlspecialchars($label) ?>
+                            <?php if ($label !== 'Settings') echo htmlspecialchars($label); ?>
                             <span class="dropdown-arrow">▼</span>
                         </a>
 
@@ -168,7 +183,7 @@ if (!function_exists('isActivePage')) {
                     <?php else: ?>
                         <a href="<?= htmlspecialchars($item['url']) ?>" class="admin-top-menu-link">
                             <span class="icon"><?= $item['icon'] ?></span>
-                            <?= htmlspecialchars($label) ?>
+                            <?php if ($label !== 'Logout') echo htmlspecialchars($label); ?>
                         </a>
                     <?php endif; ?>
 

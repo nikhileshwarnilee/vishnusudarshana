@@ -46,6 +46,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 </head>
 <body>
 <div class="login-container">
+    <div style="text-align:center;margin-bottom:18px;">
+        <img src="../assets/images/logo/logomain.png" alt="Logo" style="height:54px;max-width:90%;">
+    </div>
     <h1>Admin Login</h1>
     <?php if ($message): ?><div class="msg" style="color:red;"> <?= htmlspecialchars($message) ?> </div><?php endif; ?>
     <form method="post" autocomplete="off">

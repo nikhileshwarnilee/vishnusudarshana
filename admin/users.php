@@ -1,5 +1,3 @@
-
-
 <?php
 session_start();
 if (!isset($_SESSION['user_id']) || $_SESSION['user_id'] != 1) {
@@ -17,13 +15,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax'])) {
         $name = trim($_POST['name'] ?? '');
         $email = trim($_POST['email'] ?? '');
         $password = $_POST['password'] ?? '';
+        $permissions = $_POST['perm'] ?? [];
         if ($name && $email && $password) {
             $stmt = $pdo->prepare('SELECT COUNT(*) FROM users WHERE email = ?');
             $stmt->execute([$email]);
             if ($stmt->fetchColumn() == 0) {
-                // Store password as plain text (insecure)
                 $stmt = $pdo->prepare('INSERT INTO users (name, email, password) VALUES (?, ?, ?)');
                 $stmt->execute([$name, $email, $password]);
+                $user_id = $pdo->lastInsertId();
+                // Save permissions
+                if (!empty($permissions)) {
+                    $permStmt = $pdo->prepare('INSERT INTO user_permissions (user_id, menu, submenu, action) VALUES (?, ?, ?, ?)');
+                    foreach ($permissions as $menu => $subs) {
+                        foreach ($subs as $submenu => $actions) {
+                            foreach ($actions as $action => $val) {
+                                if ($val) $permStmt->execute([$user_id, $menu, $submenu, $action]);
+                            }
+                        }
+                    }
+                }
                 echo json_encode(['success' => true, 'msg' => 'User added successfully!']);
             } else {
                 echo json_encode(['success' => false, 'msg' => 'Email already exists!']);
@@ -33,21 +43,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax'])) {
         }
         exit;
     }
+    if ($_POST['ajax'] === 'get_permissions' && isset($_POST['id'])) {
+        $id = (int)$_POST['id'];
+        $perms = $pdo->query("SELECT menu, submenu, action FROM user_permissions WHERE user_id = $id")->fetchAll(PDO::FETCH_ASSOC);
+        $result = [];
+        foreach ($perms as $p) {
+            $result[$p['menu']][$p['submenu']][$p['action']] = true;
+        }
+        echo json_encode(['success' => true, 'permissions' => $result]);
+        exit;
+    }
     if ($_POST['ajax'] === 'edit' && isset($_POST['id'])) {
         $id = (int)$_POST['id'];
         $name = trim($_POST['name'] ?? '');
         $email = trim($_POST['email'] ?? '');
         $password = $_POST['password'] ?? '';
+        $permissions = $_POST['perm'] ?? [];
         $stmt = $pdo->prepare('SELECT COUNT(*) FROM users WHERE email = ? AND id != ?');
         $stmt->execute([$email, $id]);
         if ($stmt->fetchColumn() == 0) {
             if ($password) {
-                // Store password as plain text (insecure)
                 $stmt = $pdo->prepare('UPDATE users SET name=?, email=?, password=? WHERE id=?');
                 $stmt->execute([$name, $email, $password, $id]);
             } else {
                 $stmt = $pdo->prepare('UPDATE users SET name=?, email=? WHERE id=?');
                 $stmt->execute([$name, $email, $id]);
+            }
+            // Update permissions
+            $pdo->prepare('DELETE FROM user_permissions WHERE user_id=?')->execute([$id]);
+            if (!empty($permissions)) {
+                $permStmt = $pdo->prepare('INSERT INTO user_permissions (user_id, menu, submenu, action) VALUES (?, ?, ?, ?)');
+                foreach ($permissions as $menu => $subs) {
+                    foreach ($subs as $submenu => $actions) {
+                        foreach ($actions as $action => $val) {
+                            if ($val) $permStmt->execute([$id, $menu, $submenu, $action]);
+                        }
+                    }
+                }
             }
             echo json_encode(['success' => true, 'msg' => 'User updated!']);
         } else {
@@ -79,7 +111,7 @@ $users = $pdo->query('SELECT * FROM users ORDER BY id DESC')->fetchAll();
         .summary-card { flex: 1 1 180px; background: #fffbe7; border-radius: 14px; padding: 16px; text-align: center; box-shadow: 0 2px 8px #e0bebe22; }
         .summary-count { font-size: 2.2em; font-weight: 700; color: #800000; }
         .summary-label { font-size: 1em; color: #444; }
-        .form-box { margin-bottom: 20px; padding: 18px; border: 1px solid #ccc; border-radius: 12px; background: #fff; max-width: 500px; }
+        .form-box { margin-bottom: 20px; padding: 18px; border: 1px solid #ccc; border-radius: 12px; background: #fff; max-width: none; width: 100%; }
         .form-group { margin-bottom: 16px; }
         .form-group label { display: block; font-weight: 600; margin-bottom: 6px; color: #333; }
         .form-group input { width: 100%; padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 1em; }
@@ -95,6 +127,12 @@ $users = $pdo->query('SELECT * FROM users ORDER BY id DESC')->fetchAll();
         .action-btn.edit:hover { background: #e0a800; }
         .action-btn.delete:hover { background: #b52a37; }
         .no-data { text-align: center; color: #777; padding: 24px; }
+        .permissions-card { margin-bottom: 24px; }
+        .permissions-table th, .permissions-table td { border-bottom: 1px solid #f3caca; }
+        .permissions-table th { background: #f9eaea; color: #800000; font-weight: 700; }
+        .permissions-table tr:last-child td { border-bottom: none; }
+        .perm-check { display: inline-flex; align-items: center; cursor: pointer; }
+        .perm-check input[type="checkbox"] { accent-color: #800000; width: 18px; height: 18px; margin-right: 4px; }
         @media (max-width: 700px) { .summary-cards { flex-direction: column; } }
     </style>
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
@@ -125,6 +163,43 @@ $users = $pdo->query('SELECT * FROM users ORDER BY id DESC')->fetchAll();
             <div class="form-group">
                 <label>Password <span id="pwdNote" style="font-weight:400;font-size:0.95em;"></span></label>
                 <input type="password" name="password" id="userPassword">
+            </div>
+            <div class="form-group permissions-card">
+                <label style="font-size:1.08em;font-weight:700;margin-bottom:10px;display:block;">Permissions</label>
+                <div style="overflow-x:auto;background:#fffbe7;border-radius:12px;box-shadow:0 2px 8px #e0bebe22;padding:18px 12px 12px 12px;">
+                    <table class="permissions-table" style="width:100%;border-collapse:collapse;">
+                        <thead style="position:sticky;top:0;z-index:2;">
+                            <tr style="background:#f3caca;">
+                                <th style="padding:10px 8px;text-align:left;">Menu</th>
+                                <th style="padding:10px 8px;text-align:left;">Submenu</th>
+                                <th style="padding:10px 8px;text-align:center;">View</th>
+                                <th style="padding:10px 8px;text-align:center;">Edit</th>
+                                <th style="padding:10px 8px;text-align:center;">Delete</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php include __DIR__ . '/includes/top-menu.php'; foreach ($menu as $menuLabel => $menuItem): ?>
+                                <?php if (isset($menuItem['submenu'])): foreach ($menuItem['submenu'] as $subLabel => $subUrl): ?>
+                                    <tr style="background:#fff;">
+                                        <td style="padding:10px 8px;font-weight:600;color:#800000;"><?= htmlspecialchars($menuLabel) ?></td>
+                                        <td style="padding:10px 8px;"><?= htmlspecialchars($subLabel) ?></td>
+                                        <td style="text-align:center;"><label class="perm-check"><input type="checkbox" name="perm[<?= $menuLabel ?>][<?= $subLabel ?>][view]" value="1"><span></span></label></td>
+                                        <td style="text-align:center;"><label class="perm-check"><input type="checkbox" name="perm[<?= $menuLabel ?>][<?= $subLabel ?>][edit]" value="1"><span></span></label></td>
+                                        <td style="text-align:center;"><label class="perm-check"><input type="checkbox" name="perm[<?= $menuLabel ?>][<?= $subLabel ?>][delete]" value="1"><span></span></label></td>
+                                    </tr>
+                                <?php endforeach; else: ?>
+                                    <tr style="background:#fff;">
+                                        <td style="padding:10px 8px;font-weight:600;color:#800000;"><?= htmlspecialchars($menuLabel) ?></td>
+                                        <td style="padding:10px 8px;">-</td>
+                                        <td style="text-align:center;"><label class="perm-check"><input type="checkbox" name="perm[<?= $menuLabel ?>][main][view]" value="1"><span></span></label></td>
+                                        <td style="text-align:center;"><label class="perm-check"><input type="checkbox" name="perm[<?= $menuLabel ?>][main][edit]" value="1"><span></span></label></td>
+                                        <td style="text-align:center;"><label class="perm-check"><input type="checkbox" name="perm[<?= $menuLabel ?>][main][delete]" value="1"><span></span></label></td>
+                                    </tr>
+                                <?php endif; ?>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
             </div>
             <button type="submit" class="btn-main" id="saveBtn">Save</button>
             <button type="button" class="btn-main" id="cancelBtn" style="display:none;background:#6c757d;">Cancel</button>
@@ -195,6 +270,21 @@ $(function() {
         $('#pwdNote').text('(Leave blank to keep current password)');
         $('#cancelBtn').show();
         editing = true;
+        // Uncheck all permissions first
+        $('input[name^="perm"]').prop('checked', false);
+        // Fetch and check previously granted permissions
+        $.post('users.php', { ajax: 'get_permissions', id: editId }, function(resp) {
+            if (resp.success && resp.permissions) {
+                Object.entries(resp.permissions).forEach(([menu, submenus]) => {
+                    Object.entries(submenus).forEach(([submenu, actions]) => {
+                        Object.entries(actions).forEach(([action, val]) => {
+                            const selector = `input[name='perm[${menu}][${submenu}][${action}]']`;
+                            $(selector).prop('checked', true);
+                        });
+                    });
+                });
+            }
+        }, 'json');
     });
     $('#usersTable').on('click', '.delete', function() {
         if (!confirm('Delete this user?')) return;
