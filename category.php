@@ -232,7 +232,7 @@ body {
     </style>
 </head>
 <body>
-<main class="main-content" style="background-color:#FFD700;">
+<main class="main-content" style="background-color:var(--cream-bg);">
     <!-- Service Detail Header -->
     <section class="detail-header">
         <div class="detail-icon-large">
@@ -281,10 +281,10 @@ body {
         </div>
     </section>
     <!-- Proceed Button -->
-    <section class="detail-section" style="text-align:center;">
+    <section class="detail-section detail-section-center">
         <a class="proceed-btn btn-soft-yellow" href="service-form.php?category=<?php echo urlencode($category); ?>">Proceed</a>
         <div class="cat-helper-text">You will be asked to fill a simple form in the next step.</div>
     </section>
-    <a href="services.php" class="btn-soft-yellow" style="display:block;text-align:center;margin:18px auto 0 auto;">&larr; Back to Services</a>
+    <a href="services.php" class="btn-soft-yellow btn-block" style="margin:18px auto 0 auto;">&larr; Back to Services</a>
 </main>
 <?php require_once 'footer.php'; ?>

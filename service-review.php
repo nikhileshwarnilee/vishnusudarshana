@@ -85,7 +85,7 @@ if ($category === 'appointment') {
     $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
-?><main class="main-content" style="background-color:#FFD700;">
+?><main class="main-content" style="background-color:var(--cream-bg);">
     <h1 class="review-title">Review &amp; Select Services</h1>
     <div class="review-card">
         <h2 class="section-title">Your Submitted Details</h2>

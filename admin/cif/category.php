@@ -83,7 +83,7 @@ h1 { color: #800000; margin-bottom: 18px; }
 
         <h2 style="color:#800000;"> <?= $edit_cat ? 'Edit Category' : 'Add Category' ?> </h2>
         <?php if ($msg): ?>
-            <div style="color: #800000; font-weight: 600; margin-bottom: 12px;"> <?= htmlspecialchars($msg) ?> </div>
+            <div style="color: var(--maroon); font-weight: 600; margin-bottom: 12px;"> <?= htmlspecialchars($msg) ?> </div>
         <?php endif; ?>
         <form method="post" style="display:flex;gap:18px;align-items:center;flex-wrap:wrap;margin-bottom:24px;">
             <input type="text" name="category_name" placeholder="Category Name" required style="padding:8px 12px;border-radius:6px;border:1px solid #ccc;font-size:1em;" value="<?= $edit_cat ? htmlspecialchars($edit_cat['name']) : '' ?>">
@@ -91,7 +91,7 @@ h1 { color: #800000; margin-bottom: 18px; }
             <?php if ($edit_cat): ?>
                 <input type="hidden" name="edit_id" value="<?= (int)$edit_cat['id'] ?>">
             <?php endif; ?>
-            <button type="submit" style="padding:10px 22px;background:#800000;color:#fff;border:none;border-radius:6px;font-weight:600;">
+            <button type="submit" style="padding:10px 22px;background:var(--maroon);color:#fff;border:none;border-radius:6px;font-weight:600;">
                 <?= $edit_cat ? 'Update Category' : 'Add Category' ?>
             </button>
             <?php if ($edit_cat): ?>
@@ -99,10 +99,10 @@ h1 { color: #800000; margin-bottom: 18px; }
             <?php endif; ?>
         </form>
 
-        <h2 style="color:#800000;">Categories List</h2>
-        <table style="width:100%;border-collapse:collapse;background:#fff;box-shadow:0 2px 8px #e0bebe22;border-radius:12px;overflow:hidden;">
+        <h2 style="color:var(--maroon);">Categories List</h2>
+        <table style="width:100%;border-collapse:collapse;background:#fff;box-shadow:0 2px 8px rgba(139,21,56,0.08);border-radius:12px;overflow:hidden;">
             <thead>
-                <tr style="background:#f9eaea;color:#800000;">
+                <tr style="background:#f9eaea;color:var(--maroon);">
                     <th style="padding:12px 10px;">#</th>
                     <th style="padding:12px 10px;">Name</th>
                     <th style="padding:12px 10px;">Color</th>

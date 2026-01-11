@@ -1,6 +1,6 @@
 <?php include 'header.php'; ?>
 
-<main class="services-main" style="background-color:#FFD700;">
+<main class="services-main">
     <section class="service-categories">
         <h1 class="services-title">Choose a Service Type</h1>
         <div class="categories-grid">
@@ -60,14 +60,14 @@
 <style>
 .services-main {
     padding: 1.5rem 0 4.5rem 0;
-    background: #f8f9fa;
+    background: var(--cream-bg);
     min-height: 100vh;
 }
 .services-title {
     text-align: center;
     font-size: 2rem;
     margin-bottom: 1.5rem;
-    color: #222;
+    color: var(--text-dark);
 }
 /* Responsive grid and card design improvements */
 .categories-grid {
@@ -87,7 +87,7 @@
     box-shadow: 0 4px 18px rgba(128,0,0,0.08);
     padding: 1.6rem 1.2rem 1.2rem 1.2rem;
     text-decoration: none;
-    color: #222;
+    color: var(--text-dark);
     transition: box-shadow 0.2s, transform 0.2s;
     cursor: pointer;
     min-height: 160px;
@@ -97,7 +97,7 @@
 .category-card:hover, .category-card:focus {
     box-shadow: 0 8px 32px rgba(128,0,0,0.14);
     transform: translateY(-2px) scale(1.03);
-    border-color: #800000;
+    border-color: var(--maroon);
 }
 .category-icon {
     font-size: 2.6rem;
@@ -119,7 +119,7 @@
     font-size: 1.22rem;
     margin: 0 0 0.3rem 0;
     font-weight: 700;
-    color: #800000;
+    color: var(--maroon);
     letter-spacing: 0.01em;
 }
 .category-info p {

@@ -243,7 +243,7 @@ $recentRows = $recentStmt->fetchAll(PDO::FETCH_ASSOC);
 </head>
 <body>
 <div class="admin-container" style="max-width:1100px;margin:0 auto;padding:24px 12px;">
-    <h1 style="color:#800000;margin-bottom:18px;">Admin Dashboard</h1>
+    <h1 style="color:var(--maroon);margin-bottom:18px;">Admin Dashboard</h1>
     <div style="text-align:center;color:#666;font-size:1.08rem;margin-bottom:28px;">Overview of appointments, services, and payments</div>
 
 
@@ -312,7 +312,7 @@ $recentRows = $recentStmt->fetchAll(PDO::FETCH_ASSOC);
 
     <!-- SECTION D: Recent Activity Table -->
     <div style="margin-bottom:36px;">
-        <div class="section-title" style="font-size:22px;color:#800000;font-weight:700;margin-bottom:16px;text-align:center;">Recent Activity</div>
+        <div class="section-title" style="font-size:22px;color:var(--maroon);font-weight:700;margin-bottom:16px;text-align:center;">Recent Activity</div>
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
             <input type="text" id="searchInput" placeholder="Search..." style="padding:7px 12px;border-radius:6px;border:1px solid #ccc;font-size:1em;max-width:220px;">
             <div style="font-size:0.98em;color:#888;">Showing max 10 records</div>

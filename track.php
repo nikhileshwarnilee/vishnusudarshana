@@ -53,7 +53,7 @@
 }
 .track-table th {
     background: #f9eaea;
-    color: #800000;
+    color: var(--maroon);
     font-weight: 700;
     letter-spacing: 0.01em;
 }
@@ -65,14 +65,14 @@
     border-radius: 8px;
     font-weight: 600;
     font-size: 0.98em;
-    background: #FFD700;
-    color: #800000;
+    background: var(--button-hover);
+    color: var(--maroon);
     display: inline-block;
 }
 .status-badge.status-paid { background: #e5ffe5; color: #1a8917; }
 .status-badge.status-received { background: #e5f0ff; color: #0056b3; }
 .download-btn {
-    background: #800000;
+    background: var(--maroon);
     color: #fff;
     border: none;
     border-radius: 8px;
@@ -81,11 +81,11 @@
     font-weight: 600;
     text-align: center;
     text-decoration: none;
-    box-shadow: 0 2px 8px #80000022;
+    box-shadow: 0 2px 8px rgba(139, 21, 56, 0.15);
     transition: background 0.15s;
     display: inline-block;
 }
-.download-btn:active { background: #5a0000; }
+.download-btn:active { background: var(--dark-maroon); }
 @media (max-width: 700px) {
     .track-table th, .track-table td {
         padding: 10px 6px;
@@ -125,7 +125,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 ?>
 
-<main class="main-content" style="background-color:#FFD700;">
+<main class="main-content" style="background-color:var(--cream-bg);">
     <section class="track-hero">
         <h2>Track Your Service</h2>
         <p>Enter your mobile number or tracking ID to check your service status.</p>
@@ -136,18 +136,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <div class="form-group">
                 <input type="text" id="track_input" name="track_input" maxlength="30" placeholder="Enter Mobile Number or Tracking ID" required value="<?php echo isset($_POST['track_input']) ? htmlspecialchars($_POST['track_input']) : ''; ?>" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid #e0bebe;font-size:1.08em;">
             </div>
-            <button type="submit" class="track-btn" style="width:100%;background:#800000;color:#fff;border:none;border-radius:8px;padding:12px 0;font-size:1.08em;font-weight:600;margin-top:10px;cursor:pointer;">Track Service</button>
+            <button type="submit" class="track-btn" style="width:100%;background:var(--maroon);color:#fff;border:none;border-radius:8px;padding:12px 0;font-size:1.08em;font-weight:600;margin-top:10px;cursor:pointer;">Track Service</button>
         </form>
     </section>
 
     <section class="track-status-section">
         <?php if ($searched): ?>
             <?php if ($errorMsg): ?>
-                <div class="card-error" style="background:#fff1f0;color:#cf1322;padding:14px 10px;border-radius:8px;margin-bottom:18px;text-align:center;font-weight:600;">
+                <div class="alert-box" style="background:#fff1f0;color:#cf1322;padding:14px 10px;text-align:center;font-weight:600;">
                     <?php echo $errorMsg; ?>
                 </div>
             <?php elseif (empty($results)): ?>
-                <div class="card-info" style="background:#f6f6f6;color:#555;padding:14px 10px;border-radius:8px;margin-bottom:18px;text-align:center;font-weight:500;">
+                <div class="alert-box" style="background:var(--light-bg);color:#555;padding:14px 10px;text-align:center;font-weight:500;">
                     No service found for the given details.
                 </div>
             <?php else: ?>
@@ -238,7 +238,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 $trackingId = $row['tracking_id'];
                                 if (strpos($trackingId, 'SR') === 0) {
                                     // Offline: Always show Unpaid in red
-                                    echo '<span class="status-badge" style="background:#c00;color:#fff;">Unpaid</span>';
+                                    echo '<span class="status-badge" style="background:var(--dark-maroon);color:#fff;">Unpaid</span>';
                                 } elseif (strpos($trackingId, 'VDSK') === 0) {
                                     // Online: Always show Paid in green
                                     echo '<span class="status-badge" style="background:#e5ffe5;color:#1a8917;">Paid</span>';
@@ -251,7 +251,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <td><span class="status-badge status-<?php echo strtolower($row['service_status']); ?>"><?php echo htmlspecialchars($row['service_status']); ?></span></td>
                             <td>
                                 <div style="min-width:180px;">
-                                    <div style="font-weight:600;color:#800000;margin-bottom:4px;">Service Files / Reports</div>
+                                    <div style="font-weight:600;color:var(--maroon);margin-bottom:4px;">Service Files / Reports</div>
                                     <?php
                                     // Fetch uploaded_files
                                     $files = [];

@@ -23,7 +23,7 @@ function getPanchangValue($key, $default = '—') {
 
 ?>
 
-<main class="main-content panchang-page" style="background-color:#FFD700;">
+<main class="main-content panchang-page" style="background-color:var(--cream-bg);">
     <header class="panchang-title">
         <h1>Today's Complete Panchang</h1>
         <p class="subtitle">(Information — For reference only)</p>

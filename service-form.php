@@ -78,7 +78,7 @@ unset($fields);
 
 // No PHP redirect logic here. Form will post directly to service-review.php.
 ?>
-<main class="main-content" style="background-color:#FFD700;">
+<main class="main-content" style="background-color:var(--cream-bg);">
     <h1 class="form-title"><?php echo htmlspecialchars($categories[$category]); ?> — Service Form</h1>
     <?php if ($category === 'appointment'): ?>
     <form method="post" action="service-review.php?category=<?php echo urlencode($category); ?>" class="service-form" autocomplete="off" id="appointmentForm">

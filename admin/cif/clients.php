@@ -105,10 +105,10 @@ table tbody tr:hover { background: #f1f1f1; }
             <div class="summary-label">Clients</div>
         </div>
     </div>
-    <div style="background:#fff;padding:24px;border-radius:12px;box-shadow:0 2px 8px #e0bebe22;">
-        <h2 style="color:#800000;"> <?= $edit_client ? 'Edit Client' : 'Add Client' ?> </h2>
+    <div style="background:#fff;padding:24px;border-radius:12px;box-shadow:0 2px 8px rgba(139,21,56,0.08);">
+        <h2 style="color:var(--maroon);"> <?= $edit_client ? 'Edit Client' : 'Add Client' ?> </h2>
         <?php if ($msg): ?>
-            <div style="color: #800000; font-weight: 600; margin-bottom: 12px;"> <?= htmlspecialchars($msg) ?> </div>
+            <div style="color: var(--maroon); font-weight: 600; margin-bottom: 12px;"> <?= htmlspecialchars($msg) ?> </div>
         <?php endif; ?>
         <form method="post" style="display:flex;gap:18px;align-items:center;flex-wrap:wrap;margin-bottom:24px;">
             <input type="text" name="name" placeholder="Name" required style="padding:8px 12px;border-radius:6px;border:1px solid #ccc;font-size:1em;" value="<?= $edit_client ? htmlspecialchars($edit_client['name']) : '' ?>">
@@ -120,7 +120,7 @@ table tbody tr:hover { background: #f1f1f1; }
             <?php if ($edit_client): ?>
                 <input type="hidden" name="edit_id" value="<?= (int)$edit_client['id'] ?>">
             <?php endif; ?>
-            <button type="submit" style="padding:10px 22px;background:#800000;color:#fff;border:none;border-radius:6px;font-weight:600;">
+            <button type="submit" style="padding:10px 22px;background:var(--maroon);color:#fff;border:none;border-radius:6px;font-weight:600;">
                 <?= $edit_client ? 'Update Client' : 'Add Client' ?>
             </button>
             <?php if ($edit_client): ?>

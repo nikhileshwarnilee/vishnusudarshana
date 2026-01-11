@@ -7,7 +7,7 @@ require_once __DIR__ . '/config/db.php';
 $stmt = $pdo->query("SELECT * FROM service_categories ORDER BY sequence ASC, id ASC");
 $categories = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
-<main class="services-main" style="background-color:#FFD700;">
+<main class="services-main">
     <section class="service-categories">
         <h1 class="services-title">Choose a Service Type</h1>
         <div class="categories-grid">

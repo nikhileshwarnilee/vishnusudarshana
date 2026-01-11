@@ -12,7 +12,7 @@
 </head>
 <body>
     <?php include 'header.php'; ?>
-    <main style="max-width:800px;margin:auto;padding:2rem;background-color:#FFD700;">
+    <main style="max-width:800px;margin:auto;padding:2rem;background-color:var(--cream-bg);">
         <h1>Privacy Policy</h1>
         <p>Last updated: January 9, 2026</p>
         <h2>Introduction</h2>

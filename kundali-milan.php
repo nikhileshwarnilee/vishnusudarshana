@@ -1,6 +1,6 @@
 <?php include '/header.php'; ?>
 <div class="page-container">
-<main class="main-content" style="background-color:#FFD700;">
+<main class="main-content" style="background-color:var(--cream-bg);">
   <section class="service-form">
     <h1 class="form-title">Kundali Milan Form</h1>
     <form class="service-form" method="post" action="#">

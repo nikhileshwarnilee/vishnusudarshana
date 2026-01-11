@@ -17,7 +17,7 @@ function getPanchangValue($key, $default = '—') {
 }
 ?>
 
-<main class="main-content" style="background-color:#FFD700;">
+<main class="main-content">
     <section class="summary-cards">
         <!-- CARD 1: Panchang -->
         <article class="summary-card">

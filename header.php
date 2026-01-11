@@ -14,7 +14,7 @@
     <script src="<?php echo (strpos($_SERVER['PHP_SELF'], '/forms/') === false ? 'assets/js/language.js' : '../assets/js/language.js'); ?>" defer></script>
     <script src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
 </head>
-<body>
+<body class="body-homepage">
         <div id="google_translate_element" style="display:none;"></div>
         <script>
         function googleTranslateElementInit() {
