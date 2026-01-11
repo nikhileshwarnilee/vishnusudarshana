@@ -80,6 +80,13 @@ $menu = [
         ]
     ],
 
+    'CRM' => [
+        'icon' => '👥',
+        'submenu' => [
+            'Customer Database' => $baseUrl . '/admin/crm/customerdatabase.php',
+        ]
+    ],
+
     'Settings' => [
         'icon' => '⚙️',
         'submenu' => [
