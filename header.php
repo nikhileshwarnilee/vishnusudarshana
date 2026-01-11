@@ -53,14 +53,14 @@
     </div>
     <header class="header header--design-12">
         <?php $mobile_number = isset($mobile_number) ? $mobile_number : '98500 57444'; ?>
-        <div class="sample-label" style="background: linear-gradient(90deg, #FFD700 0%, #FFFACD 100%); color: #8B1538; padding: 12px 20px; font-weight: bold; font-size: 14px; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #d4af37;">
+        <div class="sample-label">
             <span style="display: flex; align-items: center; gap: 8px;">
                 <span style="font-size: 1.2em;">📞</span>
-                <a href="tel:<?php echo preg_replace('/[^0-9+]/', '', $mobile_number); ?>" style="color: #8B1538; text-decoration: none; font-weight: bold;">
+                <a href="tel:<?php echo preg_replace('/[^0-9+]/', '', $mobile_number); ?>">
                     <?php echo htmlspecialchars($mobile_number); ?>
                 </a>
             </span>
-            <button class="lang-header-btn" id="lang-header-btn" aria-label="Change Language" type="button" style="background: #fffbe6; color: #8B1538; font-weight: 700; border-radius: 20px; padding: 6px 18px; font-size: 13px; border: 1.5px solid #d4af37; box-shadow: 0 2px 8px rgba(212,175,55,0.08); margin-left: 18px;">Select Language</button>
+            <button class="lang-header-btn" id="lang-header-btn" aria-label="Change Language" type="button">Select Language</button>
         </div>
         <div class="header-12-content">
             <div class="header-12-logo">

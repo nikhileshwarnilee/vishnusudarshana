@@ -15,7 +15,7 @@ $categories = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 <a class="category-card" href="category.php?category=<?= htmlspecialchars($cat['category_slug']) ?>">
                     <?php if (!empty($cat['logo'])): ?>
                         <div class="category-icon" aria-label="<?= htmlspecialchars($cat['category_name']) ?>">
-                            <img src="assets/images/logo/<?= htmlspecialchars($cat['logo']) ?>" alt="<?= htmlspecialchars($cat['category_name']) ?>" style="width:2.6rem;height:2.6rem;object-fit:contain;border-radius:50%;background:#fff;">
+                            <img class="category-logo" src="assets/images/logo/<?= htmlspecialchars($cat['logo']) ?>" alt="<?= htmlspecialchars($cat['category_name']) ?>">
                         </div>
                     <?php else: ?>
                         <div class="category-icon" aria-label="<?= htmlspecialchars($cat['category_name']) ?>">📁</div>

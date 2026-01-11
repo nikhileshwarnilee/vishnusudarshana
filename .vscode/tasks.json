@@ -1,0 +1,15 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Batch update backgrounds to CSS variables",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"$file = 'c:\\xampp\\htdocs\\vishnusudarshana\\vishnusudarshana\\payment-init.php'; (Get-Content $file) -replace 'background-color:#FFD700;', 'background-color:var(--cream-bg);' | Set-Content $file"
+			]
+		}
+	]
+}

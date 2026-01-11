@@ -7,6 +7,15 @@
     --button-border-hover: #d4af37;
     --maroon: #8B1538;
     --text-dark: #333;
+    --success-bg: #e5ffe5;
+    --success-text: #1a8917;
+    --info-bg: #e5f0ff;
+    --info-text: #0056b3;
+    --muted-bg: #eee;
+    --muted-text: #888;
+    --header-gradient-start: #FFD700;
+    --header-gradient-end: #FFFACD;
+    --gold-shadow: rgba(212,175,55,0.08);
 }
 /* Main content background color same as homepage */
 .main-content {
@@ -138,6 +147,35 @@ input[type="submit"]:hover, input[type="submit"]:focus,
         top: 12px;
         font-size: 1.45rem;
     }
+}
+/* Sample top banner and language button within it */
+.sample-label {
+    background: linear-gradient(90deg, var(--header-gradient-start) 0%, var(--header-gradient-end) 100%);
+    color: var(--maroon);
+    padding: 12px 20px;
+    font-weight: bold;
+    font-size: 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 2px solid var(--button-border-hover);
+}
+.sample-label a {
+    color: var(--maroon);
+    text-decoration: none;
+    font-weight: bold;
+}
+.sample-label .lang-header-btn {
+    position: static;
+    background: var(--button-bg);
+    color: var(--maroon);
+    font-weight: 700;
+    border-radius: 20px;
+    padding: 6px 18px;
+    font-size: 13px;
+    border: 1.5px solid var(--button-border-hover);
+    box-shadow: 0 2px 8px var(--gold-shadow);
+    margin-left: 18px;
 }
 /* --- Language Selection Popup Styles --- */
 .lang-popup-overlay {

@@ -69,8 +69,9 @@
     color: var(--maroon);
     display: inline-block;
 }
-.status-badge.status-paid { background: #e5ffe5; color: #1a8917; }
-.status-badge.status-received { background: #e5f0ff; color: #0056b3; }
+.status-badge.status-paid { background: var(--success-bg); color: var(--success-text); }
+.status-badge.status-received { background: var(--info-bg); color: var(--info-text); }
+.status-badge.status-unknown { background: var(--muted-bg); color: var(--muted-text); }
 .download-btn {
     background: var(--maroon);
     color: #fff;
@@ -241,10 +242,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     echo '<span class="status-badge" style="background:var(--dark-maroon);color:#fff;">Unpaid</span>';
                                 } elseif (strpos($trackingId, 'VDSK') === 0) {
                                     // Online: Always show Paid in green
-                                    echo '<span class="status-badge" style="background:#e5ffe5;color:#1a8917;">Paid</span>';
+                                    echo '<span class="status-badge status-paid">Paid</span>';
                                 } else {
                                     // Unknown/other: show as blank or custom
-                                    echo '<span class="status-badge" style="background:#eee;color:#888;">-</span>';
+                                    echo '<span class="status-badge status-unknown">-</span>';
                                 }
                                 ?>
                             </td>

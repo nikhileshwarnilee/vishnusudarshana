@@ -28,7 +28,7 @@ function getDinVishesh($default = '—') {
         </div>
 
         <?php if ($fileNotFound): ?>
-            <div style="background-color: #fffbe6; border: 1px solid #ffc069; border-radius: 8px; padding: 16px; color: #8B1538;">
+            <div class="alert-box alert-info">
                 <p style="margin: 0;">Today's significance information is not available.</p>
             </div>
         <?php else: ?>
