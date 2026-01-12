@@ -1,4 +1,13 @@
 <?php
+// Handle delete action before any output
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_visitor']) && isset($_POST['visitor_id'])) {
+    require_once __DIR__ . '/../../config/db.php';
+    $delId = (int)$_POST['visitor_id'];
+    $pdo->prepare('DELETE FROM visitor_tickets WHERE id=?')->execute([$delId]);
+    header('Location: visitors-log.php?deleted=1');
+    exit;
+}
+
 require_once __DIR__ . '/../includes/top-menu.php';
 require_once __DIR__ . '/../../config/db.php';
 $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
@@ -31,7 +40,7 @@ if (!$visitor) {
         .status-badge { padding: 2px 12px; border-radius: 8px; font-weight: 600; font-size: 0.98em; background: #f7e7e7; color: #800000; display: inline-block; }
         .status-badge.status-open { background: #e5f0ff; color: #0056b3; }
         .status-badge.status-closed { background: #e5ffe5; color: #1a8917; }
-        .status-badge.status-cancelled { background: #ffe5e5; color: #a00; }
+        /* .status-badge.status-cancelled { background: #ffe5e5; color: #a00; } */
         .form-bar { margin-bottom: 18px; }
         .form-bar label { font-weight: 600; margin-right: 8px; }
         .form-bar select { padding: 6px 12px; border-radius: 6px; border: 1px solid #ccc; font-size: 1em; }
@@ -75,10 +84,10 @@ if (!$visitor) {
         <select name="visitor_status" id="visitor_status">
             <option value="open" <?= $visitor['status']==='open'?'selected':''; ?>>Open</option>
             <option value="closed" <?= $visitor['status']==='closed'?'selected':''; ?>>Closed</option>
-            <option value="cancelled" <?= $visitor['status']==='cancelled'?'selected':''; ?>>Cancelled</option>
         </select>
         <button type="submit">Update</button>
         <a href="visitors-log.php" style="color:#800000;text-decoration:underline;font-size:0.98em;margin-left:18px;">&larr; Back to Log</a>
+        <button type="button" id="deleteBtn" style="background:#dc3545;margin-left:18px;">Delete Visitor</button>
     </form>
     <h2 style="font-size:1.1em;color:#800000;margin:18px 0 8px 0;">Internal Admin Notes</h2>
     <div id="notes_container"></div>
@@ -175,8 +184,26 @@ document.getElementById('status-form').onsubmit = function(e) {
         }
     });
 };
+
+document.getElementById('deleteBtn').onclick = function() {
+    if (confirm('Are you sure you want to delete this visitor? This action cannot be undone.')) {
+        var form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '';
+        var input1 = document.createElement('input');
+        input1.type = 'hidden';
+        input1.name = 'delete_visitor';
+        input1.value = '1';
+        form.appendChild(input1);
+        var input2 = document.createElement('input');
+        input2.type = 'hidden';
+        input2.name = 'visitor_id';
+        input2.value = '<?= (int)$visitor['id'] ?>';
+        form.appendChild(input2);
+        document.body.appendChild(form);
+        form.submit();
+    }
+};
 </script>
 </script>
 </script>
-</body>
-</html>

@@ -10,7 +10,8 @@ $message = '';
 
 // AJAX: Add/Edit/Delete
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax'])) {
-    header('Content-Type: application/json');
+    // Debug: log POST data to a file for troubleshooting
+    file_put_contents(__DIR__ . '/debug_post.log', print_r($_POST, true));
     if ($_POST['ajax'] === 'add') {
         $name = trim($_POST['name'] ?? '');
         $email = trim($_POST['email'] ?? '');
@@ -164,43 +165,6 @@ $users = $pdo->query('SELECT * FROM users ORDER BY id DESC')->fetchAll();
                 <label>Password <span id="pwdNote" style="font-weight:400;font-size:0.95em;"></span></label>
                 <input type="password" name="password" id="userPassword">
             </div>
-            <div class="form-group permissions-card">
-                <label style="font-size:1.08em;font-weight:700;margin-bottom:10px;display:block;">Permissions</label>
-                <div style="overflow-x:auto;background:#fffbe7;border-radius:12px;box-shadow:0 2px 8px #e0bebe22;padding:18px 12px 12px 12px;">
-                    <table class="permissions-table" style="width:100%;border-collapse:collapse;">
-                        <thead style="position:sticky;top:0;z-index:2;">
-                            <tr style="background:#f3caca;">
-                                <th style="padding:10px 8px;text-align:left;">Menu</th>
-                                <th style="padding:10px 8px;text-align:left;">Submenu</th>
-                                <th style="padding:10px 8px;text-align:center;">View</th>
-                                <th style="padding:10px 8px;text-align:center;">Edit</th>
-                                <th style="padding:10px 8px;text-align:center;">Delete</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php include __DIR__ . '/includes/top-menu.php'; foreach ($menu as $menuLabel => $menuItem): ?>
-                                <?php if (isset($menuItem['submenu'])): foreach ($menuItem['submenu'] as $subLabel => $subUrl): ?>
-                                    <tr style="background:#fff;">
-                                        <td style="padding:10px 8px;font-weight:600;color:#800000;"><?= htmlspecialchars($menuLabel) ?></td>
-                                        <td style="padding:10px 8px;"><?= htmlspecialchars($subLabel) ?></td>
-                                        <td style="text-align:center;"><label class="perm-check"><input type="checkbox" name="perm[<?= $menuLabel ?>][<?= $subLabel ?>][view]" value="1"><span></span></label></td>
-                                        <td style="text-align:center;"><label class="perm-check"><input type="checkbox" name="perm[<?= $menuLabel ?>][<?= $subLabel ?>][edit]" value="1"><span></span></label></td>
-                                        <td style="text-align:center;"><label class="perm-check"><input type="checkbox" name="perm[<?= $menuLabel ?>][<?= $subLabel ?>][delete]" value="1"><span></span></label></td>
-                                    </tr>
-                                <?php endforeach; else: ?>
-                                    <tr style="background:#fff;">
-                                        <td style="padding:10px 8px;font-weight:600;color:#800000;"><?= htmlspecialchars($menuLabel) ?></td>
-                                        <td style="padding:10px 8px;">-</td>
-                                        <td style="text-align:center;"><label class="perm-check"><input type="checkbox" name="perm[<?= $menuLabel ?>][main][view]" value="1"><span></span></label></td>
-                                        <td style="text-align:center;"><label class="perm-check"><input type="checkbox" name="perm[<?= $menuLabel ?>][main][edit]" value="1"><span></span></label></td>
-                                        <td style="text-align:center;"><label class="perm-check"><input type="checkbox" name="perm[<?= $menuLabel ?>][main][delete]" value="1"><span></span></label></td>
-                                    </tr>
-                                <?php endif; ?>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
             <button type="submit" class="btn-main" id="saveBtn">Save</button>
             <button type="button" class="btn-main" id="cancelBtn" style="display:none;background:#6c757d;">Cancel</button>
         </form>
@@ -228,6 +192,7 @@ $users = $pdo->query('SELECT * FROM users ORDER BY id DESC')->fetchAll();
                 <td><?= $user['created_at'] ?></td>
                 <td>
                     <button class="action-btn edit" data-id="<?= $user['id'] ?>">Edit</button>
+                    <a class="action-btn" style="background:#17a2b8;color:#fff;" href="assign-permissions.php?user_id=<?= $user['id'] ?>">Assign Permissions</a>
                     <?php if ($user['id'] != 1): ?>
                         <button class="action-btn delete" data-id="<?= $user['id'] ?>">Delete</button>
                     <?php endif; ?>
@@ -244,17 +209,10 @@ let editId = null;
 $(function() {
     $('#userForm').on('submit', function(e) {
         e.preventDefault();
-        const id = $('#userId').val();
-        const name = $('#userName').val();
-        const email = $('#userEmail').val();
-        const password = $('#userPassword').val();
         const ajaxType = editing ? 'edit' : 'add';
-        if (editing && !password) {
-            // Don't send password if not changing
-            $.post('users.php', { ajax: ajaxType, id, name, email }, handleFormResponse, 'json');
-        } else {
-            $.post('users.php', { ajax: ajaxType, id, name, email, password }, handleFormResponse, 'json');
-        }
+        let formData = $(this).serialize();
+        formData += '&ajax=' + encodeURIComponent(ajaxType);
+        $.post('users.php', formData, handleFormResponse, 'json');
     });
     $('#cancelBtn').on('click', function() {
         resetForm();
@@ -270,21 +228,6 @@ $(function() {
         $('#pwdNote').text('(Leave blank to keep current password)');
         $('#cancelBtn').show();
         editing = true;
-        // Uncheck all permissions first
-        $('input[name^="perm"]').prop('checked', false);
-        // Fetch and check previously granted permissions
-        $.post('users.php', { ajax: 'get_permissions', id: editId }, function(resp) {
-            if (resp.success && resp.permissions) {
-                Object.entries(resp.permissions).forEach(([menu, submenus]) => {
-                    Object.entries(submenus).forEach(([submenu, actions]) => {
-                        Object.entries(actions).forEach(([action, val]) => {
-                            const selector = `input[name='perm[${menu}][${submenu}][${action}]']`;
-                            $(selector).prop('checked', true);
-                        });
-                    });
-                });
-            }
-        }, 'json');
     });
     $('#usersTable').on('click', '.delete', function() {
         if (!confirm('Delete this user?')) return;

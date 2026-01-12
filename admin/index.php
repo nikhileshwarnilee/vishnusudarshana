@@ -5,6 +5,10 @@ if (!isset($_SESSION['user_id'])) {
     header('Location: login.php');
     exit;
 }
+if ($_SESSION['user_id'] != 1) {
+    header('Location: staff-dashboard.php');
+    exit;
+}
 require_once __DIR__ . '/includes/top-menu.php';
 // Database connection
 require_once __DIR__ . '/../config/db.php';

@@ -5,7 +5,11 @@ session_start();
 
 // If already logged in, redirect to admin dashboard
 if (isset($_SESSION['user_id'])) {
-    header('Location: index.php');
+    if ($_SESSION['user_id'] == 1) {
+        header('Location: index.php');
+    } else {
+        header('Location: staff-dashboard.php');
+    }
     exit;
 }
 
@@ -19,7 +23,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($user && $user['password'] === $password) {
         $_SESSION['user_id'] = $user['id'];
         $_SESSION['user_name'] = $user['name'];
-        header('Location: index.php');
+        if ($user['id'] == 1) {
+            header('Location: index.php');
+        } else {
+            header('Location: staff-dashboard.php');
+        }
         exit;
     } else {
         $message = 'Invalid email or password!';

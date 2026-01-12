@@ -9,9 +9,42 @@ $action = $_POST['action'] ?? '';
 
 switch ($action) {
     case 'list':
-        $stmt = $pdo->query("SELECT * FROM visitor_tickets ORDER BY in_time DESC LIMIT 100");
+        $page = isset($_POST['page']) ? max(1, (int)$_POST['page']) : 1;
+        $perPage = isset($_POST['perPage']) ? max(1, (int)$_POST['perPage']) : 10;
+        $offset = ($page - 1) * $perPage;
+
+        // Optional search (future-proof, not yet in UI)
+        $search = trim($_POST['search'] ?? '');
+        $status = isset($_POST['status']) ? trim($_POST['status']) : '';
+        $where = [];
+        $params = [];
+        if ($search !== '') {
+            $where[] = "(visitor_name LIKE :q OR contact_number LIKE :q OR address LIKE :q OR purpose LIKE :q)";
+            $params['q'] = "%$search%";
+        }
+        if ($status !== '') {
+            $where[] = "status = :status";
+            $params['status'] = $status;
+        }
+        $whereSql = $where ? ('WHERE ' . implode(' AND ', $where)) : '';
+
+        // Get total count
+        $countSql = "SELECT COUNT(*) FROM visitor_tickets $whereSql";
+        $countStmt = $pdo->prepare($countSql);
+        $countStmt->execute($params);
+        $total = (int)$countStmt->fetchColumn();
+
+        // Get paginated data
+        $sql = "SELECT * FROM visitor_tickets $whereSql ORDER BY in_time DESC LIMIT :perPage OFFSET :offset";
+        $stmt = $pdo->prepare($sql);
+        foreach ($params as $k => $v) {
+            $stmt->bindValue(":$k", $v);
+        }
+        $stmt->bindValue(':perPage', $perPage, PDO::PARAM_INT);
+        $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+        $stmt->execute();
         $rows = $stmt->fetchAll();
-        echo json_encode(['success' => true, 'data' => $rows]);
+        echo json_encode(['success' => true, 'data' => $rows, 'total' => $total, 'page' => $page, 'perPage' => $perPage]);
         break;
     case 'add':
         $name = trim($_POST['visitor_name'] ?? '');
@@ -47,7 +80,7 @@ switch ($action) {
     case 'update_status':
         $id = intval($_POST['id'] ?? 0);
         $status = $_POST['status'] ?? '';
-        if (!in_array($status, ['open','closed','cancelled'])) {
+        if (!in_array($status, ['open','closed'])) {
             echo json_encode(['success' => false, 'error' => 'Invalid status']);
             exit;
         }

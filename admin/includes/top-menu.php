@@ -41,6 +41,7 @@ $menu = [
         'icon' => '<svg width="20" height="20" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="7" r="3" fill="#800000"/><rect x="6" y="12" width="12" height="5" rx="2" fill="#800000" fill-opacity=".15"/><rect x="4" y="17" width="16" height="2" rx="1" fill="#800000" fill-opacity=".25"/></svg>',
         'submenu' => [
             'Visitors Log' => $baseUrl . '/admin/reception/visitors-log.php',
+            'Closed Visitors Log' => $baseUrl . '/admin/reception/closed-visitors-log.php',
         ]
     ],
 
@@ -104,18 +105,62 @@ $menu = [
         ]
     ],
 
-    'Reception' => [
-        'icon' => '<svg width="20" height="20" fill="none" viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="8" rx="2" fill="#800000" fill-opacity=".08" stroke="#800000" stroke-width="2"/><path stroke="#800000" stroke-width="2" d="M12 4v6"/></svg>',
-        'submenu' => [
-            'Visitors Log' => $baseUrl . '/admin/reception/visitors-log.php',
-        ]
-    ],
+    // Reception menu is defined above with both submenus
 
     'Logout' => [
         'url'  => $baseUrl . '/admin/logout.php',
         'icon' => '<svg width="20" height="20" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" stroke="#800000" stroke-width="2" fill="#800000" fill-opacity=".08"/><path d="M12 4v8" stroke="#800000" stroke-width="2" stroke-linecap="round"/><path d="M7 12a5 5 0 1 0 10 0" stroke="#800000" stroke-width="2" fill="none"/></svg>',
     ],
 ];
+
+// Ensure session and DB connection for permission filtering
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+if (!isset($pdo)) {
+    require_once __DIR__ . '/../../config/db.php';
+}
+
+// --- Permission filtering ---
+// Only filter for non-admins; admin (user_id=1) always sees all menus/submenus
+if (isset($_SESSION['user_id']) && $_SESSION['user_id'] != 1) {
+    $user_id = $_SESSION['user_id'];
+    $perms = $pdo->prepare('SELECT menu, submenu FROM user_permissions WHERE user_id=? AND action="view"');
+    $perms->execute([$user_id]);
+    $allowed = [];
+    foreach ($perms->fetchAll(PDO::FETCH_ASSOC) as $p) {
+        $allowed[$p['menu']][$p['submenu']] = true;
+    }
+    // Filter $menu
+    foreach ($menu as $menuLabel => &$menuItem) {
+        if ($menuLabel === 'Logout') {
+            // Always show Logout
+            continue;
+        }
+        if ($menuLabel === 'Dashboard') {
+            // Dashboard is a main menu, treat as 'main' permission
+            $menu[$menuLabel]['url'] = $baseUrl . '/admin/staff-dashboard.php';
+            if (empty($allowed['Dashboard']['main'])) {
+                unset($menu[$menuLabel]);
+                continue;
+            }
+        } else if (isset($menuItem['submenu'])) {
+            foreach ($menuItem['submenu'] as $subLabel => $subUrl) {
+                if (empty($allowed[$menuLabel][$subLabel])) {
+                    unset($menuItem['submenu'][$subLabel]);
+                }
+            }
+            if (empty($menuItem['submenu'])) {
+                unset($menu[$menuLabel]);
+            }
+        } else {
+            if (empty($allowed[$menuLabel]['main'])) {
+                unset($menu[$menuLabel]);
+            }
+        }
+    }
+    unset($menuItem);
+}
 
 // Active state helper (prevent redeclaration)
 if (!function_exists('isActivePage')) {
