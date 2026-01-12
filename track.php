@@ -158,6 +158,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <tr>
                             <th>Tracking ID</th>
                             <th>Service Category</th>
+                            <th>Products Chosen</th>
                             <th>Date</th>
                             <?php
                             // Check if any result is an appointment to show the column
@@ -197,6 +198,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 $cat = $row['category_slug'];
                                 echo isset($categoryTitles[$cat]) ? $categoryTitles[$cat] : htmlspecialchars($cat);
                             ?></td>
+                            <td>
+                                <?php
+                                $products = '-';
+                                $decoded = [];
+                                if (isset($row['selected_products'])) {
+                                    $decoded = json_decode($row['selected_products'], true);
+                                }
+                                if ($row['category_slug'] === 'appointment') {
+                                    $products = 'Appointment';
+                                } elseif (is_array($decoded) && count($decoded)) {
+                                    $names = [];
+                                    // Use DB connection to fetch product names
+                                    foreach ($decoded as $prod) {
+                                        if (isset($prod['id'])) {
+                                            static $productNameCache = [];
+                                            $pid = (int)$prod['id'];
+                                            if (!isset($productNameCache[$pid])) {
+                                                $pstmt = $pdo->prepare('SELECT product_name FROM products WHERE id = ?');
+                                                $pstmt->execute([$pid]);
+                                                $prow = $pstmt->fetch();
+                                                $productNameCache[$pid] = $prow ? $prow['product_name'] : 'Product#'.$pid;
+                                            }
+                                            $names[] = htmlspecialchars($productNameCache[$pid]);
+                                        }
+                                    }
+                                    if ($names) {
+                                        $products = implode(', ', $names);
+                                    }
+                                }
+                                echo $products;
+                                ?>
+                            </td>
                             <td><?php echo date('d-m-Y', strtotime($row['created_at'])); ?></td>
                             <?php if ($showScheduleCol): ?>
                                 <td>
@@ -211,19 +244,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     if (!empty($row['form_data'])) {
                                         $fd = json_decode($row['form_data'], true) ?? [];
                                     }
-                                    $preferredDate = $fd['preferred_date'] ?? '';
+                                    // Always show assigned_date if present
+                                    $assignedDate = $fd['assigned_date'] ?? '';
                                     $fromTime = $fd['assigned_from_time'] ?? ($fd['time_from'] ?? '');
                                     $toTime = $fd['assigned_to_time'] ?? ($fd['time_to'] ?? '');
-                                    if ($preferredDate && $fromTime && $toTime) {
-                                        $dateFmt = DateTime::createFromFormat('Y-m-d', $preferredDate);
-                                        $dateDisp = $dateFmt ? $dateFmt->format('d-M-Y') : htmlspecialchars($preferredDate);
+                                    if ($assignedDate && $fromTime && $toTime) {
+                                        $dateFmt = DateTime::createFromFormat('Y-m-d', $assignedDate);
+                                        $dateDisp = $dateFmt ? $dateFmt->format('d-M-Y') : htmlspecialchars($assignedDate);
                                         $fromFmt = date('h:i A', strtotime($fromTime));
                                         $toFmt = date('h:i A', strtotime($toTime));
                                         echo htmlspecialchars($dateDisp . ' | ' . $fromFmt . ' – ' . $toFmt);
-                                    } elseif ($preferredDate) {
-                                        $dateFmt = DateTime::createFromFormat('Y-m-d', $preferredDate);
-                                        $dateDisp = $dateFmt ? $dateFmt->format('d-M-Y') : htmlspecialchars($preferredDate);
-                                        echo 'Scheduled on ' . htmlspecialchars($dateDisp) . ' (Time pending)';
+                                    } elseif ($assignedDate) {
+                                        $dateFmt = DateTime::createFromFormat('Y-m-d', $assignedDate);
+                                        $dateDisp = $dateFmt ? $dateFmt->format('d-M-Y') : htmlspecialchars($assignedDate);
+                                        echo 'Assigned on ' . htmlspecialchars($dateDisp) . ' (Time pending)';
                                     } else {
                                         echo 'Time not set';
                                     }
@@ -236,16 +270,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <td>₹<?php echo number_format($row['total_amount'], 2); ?></td>
                             <td>
                                 <?php
-                                $trackingId = $row['tracking_id'];
-                                if (strpos($trackingId, 'SR') === 0) {
-                                    // Offline: Always show Unpaid in red
-                                    echo '<span class="status-badge" style="background:var(--dark-maroon);color:#fff;">Unpaid</span>';
-                                } elseif (strpos($trackingId, 'VDSK') === 0) {
-                                    // Online: Always show Paid in green
+                                $payStatus = strtolower($row['payment_status'] ?? '');
+                                if ($payStatus === 'paid') {
                                     echo '<span class="status-badge status-paid">Paid</span>';
+                                } elseif ($payStatus === 'unpaid' || $payStatus === 'pending' || $payStatus === '') {
+                                    echo '<span class="status-badge" style="background:var(--dark-maroon);color:#fff;">Unpaid</span>';
                                 } else {
-                                    // Unknown/other: show as blank or custom
-                                    echo '<span class="status-badge status-unknown">-</span>';
+                                    echo '<span class="status-badge status-unknown">' . htmlspecialchars(ucfirst($row['payment_status'])) . '</span>';
                                 }
                                 ?>
                             </td>
