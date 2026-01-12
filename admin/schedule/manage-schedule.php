@@ -201,7 +201,7 @@ $(function() {
                         allDaySlot: true
                     }
                 },
-                selectable: isAdmin && !allUsersView,
+                selectable: (isAdmin && !allUsersView) || (!isAdmin),
                 editable: false,
                 scrollTime: '06:00:00',
                 eventDidMount: function(info) {
@@ -317,7 +317,7 @@ $(function() {
                     }
                 },
                 select: function(info) {
-                    if (!isAdmin || allUsersView) return;
+                    if ((isAdmin && allUsersView) || (!isAdmin && $('#userSelect').val() != currentUserId)) return;
                     var assigned_user_id = $('#userSelect').val();
                     var viewType = calendar.view.type;
                     var startDate = info.startStr.split('T')[0];

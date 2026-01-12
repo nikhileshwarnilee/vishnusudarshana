@@ -72,7 +72,7 @@ if ($action === 'fetch') {
     exit;
 }
 
-if ($action === 'create' && $isAdmin) {
+if ($action === 'create' && ($isAdmin || $assigned_user_id === $user_id)) {
     $title = trim($_POST['title'] ?? '');
     $description = trim($_POST['description'] ?? '');
     $start_date = $_POST['start_date'] ?? ($_POST['schedule_date'] ?? '');
