@@ -112,7 +112,7 @@ if ($isAdmin) {
                 </div>
                 <div style="display: flex; align-items: center; gap: 8px;">
                     <label for="timeSlotSelect" style="font-weight: 600; font-size: 0.9em; color: #374151; white-space: nowrap;">Time Slot:</label>
-                    <select id="timeSlotSelect" name="time_slot" class="form-control" style="max-width: 160px; min-width: 140px; padding: 6px 10px; border-radius: 5px; border: 1px solid #d1d5db; font-size: 0.9em;" <?= $isAdmin ? '' : 'disabled' ?>>
+                    <select id="timeSlotSelect" name="time_slot" class="form-control" style="max-width: 160px; min-width: 140px; padding: 6px 10px; border-radius: 5px; border: 1px solid #d1d5db; font-size: 0.9em;">
                         <option value="10" selected>10 Minutes</option>
                         <option value="30">30 Minutes</option>
                         <option value="60">1 Hour</option>
@@ -278,43 +278,45 @@ $(function() {
                     }
                 },
                 eventClick: function(info) {
-                    if (isAdmin && !allUsersView) {
-                        // Load event into sidebar for editing
-                        var eventId = info.event.id;
-                        var title = info.event.title;
-                        var desc = info.event.extendedProps.description;
-                        var status = info.event.extendedProps.status;
-                        
-                        // Format dates using local timezone (not UTC)
-                        function formatLocalDate(date) {
-                            var d = new Date(date);
-                            var month = String(d.getMonth() + 1).padStart(2, '0');
-                            var day = String(d.getDate()).padStart(2, '0');
-                            return d.getFullYear() + '-' + month + '-' + day;
-                        }
-                        
-                        var startDate = formatLocalDate(info.event.start);
-                        var endDate = formatLocalDate(info.event.end);
-                        var startTime = info.event.start.toLocaleTimeString('en-GB', {hour: '2-digit', minute:'2-digit', hour12: false}).replace(':', ':');
-                        var endTime = info.event.end.toLocaleTimeString('en-GB', {hour: '2-digit', minute:'2-digit', hour12: false}).replace(':', ':');
-                        var userId = info.event.extendedProps.assigned_user_id;
-                        
-                        // Parse title to remove status suffix
-                        var titleText = title.split(' (')[0];
-                        
-                        $('#sidebarEventId').val(eventId);
-                        $('#sidebarTitle').val(titleText);
-                        $('#sidebarDescription').val(desc);
-                        $('#sidebarStartDate').val(startDate);
-                        $('#sidebarEndDate').val(endDate);
-                        $('#sidebarStartTime').val(startTime);
-                        $('#sidebarEndTime').val(endTime);
-                        $('#sidebarStatus').val(status);
-                        $('#sidebarUser').val(userId);
-                        
-                        $('#btnDelete').show();
-                        $('#sidebarInfo').addClass('show').text('Editing existing schedule');
+                    var userId = info.event.extendedProps.assigned_user_id;
+                    var createdBy = info.event.extendedProps.created_by;
+                    // Allow admins (not viewing all users) or non-admins viewing schedules they created
+                    if (!((isAdmin && !allUsersView) || (!isAdmin && createdBy == currentUserId))) return;
+                    
+                    // Load event into sidebar for editing
+                    var eventId = info.event.id;
+                    var title = info.event.title;
+                    var desc = info.event.extendedProps.description;
+                    var status = info.event.extendedProps.status;
+                    
+                    // Format dates using local timezone (not UTC)
+                    function formatLocalDate(date) {
+                        var d = new Date(date);
+                        var month = String(d.getMonth() + 1).padStart(2, '0');
+                        var day = String(d.getDate()).padStart(2, '0');
+                        return d.getFullYear() + '-' + month + '-' + day;
                     }
+                    
+                    var startDate = formatLocalDate(info.event.start);
+                    var endDate = formatLocalDate(info.event.end);
+                    var startTime = info.event.start.toLocaleTimeString('en-GB', {hour: '2-digit', minute:'2-digit', hour12: false}).replace(':', ':');
+                    var endTime = info.event.end.toLocaleTimeString('en-GB', {hour: '2-digit', minute:'2-digit', hour12: false}).replace(':', ':');
+                    
+                    // Parse title to remove status suffix
+                    var titleText = title.split(' (')[0];
+                    
+                    $('#sidebarEventId').val(eventId);
+                    $('#sidebarTitle').val(titleText);
+                    $('#sidebarDescription').val(desc);
+                    $('#sidebarStartDate').val(startDate);
+                    $('#sidebarEndDate').val(endDate);
+                    $('#sidebarStartTime').val(startTime);
+                    $('#sidebarEndTime').val(endTime);
+                    $('#sidebarStatus').val(status);
+                    $('#sidebarUser').val(userId);
+                    
+                    $('#btnDelete').show();
+                    $('#sidebarInfo').addClass('show').text('Editing existing schedule');
                 },
                 select: function(info) {
                     if ((isAdmin && allUsersView) || (!isAdmin && $('#userSelect').val() != currentUserId)) return;
@@ -388,7 +390,7 @@ $(function() {
                     $('#sidebarTitle').focus();
                 },
                 dateClick: function(info) {
-                    if (!isAdmin || allUsersView) return;
+                    if ((isAdmin && allUsersView) || (!isAdmin && $('#userSelect').val() != currentUserId)) return;
                     var assigned_user_id = $('#userSelect').val();
                     var startDate = info.dateStr.split('T')[0];
                     var startTime = info.dateStr.split('T')[1] || '09:00:00';

@@ -35,6 +35,7 @@ if ($action === 'fetch') {
                     'status' => $row['status'],
                     'assigned_user_id' => $row['assigned_user_id'],
                     'assigned_user_name' => $row['assigned_user_name'],
+                    'created_by' => $row['created_by'],
                 ]
             ];
             $events[] = $event;
@@ -63,6 +64,7 @@ if ($action === 'fetch') {
                     'description' => $row['description'],
                     'status' => $row['status'],
                     'assigned_user_id' => $row['assigned_user_id'],
+                    'created_by' => $row['created_by'],
                 ]
             ];
             $events[] = $event;
@@ -72,7 +74,7 @@ if ($action === 'fetch') {
     exit;
 }
 
-if ($action === 'create' && ($isAdmin || $assigned_user_id === $user_id)) {
+if ($action === 'create') {
     $title = trim($_POST['title'] ?? '');
     $description = trim($_POST['description'] ?? '');
     $start_date = $_POST['start_date'] ?? ($_POST['schedule_date'] ?? '');
@@ -81,6 +83,11 @@ if ($action === 'create' && ($isAdmin || $assigned_user_id === $user_id)) {
     $end_time = $_POST['end_time'] ?? '';
     $status = $_POST['status'] ?? 'tentative';
     $assigned_user_id = (int)($_POST['assigned_user_id'] ?? 0);
+    // Check permission: admin can create for anyone, non-admin can only create for themselves
+    if (!$isAdmin && $assigned_user_id != $user_id) {
+        echo json_encode(['success' => false, 'msg' => 'You can only create schedules for yourself.']);
+        exit;
+    }
     if (!$title || !$start_date || !$start_time || !$end_time || !$assigned_user_id) {
         echo json_encode(['success' => false, 'msg' => 'All required fields must be filled.']);
         exit;
@@ -104,7 +111,7 @@ if ($action === 'create' && ($isAdmin || $assigned_user_id === $user_id)) {
     exit;
 }
 
-if ($action === 'update' && $isAdmin) {
+if ($action === 'update') {
     $event_id = (int)($_POST['event_id'] ?? 0);
     $title = trim($_POST['title'] ?? '');
     $description = trim($_POST['description'] ?? '');
@@ -118,6 +125,17 @@ if ($action === 'update' && $isAdmin) {
     if (!$event_id || !$title || !$schedule_date || !$start_time || !$end_time || !$assigned_user_id) {
         echo json_encode(['success' => false, 'msg' => 'All required fields must be filled.']);
         exit;
+    }
+    
+    // Check permission: admin can update any, non-admin can only update schedules they created
+    if (!$isAdmin) {
+        $createdByStmt = $pdo->prepare("SELECT created_by FROM admin_schedule WHERE id = ?");
+        $createdByStmt->execute([$event_id]);
+        $createdByRow = $createdByStmt->fetch(PDO::FETCH_ASSOC);
+        if (!$createdByRow || $createdByRow['created_by'] != $user_id) {
+            echo json_encode(['success' => false, 'msg' => 'You can only edit schedules you created.']);
+            exit;
+        }
     }
     
     // Conflict detection (excluding current event)
@@ -139,11 +157,22 @@ if ($action === 'update' && $isAdmin) {
     exit;
 }
 
-if ($action === 'delete' && $isAdmin) {
+if ($action === 'delete') {
     $event_id = (int)($_POST['event_id'] ?? 0);
     if (!$event_id) {
         echo json_encode(['success' => false, 'msg' => 'Invalid event ID.']);
         exit;
+    }
+    
+    // Check permission: admin can delete any, non-admin can only delete schedules they created
+    if (!$isAdmin) {
+        $eventStmt = $pdo->prepare("SELECT created_by FROM admin_schedule WHERE id = ?");
+        $eventStmt->execute([$event_id]);
+        $event = $eventStmt->fetch(PDO::FETCH_ASSOC);
+        if (!$event || $event['created_by'] != $user_id) {
+            echo json_encode(['success' => false, 'msg' => 'You can only delete schedules you created.']);
+            exit;
+        }
     }
     
     $stmt = $pdo->prepare("DELETE FROM admin_schedule WHERE id = ?");
