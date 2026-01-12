@@ -89,6 +89,13 @@ $menu = [
         ]
     ],
 
+    'Schedule' => [
+        'icon' => '<svg width="20" height="20" fill="none" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2" fill="#800000" fill-opacity=".08" stroke="#800000" stroke-width="2"/><path d="M8 2v4M16 2v4" stroke="#800000" stroke-width="2"/><path d="M7 13l3 3 7-7" stroke="#800000" stroke-width="2" fill="none"/></svg>',
+        'submenu' => [
+            'Manage Schedule' => $baseUrl . '/admin/schedule/manage-schedule.php',
+        ]
+    ],
+
     'CRM' => [
         'icon' => '<svg width="20" height="20" fill="none" viewBox="0 0 24 24"><circle cx="7" cy="8" r="3" fill="#800000"/><circle cx="17" cy="8" r="3" fill="#800000"/><ellipse cx="12" cy="17" rx="9" ry="5" fill="#800000" fill-opacity=".08"/></svg>',
         'submenu' => [
@@ -264,18 +271,18 @@ body {
 
 .admin-top-menu-inner {
     max-width: 1300px;
-    margin: auto;
+    margin: 0 auto;
     display: flex;
     align-items: center;
     height: 60px;
-    padding: 0 20px;
+    padding: 0 0px;
 }
 
 .admin-top-menu-logo {
     font-size: 1.25em;
     font-weight: 700;
     color: #800000;
-    margin-right: 30px;
+    margin-right: 16px;
 }
 
 .admin-top-menu-list {
