@@ -1,3 +1,31 @@
+/* Maroon button styles for schedule page */
+.btn-maroon {
+    background: linear-gradient(135deg, #800000 0%, #a52a2a 100%);
+    color: #fff;
+    border: none;
+}
+.btn-maroon:hover {
+    background: linear-gradient(135deg, #a52a2a 0%, #800000 100%);
+    color: #fff;
+}
+.btn-maroon-light {
+    background-color: #f3e0e0;
+    color: #800000;
+    border: none;
+}
+.btn-maroon-light:hover {
+    background-color: #e0c0c0;
+    color: #800000;
+}
+.btn-maroon-dark {
+    background: linear-gradient(135deg, #800000 0%, #4b0000 100%);
+    color: #fff;
+    border: none;
+}
+.btn-maroon-dark:hover {
+    background: linear-gradient(135deg, #4b0000 0%, #800000 100%);
+    color: #fff;
+}
 /* Schedule Management Styles */
 
 :root {
@@ -549,7 +577,7 @@ body {
         transform: translateY(0);
     }
 }
-}
+
 
 /* Time Slot Selector */
 .time-slot-selector {

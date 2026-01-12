@@ -37,7 +37,7 @@ if ($isAdmin) {
         <!-- Left Sidebar: Schedule Form -->
         <div class="schedule-sidebar">
             <div class="sidebar-header">
-                <h3>Schedule Entry</h3>
+                <h3 style="color:#800000;">Schedule Entry</h3>
             </div>
             <div class="sidebar-content">
                 <div class="sidebar-info" id="sidebarInfo"></div>
@@ -92,9 +92,9 @@ if ($isAdmin) {
                 </form>
             </div>
             <div class="sidebar-actions">
-                <button class="btn btn-primary btn-save" id="btnSave">Save</button>
-                <button class="btn btn-secondary btn-reset" id="btnReset">Clear</button>
-                <button class="btn btn-danger btn-delete" id="btnDelete" style="display:none;">Delete</button>
+                <button class="btn btn-maroon btn-save" id="btnSave">Save</button>
+                <button class="btn btn-maroon-light btn-reset" id="btnReset">Clear</button>
+                <button class="btn btn-maroon-dark btn-delete" id="btnDelete" style="display:none;">Delete</button>
             </div>
         </div>
         
