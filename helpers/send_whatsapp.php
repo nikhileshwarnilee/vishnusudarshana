@@ -3,9 +3,8 @@
 // WhatsApp Cloud API reusable helper
 
 // WhatsApp Cloud API credentials (for development/testing only)
-define('WHATSAPP_TEST_MODE', false); // Set to false for production
 define('WHATSAPP_PHONE_NUMBER_ID', '872295572641175'); // Correct Meta Phone Number ID
-define('WHATSAPP_ACCESS_TOKEN', 'EAAbx07ZA0plwBQUSu196OPs98PoJy51WPNFS2ZC8TUjv5hZBk1kVq7w3yZCeU5ZA5rF4TphZB2DFPiNgy1U9ZA3S6rbdKpeQSMdmyRGHwka1idE9LDGD9ZAj9T8jPXaJfNwb7EZAtZAujiITmAtWq3Ti3fxjD5sWeOLZACXgwxcG4nLAUC1D4x3BhTZB6sEw3JzKZBQZDZD');
+define('WHATSAPP_ACCESS_TOKEN', 'EAAbx07ZA0plwBQSi20PsioqwZCaOR4ZAZAYSqAxFX6wmsToALx72qTCJ7rQRp0ew3HVZB02ZCU5vTNAYi3f78NNplZAYgVGGXZAOlnFT53hFBKD0L0i5neandRHrWZCZClHjGjWnto24MYRsBQHVipGpsOa57SMigfmR9OZBfnNMaHtx24CAo512Y2XV671sX6GiAZDZD');
 
 /**
  * Send WhatsApp message using WhatsApp Cloud API template
