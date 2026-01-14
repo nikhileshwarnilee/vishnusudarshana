@@ -24,24 +24,30 @@ function getPanchangValue($key, $default = '—') {
             <div class="spiritual-cards-container">
                 <!-- CARD 1: Panchang -->
                 <div class="spiritual-card-group">
-                    <article class="spiritual-card">
-                        <img src="assets/images/religious-bg/panchang.png" alt="Panchang" class="spiritual-card-img" />
-                        <div class="spiritual-card-title-overlay">Today's Panchang</div>
-                    </article>
+                    <a href="panchang.php" class="spiritual-card-link">
+                        <article class="spiritual-card">
+                            <img src="assets/images/religious-bg/panchang.png" alt="Panchang" class="spiritual-card-img" />
+                            <div class="spiritual-card-title-overlay">Today's Panchang</div>
+                        </article>
+                    </a>
                 </div>
                 <!-- CARD 2: Din Vishesh -->
                 <div class="spiritual-card-group">
-                    <article class="spiritual-card">
-                        <img src="assets/images/religious-bg/dinvishesh.png" alt="Din Vishesh" class="spiritual-card-img" />
-                        <div class="spiritual-card-title-overlay">Today's Significance</div>
-                    </article>
+                    <a href="din-vishesh.php" class="spiritual-card-link">
+                        <article class="spiritual-card">
+                            <img src="assets/images/religious-bg/dinvishesh.png" alt="Din Vishesh" class="spiritual-card-img" />
+                            <div class="spiritual-card-title-overlay">Today's Significance</div>
+                        </article>
+                    </a>
                 </div>
                 <!-- CARD 3: Shubh Muhurat -->
                 <div class="spiritual-card-group">
-                    <article class="spiritual-card">
-                        <img src="assets/images/religious-bg/muhurat.png" alt="Muhurat" class="spiritual-card-img" />
-                        <div class="spiritual-card-title-overlay">Today's Auspicious Timings</div>
-                    </article>
+                    <a href="muhurat.php" class="spiritual-card-link">
+                        <article class="spiritual-card">
+                            <img src="assets/images/religious-bg/muhurat.png" alt="Muhurat" class="spiritual-card-img" />
+                            <div class="spiritual-card-title-overlay">Today's Auspicious Timings</div>
+                        </article>
+                    </a>
                 </div>
             </div>
         </section>

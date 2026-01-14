@@ -2318,6 +2318,7 @@ body, .main-content, .form-container, .status-card, .panchang-card, .detail-sect
     height: 2.6rem;
     object-fit: contain;
     border-radius: 50%;
+      
        background: #fff;
 }
 
@@ -2603,4 +2604,18 @@ body, .main-content, .form-container, .status-card, .panchang-card, .detail-sect
     .spiritual-card-label {
         font-size: 0.95rem;
     }
+}
+.spiritual-card-link {
+    display: block;
+    text-decoration: none;
+    border-radius: 24px;
+    transition: box-shadow 0.2s, transform 0.2s;
+}
+.spiritual-card-link:focus .spiritual-card,
+.spiritual-card-link:hover .spiritual-card {
+    box-shadow: 0 12px 28px rgba(139,21,56,0.15);
+    transform: translateY(-8px) scale(1.03);
+}
+.spiritual-card-link:active .spiritual-card {
+    transform: scale(0.98);
 }
