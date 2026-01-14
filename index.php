@@ -20,19 +20,30 @@ function getPanchangValue($key, $default = '—') {
 <main class="main-content">
 
         <!-- Top 3 Spiritual Cards Section -->
-        <section class="summary-cards" style="margin-top:32px; display:flex; gap:32px; justify-content:center; align-items:stretch; max-width:1200px; margin-left:auto; margin-right:auto;">
-            <!-- CARD 1: Panchang -->
-            <article class="spiritual-card">
-                <img src="assets/images/religious-bg/panchang.png" alt="Panchang" class="spiritual-card-img" />
-            </article>
-            <!-- CARD 2: Din Vishesh -->
-            <article class="spiritual-card">
-                <img src="assets/images/religious-bg/dinvishesh.png" alt="Din Vishesh" class="spiritual-card-img" />
-            </article>
-            <!-- CARD 3: Shubh Muhurat -->
-            <article class="spiritual-card">
-                <img src="assets/images/religious-bg/muhurat.png" alt="Muhurat" class="spiritual-card-img" />
-            </article>
+        <section class="spiritual-cards-wrapper">
+            <div class="spiritual-cards-container">
+                <!-- CARD 1: Panchang -->
+                <div class="spiritual-card-group">
+                    <article class="spiritual-card">
+                        <img src="assets/images/religious-bg/panchang.png" alt="Panchang" class="spiritual-card-img" />
+                        <div class="spiritual-card-title-overlay">Today's Panchang</div>
+                    </article>
+                </div>
+                <!-- CARD 2: Din Vishesh -->
+                <div class="spiritual-card-group">
+                    <article class="spiritual-card">
+                        <img src="assets/images/religious-bg/dinvishesh.png" alt="Din Vishesh" class="spiritual-card-img" />
+                        <div class="spiritual-card-title-overlay">Today's Significance</div>
+                    </article>
+                </div>
+                <!-- CARD 3: Shubh Muhurat -->
+                <div class="spiritual-card-group">
+                    <article class="spiritual-card">
+                        <img src="assets/images/religious-bg/muhurat.png" alt="Muhurat" class="spiritual-card-img" />
+                        <div class="spiritual-card-title-overlay">Today's Auspicious Timings</div>
+                    </article>
+                </div>
+            </div>
         </section>
 
         <!-- Why This Platform Exists Section -->
