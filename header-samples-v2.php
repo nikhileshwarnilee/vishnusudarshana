@@ -777,7 +777,7 @@
                     <ul class="nav-menu">
                         <li><a href="#home">Home</a></li>
                         <li><a href="#services">Services</a></li>
-                        <li><a href="#reels">Reels</a></li>
+                        <li><a href="blogs.php">Blogs</a></li>
                         <li><a href="#track">Track</a></li>
                     </ul>
                     <button class="lang-btn">🌐 Select Language</button>
@@ -794,7 +794,7 @@
                 <ul class="nav-menu">
                     <li><a href="#home">Home</a></li>
                     <li><a href="#services">Services</a></li>
-                    <li><a href="#reels">Reels</a></li>
+                    <li><a href="blogs.php">Blogs</a></li>
                     <li><a href="#track">Track</a></li>
                 </ul>
                 <button class="lang-btn">🌐 Language</button>
@@ -837,7 +837,7 @@
                         <ul class="nav-menu">
                             <li><a href="#home">Home</a></li>
                             <li><a href="#services">Services</a></li>
-                            <li><a href="#reels">Reels</a></li>
+                            <li><a href="blogs.php">Blogs</a></li>
                             <li><a href="#track">Track</a></li>
                         </ul>
                         <button class="lang-btn">🌐 Language</button>
@@ -935,7 +935,7 @@
                 <ul class="nav-menu">
                     <li><a href="#home">🏠 Home</a></li>
                     <li><a href="#services">⭐ Services</a></li>
-                    <li><a href="#reels">🎬 Reels</a></li>
+                    <li><a href="blogs.php">📝 Blogs</a></li>
                     <li><a href="#track">📍 Track</a></li>
                 </ul>
                 <button class="lang-btn">🌐 Language</button>

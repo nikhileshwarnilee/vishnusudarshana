@@ -18,58 +18,22 @@ function getPanchangValue($key, $default = '—') {
 ?>
 
 <main class="main-content">
-    <section class="summary-cards">
-        <!-- CARD 1: Panchang -->
-        <article class="summary-card">
-            <div class="card-header">
-                <h3>Today's Panchang</h3>
-            </div>
-            <div class="card-body">
-                <ul class="panchang-list">
-                    <li><strong>Tithi:</strong> <?php echo getPanchangValue('tithi'); ?></li>
-                    <li><strong>Weekday:</strong> <?php echo getPanchangValue('weekday'); ?></li>
-                    <li><strong>Nakshatra:</strong> <?php echo getPanchangValue('nakshatra'); ?></li>
-                    <li><strong>Rahu Kalam:</strong> <?php echo getPanchangValue('rahukaal aajcha rahukal vel Pune Solapur sathi andajit'); ?></li>
-                </ul>
-            </div>
-            <div class="card-footer">
-                <a href="panchang.php" class="sample-btn btn-soft-yellow">View Full Panchang</a>
-            </div>
-        </article>
 
-        <!-- CARD 2: Din Vishesh -->
-        <article class="summary-card">
-            <div class="card-header">
-                <h3>Today's Significance</h3>
-                <p><strong>Significance:</strong> <?php echo getPanchangValue('dinvishesh aajchya divsache dharmik sanskrutik mahatva 10 to 20 oli'); ?></p>
-            <div class="card-footer">
-                <a href="din-vishesh.php" class="sample-btn btn-soft-yellow">Read More</a>
-            </div>
-        </article>
-
-        <!-- CARD 3: Shubh Muhurat -->
-        <article class="summary-card">
-            <div class="card-header">
-                <h3>Today's Auspicious Timings</h3>
-            </div>
-            <div class="card-body">
-                <ul class="muhurat-list">
-                    <li><strong>Marriage:</strong> <?php echo getPanchangValue('vivahmuhurat'); ?></li>
-                    <li><strong>House Warming:</strong> <?php echo getPanchangValue('gruhapraveshmuhurat'); ?></li>
-                    <li><strong>Vehicle Purchase:</strong> <?php echo getPanchangValue('vehiclepurchasemuhurat'); ?></li>
-                </ul>
-            </div>
-            <div class="card-footer">
-                <a href="muhurat.php" class="sample-btn btn-soft-yellow">View All Timings</a>
-            </div>
-        </article>
-
-
-
-
+        <!-- Top 3 Spiritual Cards Section -->
+        <section class="summary-cards" style="margin-top:32px; display:flex; gap:32px; justify-content:center; align-items:stretch; max-width:1200px; margin-left:auto; margin-right:auto;">
+            <!-- CARD 1: Panchang -->
+            <article class="spiritual-card">
+                <img src="assets/images/religious-bg/panchang.png" alt="Panchang" class="spiritual-card-img" />
+            </article>
+            <!-- CARD 2: Din Vishesh -->
+            <article class="spiritual-card">
+                <img src="assets/images/religious-bg/dinvishesh.png" alt="Din Vishesh" class="spiritual-card-img" />
+            </article>
+            <!-- CARD 3: Shubh Muhurat -->
+            <article class="spiritual-card">
+                <img src="assets/images/religious-bg/muhurat.png" alt="Muhurat" class="spiritual-card-img" />
+            </article>
         </section>
-
-        
 
         <!-- Why This Platform Exists Section -->
         <section class="why-vishnusudarshana-section">

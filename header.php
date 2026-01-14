@@ -73,7 +73,7 @@
                 <ul class="nav-menu">
                     <li><a href="index.php" data-i18n="nav_home">Home</a></li>
                     <li><a href="services.php" data-i18n="nav_services">Services</a></li>
-                    <li><a href="reels.php" data-i18n="nav_reels">Reels</a></li>
+                    <li><a href="blogs.php" data-i18n="nav_blogs">Blogs</a></li>
                     <li><a href="track.php" data-i18n="nav_track">Track</a></li>
                 </ul>
             </nav>

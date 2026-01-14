@@ -1,3 +1,45 @@
+@import url('https://fonts.googleapis.com/css2?family=Marcellus&family=UnifrakturCook:wght@700&display=swap');
+
+.card-img-bg {
+    position: relative;
+    background-image: var(--card-img);
+    background-size: cover;
+    background-position: center;
+    min-height: 220px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 6px 18px rgba(139,21,56,0.06);
+    border-radius: 14px;
+    overflow: hidden;
+}
+
+.card-img-bg::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(120deg, rgba(255, 244, 214, 0.45) 0%, rgba(255, 255, 255, 0.25) 100%);
+    z-index: 1;
+}
+
+.card-title-center {
+    position: relative;
+    z-index: 2;
+    font-family: 'UnifrakturCook', 'Marcellus', serif;
+    font-size: 2.1rem;
+    color: #FFD700;
+    text-shadow: 0 2px 12px #bfa100, 0 1px 0 #fff, 0 0 8px #fff7c2;
+    text-align: center;
+    width: 100%;
+    padding: 0 10px;
+    letter-spacing: 1px;
+    font-weight: 700;
+    filter: brightness(1.15) drop-shadow(0 0 6px #fffbe6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 120px;
+}
 /* Universal color variables */
 :root {
     --cream-bg: #FFFDEB;
@@ -634,6 +676,7 @@ input[type="submit"]:hover, input[type="submit"]:focus,
     scrollbar-width: thin;
     -webkit-overflow-scrolling: touch;
 }
+.how-step-card {
     background: #fff;
     border-radius: 14px;
     border: 1.5px solid rgba(139,21,56,0.10);
@@ -1186,22 +1229,101 @@ section p {
 .summary-cards {
     display: flex;
     flex-direction: row;
-    gap: 24px;
+    gap: 32px;
     justify-content: center;
     align-items: stretch;
     margin-bottom: 32px;
+    width: 100%;
+    max-width: 1200px;
+    margin-left: auto;
+    margin-right: auto;
 }
 
 .summary-card {
-    background: rgba(255,255,255,0.9);
-    border-radius: 14px;
+    /* Remove default background for image cards, keep for others */
+    /* Only apply background for non-image cards */
+    background: linear-gradient(rgba(255,255,255,0.85), rgba(255,255,255,0.85));
+}
+
+.card-img-bg {
+    position: relative;
+    background: #fff;
+    min-height: 260px;
+    height: 260px;
+    width: 100%;
+    max-width: 340px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 6px 18px rgba(139,21,56,0.06);
+    border-radius: 24px;
+    overflow: hidden;
+    border: 1.5px solid rgba(139,21,56,0.13);
+    flex: 1 1 0;
+    transition: box-shadow 0.3s;
+    margin: 0 auto;
+    padding: 0;
+}
+.card-img-bg .card-title-center {
+    position: relative;
+    z-index: 2;
+    font-family: 'UnifrakturCook', 'Marcellus', serif;
+    font-size: 2.1rem;
+    color: #FFD700;
+    text-shadow: 0 2px 12px #bfa100, 0 1px 0 #fff, 0 0 8px #fff7c2;
+    text-align: center;
+    width: 100%;
+    padding: 0 10px;
+    letter-spacing: 1px;
+    font-weight: 700;
+    filter: brightness(1.15) drop-shadow(0 0 6px #fffbe6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 120px;
+    height: 100%;
+}
+    border-radius: 14px; {
     border: 1px solid rgba(139,21,56,0.08);
     padding: 18px;
     box-shadow: 0 6px 18px rgba(139,21,56,0.06);
     flex: 1 1 0;
     min-width: 0;
     max-width: 100%;
+    position: relative;
+    overflow: hidden;
+    transition: box-shadow 0.3s;
 }
+
+.summary-card.panchang-bg {
+    background-image: linear-gradient(rgba(255,255,255,0.85), rgba(255,255,255,0.85)), url('assets/images/religious-bg/panchang.png');
+    background-size: cover;
+    background-position: center;
+}
+.summary-card.dinvishesh-bg {
+    background-image: linear-gradient(rgba(255,255,255,0.85), rgba(255,255,255,0.85)), url('assets/images/religious-bg/dinvishesh.png');
+    background-size: cover;
+    background-position: center;
+}
+.summary-card.muhurat-bg {
+    background-image: linear-gradient(rgba(255,255,255,0.85), rgba(255,255,255,0.85)), url('assets/images/religious-bg/muhurat.png');
+    background-size: cover;
+    background-position: center;
+}
+
+.summary-card::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(120deg, rgba(255, 244, 214, 0.7) 0%, rgba(255, 255, 255, 0.5) 100%);
+    z-index: 0;
+}
+
+.summary-card > * {
+    position: relative;
+    z-index: 1;
+}
+
 
 .summary-card .card-header h3 {
     font-size: 20px;
@@ -2196,7 +2318,7 @@ body, .main-content, .form-container, .status-card, .panchang-card, .detail-sect
     height: 2.6rem;
     object-fit: contain;
     border-radius: 50%;
-    background: #fff;
+       background: #fff;
 }
 
 .alert-box {
@@ -2351,5 +2473,72 @@ body, .main-content, .form-container, .status-card, .panchang-card, .detail-sect
     }
     .header--design-12 .lang-header-btn {
         align-self: center;
+    }
+}
+
+/* Spiritual Cards - Full Image Cards */
+.spiritual-card {
+    flex: 1 1 0;
+    max-width: 340px;
+    min-width: 220px;
+    aspect-ratio: 4/3;
+    border-radius: 24px;
+    overflow: hidden;
+    box-shadow: 0 6px 18px rgba(139,21,56,0.08);
+    display: flex;
+    align-items: stretch;
+    justify-content: center;
+    background: #fff;
+    border: 1.5px solid rgba(139,21,56,0.13);
+    margin: 0 auto;
+    padding: 0;
+}
+.spiritual-card-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+/* Responsive Design for Tablet and Mobile */
+@media (max-width: 1024px) {
+    .summary-cards {
+        gap: 24px !important;
+    }
+    .spiritual-card {
+        max-width: 280px;
+        min-width: 200px;
+    }
+}
+
+@media (max-width: 768px) {
+    .summary-cards {
+        flex-direction: column !important;
+        gap: 20px !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        padding: 0 16px;
+        box-sizing: border-box;
+    }
+    .spiritual-card {
+        flex: 1 1 auto;
+        max-width: 100%;
+        min-width: 100%;
+        height: 240px;
+        aspect-ratio: unset;
+    }
+}
+
+@media (max-width: 480px) {
+    .summary-cards {
+        gap: 16px !important;
+        padding: 0 12px;
+    }
+    .spiritual-card {
+        height: 200px;
+    }
+    .spiritual-card-img {
+        width: 100%;
+        height: 100%;
     }
 }
