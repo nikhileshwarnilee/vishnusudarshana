@@ -103,6 +103,13 @@ $menu = [
         ]
     ],
 
+    'Website Management' => [
+        'icon' => '<svg width="20" height="20" fill="none" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2" fill="#800000" fill-opacity=".08" stroke="#800000" stroke-width="2"/><path d="M2 8h20" stroke="#800000" stroke-width="2"/><circle cx="6" cy="6" r="1" fill="#800000"/><circle cx="9" cy="6" r="1" fill="#800000"/><circle cx="12" cy="6" r="1" fill="#800000"/><rect x="6" y="12" width="5" height="2" rx="1" fill="#800000"/><rect x="6" y="15" width="12" height="2" rx="1" fill="#800000" fill-opacity=".5"/></svg>',
+        'submenu' => [
+            'Blogs Management' => $baseUrl . '/admin/website/blogs-management.php',
+        ]
+    ],
+
     'Settings' => [
         'icon' => '<svg width="20" height="20" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" stroke="#800000" stroke-width="2" fill="#800000" fill-opacity=".2"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.09A1.65 1.65 0 0 0 11 3.09V3a2 2 0 0 1 4 0v.09c.28.11.53.28.74.5.21.21.39.46.5.74H15a1.65 1.65 0 0 0 1.51 1c.2 0 .39-.07.56-.18l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.09c.11.28.28.53.5.74.21.21.46.39.74.5V9a2 2 0 0 1 0 4h-.09c-.28.11-.53.28-.74.5-.21.21-.39.46-.5.74v.09z" stroke="#800000" stroke-width="2" fill="none"/></svg>',
         'submenu' => [
