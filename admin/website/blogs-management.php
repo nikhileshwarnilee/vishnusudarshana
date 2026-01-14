@@ -345,7 +345,7 @@ $blogs = $stmt->fetchAll();
                             <td><?= htmlspecialchars($blog['publish_date']) ?></td>
                             <td><?= date('d M Y', strtotime($blog['created_at'])) ?></td>
                             <td>
-                                <a href="blog-create.php?id=<?= $blog['id'] ?>" class="action-btn edit">Edit</a>
+                                <a href="blog-edit.php?id=<?= $blog['id'] ?>" class="action-btn edit">Edit</a>
                                 <a href="blogs-management.php?delete=<?= $blog['id'] ?>" class="action-btn delete" onclick="return confirm('Are you sure you want to delete this blog?');">Delete</a>
                             </td>
                         </tr>

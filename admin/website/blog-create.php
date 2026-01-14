@@ -47,6 +47,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($title === '' || $slug === '') {
         $errors[] = 'Title and Slug are required.';
     }
+    // Check for duplicate slug
+    if ($slug !== '') {
+        if ($editId > 0) {
+            $stmt = $pdo->prepare("SELECT id FROM blogs WHERE slug = ? AND id != ? LIMIT 1");
+            $stmt->execute([$slug, $editId]);
+        } else {
+            $stmt = $pdo->prepare("SELECT id FROM blogs WHERE slug = ? LIMIT 1");
+            $stmt->execute([$slug]);
+        }
+        if ($stmt->fetch()) {
+            $errors[] = 'Slug already exists. Please choose a unique slug.';
+        }
+    }
 
     // Handle cover image upload (separate action)
     if (isset($_POST['upload_image']) && isset($_FILES['cover_image_file']) && $_FILES['cover_image_file']['error'] === UPLOAD_ERR_OK) {
@@ -371,7 +384,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </div>
         <?php endif; ?>
 
-        <form id="blogCreateForm" action="#" method="post" enctype="multipart/form-data">
+        <form id="blogCreateForm" action="<?= htmlspecialchars($_SERVER['PHP_SELF']) ?>" method="post" enctype="multipart/form-data">
             <div class="section-title">Basic Details</div>
             <div class="form-grid">
                 <div class="form-group">
@@ -423,10 +436,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <div class="two-col">
                 <div class="form-group">
                     <label for="cover_image_file">Cover Image Upload</label>
-                    <form id="imageUploadForm" action="#" method="post" enctype="multipart/form-data" style="margin-bottom:10px;">
-                        <input type="file" id="cover_image_file" name="cover_image_file" accept="image/*">
-                        <button type="button" id="uploadImageBtn" class="btn-secondary" style="margin-top:8px;">Upload Image</button>
-                    </form>
+                    <input type="file" id="cover_image_file" name="cover_image_file" accept="image/*">
+                    <button type="button" id="uploadImageBtn" class="btn-secondary" style="margin-top:8px;">Upload Image</button>
+                    <div id="imagePreviewDiv" style="margin-top:10px;">
+                    <?php 
+                    // Show only one image preview with correct path, and do not show if file does not exist
+                    if (!empty($cover_image)) {
+                        $imgPath = __DIR__ . '/../../' . ltrim($cover_image, '/');
+                        if (file_exists($imgPath)) {
+                            $webPath = '/vishnusudarshana/vishnusudarshana/' . ltrim($cover_image, '/');
+                            echo '<img src="' . htmlspecialchars($webPath) . '" alt="Cover Image" style="max-width:220px; border-radius:10px; box-shadow:0 2px 8px #e0bebe;">';
+                        }
+                    }
+                    ?>
+                    </div>
                     <?php 
                     // Show image preview if uploaded or editing
                     $showImage = !empty($cover_image) && file_exists(__DIR__ . '/../../' . $cover_image);
@@ -481,29 +504,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 uploadBtn.textContent = 'Upload Image';
                 if (data.success) {
                     uploadedImagePath = data.path;
-                    // Show preview
-                    let previewDiv = document.querySelector('#imagePreviewDiv');
-                    if (!previewDiv) {
-                        previewDiv = document.createElement('div');
-                        previewDiv.id = 'imagePreviewDiv';
-                        coverInput.parentNode.appendChild(previewDiv);
+                    // Show preview, only one image
+                    let previewDiv = document.getElementById('imagePreviewDiv');
+                    if (previewDiv) {
+                        let webPath = '/vishnusudarshana/vishnusudarshana/' + data.path.replace(/^\/+/, '');
+                        previewDiv.innerHTML = `<img src="${webPath}" alt="Cover Image" style="max-width:220px; border-radius:10px; box-shadow:0 2px 8px #e0bebe;">`;
                     }
-                    previewDiv.innerHTML = `<div style="margin-top:10px;"><img src="/${data.path}" alt="Cover Image" style="max-width:220px; border-radius:10px; box-shadow:0 2px 8px #e0bebe;"></div>`;
-                    saveBlogBtn.disabled = false;
                 } else {
                     alert(data.error || 'Upload failed');
                 }
+                saveBlogBtn.disabled = false; // Always enable after upload
             })
             .catch(() => {
                 uploadBtn.disabled = false;
                 uploadBtn.textContent = 'Upload Image';
                 alert('Upload failed');
+                saveBlogBtn.disabled = false; // Always enable after error
             });
         });
 
-        // Disable Save Blog button until image is uploaded if file selected
+        // Always enable Save Blog button on file change
         coverInput.addEventListener('change', function() {
-            saveBlogBtn.disabled = !!this.value;
+            saveBlogBtn.disabled = false;
         });
 
         // On page unload, delete image if not saved
