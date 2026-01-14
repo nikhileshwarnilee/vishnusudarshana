@@ -12,8 +12,10 @@ $service_request_id = isset($_POST['service_request_id']) ? (int)$_POST['service
 $amount = isset($_POST['amount']) ? (float)$_POST['amount'] : 0;
 $note = trim($_POST['note'] ?? '');
 $pay_method = trim($_POST['pay_method'] ?? '');
+
 $pay_date = $_POST['pay_date'] ?? date('Y-m-d');
 $transaction_details = trim($_POST['transaction_details'] ?? '');
+$discount = isset($_POST['discount']) ? (float)$_POST['discount'] : 0;
 
 
 if ($service_request_id <= 0 || $amount <= 0) {
@@ -36,21 +38,24 @@ try {
 		echo json_encode(['success'=>false, 'error'=>'Payment already collected.']);
 		exit;
 	}
-	if ($amount < $sr['total_amount']) {
-		error_log('collect-service-payment.php: Amount less than due for id ' . $service_request_id . ', amount: ' . $amount . ', due: ' . $sr['total_amount']);
-		echo json_encode(['success'=>false, 'error'=>'Amount less than due.']);
+
+	if ($amount < ($sr['total_amount'] - $discount)) {
+		error_log('collect-service-payment.php: Amount less than due for id ' . $service_request_id . ', amount: ' . $amount . ', due: ' . ($sr['total_amount'] - $discount));
+		echo json_encode(['success'=>false, 'error'=>'Amount less than due (after discount).']);
 		exit;
 	}
 
 	// Only mark as paid if currently unpaid
-	$pdo->prepare('UPDATE service_requests SET payment_status = ?, payment_method = ?, payment_note = ?, payment_date = ?, transaction_details = ? WHERE id = ? AND payment_status != "Paid"')
-		->execute(['Paid', $pay_method, $note, $pay_date, $transaction_details, $service_request_id]);
+
+	$pdo->prepare('UPDATE service_requests SET payment_status = ?, payment_method = ?, payment_note = ?, payment_date = ?, transaction_details = ?, discount = ? WHERE id = ? AND payment_status != "Paid"')
+		->execute(['Paid', $pay_method, $note, $pay_date, $transaction_details, $discount, $service_request_id]);
 
 	// Insert payment record into service_payments table (with all details)
-	$stmt = $pdo->prepare('INSERT INTO service_payments (service_request_id, amount, created_at, pay_method, note, pay_date, transaction_details, collected_by) VALUES (?, ?, NOW(), ?, ?, ?, ?, ?)');
+	$stmt = $pdo->prepare('INSERT INTO service_payments (service_request_id, amount, discount, created_at, pay_method, note, pay_date, transaction_details, collected_by) VALUES (?, ?, ?, NOW(), ?, ?, ?, ?, ?)');
 	$stmt->execute([
 		$service_request_id,
 		$amount,
+		$discount,
 		$pay_method,
 		$note,
 		$pay_date,

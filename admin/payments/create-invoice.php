@@ -222,7 +222,7 @@ require_once __DIR__ . '/../../config/db.php';
 			<label for="newCustomerMobile">Mobile</label>
 			<input type="text" id="newCustomerMobile" name="mobile" required pattern="[0-9]{10,15}">
 			<label for="newCustomerAddress">Address</label>
-			<textarea id="newCustomerAddress" name="address" rows="2" required></textarea>
+			<textarea id="newCustomerAddress" name="address" rows="2"></textarea>
 			<div class="modal-actions">
 				<button type="button" id="cancelAddCustomer" style="background:#ccc; color:#333; border:none; border-radius:4px; padding:8px 16px;">Cancel</button>
 				<button type="submit" style="background:#28a745; color:#fff; border:none; border-radius:4px; padding:8px 16px; font-weight:600;">Save</button>

@@ -265,7 +265,11 @@ $adminNotes = $stmt->fetchAll(PDO::FETCH_ASSOC);
         // Check actual payment status from payments table
         // Use payment_status field from service_requests for payment status
         $actualPaid = (isset($request['payment_status']) && strtolower($request['payment_status']) === 'paid');
+        $discount = isset($request['discount']) ? (float)$request['discount'] : 0;
+        $totalPaid = $request['total_amount'] - $discount;
         ?>
+        <tr><th>Discount Given</th><td>₹<?php echo number_format($discount, 2); ?></td></tr>
+        <tr><th>Total Paid</th><td style="color:#1a8917;font-weight:600;">₹<?php echo number_format($totalPaid, 2); ?></td></tr>
         <tr><th>Payment Status</th><td><span class="status-badge status-<?php echo $actualPaid ? 'paid' : 'unpaid'; ?>"><?php echo $actualPaid ? 'Paid' : 'Unpaid'; ?></span></td></tr>
         <tr><th>Service Status</th><td><span class="status-badge status-<?php echo strtolower(str_replace(' ', '-', $request['service_status'])); ?>"><?php echo htmlspecialchars($request['service_status']); ?></span></td></tr>
         <tr><th>Created Date</th><td><?php echo date('d-m-Y', strtotime($request['created_at'])); ?></td></tr>

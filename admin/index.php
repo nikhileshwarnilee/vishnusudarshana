@@ -59,14 +59,14 @@ $stmt->execute([$today]);
 $todayRow = $stmt->fetch();
 $todays_invoice_offline = $todayRow['offline'] ? $todayRow['offline'] : 0;
 $todays_razorpay = $todayRow['razorpay'] ? $todayRow['razorpay'] : 0;
-// Add today's service request offline payments
-$stmt = $pdo->prepare("SELECT COALESCE(SUM(total_amount),0) FROM service_requests WHERE payment_status = 'Paid' AND (tracking_id IS NULL OR tracking_id = '' OR tracking_id NOT LIKE 'VDSK%') AND DATE(created_at) = ?");
+// Add today's service request offline payments (after discount)
+$stmt = $pdo->prepare("SELECT COALESCE(SUM(total_amount - COALESCE(discount, 0)),0) FROM service_requests WHERE payment_status = 'Paid' AND (tracking_id IS NULL OR tracking_id = '' OR tracking_id NOT LIKE 'VDSK%') AND DATE(created_at) = ?");
 $stmt->execute([$today]);
 $today_sr_offline = $stmt->fetchColumn();
 $todays_offline = $todays_invoice_offline + $today_sr_offline;
 
-// Today's online payment collection (Razorpay/online)
-$stmt = $pdo->prepare("SELECT COALESCE(SUM(total_amount),0) FROM service_requests WHERE payment_status = 'Paid' AND tracking_id LIKE 'VDSK%' AND DATE(created_at) = ?");
+// Today's online payment collection (Razorpay/online) (after discount)
+$stmt = $pdo->prepare("SELECT COALESCE(SUM(total_amount - COALESCE(discount, 0)),0) FROM service_requests WHERE payment_status = 'Paid' AND tracking_id LIKE 'VDSK%' AND DATE(created_at) = ?");
 $stmt->execute([$today]);
 $todays_razorpay = $stmt->fetchColumn();
 

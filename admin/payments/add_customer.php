@@ -7,8 +7,8 @@ $name = isset($_POST['name']) ? trim($_POST['name']) : '';
 $mobile = isset($_POST['mobile']) ? trim($_POST['mobile']) : '';
 $address = isset($_POST['address']) ? trim($_POST['address']) : '';
 
-if ($name === '' || $mobile === '' || $address === '') {
-    echo json_encode(['success' => false, 'error' => 'All fields are required.']);
+if ($name === '' || $mobile === '') {
+    echo json_encode(['success' => false, 'error' => 'Name and Mobile are required.']);
     exit;
 }
 

@@ -124,7 +124,6 @@ $queryStr = http_build_query(array_diff_key($_GET, ['page' => '']));
 				<td><?= htmlspecialchars($inv['notes']) ?></td>
 				<td>
 					<a href="view-invoice.php?id=<?= $inv['id'] ?>" class="action-btn view-btn">View</a>
-					<a href="edit-invoice.php?id=<?= $inv['id'] ?>" class="action-btn edit-btn">Edit</a>
 					<a href="delete-invoice.php?id=<?= $inv['id'] ?>" class="action-btn delete-btn" onclick="return confirm('Delete this invoice?')">Delete</a>
 				</td>
 			</tr>

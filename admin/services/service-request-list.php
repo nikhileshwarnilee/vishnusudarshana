@@ -1,3 +1,9 @@
+<?php
+// Start session before any output
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -330,7 +336,7 @@ include __DIR__ . '/../includes/top-menu.php';
     $countStmt->execute($params);
     $totalRecords = $countStmt->fetchColumn();
     $totalPages = max(1, ceil($totalRecords / $perPage));
-    $sql = "SELECT id, tracking_id, customer_name, mobile, category_slug, total_amount, payment_status, service_status, created_at, selected_products FROM service_requests $whereSql ORDER BY created_at DESC LIMIT $perPage OFFSET $offset";
+    $sql = "SELECT id, tracking_id, customer_name, mobile, category_slug, total_amount, discount, payment_status, service_status, created_at, selected_products FROM service_requests $whereSql ORDER BY created_at DESC LIMIT $perPage OFFSET $offset";
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
     $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -344,6 +350,7 @@ include __DIR__ . '/../includes/top-menu.php';
                 <th>Product(s)</th>
                 <th>Category</th>
                 <th>Amount</th>
+                <th>Collected</th>
                 <th>Payment</th>
                 <th>Status</th>
                 <th>Date</th>
@@ -352,7 +359,7 @@ include __DIR__ . '/../includes/top-menu.php';
         </thead>
         <tbody id="serviceTableBody">
         <?php if (!$requests): ?>
-            <tr><td colspan="10" class="no-data">No service requests found.</td></tr>
+            <tr><td colspan="11" class="no-data">No service requests found.</td></tr>
         <?php else: ?>
             <?php foreach ($requests as $row): ?>
             <tr>
@@ -399,6 +406,13 @@ include __DIR__ . '/../includes/top-menu.php';
                     ?>
                 </td>
                 <td>₹<?= number_format($row['total_amount'], 2) ?></td>
+                <td>
+                    <?php
+                    $discount = isset($row['discount']) ? (float)$row['discount'] : 0;
+                    $collected = $row['total_amount'] - $discount;
+                    echo '₹' . number_format($collected, 2);
+                    ?>
+                </td>
                 <td>
                     <?php
                     $payClass = 'payment-' . strtolower(str_replace(' ', '-', $row['payment_status']));
@@ -553,7 +567,10 @@ $(document).on('click', '.btn-pay', function(e){
         +'<div style="margin-bottom:10px;color:#444;">Customer: <b>'+customer+'</b></div>'
         +'<form id="collectServicePaymentForm">'
             +'<input type="hidden" name="service_request_id" value="'+id+'">'
-            +'<div style="margin-bottom:10px;">Amount: <input type="number" name="amount" value="'+amount+'" min="1" step="0.01" style="width:120px;padding:5px 8px;border-radius:6px;border:1px solid #ccc;" required readonly></div>'
+            +'<div style="margin-bottom:10px;">Amount: <input type="number" id="origAmount" value="'+amount+'" min="1" step="0.01" style="width:120px;padding:5px 8px;border-radius:6px;border:1px solid #ccc;" readonly></div>'
+            +'<div style="margin-bottom:10px;">Discount: <input type="number" id="discountInput" name="discount" value="0" min="0" step="0.01" style="width:120px;padding:5px 8px;border-radius:6px;border:1px solid #ccc;" placeholder="Discount"></div>'
+            +'<div style="margin-bottom:10px;">Amount to be Collected: <input type="number" id="amountCollected" name="amount" value="'+amount+'" min="0" step="0.01" style="width:120px;padding:5px 8px;border-radius:6px;border:1px solid #ccc;" required readonly></div>'
+            +'<div style="margin-bottom:10px; color:#1a8917; font-weight:600;">Amount after Discount: <span id="afterDiscount">'+amount+'</span></div>'
             +'<div style="margin-bottom:10px;">Method: '
                 +'<select name="pay_method" style="padding:5px 8px;border-radius:6px;border:1px solid #ccc;" required>'
                     +'<option value="Cash">Cash</option>'
@@ -573,6 +590,23 @@ $(document).on('click', '.btn-pay', function(e){
             +'<div id="payErrorMsg" style="color:#c00;margin-top:10px;display:none;"></div>'
         +'</form>'
         +'</div>');
+    // JS to update amount after discount and set amount to be collected
+    setTimeout(function(){
+        var $discount = $('#discountInput');
+        var $origAmount = $('#origAmount');
+        var $amountCollected = $('#amountCollected');
+        var $afterDiscount = $('#afterDiscount');
+        function updateAmount() {
+            var orig = parseFloat($origAmount.val()) || 0;
+            var disc = parseFloat($discount.val()) || 0;
+            var after = Math.max(orig - disc, 0).toFixed(2);
+            $afterDiscount.text(after);
+            $amountCollected.val(after);
+        }
+        $discount.on('input', updateAmount);
+        $origAmount.on('input', updateAmount);
+        updateAmount();
+    }, 100);
     popup.append(box);
     $('body').append(popup);
     $('#closePayPopup').on('click', function(){ $('#payPopupOverlay').remove(); });
@@ -586,8 +620,13 @@ $(document).on('click', '.btn-pay', function(e){
         $.post('collect-service-payment.php', form.serialize(), function(resp){
             btn.prop('disabled', false).text('Collect & Mark Paid');
             if(resp.success){
-                // Update payment status in table
-                row.find('td:nth-child(7)').html('<span class="status-badge payment-paid" style="background:#e5ffe5;color:#1a8917;">Paid</span>');
+                // Update payment status in table (Payment column is 8th)
+                row.find('td:nth-child(8)').html('<span class="status-badge payment-paid" style="background:#e5ffe5;color:#1a8917;">Paid</span>');
+                // Update collected amount column (7th) with new value after discount
+                var origAmt = parseFloat($('#origAmount').val()) || 0;
+                var disc = parseFloat($('#discountInput').val()) || 0;
+                var collected = (origAmt - disc).toFixed(2);
+                row.find('td:nth-child(7)').html('₹' + collected);
                 $('#payPopupOverlay').remove();
                 // Optionally reload or show toast
             }else{

@@ -67,10 +67,10 @@ $unionSourceWhere = 'WHERE source = "Service Request"';
 
 $unionSql = "
 	SELECT * FROM (
-		SELECT p.id, p.pay_date as payment_date, p.amount as paid_amount, p.pay_method as method, p.note, p.transaction_details, NULL as customer_name, NULL as mobile, 'Service Payment' as source, NULL as products_json
+		SELECT p.id, p.pay_date as payment_date, p.amount as paid_amount, COALESCE(p.discount, 0) as discount, p.amount as total_bill, p.pay_method as method, p.note, p.transaction_details, NULL as customer_name, NULL as mobile, 'Service Payment' as source, NULL as products_json
 		FROM service_payments p
 		UNION ALL
-		SELECT sr.id, sr.payment_date, sr.total_amount as paid_amount, sr.payment_method as method, sr.payment_note as note, sr.transaction_details, sr.customer_name, sr.mobile, 'Service Request' as source, sr.selected_products as products_json
+		SELECT sr.id, sr.payment_date, (sr.total_amount - COALESCE(sr.discount, 0)) as paid_amount, COALESCE(sr.discount, 0) as discount, sr.total_amount as total_bill, sr.payment_method as method, sr.payment_note as note, sr.transaction_details, sr.customer_name, sr.mobile, 'Service Request' as source, sr.selected_products as products_json
 		FROM service_requests sr $whereSqlSR
 	) t $unionSourceWhere
 	ORDER BY payment_date DESC, id DESC
@@ -155,6 +155,8 @@ $queryStr = http_build_query(array_diff_key($_GET, ['page' => '']));
 			<th>Customer Name</th>
 			<th>Mobile</th>
 			<th>Paid Date</th>
+			<th>Total Bill</th>
+			<th>Discount</th>
 			<th>Paid Amount</th>
 			<th>Method</th>
 			<th>Note</th>
@@ -162,14 +164,16 @@ $queryStr = http_build_query(array_diff_key($_GET, ['page' => '']));
 			<th>Products</th>
 		</tr>
 		<?php if (empty($rows)): ?>
-			<tr><td colspan="9" style="text-align:center; color:#888;">No payments found.</td></tr>
+			<tr><td colspan="11" style="text-align:center; color:#888;">No payments found.</td></tr>
 		<?php else: foreach ($rows as $row): ?>
 			<tr>
 				<td><?= htmlspecialchars($row['source']) ?></td>
 				<td><?= htmlspecialchars($row['customer_name']) ?></td>
 				<td><?= htmlspecialchars($row['mobile']) ?></td>
-				   <td><?= htmlspecialchars($row['payment_date'] ?? '') ?></td>
-				<td>₹<?= number_format($row['paid_amount'],2) ?></td>
+				<td><?= htmlspecialchars($row['payment_date'] ?? '') ?></td>
+				<td>₹<?= number_format($row['total_bill'],2) ?></td>
+				<td>₹<?= number_format($row['discount'],2) ?></td>
+				<td style="color:#1a8917;font-weight:600;">₹<?= number_format($row['paid_amount'],2) ?></td>
 				   <td><?= htmlspecialchars($row['method'] ?? '') ?></td>
 				   <td><?= htmlspecialchars($row['note'] ?? '') ?></td>
 				   <td><?= htmlspecialchars($row['payment_date'] ?? '') ?></td>
