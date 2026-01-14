@@ -65,7 +65,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // Handle cover image upload (AJAX/session)
     if (isset($_SESSION['cover_image']) && $_SESSION['cover_image'] !== '') {
-        $cover_image = $_SESSION['cover_image'];
+        // Only store the filename, not the full path
+        $cover_image = basename($_SESSION['cover_image']);
     }
 
     // If no errors, update in DB
@@ -136,6 +137,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <h1>Edit Blog</h1>
         <a class="back-link" href="blogs-management.php">← Back to Blogs Management</a>
     </div>
+    <!-- Uploaded image preview shown separately -->
+    <?php if (!empty($cover_image)): ?>
+        <div style="margin: 0 0 24px 0; text-align: center;">
+            <div style="font-weight:700; color:#800000; margin-bottom:8px;">Current Blog Cover Image</div>
+            <img src="<?= htmlspecialchars('../../uploads/blogs/' . $cover_image) ?>" alt="Cover Image" style="max-width:320px; border-radius:12px; box-shadow:0 2px 12px #e0bebe;">
+        </div>
+    <?php endif; ?>
     <div class="content-card">
         <?php if (!empty($errors)): ?>
             <div class="pill-note" style="background:#fef2f2; color:#800000; border-color:#f5c6cb;">
@@ -198,14 +206,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <label for="cover_image_file">Cover Image Upload</label>
                     <input type="file" id="cover_image_file" name="cover_image_file" accept="image/*">
                     <button type="button" id="uploadImageBtn" class="btn-secondary" style="margin-top:8px;">Upload Image</button>
-                    <div id="imagePreviewDiv" style="margin-top:10px;">
-                    <?php 
-                    if (!empty($cover_image)) {
-                        $webPath = '../../' . ltrim($cover_image, '/');
-                        echo '<img src="' . htmlspecialchars($webPath) . '" alt="Cover Image" style="max-width:220px; border-radius:10px; box-shadow:0 2px 8px #e0bebe;">';
-                    }
-                    ?>
-                    </div>
                     <div class="helper-text">Upload a high-quality image. Preferred 1200x630 or better.</div>
                 </div>
                 <div class="form-group">
@@ -250,7 +250,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 uploadedImagePath = data.path;
                 let previewDiv = document.getElementById('imagePreviewDiv');
                 if (previewDiv) {
-                    let webPath = '/vishnusudarshana/vishnusudarshana/' + data.path.replace(/^\/+/, '');
+                    let webPath = '../../uploads/blogs/' + data.path;
                     previewDiv.innerHTML = `<img src="${webPath}" alt="Cover Image" style="max-width:220px; border-radius:10px; box-shadow:0 2px 8px #e0bebe;">`;
                 }
             } else {

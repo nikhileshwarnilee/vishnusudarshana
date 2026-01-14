@@ -442,9 +442,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <?php 
                     // Show only one image preview with correct path, and do not show if file does not exist
                     if (!empty($cover_image)) {
-                        $imgPath = __DIR__ . '/../../' . ltrim($cover_image, '/');
+                        $imgPath = __DIR__ . '/../../uploads/blogs/' . $cover_image;
                         if (file_exists($imgPath)) {
-                            $webPath = '/vishnusudarshana/vishnusudarshana/' . ltrim($cover_image, '/');
+                            $webPath = '../../uploads/blogs/' . $cover_image;
                             echo '<img src="' . htmlspecialchars($webPath) . '" alt="Cover Image" style="max-width:220px; border-radius:10px; box-shadow:0 2px 8px #e0bebe;">';
                         }
                     }
@@ -455,7 +455,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $showImage = !empty($cover_image) && file_exists(__DIR__ . '/../../' . $cover_image);
                     if ($showImage): ?>
                         <div style="margin-top:10px;">
-                            <img src="/<?= htmlspecialchars($cover_image) ?>" alt="Cover Image" style="max-width:220px; border-radius:10px; box-shadow:0 2px 8px #e0bebe;">
+                            <img src="<?= htmlspecialchars('../../uploads/blogs/' . $cover_image) ?>" alt="Cover Image" style="max-width:220px; border-radius:10px; box-shadow:0 2px 8px #e0bebe;">
                         </div>
                     <?php endif; ?>
                     <div class="helper-text">Upload a high-quality image. Preferred 1200x630 or better.</div>
@@ -507,7 +507,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     // Show preview, only one image
                     let previewDiv = document.getElementById('imagePreviewDiv');
                     if (previewDiv) {
-                        let webPath = '/vishnusudarshana/vishnusudarshana/' + data.path.replace(/^\/+/, '');
+                        let webPath = '../../uploads/blogs/' + data.path;
                         previewDiv.innerHTML = `<img src="${webPath}" alt="Cover Image" style="max-width:220px; border-radius:10px; box-shadow:0 2px 8px #e0bebe;">`;
                     }
                 } else {

@@ -13,7 +13,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['cover_image_file']))
         }
         $uploadPath = $uploadDir . $newName;
         if (move_uploaded_file($imgTmp, $uploadPath)) {
-            $cover_image = 'uploads/blogs/' . $newName;
+            $cover_image = $newName;
             $_SESSION['cover_image'] = $cover_image;
             echo json_encode(['success' => true, 'path' => $cover_image]);
             exit;
