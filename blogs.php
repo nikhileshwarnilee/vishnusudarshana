@@ -3,7 +3,21 @@ include 'header.php';
 require_once __DIR__ . '/config/db.php';
 
 // Fetch published blogs from database
-$stmt = $pdo->prepare("SELECT * FROM blogs WHERE status = 'published' ORDER BY publish_date DESC");
+
+// Pagination logic
+$perPage = 9;
+$page = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
+$offset = ($page - 1) * $perPage;
+
+// Get total count
+$countStmt = $pdo->query("SELECT COUNT(*) FROM blogs WHERE status = 'published'");
+$totalBlogs = $countStmt->fetchColumn();
+$totalPages = ceil($totalBlogs / $perPage);
+
+// Fetch paginated blogs
+$stmt = $pdo->prepare("SELECT * FROM blogs WHERE status = 'published' ORDER BY publish_date DESC LIMIT ? OFFSET ?");
+$stmt->bindValue(1, $perPage, PDO::PARAM_INT);
+$stmt->bindValue(2, $offset, PDO::PARAM_INT);
 $stmt->execute();
 $blogs = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
@@ -618,11 +632,28 @@ sort($allTags);
         <!-- Blog cards will be rendered here -->
     </div>
 
+    <!-- Pagination -->
+    <div class="pagination" style="text-align:center; margin-bottom:40px;">
+        <?php if ($totalPages > 1): ?>
+            <?php for ($i = 1; $i <= $totalPages; $i++): ?>
+                <a href="?page=<?= $i ?>" class="page-btn" style="display:inline-block; margin:0 6px; padding:8px 16px; border-radius:6px; background:<?= $i == $page ? '#800000' : '#f9f3f0' ?>; color:<?= $i == $page ? '#fff' : '#800000' ?>; font-weight:600; text-decoration:none; border:1px solid #f3d5c8;"> <?= $i ?> </a>
+            <?php endfor; ?>
+        <?php endif; ?>
+    </div>
+
     <!-- Empty State -->
     <div class="empty-state" id="emptyState" style="display: none;">
         <div class="empty-state-icon">📚</div>
         <h3>No Articles Found</h3>
         <p>Try selecting different topics or check back soon for new content.</p>
+    </div>
+</div>
+
+<!-- Video Modal -->
+<div id="videoModal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.7); z-index:9999; justify-content:center; align-items:center;">
+    <div style="background:#fff; border-radius:12px; max-width:90vw; max-height:80vh; padding:0; position:relative; box-shadow:0 8px 32px rgba(0,0,0,0.2);">
+        <button id="closeVideoModal" style="position:absolute; top:10px; right:10px; background:#800000; color:#fff; border:none; border-radius:50%; width:32px; height:32px; font-size:1.3em; cursor:pointer;">&times;</button>
+        <div id="videoModalContent" style="width:100%; height:60vh; min-width:320px; min-height:200px; display:flex; justify-content:center; align-items:center;"></div>
     </div>
 </div>
 
@@ -657,7 +688,8 @@ sort($allTags);
             'icon' => $icon,
             'hasImage' => $hasImage,
             'imagePath' => $imagePath,
-            'link' => 'blog-detail.php?slug=' . urlencode($blog['slug'])
+            'link' => 'blog-detail.php?slug=' . urlencode($blog['slug']),
+            'videoUrl' => $blog['video_url'] ?? ''
         ];
     }, $blogs)); ?>;
 
@@ -691,11 +723,51 @@ sort($allTags);
                     <div class="blog-tags">
                         ${blog.tags.map(tag => `<span class="tag" onclick="event.stopPropagation(); filterByTag('${tag}')">${tag}</span>`).join('')}
                     </div>
-                    <a href="${blog.link}" class="read-more" onclick="event.stopPropagation()">Read More</a>
+                    <div style="display:flex; gap:10px; align-items:center; margin-top:8px;">
+                        <a href="${blog.link}" class="read-more" onclick="event.stopPropagation()">Read More</a>
+                        ${blog.videoUrl && blog.videoUrl.match(/(youtube\.com\/watch\?v=|youtu\.be\/)/) ? `
+                            <button class="play-video-btn" onclick="event.stopPropagation(); openVideoModal('${blog.videoUrl}');" style="display:inline-flex; align-items:center; gap:6px; background:#fff; border:1px solid #e0bebe; color:#ff0000; font-weight:600; padding:7px 14px; border-radius:8px; font-size:0.98em; text-decoration:none; cursor:pointer;">
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="#ff0000" style="vertical-align:middle;"><path d="M23.498 6.186a2.994 2.994 0 0 0-2.112-2.112C19.136 3.5 12 3.5 12 3.5s-7.136 0-9.386.574a2.994 2.994 0 0 0-2.112 2.112C0 8.436 0 12 0 12s0 3.564.502 5.814a2.994 2.994 0 0 0 2.112 2.112C4.864 20.5 12 20.5 12 20.5s7.136 0 9.386-.574a2.994 2.994 0 0 0 2.112-2.112C24 15.564 24 12 24 12s0-3.564-.502-5.814zM9.75 15.02V8.98l6.5 3.02-6.5 3.02z"/></svg>
+                                Play Video
+                            </button>
+                        ` : `
+                            <button class="play-video-btn" style="display:inline-flex; align-items:center; gap:6px; background:#fff; border:1px solid #e0bebe; color:#aaa; font-weight:600; padding:7px 14px; border-radius:8px; font-size:0.98em; text-decoration:none; cursor:not-allowed; opacity:0.6;">
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="#ff0000" style="vertical-align:middle;"><path d="M23.498 6.186a2.994 2.994 0 0 0-2.112-2.112C19.136 3.5 12 3.5 12 3.5s-7.136 0-9.386.574a2.994 2.994 0 0 0-2.112 2.112C0 8.436 0 12 0 12s0 3.564.502 5.814a2.994 2.994 0 0 0 2.112 2.112C4.864 20.5 12 20.5 12 20.5s7.136 0 9.386-.574a2.994 2.994 0 0 0 2.112-2.112C24 15.564 24 12 24 12s0-3.564-.502-5.814zM9.75 15.02V8.98l6.5 3.02-6.5 3.02z"/></svg>
+                                Play Video
+                            </button>
+                        `}
+                    </div>
                 </div>
             </div>
         `).join('');
     }
+
+    function getYouTubeEmbedUrl(url) {
+        const match = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]+)/);
+        if (match && match[1]) {
+            return `https://www.youtube.com/embed/${match[1]}?autoplay=1`;
+        }
+        return null;
+    }
+
+    function openVideoModal(videoUrl) {
+        const embedUrl = getYouTubeEmbedUrl(videoUrl);
+        if (!embedUrl) return;
+        document.getElementById('videoModalContent').innerHTML = `<iframe width='100%' height='100%' src='${embedUrl}' frameborder='0' allowfullscreen></iframe>`;
+        document.getElementById('videoModal').style.display = 'flex';
+    }
+
+    document.getElementById('closeVideoModal').onclick = function() {
+        document.getElementById('videoModal').style.display = 'none';
+        document.getElementById('videoModalContent').innerHTML = '';
+    };
+
+    document.addEventListener('click', function(e) {
+        if (e.target.id === 'videoModal') {
+            document.getElementById('videoModal').style.display = 'none';
+            document.getElementById('videoModalContent').innerHTML = '';
+        }
+    });
 
     // Filter by tag
     function filterByTag(tag) {

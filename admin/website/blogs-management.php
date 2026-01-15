@@ -27,12 +27,20 @@ foreach ($blogs as $blog) {
 $allTags = array_keys($allTags);
 
 // Filter blogs by search and tag
+
 $filteredBlogs = array_filter($blogs, function($blog) use ($search, $selectedTag, $selectedStatus) {
     $matchesSearch = $search === '' || stripos($blog['title'], $search) !== false;
     $matchesTag = $selectedTag === '' || in_array($selectedTag, array_map('trim', explode(',', $blog['tags'])));
     $matchesStatus = $selectedStatus === '' || $blog['status'] === $selectedStatus;
     return $matchesSearch && $matchesTag && $matchesStatus;
 });
+
+// Pagination logic for filtered blogs
+$perPage = 10;
+$page = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
+$totalFiltered = count($filteredBlogs);
+$totalPages = ceil($totalFiltered / $perPage);
+$filteredBlogs = array_slice(array_values($filteredBlogs), ($page - 1) * $perPage, $perPage);
 // Handle status update
 if (isset($_POST['update_status']) && isset($_POST['blog_id']) && isset($_POST['new_status'])) {
     $blogId = (int)$_POST['blog_id'];
@@ -352,6 +360,14 @@ $blogs = $stmt->fetchAll();
                     <?php endforeach; ?>
                 </tbody>
             </table>
+        <?php endif; ?>
+        <!-- Pagination -->
+        <?php if ($totalPages > 1): ?>
+            <div style="text-align:center; margin-top:24px;">
+                <?php for ($i = 1; $i <= $totalPages; $i++): ?>
+                    <a href="?<?= http_build_query(array_merge($_GET, ['page' => $i])) ?>" class="page-btn" style="display:inline-block; margin:0 6px; padding:8px 16px; border-radius:6px; background:<?= $i == $page ? '#800000' : '#f9f3f0' ?>; color:<?= $i == $page ? '#fff' : '#800000' ?>; font-weight:600; text-decoration:none; border:1px solid #f3d5c8;"> <?= $i ?> </a>
+                <?php endfor; ?>
+            </div>
         <?php endif; ?>
     </div>
 </div>
