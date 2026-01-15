@@ -218,15 +218,22 @@ html,body{font-family:'Marcellus',serif!important;}
     }
 
     .blog-card {
-        background: #fff;
-        border-radius: 12px;
+        background: linear-gradient(135deg, #fffbe6 0%, #fff9e0 60%, #f7e9c7 100%);
+        border-radius: 18px;
         overflow: hidden;
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
-        transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        box-shadow: 0 4px 18px rgba(212,175,55,0.10);
+        transition: box-shadow 0.3s, transform 0.3s;
         display: flex;
         flex-direction: column;
         cursor: pointer;
         position: relative;
+        border: 1.5px solid #ffe9a7;
+    }
+
+    .blog-card:hover {
+        transform: translateY(-8px) scale(1.03);
+        box-shadow: 0 12px 36px rgba(212,175,55,0.18);
+        border-color: #FFD700;
     }
 
     .blog-card::before {
@@ -236,20 +243,16 @@ html,body{font-family:'Marcellus',serif!important;}
         left: 0;
         width: 100%;
         height: 4px;
-        background: linear-gradient(90deg, #800000, #b36b00);
+        background: linear-gradient(90deg, #FFD700, #fffbe6);
         transform: scaleX(0);
         transform-origin: left;
         transition: transform 0.4s ease;
         z-index: 1;
+        border-radius: 18px 18px 0 0;
     }
 
     .blog-card:hover::before {
         transform: scaleX(1);
-    }
-
-    .blog-card:hover {
-        transform: translateY(-8px);
-        box-shadow: 0 15px 40px rgba(128, 0, 0, 0.15);
     }
 
     .blog-image {
@@ -263,6 +266,7 @@ html,body{font-family:'Marcellus',serif!important;}
         color: #b36b00;
         position: relative;
         overflow: hidden;
+        border-radius: 18px 18px 0 0;
     }
 
     .blog-image::after {
@@ -437,6 +441,14 @@ html,body{font-family:'Marcellus',serif!important;}
             grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
             gap: 24px;
         }
+
+        .blog-card {
+            border-radius: 14px;
+        }
+
+        .blog-image {
+            border-radius: 14px 14px 0 0;
+        }
     }
 
     @media (max-width: 768px) {
@@ -474,9 +486,12 @@ html,body{font-family:'Marcellus',serif!important;}
             gap: 20px;
         }
 
+        .blog-card {
+            border-radius: 10px;
+        }
+
         .blog-image {
-            height: 200px;
-            font-size: 2.5em;
+            border-radius: 10px 10px 0 0;
         }
 
         .blog-content {

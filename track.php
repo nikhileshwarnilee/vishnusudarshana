@@ -4,13 +4,143 @@
 html, body {
     font-family: 'Marcellus', serif !important;
 }
-
-.status-row {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 8px;
-    font-size: 1.04em;
+:root {
+    --cream-bg: #fffbe6;
+    --gold-shadow: 0 4px 18px rgba(212,175,55,0.10);
+    --gold-shadow-hover: 0 12px 36px rgba(212,175,55,0.18);
+    --gold-border: #ffe9a7;
+    --gold-border-hover: #FFD700;
+}
+.main-content {
+    background: var(--cream-bg);
+    min-height: 100vh;
+}
+.track-table {
+    background: linear-gradient(135deg, #fffbe6 0%, #fff9e0 60%, #f7e9c7 100%);
+    border-radius: 18px;
+    box-shadow: var(--gold-shadow);
+    border: 1.5px solid var(--gold-border);
+    overflow: hidden;
+    transition: box-shadow 0.3s, border-color 0.3s;
+}
+.track-table th, .track-table td {
+    background: transparent;
+}
+.track-table th {
+    color: var(--maroon);
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    background: #fffbe6;
+}
+.track-table tr {
+    transition: background 0.2s;
+}
+.track-table tr:hover {
+    background: #fff9e0;
+}
+.table-responsive {
+    box-shadow: var(--gold-shadow);
+    border-radius: 18px;
+    background: transparent;
+    padding: 0.5rem 0.5rem 0 0.5rem;
+}
+.status-badge {
+    background: #fffbe6;
+    color: var(--maroon);
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.98em;
+    box-shadow: 0 1px 4px #ffe9a733;
+    padding: 2px 12px;
+    display: inline-block;
+    border: 1px solid var(--gold-border);
+    transition: background 0.2s, border-color 0.2s;
+}
+.status-badge.status-paid {
+    background: #e5ffe5;
+    color: #1b5e20;
+    border-color: #b6e6b6;
+}
+.status-badge.status-received {
+    background: #e5f0ff;
+    color: #0056b3;
+    border-color: #b6d6e6;
+}
+.status-badge.status-unknown {
+    background: #f3e5ff;
+    color: #6a1b9a;
+    border-color: #d6b6e6;
+}
+.status-badge:hover {
+    background: #fff9e0;
+    border-color: var(--gold-border-hover);
+}
+.download-btn {
+    background: linear-gradient(90deg, #FFD700 0%, #FFFACD 100%);
+    color: var(--maroon);
+    border: none;
+    border-radius: 12px;
+    font-weight: 700;
+    font-size: 1.05em;
+    padding: 10px 24px;
+    box-shadow: 0 2px 8px rgba(212,175,55,0.10);
+    margin-bottom: 4px;
+    text-decoration: none !important;
+    display: inline-block;
+    min-width: 120px;
+    text-align: center;
+    transition: all 0.18s cubic-bezier(.4,1.3,.6,1);
+    cursor: pointer;
+}
+.download-btn:active, .download-btn:hover {
+    background: #FFD700;
+    color: #fff;
+    box-shadow: 0 6px 18px rgba(212,175,55,0.18);
+}
+.track-hero, .track-form-section {
+    background: #fffbe6;
+    border-radius: 18px;
+    box-shadow: var(--gold-shadow);
+    padding: 32px 18px 24px 18px;
+    margin: 0 auto 32px auto;
+    max-width: 600px;
+    text-align: center;
+}
+.track-hero h2 {
+    color: var(--maroon);
+    font-size: 2rem;
+    font-weight: 900;
+    margin-bottom: 10px;
+}
+.track-hero p {
+    color: #bfa100;
+    font-size: 1.13rem;
+    margin-bottom: 0;
+}
+.track-form input, .track-form .track-btn {
+    font-family: 'Marcellus', serif;
+}
+.track-btn {
+    background: linear-gradient(90deg, #FFD700 0%, #FFFACD 100%);
+    color: var(--maroon);
+    border: none;
+    border-radius: 12px;
+    font-weight: 700;
+    font-size: 1.1rem;
+    padding: 14px 36px;
+    box-shadow: 0 2px 8px rgba(212,175,55,0.10);
+    margin-bottom: 8px;
+    text-decoration: none !important;
+    display: inline-block;
+    min-width: 160px;
+    text-align: center;
+    transition: all 0.18s cubic-bezier(.4,1.3,.6,1);
+    cursor: pointer;
+}
+.track-btn:hover, .track-btn:focus {
+    background: #FFD700;
+    color: #fff;
+    box-shadow: 0 6px 18px rgba(212,175,55,0.18);
 }
 @media (max-width: 600px) {
     .status-card {
@@ -32,64 +162,12 @@ html, body {
         font-size: 0.97em;
         padding: 10px 0;
     }
+    .track-btn {
+        font-size: 1rem;
+        padding: 13px 18px;
+        min-width: 120px;
+    }
 }
-
-.table-responsive {
-    width: 100%;
-    overflow-x: auto;
-    margin-bottom: 18px;
-}
-.track-table {
-    width: 100%;
-    border-collapse: collapse;
-    min-width: 700px;
-    background: #fff;
-    box-shadow: 0 2px 12px #e0bebe22;
-    border-radius: 12px;
-    overflow: hidden;
-}
-.track-table th, .track-table td {
-    padding: 12px 10px;
-    text-align: left;
-    border-bottom: 1px solid #f3caca;
-    font-size: 1.04em;
-}
-.track-table th {
-    background: #f9eaea;
-    color: var(--maroon);
-    font-weight: 700;
-    letter-spacing: 0.01em;
-}
-.track-table tr:last-child td {
-    border-bottom: none;
-}
-.status-badge {
-    padding: 2px 12px;
-    border-radius: 8px;
-    font-weight: 600;
-    font-size: 0.98em;
-    background: var(--button-hover);
-    color: var(--maroon);
-    display: inline-block;
-}
-.status-badge.status-paid { background: var(--success-bg); color: var(--success-text); }
-.status-badge.status-received { background: var(--info-bg); color: var(--info-text); }
-.status-badge.status-unknown { background: var(--muted-bg); color: var(--muted-text); }
-.download-btn {
-    background: var(--maroon);
-    color: #fff;
-    border: none;
-    border-radius: 8px;
-    padding: 8px 16px;
-    font-size: 0.98em;
-    font-weight: 600;
-    text-align: center;
-    text-decoration: none;
-    box-shadow: 0 2px 8px rgba(139, 21, 56, 0.15);
-    transition: background 0.15s;
-    display: inline-block;
-}
-.download-btn:active { background: var(--dark-maroon); }
 @media (max-width: 700px) {
     .track-table th, .track-table td {
         padding: 10px 6px;
@@ -97,6 +175,14 @@ html, body {
     }
     .track-table {
         min-width: 600px;
+        border-radius: 10px;
+    }
+    .table-responsive {
+        border-radius: 10px;
+    }
+    .track-hero, .track-form-section {
+        border-radius: 10px;
+        padding: 18px 6px 14px 6px;
     }
 }
 </style>

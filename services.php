@@ -3,55 +3,48 @@
 <main class="services-main">
     <section class="service-categories">
         <h1 class="services-title">Choose a Service Type</h1>
-        <div class="categories-grid">
-            <!-- New Book an Appointment Card -->
-            <a class="category-card" href="category.php?category=appointment">
-                <div class="category-icon" aria-label="Book an Appointment">📅</div>
-                <div class="category-info">
-                    <h2>Book an Appointment</h2>
-                    <p>Schedule an online or offline appointment; final slot confirmed by our team.</p>
-                    <span class="category-badge guidance">Booking</span>
-                </div>
+        <div class="categories-grid home-top-cards-container">
+            <!-- Book an Appointment Card -->
+            <a class="category-card home-top-card" href="category.php?category=appointment">
+                <img src="assets/images/religious-bg/appointment.png" alt="Book an Appointment Icon" class="home-top-card-icon" />
+                <div class="home-top-card-title">Book an Appointment</div>
+                <div class="home-top-card-desc">Schedule an online or offline appointment; final slot confirmed by our team.</div>
+                <span class="category-badge guidance">Book Now</span>
             </a>
-            <a class="category-card" href="category.php?category=birth-child">
-                <div class="category-icon" aria-label="Birth & Child Services">👶</div>
-                <div class="category-info">
-                    <h2>Birth & Child Services</h2>
-                    <p>Janma Patrika, name suggestions, baby horoscope and child guidance.</p>
-                    <span class="category-badge paid">Paid Service</span>
-                </div>
+            <!-- Birth & Child Services Card -->
+            <a class="category-card home-top-card" href="category.php?category=birth-child">
+                <img src="assets/images/religious-bg/birthchild.png" alt="Birth & Child Services Icon" class="home-top-card-icon" />
+                <div class="home-top-card-title">Birth & Child Services</div>
+                <div class="home-top-card-desc">Janma Patrika, name suggestions, baby horoscope and child guidance.</div>
+                <span class="category-badge guidance">Book Now</span>
             </a>
-            <a class="category-card" href="category.php?category=marriage-matching">
-                <div class="category-icon" aria-label="Marriage & Matching">💍</div>
-                <div class="category-info">
-                    <h2>Marriage & Matching</h2>
-                    <p>Kundali Milan, marriage prediction and compatibility analysis.</p>
-                    <span class="category-badge paid">Paid Service</span>
-                </div>
+            <!-- Marriage & Matching Card -->
+            <a class="category-card home-top-card" href="category.php?category=marriage-matching">
+                <img src="assets/images/religious-bg/marriage.png" alt="Marriage & Matching Icon" class="home-top-card-icon" />
+                <div class="home-top-card-title">Marriage & Matching</div>
+                <div class="home-top-card-desc">Kundali Milan, marriage prediction and compatibility analysis.</div>
+                <span class="category-badge guidance">Book Now</span>
             </a>
-            <a class="category-card" href="category.php?category=astrology-consultation">
-                <div class="category-icon" aria-label="Astrology Consultation">🔮</div>
-                <div class="category-info">
-                    <h2>Astrology Consultation</h2>
-                    <p>Career, marriage, health, finance and personal guidance.</p>
-                    <span class="category-badge consult">Consultation</span>
-                </div>
+            <!-- Astrology Consultation Card -->
+            <a class="category-card home-top-card" href="category.php?category=astrology-consultation">
+                <img src="assets/images/religious-bg/astrology.png" alt="Astrology Consultation Icon" class="home-top-card-icon" />
+                <div class="home-top-card-title">Astrology Consultation</div>
+                <div class="home-top-card-desc">Career, marriage, health, finance and personal guidance.</div>
+                <span class="category-badge guidance">Book Now</span>
             </a>
-            <a class="category-card" href="category.php?category=muhurat-event">
-                <div class="category-icon" aria-label="Muhurat & Event Guidance">📅</div>
-                <div class="category-info">
-                    <h2>Muhurat & Event Guidance</h2>
-                    <p>Marriage, griha pravesh, vehicle purchase and business start muhurat.</p>
-                    <span class="category-badge guidance">Guidance</span>
-                </div>
+            <!-- Muhurat & Event Guidance Card -->
+            <a class="category-card home-top-card" href="category.php?category=muhurat-event">
+                <img src="assets/images/religious-bg/muhurat.png" alt="Muhurat & Event Guidance Icon" class="home-top-card-icon" />
+                <div class="home-top-card-title">Muhurat & Event Guidance</div>
+                <div class="home-top-card-desc">Marriage, griha pravesh, vehicle purchase and business start muhurat.</div>
+                <span class="category-badge guidance">Book Now</span>
             </a>
-            <a class="category-card" href="category.php?category=pooja-vastu-enquiry">
-                <div class="category-icon" aria-label="Pooja, Ritual & Vastu Enquiry">🕉️</div>
-                <div class="category-info">
-                    <h2>Pooja, Ritual & Vastu Enquiry</h2>
-                    <p>Pooja, shanti, dosh nivaran, yagya and vastu consultation.</p>
-                    <span class="category-badge enquiry">Enquiry (No Payment)</span>
-                </div>
+            <!-- Pooja, Ritual & Vastu Enquiry Card -->
+            <a class="category-card home-top-card" href="category.php?category=pooja-vastu-enquiry">
+                <img src="assets/images/religious-bg/pooja.png" alt="Pooja, Ritual & Vastu Enquiry Icon" class="home-top-card-icon" />
+                <div class="home-top-card-title">Pooja, Ritual & Vastu Enquiry</div>
+                <div class="home-top-card-desc">Pooja, shanti, dosh nivaran, yagya and vastu consultation.</div>
+                <span class="category-badge guidance">Book Now</span>
             </a>
         </div>
     </section>
@@ -151,12 +144,78 @@ html,body{
     color: #0056b3;
 }
 .category-badge.guidance {
-    background: #e5ffe5;
-    color: #1b5e20;
+    background: linear-gradient(90deg, #43e97b 0%, #38f9d7 100%);
+    color: #fff;
+    font-weight: 700;
+    font-size: 1.08rem;
+    border: none;
+    box-shadow: 0 2px 8px rgba(67,233,123,0.10);
+    padding: 0.55em 1.6em;
+    border-radius: 24px;
+    margin: 14px auto 0 auto;
+    display: block;
+    text-align: center;
+    letter-spacing: 0.03em;
+    transition: background 0.18s, box-shadow 0.18s, color 0.18s;
+    cursor: pointer;
+}
+.category-badge.guidance:hover, .category-badge.guidance:focus {
+    background: linear-gradient(90deg, #38f9d7 0%, #43e97b 100%);
+    color: #fff;
+    box-shadow: 0 6px 18px rgba(67,233,123,0.18);
 }
 .category-badge.enquiry {
     background: #f3e5ff;
     color: #6a1b9a;
+}
+.home-top-card-icon {
+    display: block;
+    margin: 0 auto 18px auto;
+    width: 150px;
+    height: 150px;
+    max-width: 100%;
+    object-fit: contain;
+    border-radius: 18px;
+    background: linear-gradient(135deg, #fffbe6 0%, #fff9e0 60%, #f7e9c7 100%);
+    box-shadow: 0 2px 8px rgba(212,175,55,0.08);
+}
+@media (max-width: 600px) {
+    .categories-grid {
+        grid-template-columns: 1fr;
+        gap: 22px;
+        padding: 0 4px;
+    }
+    .category-card {
+        align-items: center;
+        padding: 1.2rem 0.7rem 1.2rem 0.7rem;
+        min-height: 140px;
+        border-radius: 16px;
+        box-shadow: 0 2px 8px rgba(212,175,55,0.10);
+    }
+    .home-top-card-icon {
+        width: 90px;
+        height: 90px;
+        margin-bottom: 10px;
+    }
+    .home-top-card-title {
+        font-size: 1.13rem;
+        text-align: center;
+        margin-bottom: 4px;
+    }
+    .home-top-card-desc {
+        font-size: 0.98rem;
+        text-align: center;
+        margin-bottom: 6px;
+    }
+    .category-badge {
+        font-size: 0.92rem;
+        margin-top: 0.2em;
+    }
+    .category-badge.guidance {
+        font-size: 1rem;
+        padding: 0.45em 1.1em;
+        margin-top: 10px;
+    }
 }
 @media (min-width: 600px) {
     .categories-grid {

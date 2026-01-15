@@ -153,8 +153,8 @@ function getPanchangValue($key, $default = '—') {
     </section>
 
     <!-- Book Appointment Section -->
-    <section class="cta-guidance-section" style="background: #fffbe6; border-radius: 22px; box-shadow: 0 4px 32px 0 rgba(212,175,55,0.08); padding: 44px 0 32px 0; margin-bottom: 44px; width: 100%; max-width: none; margin-left: 0; margin-right: 0;">
-        <div class="cta-guidance-container" style="width: 100%; max-width: none; margin: 0 auto; text-align: center; background: transparent;">
+    <section class="cta-guidance-section">
+        <div class="cta-guidance-container" style="width: 100%; max-width: none; margin: 0 auto; text-align: center; background: #ffffff;">
             <h2 class="cta-guidance-title" style="font-family: 'Marcellus', serif; font-size: 2.1rem; color: var(--maroon); font-weight: 900; margin-bottom: 14px; letter-spacing: 0.7px; text-shadow: 0 2px 12px #fffbe6, 0 1px 0 #fff, 0 0 8px #fff7c2;">Book Your Appointment</h2>
             <div class="cta-guidance-divider" style="width: 90px; height: 4px; background: linear-gradient(90deg, #FFD700 0%, #fffbe6 100%); border-radius: 2px; margin: 0 auto 22px auto;"></div>
             <p class="cta-guidance-text" style="font-family: 'Marcellus', serif; font-size: 1.13rem; color: #bfa100; opacity: 0.82; font-weight: 500; margin-bottom: 28px; letter-spacing: 0.1px;">Reserve your time for a personal consultation or spiritual service. Choose online or in-person—our expert team is here to guide you in astrology, vastu, and more. Experience clarity and peace of mind with a simple booking process.</p>
