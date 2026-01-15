@@ -81,6 +81,8 @@ if (empty($pending)) {
     </main>
 
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Marcellus&display=swap');
+        html,body{font-family:'Marcellus',serif!important;}
         .main-content { max-width:480px;margin:0 auto;padding:18px; }
         .review-title { text-align:center;font-size:1.2em;margin-bottom:16px; }
         .review-card { background:#f9eaea;border-radius:14px;padding:16px;text-align:center; }
@@ -217,6 +219,8 @@ require_once 'header.php';
 </main>
 
 <style>
+    @import url('https://fonts.googleapis.com/css2?family=Marcellus&display=swap');
+    html,body{font-family:'Marcellus',serif!important;}
     .main-content { max-width:480px;margin:0 auto;padding:18px; }
     .review-title { text-align:center;font-size:1.2em;margin-bottom:16px; }
     .review-card { background:#f9eaea;border-radius:14px;padding:16px;text-align:center; }

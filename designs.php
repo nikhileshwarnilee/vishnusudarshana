@@ -6,6 +6,8 @@
     <title>Button Design Samples</title>
     <?php include 'header.php'; ?>
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Marcellus&display=swap');
+        html,body{font-family:'Marcellus',serif!important;}
         body {
             background: #fffbe6;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;

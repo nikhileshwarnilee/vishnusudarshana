@@ -34,6 +34,8 @@ $categories = $stmt->fetchAll(PDO::FETCH_ASSOC);
 </main>
 
 <style>
+@import url('https://fonts.googleapis.com/css2?family=Marcellus&display=swap');
+html,body{font-family:'Marcellus',serif!important;}
 .services-main {
     padding: 1.5rem 0 4.5rem 0;
     background: #f8f9fa;

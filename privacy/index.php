@@ -9,6 +9,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Privacy Policy | Vishnu Sudarshana</title>
     <link rel="stylesheet" href="assets/css/style.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Marcellus&display=swap');
+        html, body {
+            font-family: 'Marcellus', serif !important;
+        }
+    </style>
 </head>
 <body>
     <?php include 'header.php'; ?>

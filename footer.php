@@ -1,3 +1,18 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your Website Title</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Marcellus&display=swap');
+        html, body {
+            font-family: 'Marcellus', serif !important;
+        }
+    </style>
+</head>
+<body>
     <nav class="mobile-nav">
         <ul>
             <li>

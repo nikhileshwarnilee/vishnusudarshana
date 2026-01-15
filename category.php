@@ -93,6 +93,8 @@ $cat = $categories[$category];
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo htmlspecialchars($cat['title']); ?> - Service Details</title>
     <style>
+@import url('https://fonts.googleapis.com/css2?family=Marcellus&display=swap');
+html,body{font-family:'Marcellus',serif!important;}
 body {
     font-family: Arial, sans-serif;
     margin: 0;

@@ -1,5 +1,13 @@
-<?php include 'header.php';
+<?php include 'header.php'; ?>
 
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Marcellus&display=swap');
+html, body {
+    font-family: 'Marcellus', serif !important;
+}
+</style>
+
+<?php
 // Load today's panchang JSON file
 $today = date('Y-m-d');
 $jsonFile = __DIR__ . '/data/panchang-' . $today . '.json';
@@ -20,7 +28,6 @@ function getPanchangValue($key, $default = '—') {
     global $panchangData;
     return ($panchangData && isset($panchangData[$key])) ? htmlspecialchars($panchangData[$key]) : $default;
 }
-
 ?>
 
 <main class="main-content panchang-page" style="background-color:var(--cream-bg);">

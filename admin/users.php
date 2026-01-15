@@ -107,6 +107,8 @@ $users = $pdo->query('SELECT * FROM users ORDER BY id DESC')->fetchAll();
     <title>Admin Users</title>
     <link rel="stylesheet" href="../assets/css/style.css">
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Marcellus&display=swap');
+        html,body{font-family:'Marcellus',serif!important;}
         .admin-container { max-width: 1100px; margin: 0 auto; padding: 24px 12px; }
         .summary-cards { display: flex; gap: 18px; margin-bottom: 24px; flex-wrap: wrap; }
         .summary-card { flex: 1 1 180px; background: #fffbe7; border-radius: 14px; padding: 16px; text-align: center; box-shadow: 0 2px 8px #e0bebe22; }

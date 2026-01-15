@@ -451,6 +451,7 @@ document.getElementById('rzpPayBtn').onclick = function(e){
 };
 </script>
 <?php require_once 'footer.php'; ?>
+<style>@import url('https://fonts.googleapis.com/css2?family=Marcellus&display=swap');html,body{font-family:'Marcellus',serif!important;}</style>
 <style>
 /* ...reuse review page styles for consistency... */
 .main-content { max-width: 480px; margin: 0 auto; background: #fff; border-radius: 18px; box-shadow: 0 4px 24px #e0bebe33; padding: 18px 12px 28px 12px; }

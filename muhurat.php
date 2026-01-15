@@ -17,6 +17,8 @@ function getMuhurat($key, $default = '—') {
 }
 ?>
 
+<style>@import url('https://fonts.googleapis.com/css2?family=Marcellus&display=swap');html,body{font-family:'Marcellus',serif!important;}</style>
+
 <main class="main-content muhurat-page">
     <section class="muhurat-title">
         <h1>Today's Auspicious Timings</h1>

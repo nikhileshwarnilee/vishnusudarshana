@@ -41,6 +41,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <title>Admin Login</title>
     <link rel="stylesheet" href="../assets/css/style.css">
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Marcellus&display=swap');
+        html,body{font-family:'Marcellus',serif!important;}
         body { background: #f7f7fa; }
         .login-container { max-width: 400px; margin: 60px auto; background: #fff; border-radius: 12px; box-shadow: 0 2px 12px #e0bebe22; padding: 32px 28px; }
         h1 { color: #800000; text-align: center; margin-bottom: 24px; }

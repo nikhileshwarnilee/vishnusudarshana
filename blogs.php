@@ -38,6 +38,8 @@ sort($allTags);
 ?>
 
 <style>
+@import url('https://fonts.googleapis.com/css2?family=Marcellus&display=swap');
+html,body{font-family:'Marcellus',serif!important;}
     * {
         margin: 0;
         padding: 0;

@@ -20,6 +20,13 @@ function getDinVishesh($default = '—') {
 }
 ?>
 
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Marcellus&display=swap');
+html,body {
+    font-family: 'Marcellus', serif !important;
+}
+</style>
+
 <main class="main-content din-vishesh-content">
     <section>
         <h1>Today's Significance</h1>

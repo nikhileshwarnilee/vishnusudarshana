@@ -17,6 +17,8 @@ require_once 'header.php';
 </main>
 <?php require_once 'footer.php'; ?>
 <style>
+@import url('https://fonts.googleapis.com/css2?family=Marcellus&display=swap');
+html,body{font-family:'Marcellus',serif!important;}
 .main-content { max-width: 480px; margin: 0 auto; background: #fff; border-radius: 18px; box-shadow: 0 4px 24px #e0bebe33; padding: 18px 12px 28px 12px; }
 .review-title { font-size: 1.18em; font-weight: bold; margin-bottom: 8px; text-align: center; }
 .review-card { background: #f9eaea; border-radius: 14px; box-shadow: 0 2px 8px #e0bebe33; padding: 24px 16px 22px 16px; margin-bottom: 18px; }

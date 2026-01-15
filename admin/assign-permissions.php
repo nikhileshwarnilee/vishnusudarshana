@@ -49,6 +49,8 @@ $excludeMenus = include __DIR__ . '/permissions-exclude.php';
     <title>Assign Permissions</title>
     <link rel="stylesheet" href="../assets/css/style.css">
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Marcellus&display=swap');
+        html,body{font-family:'Marcellus',serif!important;}
         .permissions-card { margin: 32px auto; max-width: 700px; background: #fffbe7; border-radius: 12px; box-shadow: 0 2px 8px #e0bebe22; padding: 24px; }
         .permissions-table th, .permissions-table td { border-bottom: 1px solid #f3caca; }
         .permissions-table th { background: #f9eaea; color: #800000; font-weight: 700; }

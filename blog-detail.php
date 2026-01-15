@@ -32,10 +32,15 @@ $publishDate = date('d F Y', strtotime($blog['publish_date']));
 ?>
 
 <style>
+    @import url('https://fonts.googleapis.com/css2?family=Marcellus&display=swap');
     * {
         margin: 0;
         padding: 0;
         box-sizing: border-box;
+    }
+
+    html, body {
+        font-family: 'Marcellus', serif !important;
     }
 
     .blog-detail-container {

@@ -26,3 +26,5 @@ if ($order_id && $payment_id) {
 
 http_response_code(200);
 exit;
+?>
+<style>@import url('https://fonts.googleapis.com/css2?family=Marcellus&display=swap');html,body{font-family:'Marcellus',serif!important;}</style>

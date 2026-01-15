@@ -5,3 +5,5 @@ session_unset();
 session_destroy();
 header('Location: login.php');
 exit;
+?>
+<style>@import url('https://fonts.googleapis.com/css2?family=Marcellus&display=swap');html,body{font-family:'Marcellus',serif!important;}</style>
