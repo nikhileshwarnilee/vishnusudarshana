@@ -32,6 +32,11 @@ if ($editId > 0 && $_SERVER['REQUEST_METHOD'] !== 'POST') {
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $title = trim($_POST['title'] ?? '');
     $slug = trim($_POST['slug'] ?? '');
+    // Auto-generate slug from title if not provided or if changed
+    if ($slug === '' && $title !== '') {
+        $slug = strtolower(preg_replace('/[^a-z0-9]+/i', '-', $title));
+        $slug = trim($slug, '-');
+    }
     $excerpt = trim($_POST['excerpt'] ?? '');
     $body = trim($_POST['body'] ?? '');
     // Store body as JSON
@@ -482,6 +487,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 </div>
 
 <script>
+                // Auto-generate slug from title on the client side
+                const titleInput = document.getElementById('title');
+                const slugInput = document.getElementById('slug');
+                titleInput.addEventListener('input', function() {
+                    let slug = titleInput.value.toLowerCase()
+                        .replace(/[^a-z0-9]+/g, '-')
+                        .replace(/^-+|-+$/g, '');
+                    slugInput.value = slug;
+                });
         // AJAX image upload and preview
         const coverInput = document.getElementById('cover_image_file');
         const uploadBtn = document.getElementById('uploadImageBtn');
