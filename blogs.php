@@ -1,5 +1,26 @@
 <?php
 include 'header.php';
+require_once __DIR__ . '/config/db.php';
+
+// Fetch published blogs from database
+$stmt = $pdo->prepare("SELECT * FROM blogs WHERE status = 'published' ORDER BY publish_date DESC");
+$stmt->execute();
+$blogs = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+// Extract unique tags from all published blogs
+$allTags = [];
+foreach ($blogs as $blog) {
+    if (!empty($blog['tags'])) {
+        $blogTags = array_map('trim', explode(',', $blog['tags']));
+        foreach ($blogTags as $tag) {
+            $tag = strtolower($tag);
+            if (!in_array($tag, $allTags)) {
+                $allTags[] = $tag;
+            }
+        }
+    }
+}
+sort($allTags);
 ?>
 
 <style>
@@ -576,24 +597,18 @@ include 'header.php';
         <!-- Desktop Filter Buttons -->
         <div class="tag-filters" id="tagFilters">
             <button class="tag-btn active" data-tag="all">All Articles</button>
-            <button class="tag-btn" data-tag="kundali">Kundali</button>
-            <button class="tag-btn" data-tag="astrology">Astrology</button>
-            <button class="tag-btn" data-tag="muhurat">Muhurat</button>
-            <button class="tag-btn" data-tag="horoscope">Horoscope</button>
-            <button class="tag-btn" data-tag="panchang">Panchang</button>
-            <button class="tag-btn" data-tag="tips">Tips & Advice</button>
+            <?php foreach ($allTags as $tag): ?>
+                <button class="tag-btn" data-tag="<?= htmlspecialchars($tag) ?>"><?= htmlspecialchars(ucwords($tag)) ?></button>
+            <?php endforeach; ?>
         </div>
 
         <!-- Mobile/Tablet Dropdown Filter -->
         <div class="mobile-filter-dropdown">
             <select id="mobileFilterSelect">
                 <option value="all">All Articles</option>
-                <option value="kundali">Kundali</option>
-                <option value="astrology">Astrology</option>
-                <option value="muhurat">Muhurat</option>
-                <option value="horoscope">Horoscope</option>
-                <option value="panchang">Panchang</option>
-                <option value="tips">Tips & Advice</option>
+                <?php foreach ($allTags as $tag): ?>
+                    <option value="<?= htmlspecialchars($tag) ?>"><?= htmlspecialchars(ucwords($tag)) ?></option>
+                <?php endforeach; ?>
             </select>
         </div>
     </div>
@@ -612,81 +627,39 @@ include 'header.php';
 </div>
 
 <script>
-    // Blog data
-    const blogs = [
-        {
-            id: 1,
-            title: "How to Read Your Kundali: A Beginner's Guide",
-            date: "10 Jan 2026",
-            description: "Learn the basics of reading your own kundali and understanding the key elements that shape your astrological profile. This guide covers the essentials for beginners.",
-            tags: ["kundali", "astrology", "tips"],
-            icon: "🌙",
-            link: "#"
-        },
-        {
-            id: 2,
-            title: "5 Common Myths About Astrology",
-            date: "2 Jan 2026",
-            description: "Astrology is often misunderstood. We debunk five common myths and explain what astrology really is—and isn't.",
-            tags: ["astrology", "tips"],
-            icon: "✨",
-            link: "#"
-        },
-        {
-            id: 3,
-            title: "Choosing the Right Muhurat for Your Event",
-            date: "28 Dec 2025",
-            description: "Find out how to select the most auspicious muhurat for your important life events, with tips from our expert astrologers.",
-            tags: ["muhurat", "tips"],
-            icon: "🎯",
-            link: "#"
-        },
-        {
-            id: 4,
-            title: "Understanding Your Moon Sign",
-            date: "25 Dec 2025",
-            description: "Your moon sign is just as important as your sun sign! Discover what your moon sign reveals about your emotional nature and inner world.",
-            tags: ["astrology", "horoscope"],
-            icon: "🌕",
-            link: "#"
-        },
-        {
-            id: 5,
-            title: "Panchang Predictions for 2026",
-            date: "20 Dec 2025",
-            description: "Get insights into the year ahead with our comprehensive panchang analysis. Learn about planetary movements and their influence on your life.",
-            tags: ["panchang", "horoscope"],
-            icon: "📅",
-            link: "#"
-        },
-        {
-            id: 6,
-            title: "Marriage Compatibility Through Kundali Matching",
-            date: "15 Dec 2025",
-            description: "Understand the traditional methods of kundali matching and how it helps determine compatibility between couples before marriage.",
-            tags: ["kundali", "astrology"],
-            icon: "💑",
-            link: "#"
-        },
-        {
-            id: 7,
-            title: "Daily Astrology: How to Use It for Success",
-            date: "10 Dec 2025",
-            description: "Learn how to incorporate daily horoscopes into your routine for better decision-making and personal growth throughout the year.",
-            tags: ["horoscope", "tips"],
-            icon: "⭐",
-            link: "#"
-        },
-        {
-            id: 8,
-            title: "Lucky Numbers and Their Significance",
-            date: "5 Dec 2025",
-            description: "Explore the numerological significance of numbers in astrology and how to use your lucky numbers to enhance prosperity.",
-            tags: ["astrology", "tips"],
-            icon: "🔢",
-            link: "#"
+    // Blog data from database
+    const blogs = <?php echo json_encode(array_map(function($blog) {
+        // Parse tags
+        $tags = !empty($blog['tags']) ? array_map('trim', explode(',', $blog['tags'])) : ['general'];
+        
+        // Format date
+        $date = date('d M Y', strtotime($blog['publish_date']));
+        
+        // Get excerpt or truncate body
+        $description = !empty($blog['excerpt']) ? $blog['excerpt'] : '';
+        if (empty($description) && !empty($blog['body'])) {
+            $bodyData = json_decode($blog['body'], true);
+            $bodyText = isset($bodyData['html']) ? strip_tags($bodyData['html']) : strip_tags($blog['body']);
+            $description = mb_substr($bodyText, 0, 150) . '...';
         }
-    ];
+        
+        // Get cover image or use icon
+        $icon = '📝';
+        $hasImage = !empty($blog['cover_image']);
+        $imagePath = $hasImage ? 'uploads/blogs/' . $blog['cover_image'] : '';
+        
+        return [
+            'id' => $blog['id'],
+            'title' => $blog['title'],
+            'date' => $date,
+            'description' => $description,
+            'tags' => $tags,
+            'icon' => $icon,
+            'hasImage' => $hasImage,
+            'imagePath' => $imagePath,
+            'link' => 'blog-detail.php?slug=' . urlencode($blog['slug'])
+        ];
+    }, $blogs)); ?>;
 
     let currentFilter = 'all';
 
@@ -707,16 +680,18 @@ include 'header.php';
 
         emptyState.style.display = 'none';
         blogGrid.innerHTML = filteredBlogs.map(blog => `
-            <div class="blog-card">
-                <div class="blog-image">${blog.icon}</div>
+            <div class="blog-card" onclick="window.location.href='${blog.link}'">
+                <div class="blog-image" style="${blog.hasImage ? `background: url('${blog.imagePath}') center/cover; height: 240px;` : ''}">
+                    ${!blog.hasImage ? blog.icon : ''}
+                </div>
                 <div class="blog-content">
                     <div class="blog-date">${blog.date}</div>
                     <h2 class="blog-title">${blog.title}</h2>
                     <p class="blog-description">${blog.description}</p>
                     <div class="blog-tags">
-                        ${blog.tags.map(tag => `<span class="tag" onclick="filterByTag('${tag}')">${tag}</span>`).join('')}
+                        ${blog.tags.map(tag => `<span class="tag" onclick="event.stopPropagation(); filterByTag('${tag}')">${tag}</span>`).join('')}
                     </div>
-                    <a href="${blog.link}" class="read-more">Read More</a>
+                    <a href="${blog.link}" class="read-more" onclick="event.stopPropagation()">Read More</a>
                 </div>
             </div>
         `).join('');
