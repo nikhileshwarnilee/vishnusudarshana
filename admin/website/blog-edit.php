@@ -35,7 +35,7 @@ $video_url = $blog['video_url'];
 $publish_date = $blog['publish_date'];
 $status = $blog['status'];
 $cover_image = $blog['cover_image'];
-$_SESSION['cover_image'] = $cover_image;
+// Do not overwrite session cover_image here; only set it after upload
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $title = trim($_POST['title'] ?? '');
@@ -67,6 +67,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_SESSION['cover_image']) && $_SESSION['cover_image'] !== '') {
         // Only store the filename, not the full path
         $cover_image = basename($_SESSION['cover_image']);
+    } else {
+        // If no new image uploaded, keep the old image filename
+        $cover_image = $blog['cover_image'];
     }
 
     // If no errors, update in DB
@@ -84,6 +87,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $status,
             $editId
         ]);
+        // Clear session image after saving
+        unset($_SESSION['cover_image']);
         $success = true;
         header('Location: blogs-management.php?updated=1');
         exit;
@@ -206,6 +211,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <label for="cover_image_file">Cover Image Upload</label>
                     <input type="file" id="cover_image_file" name="cover_image_file" accept="image/*">
                     <button type="button" id="uploadImageBtn" class="btn-secondary" style="margin-top:8px;">Upload Image</button>
+                    <div id="imagePreviewDiv" style="margin-top:10px;"></div>
                     <div class="helper-text">Upload a high-quality image. Preferred 1200x630 or better.</div>
                 </div>
                 <div class="form-group">
