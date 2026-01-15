@@ -148,7 +148,6 @@ input[type="submit"]:hover, input[type="submit"]:focus,
         width: 100%;
         border-right: none;
         padding-right: 0;
-        border-bottom: 2px solid #d4af37;
         padding-bottom: 10px;
         margin-bottom: 0;
     }
@@ -2385,8 +2384,6 @@ body, .main-content, .form-container, .status-card, .panchang-card, .detail-sect
 
 .header--design-12 .header-12-logo {
     flex-shrink: 0;
-    border-right: 3px solid var(--button-border-hover);
-    padding-right: 28px;
 }
 
 .header--design-12 .header-12-logo .logo-img {
@@ -2456,13 +2453,12 @@ body, .main-content, .form-container, .status-card, .panchang-card, .detail-sect
     .header--design-12 .header-12-content {
         flex-direction: column;
         gap: 16px;
-        padding: 12px 16px;
+        padding: 0px 0px;
     }
     .header--design-12 .header-12-logo {
         border-right: none;
-        padding-right: 0;
-        border-bottom: 2px solid var(--button-border-hover);
-        padding-bottom: 10px;
+        padding-bottom: 5px;
+        padding-top: 5px;
         width: 100%;
         display: flex;
         justify-content: center;
