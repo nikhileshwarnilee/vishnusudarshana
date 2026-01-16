@@ -261,7 +261,15 @@ if ($source === 'appointment') {
             </div>
             <div class="details-row">
                 <span class="details-label">Mobile:</span>
-                <span class="details-value"><?php echo htmlspecialchars($customer['mobile'] ?? ''); ?></span>
+                <span class="details-value">
+                <?php
+                    $cc = $customer['country_code'] ?? '+91';
+                    if ($cc === 'other') {
+                        $cc = $customer['custom_country_code'] ?? '';
+                    }
+                    echo htmlspecialchars(trim($cc . ' ' . ($customer['mobile'] ?? '')));
+                ?>
+                </span>
             </div>
             <div class="details-row">
                 <span class="details-label">Email:</span>
@@ -403,7 +411,11 @@ try {
 $amount_in_paise = (int)round($total_amount * 100);
 $name = isset($customer['full_name']) ? addslashes($customer['full_name']) : '';
 $email = isset($customer['email']) ? addslashes($customer['email']) : '';
-$mobile = isset($customer['mobile']) ? addslashes($customer['mobile']) : '';
+$cc = isset($customer['country_code']) ? $customer['country_code'] : '+91';
+if ($cc === 'other') {
+    $cc = isset($customer['custom_country_code']) ? $customer['custom_country_code'] : '';
+}
+$mobile = isset($customer['mobile']) ? addslashes(trim($cc . $customer['mobile'])) : '';
 $description = ($paymentSource === 'appointment') ? 'Appointment Booking Fee' : 'Service Payment';
 ?>
 

@@ -91,10 +91,26 @@ if ($category === 'appointment') {
         <h2 class="section-title">Your Submitted Details</h2>
         <div class="details-list">
             <?php foreach ($form_data as $key => $val): ?>
-                <div class="details-row">
-                    <span class="details-label"><?php echo htmlspecialchars(ucwords(str_replace('_', ' ', $key))); ?>:</span>
-                    <span class="details-value"><?php echo htmlspecialchars(is_array($val) ? implode(', ', $val) : $val); ?></span>
-                </div>
+                <?php if ($key === 'custom_country_code') continue; ?>
+                <?php if ($key === 'mobile'): ?>
+                    <div class="details-row">
+                        <span class="details-label">Mobile:</span>
+                        <span class="details-value">
+                            <?php
+                            $cc = $form_data['country_code'] ?? '+91';
+                            if ($cc === 'other') {
+                                $cc = $form_data['custom_country_code'] ?? '';
+                            }
+                            echo htmlspecialchars($cc . ' ' . $val);
+                            ?>
+                        </span>
+                    </div>
+                <?php else: ?>
+                    <div class="details-row">
+                        <span class="details-label"><?php echo htmlspecialchars(ucwords(str_replace('_', ' ', $key))); ?>:</span>
+                        <span class="details-value"><?php echo htmlspecialchars(is_array($val) ? implode(', ', $val) : $val); ?></span>
+                    </div>
+                <?php endif; ?>
             <?php endforeach; ?>
         </div>
     </div>
@@ -208,7 +224,22 @@ html,body{font-family:'Marcellus',serif!important;}
 .product-desc { font-size: 0.97em; color: #555; margin: 2px 0 2px 0; }
 .product-price { color: #1a8917; font-weight: 600; font-size: 1.08em; margin-top: 6px; }
 .qty-controls { display: flex; align-items: center; gap: 4px; }
-.qty-btn { background: #f5faff; border: 1px solid #e0bebe; color: #800000; border-radius: 50%; width: 22px; height: 22px; font-size: 1em; cursor: pointer; }
+.qty-btn {
+    background: #f5faff;
+    border: 1px solid #e0bebe;
+    color: #800000;
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    font-size: 1.18em;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    line-height: 1;
+    box-sizing: border-box;
+}
 .qty-input { width: 32px; text-align: center; border: 1px solid #e0bebe; border-radius: 6px; padding: 2px 0; font-size: 1em; }
 .line-total { font-size: 0.98em; color: #800000; font-weight: 600; min-width: 60px; text-align: right; }
 .sticky-total { position: sticky; bottom: 0; background: #fff; padding: 14px 0 0 0; text-align: right; font-size: 1.13em; border-top: 1px solid #e0bebe; box-shadow: 0 -2px 8px #e0bebe22; z-index: 10; }

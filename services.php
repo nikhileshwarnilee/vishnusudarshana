@@ -8,7 +8,7 @@
             <a class="category-card home-top-card" href="category.php?category=appointment">
                 <img src="assets/images/religious-bg/appointment.png" alt="Book an Appointment Icon" class="home-top-card-icon" />
                 <div class="home-top-card-title">Book an Appointment</div>
-                <div class="home-top-card-desc">Schedule an online or offline appointment; final slot confirmed by our team.</div>
+                <div class="home-top-card-desc">Schedule a convenient time to consult for your spiritual or astrological needs.</div>
                 <div class="card-text-filler"></div>
                 <div class="card-text-filler"></div>
                 <div class="card-text-filler"></div>
@@ -20,7 +20,7 @@
             <a class="category-card home-top-card" href="category.php?category=birth-child">
                 <img src="assets/images/religious-bg/birthchild.png" alt="Birth & Child Services Icon" class="home-top-card-icon" />
                 <div class="home-top-card-title">Birth & Child Services</div>
-                <div class="home-top-card-desc">Janma Patrika, name suggestions, baby horoscope and child guidance.</div>
+                <div class="home-top-card-desc">Guidance for naming, samskaras, and important rituals related to children.</div>
                 <div class="card-text-filler"></div>
                 <div class="card-text-filler"></div>
                 <div class="card-text-filler"></div>
@@ -32,7 +32,7 @@
             <a class="category-card home-top-card" href="category.php?category=marriage-matching">
                 <img src="assets/images/religious-bg/marriage.png" alt="Marriage & Matching Icon" class="home-top-card-icon" />
                 <div class="home-top-card-title">Marriage & Matching</div>
-                <div class="home-top-card-desc">Kundali Milan, marriage prediction and compatibility analysis.</div>
+                <div class="home-top-card-desc">Kundali matching and advice for a harmonious and blessed married life.</div>
                 <div class="card-text-filler"></div>
                 <div class="card-text-filler"></div>
                 <div class="card-text-filler"></div>
@@ -44,7 +44,7 @@
             <a class="category-card home-top-card" href="category.php?category=astrology-consultation">
                 <img src="assets/images/religious-bg/astrology.png" alt="Astrology Consultation Icon" class="home-top-card-icon" />
                 <div class="home-top-card-title">Astrology Consultation</div>
-                <div class="home-top-card-desc">Career, marriage, health, finance and personal guidance.</div>
+                <div class="home-top-card-desc">Personalised astrological guidance for life, career, health, and decisions.</div>
                 <div class="card-text-filler"></div>
                 <div class="card-text-filler"></div>
                 <div class="card-text-filler"></div>
@@ -56,7 +56,7 @@
             <a class="category-card home-top-card" href="category.php?category=muhurat-event">
                 <img src="assets/images/religious-bg/muhurat.png" alt="Muhurat & Event Guidance Icon" class="home-top-card-icon" />
                 <div class="home-top-card-title">Muhurat & Event Guidance</div>
-                <div class="home-top-card-desc">Marriage, griha pravesh, vehicle purchase and business start muhurat.</div>
+                <div class="home-top-card-desc">Find auspicious timings for important events and life milestones.</div>
                 <div class="card-text-filler"></div>
                 <div class="card-text-filler"></div>
                 <div class="card-text-filler"></div>
@@ -68,7 +68,7 @@
             <a class="category-card home-top-card" href="category.php?category=pooja-vastu-enquiry">
                 <img src="assets/images/religious-bg/pooja.png" alt="Pooja, Ritual & Vastu Enquiry Icon" class="home-top-card-icon" />
                 <div class="home-top-card-title">Pooja, Ritual & Vastu Enquiry</div>
-                <div class="home-top-card-desc">Pooja, shanti, dosh nivaran, yagya and vastu consultation.</div>
+                <div class="home-top-card-desc">Enquire about poojas, shanti rituals, dosh nivaran, yagya, and vastu solutions.</div>
                 <div class="card-text-filler"></div>
                 <div class="card-text-filler"></div>
                 <div class="card-text-filler"></div>

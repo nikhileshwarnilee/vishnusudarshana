@@ -5,72 +5,75 @@ $category = $_GET['category'] ?? '';
 $categories = [
     'appointment' => [
         'title' => 'Appointment Booking',
-        'description' => 'Schedule an online or offline appointment with Pandit Ji for personal consultation on astrology, vastu, rituals, or spiritual guidance.',
+        'description' => 'Book your appointment online at your convenience without calls or visits. Choose a suitable time and get guided support from anywhere.',
         'services' => [
-            'Online Consultation',
-            'In-person Consultation',
-            'Astrology Guidance',
-            'Vastu Advice',
-            'Ritual Planning',
+            'Online Appointment',
+                
         ],
         'delivery' => 'Online or In-person',
         'type' => 'Paid Appointment',
     ],
     'birth-child' => [
         'title' => 'Birth & Child Services',
-        'description' => 'These services are designed for newborns and children. They help parents understand the child’s birth chart, choose auspicious names, and get spiritual guidance for the child’s future.',
+        'description' => 'Online guidance for naming, samskaras, and important child-related rituals. Simple digital process to plan sacred rites with comfort and clarity.',
         'services' => [
-            'Janma Patrika',
-            'Baby Name Suggestions',
-            'Child Horoscope',
-            'Child Future Guidance',
+            'Namkaran',
+            'Samskaras',
+            'Child Rituals',
+            'Janma Kundali',
+                'many more',
         ],
         'delivery' => 'Online (reports delivered digitally)',
         'type' => 'Paid Services',
     ],
     'marriage-matching' => [
         'title' => 'Marriage & Matching',
-        'description' => 'These services help families check compatibility and marriage prospects using traditional astrological methods.',
+        'description' => 'Kundali matching and marriage guidance provided through online consultation. Get accurate insights and advice easily without physical meetings.',
         'services' => [
-            'Kundali Milan',
-            'Marriage Prediction',
+            'Kundali Matching',
+            'Guna Milan',
+            'Marriage Guidance',
+            'Compatibility Check',
+                'many more',
         ],
         'delivery' => 'Online Consultation',
         'type' => 'Paid Services',
     ],
     'astrology-consultation' => [
         'title' => 'Astrology Consultation',
-        'description' => 'Astrology consultation allows you to seek guidance on multiple life topics in one consultation.',
+        'description' => 'Personalised astrology consultations conducted fully online for your ease. Receive trusted guidance for life matters from the comfort of your home.',
         'services' => [
-            'Career & Education',
-            'Marriage & Relationships',
-            'Health & Wellbeing',
-            'Finance & Business',
-            'Family & Personal Matters',
+            'Horoscope Reading',
+            'Career Guidance',
+            'Health Insights',
+            'Life Predictions',
+                'many more',
         ],
         'delivery' => 'Online or In-person Consultation',
         'type' => 'Paid Consultation',
     ],
     'muhurat-event' => [
         'title' => 'Muhurat & Event Guidance',
-        'description' => 'These services help you find auspicious timings for important life events.',
+        'description' => 'Get auspicious timings and event guidance through online consultation. Plan important moments correctly without unnecessary delays or travel.',
         'services' => [
-            'Marriage Muhurat',
-            'Griha Pravesh Muhurat',
-            'Vehicle Purchase Muhurat',
-            'Business Start Muhurat',
+            'Auspicious Timing',
+            'Wedding Muhurat',
+            'Griha Pravesh',
+            'Event Planning',
+                'many more',
         ],
         'delivery' => 'Online Guidance',
         'type' => 'Free or Paid (based on requirement)',
     ],
     'pooja-vastu-enquiry' => [
         'title' => 'Pooja, Ritual & Vastu Enquiry',
-        'description' => 'These services are enquiry-based. Details are discussed personally to understand the problem and suggest suitable rituals or vastu solutions.',
+        'description' => 'Enquire online for pooja, shanti rituals, dosh nivaran, yagya, and vastu. All guidance and coordination handled digitally for a smooth experience.',
         'services' => [
-            'Pooja & Ritual Enquiry',
-            'Shanti & Dosh Nivaran',
-            'Yagya & Havan',
-            'Vastu Consultation',
+            'Pooja Enquiry',
+            'Shanti Rituals',
+            'Dosh Nivaran',
+            'Vastu Guidance',
+                'many more',
         ],
         'delivery' => 'Offline or On-site Visit',
         'type' => 'Enquiry Based (No Online Payment)',
@@ -278,7 +281,7 @@ body {
             <span class="how-step"><span class="how-dot maroon-dot">1</span>Fill the form</span>
             <span class="how-step"><span class="how-dot maroon-dot">2</span>Submit details</span>
             <span class="how-step"><span class="how-dot maroon-dot">3</span>Select options</span>
-            <span class="how-step"><span class="how-dot maroon-dot">4</span>Pay (if needed)</span>
+            <span class="how-step"><span class="how-dot maroon-dot">4</span>Pay Service Fee</span>
             <span class="how-step"><span class="how-dot maroon-dot">5</span>Track status</span>
         </div>
     </section>

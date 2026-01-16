@@ -91,7 +91,14 @@ unset($fields);
             </div>
             <div class="form-group">
                 <label>Mobile Number <span class="req">*</span></label>
-                <input type="tel" name="mobile" required>
+                <div style="display:flex;gap:6px;align-items:center;">
+                    <select name="country_code" id="country_code_select" style="width:auto;">
+                        <option value="+91" selected>+91 India</option>
+                        <option value="other">Other</option>
+                    </select>
+                    <input type="text" name="custom_country_code" id="custom_country_code_input" placeholder="+__" style="width:60px;display:none;">
+                    <input type="tel" name="mobile" required style="flex:1;">
+                </div>
             </div>
             <div class="form-group">
                 <label>Email (optional)</label>
@@ -166,7 +173,18 @@ unset($fields);
             <?php foreach ($commonFields as $field): ?>
                 <div class="form-group">
                     <label><?php echo $field['label']; ?><?php if ($field['required']): ?><span class="req">*</span><?php endif; ?></label>
-                    <input type="<?php echo $field['type']; ?>" name="<?php echo $field['name']; ?>" <?php if ($field['required']): ?>required<?php endif; ?>>
+                    <?php if ($field['name'] === 'mobile'): ?>
+                        <div style="display:flex;gap:6px;align-items:center;">
+                            <select name="country_code" class="country_code_select" style="width:auto;">
+                                <option value="+91" selected>+91 India</option>
+                                <option value="other">Other</option>
+                            </select>
+                            <input type="text" name="custom_country_code" class="custom_country_code_input" placeholder="+__" style="width:60px;display:none;">
+                            <input type="tel" name="mobile" required style="flex:1;">
+                        </div>
+                    <?php else: ?>
+                        <input type="<?php echo $field['type']; ?>" name="<?php echo $field['name']; ?>" <?php if ($field['required']): ?>required<?php endif; ?> >
+                    <?php endif; ?>
                 </div>
             <?php endforeach; ?>
         </section>
@@ -188,7 +206,29 @@ unset($fields);
                     <?php elseif ($field['type'] === 'textarea'): ?>
                         <textarea name="<?php echo $field['name']; ?>" rows="3" <?php if (!empty($field['required'])): ?>required<?php endif; ?>></textarea>
                     <?php else: ?>
-                        <input type="<?php echo $field['type']; ?>" name="<?php echo $field['name']; ?>" <?php if (!empty($field['required'])): ?>required<?php endif; ?> >
+                    <?php if ($field['name'] === 'mobile'): ?>
+                        <div style="display:flex;gap:6px;align-items:center;">
+                            <select name="country_code" class="country_code_select" style="width:auto;">
+                                <option value="+91" selected>+91 India</option>
+                                <option value="other">Other</option>
+                            </select>
+                            <input type="text" name="custom_country_code" class="custom_country_code_input" placeholder="+__" style="width:60px;display:none;" pattern="^\\+\\d{1,4}$">
+                            <input type="tel" name="mobile" required style="flex:1;">
+                        </div>
+                    <?php else: ?>
+                        <?php if ($field['name'] === 'mobile'): ?>
+                            <div style="display:flex;gap:6px;align-items:center;">
+                                <select name="country_code" class="country_code_select" style="width:auto;">
+                                    <option value="+91" selected>+91 India</option>
+                                    <option value="other">Other</option>
+                                </select>
+                                <input type="text" name="custom_country_code" class="custom_country_code_input" placeholder="+__" style="width:60px;display:none;" pattern="^\\+\\d{1,4}$">
+                                <input type="tel" name="mobile" required style="flex:1;">
+                            </div>
+                        <?php else: ?>
+                            <input type="<?php echo $field['type']; ?>" name="<?php echo $field['name']; ?>" <?php if (!empty($field['required'])): ?>required<?php endif; ?> >
+                        <?php endif; ?>
+                    <?php endif; ?>
                     <?php endif; ?>
                 </div>
             <?php endforeach; ?>
@@ -200,6 +240,33 @@ unset($fields);
 </main>
 <?php require_once 'footer.php'; ?>
 <script>
+// Country code dropdown logic for all mobile fields
+document.addEventListener('DOMContentLoaded', function() {
+    function handleCountryCode(select, customInput) {
+        select.addEventListener('change', function() {
+            if (select.value === 'other') {
+                customInput.style.display = 'inline-block';
+                customInput.required = true;
+            } else {
+                customInput.style.display = 'none';
+                customInput.required = false;
+                customInput.value = '';
+            }
+        });
+    }
+    // For main form
+    var mainSelect = document.getElementById('country_code_select');
+    var mainCustom = document.getElementById('custom_country_code_input');
+    if (mainSelect && mainCustom) {
+        handleCountryCode(mainSelect, mainCustom);
+    }
+    // For dynamic/other forms (category fields)
+    var selects = document.querySelectorAll('.country_code_select');
+    var customs = document.querySelectorAll('.custom_country_code_input');
+    selects.forEach(function(sel, idx) {
+        if (customs[idx]) handleCountryCode(sel, customs[idx]);
+    });
+});
 function handleSelectChange(field) {
     if (field === 'event_type') {
         var select = document.getElementById('event_type');
