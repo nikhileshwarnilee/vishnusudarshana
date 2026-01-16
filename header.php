@@ -59,15 +59,6 @@
     </div>
     <header class="header header--design-12">
         <?php $mobile_number = isset($mobile_number) ? $mobile_number : '98500 57444'; ?>
-        <div class="sample-label">
-            <span style="display: flex; align-items: center; gap: 8px;">
-                <span style="font-size: 1.2em;">📞</span>
-                <a href="tel:<?php echo preg_replace('/[^0-9+]/', '', $mobile_number); ?>">
-                    <?php echo htmlspecialchars($mobile_number); ?>
-                </a>
-            </span>
-            <button class="lang-header-btn" id="lang-header-btn" aria-label="Change Language" type="button">Select Language</button>
-        </div>
         <div class="header-12-content">
             <div class="header-12-logo">
                 <a href="index.php" class="logo-link" aria-label="Vishnusudarshana Home">
@@ -75,14 +66,33 @@
                     <span class="logo-text" style="display:none;">Vishnusudarshana</span>
                 </a>
             </div>
-            <nav class="header-12-nav" aria-label="Primary Navigation">
-                <ul class="nav-menu">
-                    <li><a href="index.php" data-i18n="nav_home">Home</a></li>
-                    <li><a href="services.php" data-i18n="nav_services">Services</a></li>
-                    <li><a href="blogs.php" data-i18n="nav_blogs">Blogs</a></li>
-                    <li><a href="track.php" data-i18n="nav_track">Track</a></li>
-                </ul>
-            </nav>
-            <!-- Language button moved to sample label above -->
+            <div class="header-12-nav-icons-row">
+                <nav class="header-12-nav" aria-label="Primary Navigation">
+                    <ul class="nav-menu">
+                        <li><a href="index.php" data-i18n="nav_home">Home</a></li>
+                        <li><a href="services.php" data-i18n="nav_services">Services</a></li>
+                        <li><a href="blogs.php" data-i18n="nav_blogs">Blogs</a></li>
+                        <li><a href="track.php" data-i18n="nav_track">Track</a></li>
+                    </ul>
+                </nav>
+                <div class="header-icons-right">
+                    <a href="tel:<?php echo preg_replace('/[^0-9+]/', '', $mobile_number); ?>" class="header-icon-btn" title="Call">
+                        <span class="header-icon-svg call-icon">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <circle cx="12" cy="12" r="12" fill="var(--maroon)"/>
+                                <path d="M17.7 15.6l-2.2-1c-.3-.1-.7 0-.9.2l-1 1.3c-1.6-.8-2.9-2.1-3.7-3.7l1.3-1c.2-.2.3-.6.2-.9l-1-2.2c-.2-.4-.7-.6-1.1-.5l-1.7.4c-.4.1-.7.5-.7.9 0 5.1 4.1 9.2 9.2 9.2.4 0 .8-.3.9-.7l.4-1.7c.1-.4-.1-.9-.5-1.1z" fill="#FFD700"/>
+                            </svg>
+                        </span>
+                    </a>
+                    <button class="header-icon-btn" id="lang-header-btn" aria-label="Change Language" type="button" title="Change Language">
+                        <span class="header-icon-svg lang-icon">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <circle cx="12" cy="12" r="12" fill="var(--maroon)"/>
+                                <path d="M12 6v12M6 12h12M8.5 8.5l7 7M8.5 15.5l7-7" stroke="#FFD700" stroke-width="1.5" stroke-linecap="round"/>
+                            </svg>
+                        </span>
+                    </button>
+                </div>
+            </div>
         </div>
     </header>
