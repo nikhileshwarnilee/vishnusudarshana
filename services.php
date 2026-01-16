@@ -9,42 +9,72 @@
                 <img src="assets/images/religious-bg/appointment.png" alt="Book an Appointment Icon" class="home-top-card-icon" />
                 <div class="home-top-card-title">Book an Appointment</div>
                 <div class="home-top-card-desc">Schedule an online or offline appointment; final slot confirmed by our team.</div>
-                <span class="category-badge guidance">Book Now</span>
+                <div class="card-text-filler"></div>
+                <div class="card-text-filler"></div>
+                <div class="card-text-filler"></div>
+                <div class="card-text-filler"></div>
+                <div class="card-text-filler"></div>
+                <div class="card-btn-wrap"><span class="redesigned-cta-btn">Book Now</span></div>
             </a>
             <!-- Birth & Child Services Card -->
             <a class="category-card home-top-card" href="category.php?category=birth-child">
                 <img src="assets/images/religious-bg/birthchild.png" alt="Birth & Child Services Icon" class="home-top-card-icon" />
                 <div class="home-top-card-title">Birth & Child Services</div>
                 <div class="home-top-card-desc">Janma Patrika, name suggestions, baby horoscope and child guidance.</div>
-                <span class="category-badge guidance">Book Now</span>
+                <div class="card-text-filler"></div>
+                <div class="card-text-filler"></div>
+                <div class="card-text-filler"></div>
+                <div class="card-text-filler"></div>
+                <div class="card-text-filler"></div>
+                <div class="card-btn-wrap"><span class="redesigned-cta-btn">Book Now</span></div>
             </a>
             <!-- Marriage & Matching Card -->
             <a class="category-card home-top-card" href="category.php?category=marriage-matching">
                 <img src="assets/images/religious-bg/marriage.png" alt="Marriage & Matching Icon" class="home-top-card-icon" />
                 <div class="home-top-card-title">Marriage & Matching</div>
                 <div class="home-top-card-desc">Kundali Milan, marriage prediction and compatibility analysis.</div>
-                <span class="category-badge guidance">Book Now</span>
+                <div class="card-text-filler"></div>
+                <div class="card-text-filler"></div>
+                <div class="card-text-filler"></div>
+                <div class="card-text-filler"></div>
+                <div class="card-text-filler"></div>
+                <div class="card-btn-wrap"><span class="redesigned-cta-btn">Book Now</span></div>
             </a>
             <!-- Astrology Consultation Card -->
             <a class="category-card home-top-card" href="category.php?category=astrology-consultation">
                 <img src="assets/images/religious-bg/astrology.png" alt="Astrology Consultation Icon" class="home-top-card-icon" />
                 <div class="home-top-card-title">Astrology Consultation</div>
                 <div class="home-top-card-desc">Career, marriage, health, finance and personal guidance.</div>
-                <span class="category-badge guidance">Book Now</span>
+                <div class="card-text-filler"></div>
+                <div class="card-text-filler"></div>
+                <div class="card-text-filler"></div>
+                <div class="card-text-filler"></div>
+                <div class="card-text-filler"></div>
+                <div class="card-btn-wrap"><span class="redesigned-cta-btn">Book Now</span></div>
             </a>
             <!-- Muhurat & Event Guidance Card -->
             <a class="category-card home-top-card" href="category.php?category=muhurat-event">
                 <img src="assets/images/religious-bg/muhurat.png" alt="Muhurat & Event Guidance Icon" class="home-top-card-icon" />
                 <div class="home-top-card-title">Muhurat & Event Guidance</div>
                 <div class="home-top-card-desc">Marriage, griha pravesh, vehicle purchase and business start muhurat.</div>
-                <span class="category-badge guidance">Book Now</span>
+                <div class="card-text-filler"></div>
+                <div class="card-text-filler"></div>
+                <div class="card-text-filler"></div>
+                <div class="card-text-filler"></div>
+                <div class="card-text-filler"></div>
+                <div class="card-btn-wrap"><span class="redesigned-cta-btn">Book Now</span></div>
             </a>
             <!-- Pooja, Ritual & Vastu Enquiry Card -->
             <a class="category-card home-top-card" href="category.php?category=pooja-vastu-enquiry">
                 <img src="assets/images/religious-bg/pooja.png" alt="Pooja, Ritual & Vastu Enquiry Icon" class="home-top-card-icon" />
                 <div class="home-top-card-title">Pooja, Ritual & Vastu Enquiry</div>
                 <div class="home-top-card-desc">Pooja, shanti, dosh nivaran, yagya and vastu consultation.</div>
-                <span class="category-badge guidance">Book Now</span>
+                <div class="card-text-filler"></div>
+                <div class="card-text-filler"></div>
+                <div class="card-text-filler"></div>
+                <div class="card-text-filler"></div>
+                <div class="card-text-filler"></div>
+                <div class="card-btn-wrap"><span class="redesigned-cta-btn">Book Now</span></div>
             </a>
         </div>
     </section>
@@ -59,6 +89,33 @@ html,body{
     padding: 1.5rem 0 4.5rem 0;
     background: var(--cream-bg);
     min-height: 100vh;
+}
+.card-text-filler {
+    height: 1.1em;
+    width: 100%;
+    content: '';
+    display: block;
+}
+.card-btn-wrap {
+    margin-top: auto;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+    position: absolute;
+    left: 0;
+    bottom: 18px;
+    z-index: 2;
+    pointer-events: auto;
+}
+.category-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-start;
+    min-height: 260px;
+    padding-bottom: 70px;
 }
 .services-title {
     text-align: center;

@@ -25,18 +25,24 @@ html, body {
 }
 .track-table th, .track-table td {
     background: transparent;
+    font-size: 0.92em;
+    padding: 7px 8px;
+    vertical-align: middle;
 }
 .track-table th {
-    color: var(--maroon);
+    color: #fff;
     font-weight: 700;
     letter-spacing: 0.01em;
-    background: #fffbe6;
+    background: var(--maroon);
+    font-size: 1em;
+    border-bottom: 2px solid #ffe9a7;
 }
 .track-table tr {
     transition: background 0.2s;
+    border-bottom: 1px solid #f7e9c7;
 }
 .track-table tr:hover {
-    background: #fff9e0;
+    background: #fffbe6;
 }
 .table-responsive {
     box-shadow: var(--gold-shadow);
@@ -223,10 +229,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     <section class="track-form-section">
         <form class="track-form" method="post" autocomplete="off">
-            <div class="form-group">
-                <input type="text" id="track_input" name="track_input" maxlength="30" placeholder="Enter Mobile Number or Tracking ID" required value="<?php echo isset($_POST['track_input']) ? htmlspecialchars($_POST['track_input']) : ''; ?>" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid #e0bebe;font-size:1.08em;">
+            <div class="form-group track-form-card">
+                <input type="text" id="track_input" name="track_input" maxlength="30" placeholder="Enter Mobile Number or Tracking ID" required value="<?php echo isset($_POST['track_input']) ? htmlspecialchars($_POST['track_input']) : ''; ?>">
             </div>
-            <button type="submit" class="track-btn" style="width:100%;background:var(--maroon);color:#fff;border:none;border-radius:8px;padding:12px 0;font-size:1.08em;font-weight:600;margin-top:10px;cursor:pointer;">Track Service</button>
+            <div class="track-btn-wrap">
+                <button type="submit" class="track-btn redesigned-cta-btn">Track Service</button>
+            </div>
         </form>
     </section>
 
