@@ -7,8 +7,8 @@ self.addEventListener('install', function(e) {
         '/services.php',
         '/blogs.php',
         '/assets/css/',
-        '/assets/images/icon-logo.png',
-        '/assets/images/icon-logo.png'
+        '/assets/images/logo/icon-logo.png',
+        '/assets/images/logo/icon-logo.png'
       ]);
     })
   );
