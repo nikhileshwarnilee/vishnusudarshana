@@ -1,5 +1,5 @@
 {
-  "name": "Vishnusudarshana",
+  "name": "Vishnusudarshana Dharmik Sanskar Kendra",
   "short_name": "Vishnusudarshana",
   "start_url": "/index.php",
   "display": "standalone",
@@ -8,12 +8,12 @@
   "description": "Astrology & Spiritual Services",
   "icons": [
     {
-      "src": "/assets/images/icon-192.png",
+      "src": "/assets/images/logo-icon.png",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "/assets/images/icon-512.png",
+      "src": "/assets/images/icon-icon.png",
       "sizes": "512x512",
       "type": "image/png"
     }
