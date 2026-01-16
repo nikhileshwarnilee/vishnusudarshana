@@ -1,18 +1,3 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Your Website Title</title>
-    <link rel="stylesheet" href="styles.css">
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Marcellus&display=swap');
-        html, body {
-            font-family: 'Marcellus', serif !important;
-        }
-    </style>
-</head>
-<body>
     <nav class="mobile-nav">
         <ul>
             <li>
@@ -54,5 +39,3 @@
             <p style="font-size:0.97em;color:#800000;margin-top:6px;">Designed and Developed by <a href="https://www.contysi.com" target="_blank" style="color:#800000;text-decoration:underline;">ContySi</a></p>
         </div>
     </footer>
-</body>
-</html>
