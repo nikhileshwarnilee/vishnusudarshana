@@ -18,7 +18,7 @@ if ($category === 'appointment') {
     $stmt->execute(['appointment']);
     $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
     // Backend validation
-    $required = ['full_name', 'mobile', 'appointment_type', 'preferred_date', 'preferred_time'];
+    $required = ['full_name', 'mobile', 'appointment_type', 'preferred_date']; // preferred_time is now optional
     $errors = [];
     foreach ($required as $field) {
         if (empty($form_data[$field]) || !is_string($form_data[$field]) || trim($form_data[$field]) === '') {

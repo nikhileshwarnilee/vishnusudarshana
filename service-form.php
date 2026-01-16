@@ -41,27 +41,27 @@ $categoryFields = [
         ['label' => 'Gender', 'name' => 'gender', 'type' => 'select', 'options' => ['Male', 'Female', 'Other'], 'required' => true],
     ],
     'marriage-matching' => [
-        ['label' => 'Boy Date of Birth', 'name' => 'boy_dob', 'type' => 'date', 'required' => true],
-        ['label' => 'Boy Time of Birth', 'name' => 'boy_tob', 'type' => 'time', 'required' => true],
-        ['label' => 'Boy Place of Birth', 'name' => 'boy_pob', 'type' => 'text', 'required' => true],
-        ['label' => 'Girl Date of Birth', 'name' => 'girl_dob', 'type' => 'date', 'required' => true],
-        ['label' => 'Girl Time of Birth', 'name' => 'girl_tob', 'type' => 'time', 'required' => true],
-        ['label' => 'Girl Place of Birth', 'name' => 'girl_pob', 'type' => 'text', 'required' => true],
+        ['label' => 'Men Date of Birth', 'name' => 'boy_dob', 'type' => 'date', 'required' => true],
+        ['label' => 'Men Time of Birth', 'name' => 'boy_tob', 'type' => 'time', 'required' => true],
+        ['label' => 'Men Place of Birth', 'name' => 'boy_pob', 'type' => 'text', 'required' => true],
+        ['label' => 'Women Date of Birth', 'name' => 'girl_dob', 'type' => 'date', 'required' => true],
+        ['label' => 'Women Time of Birth', 'name' => 'girl_tob', 'type' => 'time', 'required' => true],
+        ['label' => 'Women Place of Birth', 'name' => 'girl_pob', 'type' => 'text', 'required' => true],
     ],
     'astrology-consultation' => [
-        ['label' => 'Date of Birth', 'name' => 'dob', 'type' => 'date', 'required' => true],
-        ['label' => 'Time of Birth', 'name' => 'tob', 'type' => 'time', 'required' => true],
-        ['label' => 'Place of Birth', 'name' => 'pob', 'type' => 'text', 'required' => true],
+        ['label' => 'Date of Birth', 'name' => 'dob', 'type' => 'date', 'required' => false],
+        ['label' => 'Time of Birth', 'name' => 'tob', 'type' => 'time', 'required' => false],
+        ['label' => 'Place of Birth', 'name' => 'pob', 'type' => 'text', 'required' => false],
     ],
     'muhurat-event' => [
         ['label' => 'Event Type', 'name' => 'event_type', 'type' => 'select', 'options' => ['Marriage', 'Griha Pravesh', 'Vehicle Purchase', 'Business Start', 'Other'], 'required' => true],
-        ['label' => 'Preferred Date or Month', 'name' => 'preferred_date', 'type' => 'text', 'required' => true],
-        ['label' => 'City', 'name' => 'event_city', 'type' => 'text', 'required' => true],
+        ['label' => 'Preferred Date or Month', 'name' => 'preferred_date', 'type' => 'text', 'required' => false],
+        ['label' => 'City', 'name' => 'event_city', 'type' => 'text', 'required' => false],
     ],
     'pooja-vastu-enquiry' => [
         ['label' => 'Service Topic', 'name' => 'service_topic', 'type' => 'select', 'options' => ['Pooja & Ritual', 'Shanti & Dosh Nivaran', 'Yagya & Havan', 'Vastu Consultation', 'Other'], 'required' => true],
-        ['label' => 'Problem Description', 'name' => 'problem_desc', 'type' => 'textarea', 'required' => true],
-        ['label' => 'City', 'name' => 'enquiry_city', 'type' => 'text', 'required' => true],
+        ['label' => 'Problem Description', 'name' => 'problem_desc', 'type' => 'textarea', 'required' => false],
+        ['label' => 'City', 'name' => 'enquiry_city', 'type' => 'text', 'required' => false],
     ],
 ];
 
@@ -107,9 +107,7 @@ unset($fields);
             <div class="form-group">
                 <label>Appointment Type <span class="req">*</span></label>
                 <select name="appointment_type" required>
-                    <option value="">-- Select --</option>
-                    <option value="Online">Online</option>
-                    <option value="Offline">Offline</option>
+                    <option value="Online" selected>Online</option>
                 </select>
             </div>
             <div class="form-group">
@@ -117,8 +115,8 @@ unset($fields);
                 <input type="date" name="preferred_date" id="preferred_date_input" required autocomplete="off">
             </div>
             <div class="form-group">
-                <label>Preferred Time Window <span class="req">*</span></label>
-                <input type="text" name="preferred_time" required>
+                <label>Preferred Time Window</label>
+                <input type="text" name="preferred_time">
             </div>
             <div class="form-group">
                 <label>Notes</label>
