@@ -1,4 +1,5 @@
 <?php
+$pageTitle = 'Payment Success | Vishnusudarshana';
 /**
  * payment-success.php
  * 

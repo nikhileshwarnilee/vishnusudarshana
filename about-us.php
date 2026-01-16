@@ -1,4 +1,5 @@
 <?php
+$pageTitle = 'About Us';
 include 'header.php';
 ?>
 <main class="main-content">

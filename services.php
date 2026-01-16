@@ -1,4 +1,4 @@
-<?php include 'header.php'; ?>
+<?php $pageTitle = 'Services'; include 'header.php'; ?>
 
 <main class="services-main">
     <section class="service-categories">

@@ -1,4 +1,5 @@
 <?php 
+$pageTitle = 'Vishnusudarshana Dharmik Sanskar Kendra';
 include 'header.php';
 ?>
 <style>

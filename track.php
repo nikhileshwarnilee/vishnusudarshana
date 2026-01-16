@@ -195,6 +195,7 @@ html, body {
 
 
 <?php
+$pageTitle = 'Track Services';
 require_once 'header.php';
 require_once __DIR__ . '/config/db.php';
 

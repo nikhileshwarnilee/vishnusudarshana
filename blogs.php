@@ -1,4 +1,5 @@
 <?php
+$pageTitle = 'Knowledge Centre';
 include 'header.php';
 require_once __DIR__ . '/config/db.php';
 
@@ -617,7 +618,7 @@ html,body{font-family:'Marcellus',serif!important;}
 <div class="blog-container">
     <!-- Header -->
     <div class="blog-header">
-        <h1>Our Blog</h1>
+        <h1>Knowledge Centre</h1>
         <p>Explore articles on astrology, horoscopes, and spiritual wisdom</p>
     </div>
 

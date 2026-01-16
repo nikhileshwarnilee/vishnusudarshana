@@ -8,8 +8,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mobile Service Platform</title>
-    <link rel="icon" type="image/png" href="<?php echo (strpos($_SERVER['PHP_SELF'], '/forms/') === false ? 'assets/images/logo/logo-icon.png' : '../assets/images/logo/logo-icon.png'); ?>">
+    <title><?php echo isset($pageTitle) ? $pageTitle : 'Vishnusudarshana'; ?></title>
+        <link rel="manifest" href="/manifest.json">
+        <meta name="theme-color" content="#FFD700">
+        <link rel="icon" href="/assets/images/icon-192.png" sizes="192x192">
+        <link rel="apple-touch-icon" href="/assets/images/icon-512.png">
     <link rel="stylesheet" href="<?php echo (strpos($_SERVER['PHP_SELF'], '/forms/') === false ? 'assets/css/style.css' : '../assets/css/style.css'); ?>">
     <link rel="stylesheet" href="<?php echo (strpos($_SERVER['PHP_SELF'], '/forms/') === false ? 'assets/css/welcome-intro.css' : '../assets/css/welcome-intro.css'); ?>">
     <script src="<?php echo (strpos($_SERVER['PHP_SELF'], '/forms/') === false ? 'assets/js/language.js' : '../assets/js/language.js'); ?>" defer></script>
@@ -23,6 +26,50 @@
     </style>
 </head>
 <body class="body-homepage">
+        <script>
+        // Register service worker
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register('/service-worker.js');
+            });
+        }
+        // Show PWA install prompt for new users
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            if (!localStorage.getItem('pwaPromptShown')) {
+                setTimeout(() => {
+                    showPwaInstallPrompt();
+                }, 1200);
+            }
+        });
+        function showPwaInstallPrompt() {
+            const div = document.createElement('div');
+            div.innerHTML = '<div style="position:fixed;bottom:18px;left:0;right:0;z-index:9999;background:#FFD700;border-radius:12px;padding:18px 12px;text-align:center;box-shadow:0 2px 12px #80000022;font-family:Marcellus,serif;max-width:420px;margin:0 auto;">' +
+                '<b style="color:#800000;font-size:1.08em;">Install Vishnusudarshana App</b><br>' +
+                '<span style="color:#333;font-size:0.98em;">Get faster access and offline features.</span><br>' +
+                '<button id="pwa-install-btn" style="margin-top:10px;background:#800000;color:#fff;border:none;border-radius:8px;padding:8px 18px;font-size:1em;cursor:pointer;">Install App</button>' +
+                '<button id="pwa-dismiss-btn" style="margin-top:10px;margin-left:8px;background:#ccc;color:#800000;border:none;border-radius:8px;padding:8px 18px;font-size:1em;cursor:pointer;">Maybe Later</button>' +
+                '</div>';
+            document.body.appendChild(div);
+            document.getElementById('pwa-install-btn').onclick = function() {
+                if (deferredPrompt) {
+                    deferredPrompt.prompt();
+                    deferredPrompt.userChoice.then((choiceResult) => {
+                        if (choiceResult.outcome === 'accepted') {
+                            localStorage.setItem('pwaPromptShown', '1');
+                        }
+                        div.remove();
+                    });
+                }
+            };
+            document.getElementById('pwa-dismiss-btn').onclick = function() {
+                localStorage.setItem('pwaPromptShown', '1');
+                div.remove();
+            };
+        }
+        </script>
         <div id="google_translate_element" style="display:none;"></div>
         <script>
         function googleTranslateElementInit() {
@@ -112,7 +159,7 @@
                     <ul class="nav-menu">
                         <li><a href="index.php" data-i18n="nav_home">Home</a></li>
                         <li><a href="services.php" data-i18n="nav_services">Services</a></li>
-                        <li><a href="blogs.php" data-i18n="nav_blogs">Blogs</a></li>
+                        <li><a href="blogs.php" data-i18n="nav_blogs">Knowledge Centre</a></li>
                         <li><a href="track.php" data-i18n="nav_track">Track</a></li>
                         <li><a href="about-us.php" data-i18n="nav_about">About Us</a></li>
                     </ul>
