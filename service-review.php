@@ -163,12 +163,14 @@ if ($category === 'appointment') {
 <script>
 function updateTotals() {
     let total = 0;
+    let anyChecked = false;
     document.querySelectorAll('.product-item').forEach(function(row) {
         const cb = row.querySelector('input[type=checkbox][name="product_ids[]"]');
         const qtyInput = row.querySelector('.qty-input');
         const price = parseFloat(cb.getAttribute('data-price'));
         let qty = parseInt(qtyInput.value);
         if (!cb.checked) qty = 0;
+        else anyChecked = true;
         const lineTotal = price * qty;
         row.querySelector('.line-total').textContent = '₹' + lineTotal.toFixed(2);
         total += lineTotal;
@@ -176,7 +178,8 @@ function updateTotals() {
         row.querySelectorAll('.qty-btn').forEach(btn => btn.disabled = !cb.checked);
     });
     document.getElementById('totalPrice').textContent = '₹' + total.toFixed(2);
-    document.getElementById('payBtn').disabled = total === 0;
+    // Enable payBtn if any product is selected, even if total is 0
+    document.getElementById('payBtn').disabled = !anyChecked;
 }
 function changeQty(btn, delta) {
     const row = btn.closest('.product-item');
@@ -197,9 +200,21 @@ window.onload = updateTotals;
 const form = document.getElementById('productForm');
 if (form) {
     form.addEventListener('submit', function(e) {
-        if (document.getElementById('payBtn').disabled) {
+        const payBtn = document.getElementById('payBtn');
+        if (payBtn.disabled) {
             e.preventDefault();
             alert('Please select at least one service to proceed.');
+            return;
+        }
+        // If total is 0.00 and at least one product is selected, submit to payment-success.php directly
+        const totalText = document.getElementById('totalPrice').textContent.replace(/[^\d.]/g, '');
+        const total = parseFloat(totalText);
+        const anyChecked = Array.from(document.querySelectorAll('input[type=checkbox][name="product_ids[]"]')).some(cb => cb.checked);
+        if (anyChecked && total === 0) {
+            e.preventDefault();
+            // Change form action to payment-success.php and submit
+            form.action = 'payment-success.php?free=1';
+            form.submit();
         }
     });
 }

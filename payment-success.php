@@ -27,17 +27,87 @@
 // Session is already started in header.php — DO NOT start here
 require_once __DIR__ . '/config/db.php';
 
-// Validate payment_id
+// Always define $payment_id for paid flow
 $payment_id = isset($_GET['payment_id']) ? trim($_GET['payment_id']) : '';
-if ($payment_id === '') {
-    header('Location: services.php?msg=missing_payment_id');
+// Handle free (₹0.00) service requests (no payment_id)
+if (isset($_GET['free']) && $_GET['free'] == 1) {
+    // Insert directly into service_requests table
+    require_once __DIR__ . '/config/db.php';
+    session_start();
+    $form_data = $_POST ?? [];
+    $category = $_POST['category'] ?? '';
+    $customerName = $_POST['full_name'] ?? '';
+    $mobile = $_POST['mobile'] ?? '';
+    $email = $_POST['email'] ?? '';
+    $city = $_POST['city'] ?? '';
+    $products = $_POST['product_ids'] ?? [];
+    $qtys = $_POST['qty'] ?? [];
+    $totalAmount = 0;
+    // Compose selected_products array
+    $selected_products = [];
+    if (is_array($products)) {
+        foreach ($products as $pid) {
+            $selected_products[] = [
+                'id' => $pid,
+                'qty' => $qtys[$pid] ?? 1
+            ];
+        }
+    }
+    // Generate tracking ID
+    $tracking_id = 'VDSK-' . date('Ymd') . '-' . strtoupper(bin2hex(random_bytes(3)));
+    // Insert into service_requests
+    $stmt = $pdo->prepare("INSERT INTO service_requests (tracking_id, category_slug, customer_name, mobile, email, city, form_data, selected_products, total_amount, payment_id, payment_status, service_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, '', 'Free', 'Received')");
+    $stmt->execute([
+        $tracking_id,
+        $category,
+        $customerName ?: 'N/A',
+        $mobile ?: 'N/A',
+        $email ?: '',
+        $city ?: '',
+        json_encode($form_data),
+        json_encode($selected_products),
+        $totalAmount
+    ]);
+    // Show success page
+    require_once 'header.php';
+    ?>
+    <main class="main-content" style="background-color:var(--cream-bg);">
+        <h1 class="review-title">Request Submitted</h1>
+        <div class="review-card">
+            <h2 class="section-title">Thank You!</h2>
+            <p class="success-text">
+                Your free service request has been submitted successfully.<br>
+                Our team is processing your request.<br><br>
+                We will contact you shortly with details.<br>
+                <b>Tracking ID:</b> <?php echo htmlspecialchars($tracking_id); ?>
+            </p>
+            <a href="services.php" class="pay-btn">Back to Services</a>
+        </div>
+    </main>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Marcellus&display=swap');
+        html,body{font-family:'Marcellus',serif!important;}
+        .main-content { max-width:480px;margin:0 auto;padding:18px; }
+        .review-title { text-align:center;font-size:1.2em;margin-bottom:16px; }
+        .review-card { background:#f9eaea;border-radius:14px;padding:16px;text-align:center; }
+        .section-title { color:#800000;font-weight:600;margin-bottom:10px; }
+        .success-text { color:#333;margin-bottom:18px; }
+        .pay-btn { display:inline-block;background:#800000;color:#fff;padding:12px 28px;
+                   border-radius:8px;text-decoration:none;font-weight:600; }
+    </style>
+    <?php
+    require_once 'footer.php';
     exit;
 }
 
 // LOAD FROM DATABASE FIRST (source of truth for all payment types)
-$stmt = $pdo->prepare("SELECT * FROM pending_payments WHERE payment_id = ?");
-$stmt->execute([$payment_id]);
-$dbRecord = $stmt->fetch(PDO::FETCH_ASSOC);
+if ($payment_id !== '') {
+    $stmt = $pdo->prepare("SELECT * FROM pending_payments WHERE payment_id = ?");
+    $stmt->execute([$payment_id]);
+    $dbRecord = $stmt->fetch(PDO::FETCH_ASSOC);
+} else {
+    $dbRecord = false;
+}
 
 // Reconstruct pending payment data from database
 $pending = [];
@@ -49,37 +119,33 @@ if ($dbRecord) {
         'form_data' => json_decode($dbRecord['form_data'], true) ?? [],
         'products' => json_decode($dbRecord['selected_products'], true) ?? [],
         'category' => $dbRecord['category'],
+        'category_slug' => $dbRecord['category'],
         'total_amount' => $dbRecord['total_amount']
     ];
     // Store in session for consistency with rest of codebase
     $_SESSION['pending_payment'] = $pending;
-} else {
+} else if ($payment_id !== '') {
     error_log('No pending payment found in database for payment_id: ' . $payment_id);
 }
 
 // If context is missing after trying session and database, show friendly message
-if (empty($pending)) {
+if ($payment_id !== '' && empty($pending)) {
     error_log('Payment successful but context missing: no pending data found for payment_id=' . $payment_id);
-    
     require_once 'header.php';
     ?>
     <main class="main-content" style="background-color:var(--cream-bg);">
         <h1 class="review-title">Payment Received</h1>
-
         <div class="review-card">
             <h2 class="section-title">Thank You!</h2>
-
             <p class="success-text">
                 Your payment has been received successfully.<br>
                 Our team is processing your request.<br>
                 <br>
                 We will contact you shortly with details.
             </p>
-
             <a href="services.php" class="pay-btn">Back to Services</a>
         </div>
     </main>
-
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Marcellus&display=swap');
         html,body{font-family:'Marcellus',serif!important;}
