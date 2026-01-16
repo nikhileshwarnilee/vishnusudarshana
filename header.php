@@ -11,8 +11,10 @@
     <title>Mobile Service Platform</title>
     <link rel="icon" type="image/png" href="<?php echo (strpos($_SERVER['PHP_SELF'], '/forms/') === false ? 'assets/images/logo/logo-icon.png' : '../assets/images/logo/logo-icon.png'); ?>">
     <link rel="stylesheet" href="<?php echo (strpos($_SERVER['PHP_SELF'], '/forms/') === false ? 'assets/css/style.css' : '../assets/css/style.css'); ?>">
+    <link rel="stylesheet" href="<?php echo (strpos($_SERVER['PHP_SELF'], '/forms/') === false ? 'assets/css/welcome-intro.css' : '../assets/css/welcome-intro.css'); ?>">
     <script src="<?php echo (strpos($_SERVER['PHP_SELF'], '/forms/') === false ? 'assets/js/language.js' : '../assets/js/language.js'); ?>" defer></script>
     <script src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
+    <script src="<?php echo (strpos($_SERVER['PHP_SELF'], '/forms/') === false ? 'assets/js/welcome-intro.js' : '../assets/js/welcome-intro.js'); ?>" defer></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Marcellus&display=swap');
         html, body {
@@ -57,6 +59,45 @@
             </form>
         </div>
     </div>
+
+    <!-- Welcome Intro Popup -->
+    <div class="welcome-intro-overlay" id="welcome-intro-overlay"></div>
+    <div class="welcome-intro-popup" id="welcome-intro-popup">
+        <div class="welcome-intro-content">
+            <h2 class="welcome-intro-title">Welcome to Vishnusudarshana!</h2>
+            <p class="welcome-intro-subtitle">Let us guide you through our platform</p>
+
+            <div class="welcome-intro-features">
+                <div class="welcome-feature-item">
+                    <div class="welcome-feature-icon call-feature">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M17.7 15.6l-2.2-1c-.3-.1-.7 0-.9.2l-1 1.3c-1.6-.8-2.9-2.1-3.7-3.7l1.3-1c.2-.2.3-.6.2-.9l-1-2.2c-.2-.4-.7-.6-1.1-.5l-1.7.4c-.4.1-.7.5-.7.9 0 5.1 4.1 9.2 9.2 9.2.4 0 .8-.3.9-.7l.4-1.7c.1-.4-.1-.9-.5-1.1z" fill="var(--maroon)"/>
+                        </svg>
+                    </div>
+                    <div class="welcome-feature-text">
+                        <h3>Call Us Anytime</h3>
+                        <p>Tap the <strong>phone icon</strong> in the top right corner to instantly connect with our team for personalized guidance and support.</p>
+                    </div>
+                </div>
+
+                <div class="welcome-feature-item">
+                    <div class="welcome-feature-icon lang-feature">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <circle cx="12" cy="12" r="5.5" stroke="var(--maroon)" stroke-width="1.2" fill="none"/>
+                            <path d="M12 6.5v11M7 9.5h10M7.5 14.5h9" stroke="var(--maroon)" stroke-width="1.2" stroke-linecap="round"/>
+                            <path d="M12 6.5c-1.5 0-2.8 2.5-2.8 5.5s1.3 5.5 2.8 5.5 2.8-2.5 2.8-5.5-1.3-5.5-2.8-5.5z" stroke="var(--maroon)" stroke-width="1.2" fill="none"/>
+                        </svg>
+                    </div>
+                    <div class="welcome-feature-text">
+                        <h3>Choose Your Language</h3>
+                        <p>Click the <strong>globe icon</strong> to switch between English, Hindi, and Marathi for a comfortable browsing experience.</p>
+                    </div>
+                </div>
+            </div>
+
+            <button type="button" class="welcome-intro-btn" id="welcome-intro-btn">Get Started</button>
+        </div>
+    </div>
     <header class="header header--design-12">
         <?php $mobile_number = isset($mobile_number) ? $mobile_number : '98500 57444'; ?>
         <div class="header-12-content">
@@ -88,7 +129,9 @@
                         <span class="header-icon-svg lang-icon">
                             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                 <circle cx="12" cy="12" r="12" fill="var(--maroon)"/>
-                                <path d="M12 6v12M6 12h12M8.5 8.5l7 7M8.5 15.5l7-7" stroke="#FFD700" stroke-width="1.5" stroke-linecap="round"/>
+                                <circle cx="12" cy="12" r="5.5" stroke="#FFD700" stroke-width="1.2" fill="none"/>
+                                <path d="M12 6.5v11M7 9.5h10M7.5 14.5h9" stroke="#FFD700" stroke-width="1.2" stroke-linecap="round"/>
+                                <path d="M12 6.5c-1.5 0-2.8 2.5-2.8 5.5s1.3 5.5 2.8 5.5 2.8-2.5 2.8-5.5-1.3-5.5-2.8-5.5z" stroke="#FFD700" stroke-width="1.2" fill="none"/>
                             </svg>
                         </span>
                     </button>
@@ -96,3 +139,4 @@
             </div>
         </div>
     </header>
+
