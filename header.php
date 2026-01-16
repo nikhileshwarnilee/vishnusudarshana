@@ -114,6 +114,7 @@
                         <li><a href="services.php" data-i18n="nav_services">Services</a></li>
                         <li><a href="blogs.php" data-i18n="nav_blogs">Blogs</a></li>
                         <li><a href="track.php" data-i18n="nav_track">Track</a></li>
+                        <li><a href="about-us.php" data-i18n="nav_about">About Us</a></li>
                     </ul>
                 </nav>
                 <div class="header-icons-right">
