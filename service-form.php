@@ -1,3 +1,5 @@
+<?php
+
 $pageTitle = 'Service Form | Vishnusudarshana';
 require_once 'header.php';
 $category = $_GET['category'] ?? '';
