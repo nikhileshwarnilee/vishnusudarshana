@@ -50,7 +50,8 @@
 
     <footer class="footer">
         <div class="footer-content">
-            <p>&copy; 2025 Vishnusudarshana. All rights reserved.</p>
+            <p>&copy; <?php echo date('Y'); ?> Vishnusudarshana. All rights reserved.</p>
+            <p style="font-size:0.97em;color:#800000;margin-top:6px;">Designed and Developed by <a href="https://www.contysi.com" target="_blank" style="color:#800000;text-decoration:underline;">ContySi</a></p>
         </div>
     </footer>
 </body>
