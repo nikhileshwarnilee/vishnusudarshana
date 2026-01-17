@@ -408,7 +408,7 @@
                 const panchangTableStructure = [
                     { cat: "Tithi", keys: ["Tithi Name", "Tithi Number", "Tithi Next Tithi", "Tithi Type", "Tithi Diety", "Tithi Start", "Tithi End", "Tithi Meaning", "Tithi Special"] },
                     { cat: "Nakshatra", keys: ["Nakshatra Pada", "Nakshatra Name", "Nakshatra Number", "Nakshatra Lord", "Nakshatra Diety", "Nakshatra Start", "Nakshatra Next Nakshatra", "Nakshatra End", "Nakshatra Auspicious Disha", "Nakshatra Meaning", "Nakshatra Special", "Nakshatra Summary"] },
-                    { cat: "Yoga", keys: ["Yoga", "Yoga Name", "Yoga Number", "Yoga Start", "Yoga End", "Yoga Next Yoga", "Yoga Meaning", "Yoga Special"] },
+                    { cat: "Yoga", keys: ["Yoga Name", "Yoga Number", "Yoga Start", "Yoga End", "Yoga Next Yoga", "Yoga Meaning", "Yoga Special"] },
                     { cat: "Karana", keys: ["Karana Name", "Karana Number", "Karana Type", "Karana Lord", "Karana Diety", "Karana Start", "Karana End", "Karana Special", "Karana Next Karana"] },
                     { cat: "Sun", keys: ["Sun Position Zodiac", "Sun Position Rasi No", "Sun Position Nakshatra No", "Sun Position Sun Degree At Rise"] },
                     { cat: "Moon", keys: ["Moon Position Moon Degree"] },
