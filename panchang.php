@@ -571,21 +571,35 @@
                         formDataObj.tz = '';
                     }
                 }
-                alert('Values being sent to Panchang API:\n' + JSON.stringify(formDataObj, null, 2));
-                $('#panchang-result').html('<em>Loading...</em>');
+                // Remove any existing loading indicator
+                $('#panchang-loading').remove();
+                $('#panchang-blank-table').before('<div id="panchang-loading" style="text-align:center;padding:20px;"><em>Loading Panchang data...</em></div>');
                 $.ajax({
                     url: 'scripts/panchang3rdparty.php',
                     method: 'POST',
                     data: formDataObj,
                     dataType: 'json',
                     success: function(data) {
+                        $('#panchang-loading').remove();
                         if (data.error) {
                             $('#panchang-result').html('<span style="color:red">'+data.error+'</span>');
                         } else {
-                            $('#panchang-result').html('<pre style="white-space:pre-wrap;">'+JSON.stringify(data, null, 2)+'</pre>');
+                            // Get the selected language from the form
+                            var selectedLang = $('#lang').val() || 'en';
+                            // Update the static language dropdown to match
+                            $('.panchang-lang-static-select select').val(selectedLang);
+                            // Render the API response in the existing table with translations
+                            renderPanchangTable(selectedLang, data);
+                            // Clear any previous error messages
+                            $('#panchang-result').html('');
+                            // Scroll to the table
+                            $('html, body').animate({
+                                scrollTop: $('#panchang-blank-table').offset().top - 100
+                            }, 500);
                         }
                     },
                     error: function(xhr) {
+                        $('#panchang-loading').remove();
                         $('#panchang-result').html('<span style="color:red">Error fetching Panchang data.</span>');
                     }
                 });
