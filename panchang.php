@@ -358,7 +358,30 @@
                     { cat: "Yamakanta", keys: ["Yamakanta"] }
                 ];
 
-                function renderBlankTable(lang) {
+                // Helper: flatten nested JSON to key-value pairs
+                function flatten(obj, prefix) {
+                    let out = {};
+                    for (let k in obj) {
+                        if (!obj.hasOwnProperty(k)) continue;
+                        let v = obj[k];
+                        let key = prefix ? prefix + " " + k : k;
+                        if (v && typeof v === "object" && !Array.isArray(v)) {
+                            let flat = flatten(v, key);
+                            for (let fk in flat) out[fk] = flat[fk];
+                        } else {
+                            out[key] = v;
+                        }
+                    }
+                    return out;
+                }
+
+                // Helper: format key to match translation keys
+                function formatTitle(key) {
+                    return key.replace(/^Response[ ._]?/i, "").replace(/[._]/g, " ").replace(/\b\w/g, function(l) { return l.toUpperCase(); });
+                }
+
+                // Render Panchang table with data (or blank if no data)
+                function renderPanchangTable(lang, jsonData) {
                     const t = panchangTranslations[lang] || panchangTranslations['en'];
                     let html = `<style>
                         .panchang-table tr:not(.cat-row):hover { background: #fff7e6; transition: background 0.2s; }
@@ -370,10 +393,20 @@
                         .panchang-table .cat-row td { background: #800000; color: #FFD700; font-weight: bold; text-align: left; padding: 13px 20px; font-size: 1.08em; letter-spacing: 0.5px; border-radius: 0; }
                     </style>`;
                     html += `<table class="panchang-table"><tbody>`;
+                    // If data, flatten and map
+                    let flat = jsonData ? flatten(jsonData, "") : null;
+                    let cleanedFlat = {};
+                    if (flat) {
+                        for (let k in flat) {
+                            cleanedFlat[formatTitle(k)] = flat[k];
+                        }
+                    }
                     for (const section of panchangTableStructure) {
                         html += `<tr class="cat-row"><td colspan="2">${t[section.cat] || section.cat}</td></tr>`;
                         for (const key of section.keys) {
-                            html += `<tr><td class="panchang-key">${t[key] || key}</td><td class="panchang-value"></td></tr>`;
+                            let val = (cleanedFlat && cleanedFlat[key] !== undefined && cleanedFlat[key] !== null) ? cleanedFlat[key] : "";
+                            if (Array.isArray(val)) val = JSON.stringify(val);
+                            html += `<tr><td class="panchang-key">${t[key] || key}</td><td class="panchang-value">${val}</td></tr>`;
                         }
                     }
                     html += `</tbody></table>`;
@@ -381,12 +414,17 @@
                 }
 
                 document.addEventListener('DOMContentLoaded', function() {
+                    // Get latest Panchang JSON from PHP (if available)
+                    let latestPanchang = null;
+                    try {
+                        latestPanchang = <?php echo $latestPanchang ? $latestPanchang : 'null'; ?>;
+                    } catch(e) { latestPanchang = null; }
                     // Initial render with default language
                     let lang = document.querySelector('.panchang-lang-static-select select').value || 'en';
-                    renderBlankTable(lang);
+                    renderPanchangTable(lang, latestPanchang);
                     // Listen for language change
                     document.querySelector('.panchang-lang-static-select select').addEventListener('change', function() {
-                        renderBlankTable(this.value);
+                        renderPanchangTable(this.value, latestPanchang);
                     });
                 });
                 </script>
