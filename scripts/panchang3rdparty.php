@@ -16,7 +16,7 @@ if (!$date || !$tz || !$lat || !$lon || !$time) {
     exit;
 }
 
-$api_key = ''; // Replace with your actual API key
+$api_key = '16b52b73-65fb-56af-b92d-7f35d3105d8f'; // Replace with your actual API key
 $url = "https://api.vedicastroapi.com/v3-json/panchang/panchang?api_key={$api_key}&date={$date}&tz={$tz}&lat={$lat}&lon={$lon}&time={$time}&lang={$lang}";
 
 $ch = curl_init();
