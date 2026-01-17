@@ -9,36 +9,48 @@ $city = 'Solapur, India';
 $lat = 17.6599;
 $lon = 75.9064;
 $tz = '5.5'; // Asia/Kolkata timezone offset
-$lang = 'en';
+
+
+// Delete all existing data before inserting new rows
+try {
+    $pdo->exec("TRUNCATE TABLE panchang");
+} catch (Exception $e) {
+    echo "Error truncating panchang table: " . $e->getMessage() . "\n";
+}
+
+$languages = ['en', 'hi', 'mr', 'gu', 'ka', 'te'];
 $date = date('d/m/Y');
 $time = '05:30'; // Default time for Panchang
-
-// Panchang API details
 $api_key = '16b52b73-65fb-56af-b92d-7f35d3105d8f';
-$api_url = "https://api.vedicastroapi.com/v3-json/panchang/panchang?api_key={$api_key}&date={$date}&tz={$tz}&lat={$lat}&lon={$lon}&time={$time}&lang={$lang}";
-
-$ch = curl_init();
-curl_setopt($ch, CURLOPT_URL, $api_url);
-curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-$response = curl_exec($ch);
-$httpcode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-curl_close($ch);
-
-if ($httpcode == 200 && $response) {
-    try {
-        $stmt = $pdo->prepare("INSERT INTO panchang (city, lat, lon, tz, lang, panchang_json) VALUES (?, ?, ?, ?, ?, ?)");
-        $stmt->execute([
-            $city,
-            $lat,
-            $lon,
-            $tz,
-            $lang,
-            $response
-        ]);
-        echo "Panchang data stored successfully.";
-    } catch (Exception $e) {
-        echo "DB Error: " . $e->getMessage();
+$successCount = 0;
+$failCount = 0;
+foreach ($languages as $lang) {
+    $api_url = "https://api.vedicastroapi.com/v3-json/panchang/panchang?api_key={$api_key}&date={$date}&tz={$tz}&lat={$lat}&lon={$lon}&time={$time}&lang={$lang}";
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, $api_url);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+    $response = curl_exec($ch);
+    $httpcode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    if ($httpcode == 200 && $response) {
+        try {
+            $stmt = $pdo->prepare("INSERT INTO panchang (city, lat, lon, tz, lang, panchang_json) VALUES (?, ?, ?, ?, ?, ?)");
+            $stmt->execute([
+                $city,
+                $lat,
+                $lon,
+                $tz,
+                $lang,
+                $response
+            ]);
+            $successCount++;
+        } catch (Exception $e) {
+            echo "DB Error for lang $lang: " . $e->getMessage() . "\n";
+            $failCount++;
+        }
+    } else {
+        echo "Failed to fetch Panchang data from API for lang $lang.\n";
+        $failCount++;
     }
-} else {
-    echo "Failed to fetch Panchang data from API.";
 }
+echo "Inserted $successCount Panchang rows. $failCount failed.";

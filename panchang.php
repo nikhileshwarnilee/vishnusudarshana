@@ -239,28 +239,12 @@
                 <div class="form-group">
                     <label for="lang">Language</label>
                     <select id="lang" name="lang" required>
-                        <option value="en">English</option>
-                        <option value="hi">Hindi</option>
-                        <option value="mr">Marathi</option>
-                        <option value="ta">Tamil</option>
-                        <option value="te">Telugu</option>
-                        <option value="ml">Malayalam</option>
-                        <option value="ka">Kannada</option>
-                        <option value="gu">Gujarati</option>
-                        <option value="be">Bengali</option>
-                        <option value="fr">French</option>
-                        <option value="sp">Spanish</option>
-                        <option value="si">Sinhalese</option>
-                        <option value="ne">Nepali</option>
-                        <option value="ko">Korean</option>
-                        <option value="ja">Japanese</option>
-                        <option value="pt">Portuguese</option>
-                        <option value="de">German</option>
-                        <option value="tr">Turkish</option>
-                        <option value="ru">Russian</option>
-                        <option value="it">Italian</option>
-                        <option value="nl">Dutch</option>
-                        <option value="pl">Polish</option>
+                    <option value="en">English (English)</option>
+                    <option value="hi">Hindi (हिन्दी)</option>
+                    <option value="mr">Marathi (मराठी)</option>
+                    <option value="gu">Gujarati (ગુજરાતી)</option>
+                    <option value="ka">Kannada (ಕನ್ನಡ)</option>
+                    <option value="te">Telugu (తెలుగు)</option>
                     </select>
                 </div>
                 <div class="form-group" style="align-self: flex-end;">
@@ -268,7 +252,20 @@
                 </div>
             </div>
         </form>
-        <div id="todays-panchang-title" style="margin:1.5em 0 0.5em 0;text-align:left;font-size:1.35em;font-weight:bold;color:#800000;display:none;"></div>
+        <div class="todays-panchang-title-row" style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;margin:1.5em 0 0.5em 0;">
+            <div id="todays-panchang-title" style="font-size:1.35em;font-weight:bold;color:#800000;display:none;"></div>
+            <div class="panchang-lang-static-select" style="min-width:160px;margin-top:0;">
+                <select style="background-color: #f9f9f9; padding:7px 12px;border-radius:8px;border:1.5px solid #666666;font-size:1em;color:#b60a0a;">
+                    <option value="en">English (English)</option>
+                    <option value="hi">Hindi (हिन्दी)</option>
+                    <option value="mr">Marathi (मराठी)</option>
+                    <option value="gu">Gujarati (ગુજરાતી)</option>
+                    <option value="ka">Kannada (ಕನ್ನಡ)</option>
+                    <option value="te">Telugu (తెలుగు)</option>
+
+                </select>
+            </div>
+        </div>
         <div id="panchang-result" style="margin-top:2em;"></div>
 
         <?php
@@ -554,7 +551,32 @@
     <!-- Panchang API response will be shown here after form submission -->
 </main>
 
-<style>
+        <style>
+        .todays-panchang-title-row { flex-wrap: wrap; }
+        .todays-panchang-title-row > #todays-panchang-title { flex: 1 1 auto; }
+        .panchang-lang-static-select { flex: 0 0 auto; margin-left: 1.5em; }
+        .panchang-lang-static-select select {
+            background: linear-gradient(90deg, #ffe066 0%, #fffbe6 100%);
+            border: 2px solid #800000;
+            color: #800000;
+            font-weight: 600;
+            box-shadow: 0 2px 8px rgba(255,215,0,0.08);
+            padding: 10px 14px;
+            border-radius: 12px;
+            font-size: 1.05rem;
+            min-width: 140px;
+            transition: border 0.2s, background 0.2s, box-shadow 0.2s;
+        }
+        .panchang-lang-static-select select:focus {
+            border: 2px solid #ffd700;
+            background: #fffbe6;
+            outline: none;
+        }
+        @media (max-width: 700px) {
+            .todays-panchang-title-row { flex-direction: column; align-items: flex-start; }
+            .panchang-lang-static-select { margin-left: 0; margin-top: 0.7em; width: 100%; }
+            .panchang-lang-static-select select { width: 100%; }
+        }
 @import url('https://fonts.googleapis.com/css2?family=Marcellus&display=swap');
 html, body {
     font-family: 'Marcellus', serif !important;
