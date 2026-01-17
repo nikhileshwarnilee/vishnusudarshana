@@ -266,107 +266,131 @@
                 </select>
             </div>
         </div>
-        <div id="panchang-result" style="margin-top:2em;"></div>
-
-        <?php
-// ...existing code...
-        if ($latestPanchang) {
-            echo '<script>document.addEventListener("DOMContentLoaded", function() {';
-            echo 'var resultDiv = document.getElementById("panchang-result");';
-            echo 'var titleDiv = document.getElementById("todays-panchang-title");'
-                . 'var dateVal = "";'
-                . 'if(json && json.date) {'
-                . '  if (/^\\d{4}-\\d{2}-\\d{2}$/.test(json.date)) {'
-                . '    dateVal = new Date(json.date).toDateString();'
-                . '  } else if (/^\\d{2}\\/\\d{2}\\/\\d{4}$/.test(json.date)) {'
-                . '    var parts = json.date.split("/");'
-                . '    dateVal = new Date(parts[2], parts[1]-1, parts[0]).toDateString();'
-                . '  } else {'
-                . '    dateVal = new Date(json.date).toDateString();'
-                . '  }'
-                . '  if(dateVal === "Invalid Date") dateVal = "";'
-                . '}'
-                . 'if(!dateVal) {'
-                . '  var today = new Date();'
-                . '  dateVal = today.toDateString();'
-                . '}'
-                . 'if(titleDiv) {'
-                . '  titleDiv.style.display = "block";'
-                . '  titleDiv.textContent = "Todays Panchang : " + dateVal;'
-                . '}';
-            echo 'var json = ' . $latestPanchang . ";\n";
-            echo 'function flatten(obj, prefix) {';
-            echo '  var out = {};
-                for (var k in obj) {
-                    if (!obj.hasOwnProperty(k)) continue;
-                    var v = obj[k];
-                    var key = prefix ? prefix + "." + k : k;
-                    if (v && typeof v === "object" && !Array.isArray(v)) {
-                        var flat = flatten(v, key);
-                        for (var fk in flat) out[fk] = flat[fk];
-                    } else {
-                        out[key] = v;
+        <div id="panchang-blank-table" style="margin-top:2em;"></div>
+                <script>
+                // Panchang translations for all supported languages
+                const panchangTranslations = {
+                    en: {
+                        "Tithi": "Tithi", "Tithi Name": "Tithi Name", "Tithi Number": "Tithi Number", "Tithi Next Tithi": "Tithi Next Tithi", "Tithi Type": "Tithi Type", "Tithi Diety": "Tithi Diety", "Tithi Start": "Tithi Start", "Tithi End": "Tithi End", "Tithi Meaning": "Tithi Meaning", "Tithi Special": "Tithi Special",
+                        "Nakshatra": "Nakshatra", "Nakshatra Pada": "Nakshatra Pada", "Nakshatra Name": "Nakshatra Name", "Nakshatra Number": "Nakshatra Number", "Nakshatra Lord": "Nakshatra Lord", "Nakshatra Diety": "Nakshatra Diety", "Nakshatra Start": "Nakshatra Start", "Nakshatra Next Nakshatra": "Nakshatra Next Nakshatra", "Nakshatra End": "Nakshatra End", "Nakshatra Auspicious Disha": "Nakshatra Auspicious Disha", "Nakshatra Meaning": "Nakshatra Meaning", "Nakshatra Special": "Nakshatra Special", "Nakshatra Summary": "Nakshatra Summary",
+                        "Yoga": "Yoga", "Yoga Name": "Yoga Name", "Yoga Number": "Yoga Number", "Yoga Start": "Yoga Start", "Yoga End": "Yoga End", "Yoga Next Yoga": "Yoga Next Yoga", "Yoga Meaning": "Yoga Meaning", "Yoga Special": "Yoga Special",
+                        "Karana": "Karana", "Karana Name": "Karana Name", "Karana Number": "Karana Number", "Karana Type": "Karana Type", "Karana Lord": "Karana Lord", "Karana Diety": "Karana Diety", "Karana Start": "Karana Start", "Karana End": "Karana End", "Karana Special": "Karana Special", "Karana Next Karana": "Karana Next Karana",
+                        "Sun": "Sun", "Sun Position Zodiac": "Sun Position Zodiac", "Sun Position Rasi No": "Sun Position Rasi No", "Sun Position Nakshatra No": "Sun Position Nakshatra No", "Sun Position Sun Degree At Rise": "Sun Position Sun Degree At Rise",
+                        "Moon": "Moon", "Moon Position Moon Degree": "Moon Position Moon Degree",
+                        "Gulika": "Gulika", "Gulika": "Gulika",
+                        "Advanced Details": "Advanced Details", "Day Name": "Day Name", "Ayanamsa Name": "Ayanamsa Name", "Ayanamsa Number": "Ayanamsa Number", "Rasi Name": "Rasi Name", "Advanced Details Sun Rise": "Sun Rise", "Advanced Details Sun Set": "Sun Set", "Advanced Details Moon Rise": "Moon Rise", "Advanced Details Moon Set": "Moon Set", "Advanced Details Next Full Moon": "Next Full Moon", "Advanced Details Next New Moon": "Next New Moon", "Advanced Details Masa Amanta Number": "Masa Amanta Number", "Advanced Details Masa Amanta Date": "Masa Amanta Date", "Advanced Details Masa Amanta Name": "Masa Amanta Name", "Advanced Details Masa Alternate Amanta Name": "Masa Alternate Amanta Name", "Advanced Details Masa Amanta Start": "Masa Amanta Start", "Advanced Details Masa Amanta End": "Masa Amanta End", "Advanced Details Masa Adhik Maasa": "Masa Adhik Maasa", "Advanced Details Masa Ayana": "Masa Ayana", "Advanced Details Masa Real Ayana": "Masa Real Ayana", "Advanced Details Masa Tamil Month Num": "Masa Tamil Month Num", "Advanced Details Masa Tamil Month": "Masa Tamil Month", "Advanced Details Masa Tamil Day": "Masa Tamil Day", "Advanced Details Masa Purnimanta Date": "Masa Purnimanta Date", "Advanced Details Masa Purnimanta Number": "Masa Purnimanta Number", "Advanced Details Masa Purnimanta Name": "Masa Purnimanta Name", "Advanced Details Masa Alternate Purnimanta Name": "Masa Alternate Purnimanta Name", "Advanced Details Masa Purnimanta Start": "Masa Purnimanta Start", "Advanced Details Masa Purnimanta End": "Masa Purnimanta End", "Advanced Details Masa Moon Phase": "Masa Moon Phase", "Advanced Details Masa Paksha": "Masa Paksha", "Advanced Details Masa Ritu": "Masa Ritu", "Advanced Details Masa Ritu Tamil": "Masa Ritu Tamil", "Advanced Details Moon Yogini Nivas": "Moon Yogini Nivas", "Advanced Details Ahargana": "Ahargana", "Advanced Details Years Kali": "Years Kali", "Advanced Details Years Saka": "Years Saka", "Advanced Details Years Vikram Samvaat": "Years Vikram Samvaat", "Advanced Details Years Kali Samvaat Number": "Years Kali Samvaat Number", "Advanced Details Years Kali Samvaat Name": "Years Kali Samvaat Name", "Advanced Details Years Vikram Samvaat Number": "Years Vikram Samvaat Number", "Advanced Details Years Vikram Samvaat Name": "Years Vikram Samvaat Name", "Advanced Details Years Saka Samvaat Number": "Years Saka Samvaat Number", "Advanced Details Years Saka Samvaat Name": "Years Saka Samvaat Name", "Advanced Details Vaara": "Vaara", "Advanced Details Disha Shool": "Disha Shool", "Advanced Details Abhijit Muhurta Start": "Abhijit Muhurta Start", "Advanced Details Abhijit Muhurta End": "Abhijit Muhurta End",
+                        "Rahukaal": "Rahukaal", "Rahukaal": "Rahukaal",
+                        "Yamakanta": "Yamakanta", "Yamakanta": "Yamakanta"
+                    },
+                    hi: {
+                        "Tithi": "तिथि", "Tithi Name": "तिथि नाम", "Tithi Number": "तिथि क्रमांक", "Tithi Next Tithi": "अगली तिथि", "Tithi Type": "तिथि प्रकार", "Tithi Diety": "तिथि देवता", "Tithi Start": "तिथि प्रारंभ", "Tithi End": "तिथि समाप्ति", "Tithi Meaning": "तिथि अर्थ", "Tithi Special": "विशेष तिथि",
+                        "Nakshatra": "नक्षत्र", "Nakshatra Pada": "नक्षत्र पद", "Nakshatra Name": "नक्षत्र नाम", "Nakshatra Number": "नक्षत्र क्रमांक", "Nakshatra Lord": "नक्षत्र स्वामी", "Nakshatra Diety": "नक्षत्र देवता", "Nakshatra Start": "नक्षत्र प्रारंभ", "Nakshatra Next Nakshatra": "अगला नक्षत्र", "Nakshatra End": "नक्षत्र समाप्ति", "Nakshatra Auspicious Disha": "शुभ दिशा", "Nakshatra Meaning": "नक्षत्र अर्थ", "Nakshatra Special": "विशेष नक्षत्र", "Nakshatra Summary": "नक्षत्र सारांश",
+                        "Yoga": "योग", "Yoga Name": "योग नाम", "Yoga Number": "योग क्रमांक", "Yoga Start": "योग प्रारंभ", "Yoga End": "योग समाप्ति", "Yoga Next Yoga": "अगला योग", "Yoga Meaning": "योग अर्थ", "Yoga Special": "विशेष योग",
+                        "Karana": "करण", "Karana Name": "करण नाम", "Karana Number": "करण क्रमांक", "Karana Type": "करण प्रकार", "Karana Lord": "करण स्वामी", "Karana Diety": "करण देवता", "Karana Start": "करण प्रारंभ", "Karana End": "करण समाप्ति", "Karana Special": "विशेष करण", "Karana Next Karana": "अगला करण",
+                        "Sun": "सूर्य", "Sun Position Zodiac": "सूर्य राशि", "Sun Position Rasi No": "राशि क्रमांक", "Sun Position Nakshatra No": "नक्षत्र क्रमांक", "Sun Position Sun Degree At Rise": "सूर्य उदय पर डिग्री",
+                        "Moon": "चंद्र", "Moon Position Moon Degree": "चंद्र डिग्री",
+                        "Gulika": "गुलिक", "Gulika": "गुलिक",
+                        "Advanced Details": "विस्तृत विवरण", "Day Name": "दिन का नाम", "Ayanamsa Name": "अयनांश नाम", "Ayanamsa Number": "अयनांश क्रमांक", "Rasi Name": "राशि नाम", "Advanced Details Sun Rise": "सूर्य उदय", "Advanced Details Sun Set": "सूर्य अस्त", "Advanced Details Moon Rise": "चंद्र उदय", "Advanced Details Moon Set": "चंद्र अस्त", "Advanced Details Next Full Moon": "अगला पूर्णिमा", "Advanced Details Next New Moon": "अगला अमावस्या", "Advanced Details Masa Amanta Number": "मास अमांत क्रमांक", "Advanced Details Masa Amanta Date": "मास अमांत तिथि", "Advanced Details Masa Amanta Name": "मास अमांत नाम", "Advanced Details Masa Alternate Amanta Name": "वैकल्पिक अमांत नाम", "Advanced Details Masa Amanta Start": "मास अमांत प्रारंभ", "Advanced Details Masa Amanta End": "मास अमांत समाप्ति", "Advanced Details Masa Adhik Maasa": "अधिक मास", "Advanced Details Masa Ayana": "मास अयन", "Advanced Details Masa Real Ayana": "मास वास्तविक अयन", "Advanced Details Masa Tamil Month Num": "तमिल मास क्रमांक", "Advanced Details Masa Tamil Month": "तमिल मास", "Advanced Details Masa Tamil Day": "तमिल दिन", "Advanced Details Masa Purnimanta Date": "पूर्णिमांत तिथि", "Advanced Details Masa Purnimanta Number": "पूर्णिमांत क्रमांक", "Advanced Details Masa Purnimanta Name": "पूर्णिमांत नाम", "Advanced Details Masa Alternate Purnimanta Name": "वैकल्पिक पूर्णिमांत नाम", "Advanced Details Masa Purnimanta Start": "पूर्णिमांत प्रारंभ", "Advanced Details Masa Purnimanta End": "पूर्णिमांत समाप्ति", "Advanced Details Masa Moon Phase": "चंद्र चरण", "Advanced Details Masa Paksha": "पक्ष", "Advanced Details Masa Ritu": "ऋतु", "Advanced Details Masa Ritu Tamil": "तमिल ऋतु", "Advanced Details Moon Yogini Nivas": "योगिनी निवास", "Advanced Details Ahargana": "अहर्गण", "Advanced Details Years Kali": "कलियुग वर्ष", "Advanced Details Years Saka": "शक वर्ष", "Advanced Details Years Vikram Samvaat": "विक्रम संवत्", "Advanced Details Years Kali Samvaat Number": "कलियुग संवत् क्रमांक", "Advanced Details Years Kali Samvaat Name": "कलियुग संवत् नाम", "Advanced Details Years Vikram Samvaat Number": "विक्रम संवत् क्रमांक", "Advanced Details Years Vikram Samvaat Name": "विक्रम संवत् नाम", "Advanced Details Years Saka Samvaat Number": "शक संवत् क्रमांक", "Advanced Details Years Saka Samvaat Name": "शक संवत् नाम", "Advanced Details Vaara": "वार", "Advanced Details Disha Shool": "दिशा शूल", "Advanced Details Abhijit Muhurta Start": "अभिजीत मुहूर्त प्रारंभ", "Advanced Details Abhijit Muhurta End": "अभिजीत मुहूर्त समाप्ति",
+                        "Rahukaal": "राहुकाल", "Rahukaal": "राहुकाल",
+                        "Yamakanta": "यमकांता", "Yamakanta": "यमकांता"
+                    },
+                    mr: {
+                        "Tithi": "तिथी", "Tithi Name": "तिथी नाव", "Tithi Number": "तिथी क्रमांक", "Tithi Next Tithi": "पुढील तिथी", "Tithi Type": "तिथी प्रकार", "Tithi Diety": "तिथी देवता", "Tithi Start": "तिथी प्रारंभ", "Tithi End": "तिथी समाप्ती", "Tithi Meaning": "तिथी अर्थ", "Tithi Special": "विशेष तिथी",
+                        "Nakshatra": "नक्षत्र", "Nakshatra Pada": "नक्षत्र पाद", "Nakshatra Name": "नक्षत्र नाव", "Nakshatra Number": "नक्षत्र क्रमांक", "Nakshatra Lord": "नक्षत्र स्वामी", "Nakshatra Diety": "नक्षत्र देवता", "Nakshatra Start": "नक्षत्र प्रारंभ", "Nakshatra Next Nakshatra": "पुढील नक्षत्र", "Nakshatra End": "नक्षत्र समाप्ती", "Nakshatra Auspicious Disha": "शुभ दिशा", "Nakshatra Meaning": "नक्षत्र अर्थ", "Nakshatra Special": "विशेष नक्षत्र", "Nakshatra Summary": "नक्षत्र सारांश",
+                        "Yoga": "योग", "Yoga Name": "योग नाव", "Yoga Number": "योग क्रमांक", "Yoga Start": "योग प्रारंभ", "Yoga End": "योग समाप्ती", "Yoga Next Yoga": "पुढील योग", "Yoga Meaning": "योग अर्थ", "Yoga Special": "विशेष योग",
+                        "Karana": "करण", "Karana Name": "करण नाव", "Karana Number": "करण क्रमांक", "Karana Type": "करण प्रकार", "Karana Lord": "करण स्वामी", "Karana Diety": "करण देवता", "Karana Start": "करण प्रारंभ", "Karana End": "करण समाप्ती", "Karana Special": "विशेष करण", "Karana Next Karana": "पुढील करण",
+                        "Sun": "सूर्य", "Sun Position Zodiac": "सूर्य राशी", "Sun Position Rasi No": "राशी क्रमांक", "Sun Position Nakshatra No": "नक्षत्र क्रमांक", "Sun Position Sun Degree At Rise": "सूर्य उदयावर डिग्री",
+                        "Moon": "चंद्र", "Moon Position Moon Degree": "चंद्र डिग्री",
+                        "Gulika": "गुलिक", "Gulika": "गुलिक",
+                        "Advanced Details": "विस्तृत माहिती", "Day Name": "दिवसाचे नाव", "Ayanamsa Name": "अयनांश नाव", "Ayanamsa Number": "अयनांश क्रमांक", "Rasi Name": "राशी नाव", "Advanced Details Sun Rise": "सूर्य उदय", "Advanced Details Sun Set": "सूर्यास्त", "Advanced Details Moon Rise": "चंद्र उदय", "Advanced Details Moon Set": "चंद्रास्त", "Advanced Details Next Full Moon": "पुढील पौर्णिमा", "Advanced Details Next New Moon": "पुढील अमावस्या", "Advanced Details Masa Amanta Number": "मास अमांत क्रमांक", "Advanced Details Masa Amanta Date": "मास अमांत तारीख", "Advanced Details Masa Amanta Name": "मास अमांत नाव", "Advanced Details Masa Alternate Amanta Name": "पर्यायी अमांत नाव", "Advanced Details Masa Amanta Start": "मास अमांत प्रारंभ", "Advanced Details Masa Amanta End": "मास अमांत समाप्ती", "Advanced Details Masa Adhik Maasa": "अधिक मास", "Advanced Details Masa Ayana": "मास अयन", "Advanced Details Masa Real Ayana": "मास वास्तविक अयन", "Advanced Details Masa Tamil Month Num": "तमिळ मास क्रमांक", "Advanced Details Masa Tamil Month": "तमिळ मास", "Advanced Details Masa Tamil Day": "तमिळ दिवस", "Advanced Details Masa Purnimanta Date": "पूर्णिमांत तारीख", "Advanced Details Masa Purnimanta Number": "पूर्णिमांत क्रमांक", "Advanced Details Masa Purnimanta Name": "पूर्णिमांत नाव", "Advanced Details Masa Alternate Purnimanta Name": "पर्यायी पूर्णिमांत नाव", "Advanced Details Masa Purnimanta Start": "पूर्णिमांत प्रारंभ", "Advanced Details Masa Purnimanta End": "पूर्णिमांत समाप्ती", "Advanced Details Masa Moon Phase": "चंद्र फेज", "Advanced Details Masa Paksha": "पक्ष", "Advanced Details Masa Ritu": "ऋतु", "Advanced Details Masa Ritu Tamil": "तमिळ ऋतु", "Advanced Details Moon Yogini Nivas": "योगिनी निवास", "Advanced Details Ahargana": "अहर्गण", "Advanced Details Years Kali": "कली वर्ष", "Advanced Details Years Saka": "शक वर्ष", "Advanced Details Years Vikram Samvaat": "विक्रम संवत", "Advanced Details Years Kali Samvaat Number": "कली संवत क्रमांक", "Advanced Details Years Kali Samvaat Name": "कली संवत नाव", "Advanced Details Years Vikram Samvaat Number": "विक्रम संवत क्रमांक", "Advanced Details Years Vikram Samvaat Name": "विक्रम संवत नाव", "Advanced Details Years Saka Samvaat Number": "शक संवत क्रमांक", "Advanced Details Years Saka Samvaat Name": "शक संवत नाव", "Advanced Details Vaara": "वार", "Advanced Details Disha Shool": "दिशा शूल", "Advanced Details Abhijit Muhurta Start": "अभिजीत मुहूर्त प्रारंभ", "Advanced Details Abhijit Muhurta End": "अभिजीत मुहूर्त समाप्ती",
+                        "Rahukaal": "राहुकाल", "Rahukaal": "राहुकाल",
+                        "Yamakanta": "यमकांता", "Yamakanta": "यमकांता"
+                    },
+                    gu: {
+                        "Tithi": "તિથિ", "Tithi Name": "તિથિ નામ", "Tithi Number": "તિથિ ક્રમાંક", "Tithi Next Tithi": "આગામી તિથિ", "Tithi Type": "તિથિ પ્રકાર", "Tithi Diety": "તિથિ દેવતા", "Tithi Start": "તિથિ આરંભ", "Tithi End": "તિથિ અંત", "Tithi Meaning": "તિથિ અર્થ", "Tithi Special": "વિશેષ તિથિ",
+                        "Nakshatra": "નક્ષત્ર", "Nakshatra Pada": "નક્ષત્ર પાદ", "Nakshatra Name": "નક્ષત્ર નામ", "Nakshatra Number": "નક્ષત્ર ક્રમાંક", "Nakshatra Lord": "નક્ષત્ર સ્વામી", "Nakshatra Diety": "નક્ષત્ર દેવતા", "Nakshatra Start": "નક્ષત્ર આરંભ", "Nakshatra Next Nakshatra": "આગામી નક્ષત્ર", "Nakshatra End": "નક્ષત્ર અંત", "Nakshatra Auspicious Disha": "શુભ દિશા", "Nakshatra Meaning": "નક્ષત્ર અર્થ", "Nakshatra Special": "વિશેષ નક્ષત્ર", "Nakshatra Summary": "નક્ષત્ર સારાંશ",
+                        "Yoga": "યોગ", "Yoga Name": "યોગ નામ", "Yoga Number": "યોગ ક્રમાંક", "Yoga Start": "યોગ આરંભ", "Yoga End": "યોગ અંત", "Yoga Next Yoga": "આગામી યોગ", "Yoga Meaning": "યોગ અર્થ", "Yoga Special": "વિશેષ યોગ",
+                        "Karana": "કરણ", "Karana Name": "કરણ નામ", "Karana Number": "કરણ ક્રમાંક", "Karana Type": "કરણ પ્રકાર", "Karana Lord": "કરણ સ્વામી", "Karana Diety": "કરણ દેવતા", "Karana Start": "કરણ આરંભ", "Karana End": "કરણ અંત", "Karana Special": "વિશેષ કરણ", "Karana Next Karana": "આગામી કરણ",
+                        "Sun": "સૂર્ય", "Sun Position Zodiac": "સૂર્ય રાશિ", "Sun Position Rasi No": "રાશિ ક્રમાંક", "Sun Position Nakshatra No": "નક્ષત્ર ક્રમાંક", "Sun Position Sun Degree At Rise": "સૂર્ય ઉદયે ડિગ્રી",
+                        "Moon": "ચંદ્ર", "Moon Position Moon Degree": "ચંદ્ર ડિગ્રી",
+                        "Gulika": "ગુલિક", "Gulika": "ગુલિક",
+                        "Advanced Details": "વિસ્તૃત વિગતો", "Day Name": "દિવસનું નામ", "Ayanamsa Name": "અયનામ્સા નામ", "Ayanamsa Number": "અયનામ્સા ક્રમાંક", "Rasi Name": "રાશિ નામ", "Advanced Details Sun Rise": "સૂર્ય ઉદય", "Advanced Details Sun Set": "સૂર્યાસ્ત", "Advanced Details Moon Rise": "ચંદ્ર ઉદય", "Advanced Details Moon Set": "ચંદ્રાસ્ત", "Advanced Details Next Full Moon": "આગામી પૂર્ણિમા", "Advanced Details Next New Moon": "આગામી અમાવસ્યા", "Advanced Details Masa Amanta Number": "માસ અમાંત ક્રમાંક", "Advanced Details Masa Amanta Date": "માસ અમાંત તારીખ", "Advanced Details Masa Amanta Name": "માસ અમાંત નામ", "Advanced Details Masa Alternate Amanta Name": "વૈકલ્પિક અમાંત નામ", "Advanced Details Masa Amanta Start": "માસ અમાંત આરંભ", "Advanced Details Masa Amanta End": "માસ અમાંત અંત", "Advanced Details Masa Adhik Maasa": "અધિક માસ", "Advanced Details Masa Ayana": "માસ અયન", "Advanced Details Masa Real Ayana": "માસ વાસ્તવિક અયન", "Advanced Details Masa Tamil Month Num": "તમિલ માસ ક્રમાંક", "Advanced Details Masa Tamil Month": "તમિલ માસ", "Advanced Details Masa Tamil Day": "તમિલ દિવસ", "Advanced Details Masa Purnimanta Date": "પૂર્ણિમાંત તારીખ", "Advanced Details Masa Purnimanta Number": "પૂર્ણિમાંત ક્રમાંક", "Advanced Details Masa Purnimanta Name": "પૂર્ણિમાંત નામ", "Advanced Details Masa Alternate Purnimanta Name": "વૈકલ્પિક પૂર્ણિમાંત નામ", "Advanced Details Masa Purnimanta Start": "પૂર્ણિમાંત આરંભ", "Advanced Details Masa Purnimanta End": "પૂર્ણિમાંત અંત", "Advanced Details Masa Moon Phase": "ચંદ્ર ફેઝ", "Advanced Details Masa Paksha": "પક્ષ", "Advanced Details Masa Ritu": "ઋતુ", "Advanced Details Masa Ritu Tamil": "તમિલ ઋતુ", "Advanced Details Moon Yogini Nivas": "યોગિની નિવાસ", "Advanced Details Ahargana": "અહર્ગણ", "Advanced Details Years Kali": "કળી વર્ષ", "Advanced Details Years Saka": "શક વર્ષ", "Advanced Details Years Vikram Samvaat": "વિક્રમ સંવત", "Advanced Details Years Kali Samvaat Number": "કળી સંવત ક્રમાંક", "Advanced Details Years Kali Samvaat Name": "કળી સંવત નામ", "Advanced Details Years Vikram Samvaat Number": "વિક્રમ સંવત ક્રમાંક", "Advanced Details Years Vikram Samvaat Name": "વિક્રમ સંવત નામ", "Advanced Details Years Saka Samvaat Number": "શક સંવત ક્રમાંક", "Advanced Details Years Saka Samvaat Name": "શક સંવત નામ", "Advanced Details Vaara": "વાર", "Advanced Details Disha Shool": "દિશા શૂલ", "Advanced Details Abhijit Muhurta Start": "અભિજીત મુહૂર્ત આરંભ", "Advanced Details Abhijit Muhurta End": "અભિજીત મુહૂર્ત અંત",
+                        "Rahukaal": "રાહુકાળ", "Rahukaal": "રાહુકાળ",
+                        "Yamakanta": "યમકાંતા", "Yamakanta": "યમકાંતા"
+                    },
+                    ka: {
+                        "Tithi": "ತಿಥಿ", "Tithi Name": "ತಿಥಿ ಹೆಸರು", "Tithi Number": "ತಿಥಿ ಸಂಖ್ಯೆ", "Tithi Next Tithi": "ಮುಂದಿನ ತಿಥಿ", "Tithi Type": "ತಿಥಿ ಪ್ರಕಾರ", "Tithi Diety": "ತಿಥಿ ದೇವತೆ", "Tithi Start": "ತಿಥಿ ಆರಂಭ", "Tithi End": "ತಿಥಿ ಅಂತ್ಯ", "Tithi Meaning": "ತಿಥಿ ಅರ್ಥ", "Tithi Special": "ವಿಶೇಷ ತಿಥಿ",
+                        "Nakshatra": "ನಕ್ಷತ್ರ", "Nakshatra Pada": "ನಕ್ಷತ್ರ ಪಾದ", "Nakshatra Name": "ನಕ್ಷತ್ರ ಹೆಸರು", "Nakshatra Number": "ನಕ್ಷತ್ರ ಸಂಖ್ಯೆ", "Nakshatra Lord": "ನಕ್ಷತ್ರ ಸ್ವಾಮಿ", "Nakshatra Diety": "ನಕ್ಷತ್ರ ದೇವತೆ", "Nakshatra Start": "ನಕ್ಷತ್ರ ಆರಂಭ", "Nakshatra Next Nakshatra": "ಮುಂದಿನ ನಕ್ಷತ್ರ", "Nakshatra End": "ನಕ್ಷತ್ರ ಅಂತ್ಯ", "Nakshatra Auspicious Disha": "ಶುಭ ದಿಕ್ಕು", "Nakshatra Meaning": "ನಕ್ಷತ್ರ ಅರ್ಥ", "Nakshatra Special": "ವಿಶೇಷ ನಕ್ಷತ್ರ", "Nakshatra Summary": "ನಕ್ಷತ್ರ ಸಾರಾಂಶ",
+                        "Yoga": "ಯೋಗ", "Yoga Name": "ಯೋಗ ಹೆಸರು", "Yoga Number": "ಯೋಗ ಸಂಖ್ಯೆ", "Yoga Start": "ಯೋಗ ಆರಂಭ", "Yoga End": "ಯೋಗ ಅಂತ್ಯ", "Yoga Next Yoga": "ಮುಂದಿನ ಯೋಗ", "Yoga Meaning": "ಯೋಗ ಅರ್ಥ", "Yoga Special": "ವಿಶೇಷ ಯೋಗ",
+                        "Karana": "ಕರಣ", "Karana Name": "ಕರಣ ಹೆಸರು", "Karana Number": "ಕರಣ ಸಂಖ್ಯೆ", "Karana Type": "ಕರಣ ಪ್ರಕಾರ", "Karana Lord": "ಕರಣ ಸ್ವಾಮಿ", "Karana Diety": "ಕರಣ ದೇವತೆ", "Karana Start": "ಕರಣ ಆರಂಭ", "Karana End": "ಕರಣ ಅಂತ್ಯ", "Karana Special": "ವಿಶೇಷ ಕರಣ", "Karana Next Karana": "ಮುಂದಿನ ಕರಣ",
+                        "Sun": "ಸೂರ್ಯ", "Sun Position Zodiac": "ಸೂರ್ಯ ರಾಶಿ", "Sun Position Rasi No": "ರಾಶಿ ಸಂಖ್ಯೆ", "Sun Position Nakshatra No": "ನಕ್ಷತ್ರ ಸಂಖ್ಯೆ", "Sun Position Sun Degree At Rise": "ಸೂರ್ಯ ಉದಯದಲ್ಲಿ ಡಿಗ್ರಿ",
+                        "Moon": "ಚಂದ್ರ", "Moon Position Moon Degree": "ಚಂದ್ರ ಡಿಗ್ರಿ",
+                        "Gulika": "ಗುಲಿಕ", "Gulika": "ಗುಲಿಕ",
+                        "Advanced Details": "ವಿಸ್ತೃತ ವಿವರಗಳು", "Day Name": "ದಿನದ ಹೆಸರು", "Ayanamsa Name": "ಅಯನಾಂಶ ಹೆಸರು", "Ayanamsa Number": "ಅಯನಾಂಶ ಸಂಖ್ಯೆ", "Rasi Name": "ರಾಶಿ ಹೆಸರು", "Advanced Details Sun Rise": "ಸೂರ್ಯೋದಯ", "Advanced Details Sun Set": "ಸೂರ್ಯಾಸ್ತ", "Advanced Details Moon Rise": "ಚಂದ್ರೋದಯ", "Advanced Details Moon Set": "ಚಂದ್ರಾಸ್ತ", "Advanced Details Next Full Moon": "ಮುಂದಿನ ಪೂರ್ಣಚಂದ್ರ", "Advanced Details Next New Moon": "ಮುಂದಿನ ಅಮಾವಾಸ್ಯೆ", "Advanced Details Masa Amanta Number": "ಮಾಸ ಅಮಾಂತ ಸಂಖ್ಯೆ", "Advanced Details Masa Amanta Date": "ಮಾಸ ಅಮಾಂತ ದಿನಾಂಕ", "Advanced Details Masa Amanta Name": "ಮಾಸ ಅಮಾಂತ ಹೆಸರು", "Advanced Details Masa Alternate Amanta Name": "ಪರ್ಯಾಯ ಅಮಾಂತ ಹೆಸರು", "Advanced Details Masa Amanta Start": "ಮಾಸ ಅಮಾಂತ ಆರಂಭ", "Advanced Details Masa Amanta End": "ಮಾಸ ಅಮಾಂತ ಅಂತ್ಯ", "Advanced Details Masa Adhik Maasa": "ಅಧಿಕ ಮಾಸ", "Advanced Details Masa Ayana": "ಮಾಸ ಅಯನ", "Advanced Details Masa Real Ayana": "ಮಾಸ ನಿಜವಾದ ಅಯನ", "Advanced Details Masa Tamil Month Num": "ತಮಿಳು ಮಾಸ ಸಂಖ್ಯೆ", "Advanced Details Masa Tamil Month": "ತಮಿಳು ಮಾಸ", "Advanced Details Masa Tamil Day": "ತಮಿಳು ದಿನ", "Advanced Details Masa Purnimanta Date": "ಪೂರ್ಣಿಮಾಂತ ದಿನಾಂಕ", "Advanced Details Masa Purnimanta Number": "ಪೂರ್ಣಿಮಾಂತ ಸಂಖ್ಯೆ", "Advanced Details Masa Purnimanta Name": "ಪೂರ್ಣಿಮಾಂತ ಹೆಸರು", "Advanced Details Masa Alternate Purnimanta Name": "ಪರ್ಯಾಯ ಪೂರ್ಣಿಮಾಂತ ಹೆಸರು", "Advanced Details Masa Purnimanta Start": "ಪೂರ್ಣಿಮಾಂತ ಆರಂಭ", "Advanced Details Masa Purnimanta End": "ಪೂರ್ಣಿಮಾಂತ ಅಂತ್ಯ", "Advanced Details Masa Moon Phase": "ಚಂದ್ರ ಹಂತ", "Advanced Details Masa Paksha": "ಪಕ್ಷ", "Advanced Details Masa Ritu": "ಋತು", "Advanced Details Masa Ritu Tamil": "ತಮಿಳು ಋತು", "Advanced Details Moon Yogini Nivas": "ಯೋಗಿನಿ ನಿವಾಸ", "Advanced Details Ahargana": "ಅಹರ್ಗಣ", "Advanced Details Years Kali": "ಕಲಿ ವರ್ಷ", "Advanced Details Years Saka": "ಶಕ ವರ್ಷ", "Advanced Details Years Vikram Samvaat": "ವಿಕ್ರಮ ಸಂವತ್ಸರ", "Advanced Details Years Kali Samvaat Number": "ಕಲಿ ಸಂವತ್ಸರ ಸಂಖ್ಯೆ", "Advanced Details Years Kali Samvaat Name": "ಕಲಿ ಸಂವತ್ಸರ ಹೆಸರು", "Advanced Details Years Vikram Samvaat Number": "ವಿಕ್ರಮ ಸಂವತ್ಸರ ಸಂಖ್ಯೆ", "Advanced Details Years Vikram Samvaat Name": "ವಿಕ್ರಮ ಸಂವತ್ಸರ ಹೆಸರು", "Advanced Details Years Saka Samvaat Number": "ಶಕ ಸಂವತ್ಸರ ಸಂಖ್ಯೆ", "Advanced Details Years Saka Samvaat Name": "ಶಕ ಸಂವತ್ಸರ ಹೆಸರು", "Advanced Details Vaara": "ವಾರ", "Advanced Details Disha Shool": "ದಿಶಾ ಶೂಲ", "Advanced Details Abhijit Muhurta Start": "ಅಭಿಜಿತ್ ಮುಹೂರ್ತ ಆರಂಭ", "Advanced Details Abhijit Muhurta End": "ಅಭಿಜಿತ್ ಮುಹೂರ್ತ ಅಂತ್ಯ",
+                        "Rahukaal": "ರಾಹುಕಾಲ", "Rahukaal": "ರಾಹುಕಾಲ",
+                        "Yamakanta": "ಯಮಕಾಂತ", "Yamakanta": "ಯಮಕಾಂತ"
+                    },
+                    te: {
+                        "Tithi": "తిథి", "Tithi Name": "తిథి పేరు", "Tithi Number": "తిథి సంఖ్య", "Tithi Next Tithi": "తదుపరి తిథి", "Tithi Type": "తిథి రకం", "Tithi Diety": "తిథి దేవత", "Tithi Start": "తిథి ప్రారంభం", "Tithi End": "తిథి ముగింపు", "Tithi Meaning": "తిథి అర్థం", "Tithi Special": "ప్రత్యేక తిథి",
+                        "Nakshatra": "నక్షత్రం", "Nakshatra Pada": "నక్షత్ర పదం", "Nakshatra Name": "నక్షత్ర పేరు", "Nakshatra Number": "నక్షత్ర సంఖ్య", "Nakshatra Lord": "నక్షత్ర స్వామి", "Nakshatra Diety": "నక్షత్ర దేవత", "Nakshatra Start": "నక్షత్ర ప్రారంభం", "Nakshatra Next Nakshatra": "తదుపరి నక్షత్రం", "Nakshatra End": "నక్షత్ర ముగింపు", "Nakshatra Auspicious Disha": "శుభ దిశ", "Nakshatra Meaning": "నక్షత్ర అర్థం", "Nakshatra Special": "ప్రత్యేక నక్షత్రం", "Nakshatra Summary": "నక్షత్ర సారాంశం",
+                        "Yoga": "యోగం", "Yoga Name": "యోగం పేరు", "Yoga Number": "యోగం సంఖ్య", "Yoga Start": "యోగం ప్రారంభం", "Yoga End": "యోగం ముగింపు", "Yoga Next Yoga": "తదుపరి యోగం", "Yoga Meaning": "యోగం అర్థం", "Yoga Special": "ప్రత్యేక యోగం",
+                        "Karana": "కరణం", "Karana Name": "కరణం పేరు", "Karana Number": "కరణం సంఖ్య", "Karana Type": "కరణం రకం", "Karana Lord": "కరణం స్వామి", "Karana Diety": "కరణం దేవత", "Karana Start": "కరణం ప్రారంభం", "Karana End": "కరణం ముగింపు", "Karana Special": "ప్రత్యేక కరణం", "Karana Next Karana": "తదుపరి కరణం",
+                        "Sun": "సూర్యుడు", "Sun Position Zodiac": "సూర్యుడు రాశి", "Sun Position Rasi No": "రాశి సంఖ్య", "Sun Position Nakshatra No": "నక్షత్ర సంఖ్య", "Sun Position Sun Degree At Rise": "సూర్యోదయ సమయంలో డిగ్రీ",
+                        "Moon": "చంద్రుడు", "Moon Position Moon Degree": "చంద్రుడు డిగ్రీ",
+                        "Gulika": "గులిక", "Gulika": "గులిక",
+                        "Advanced Details": "విస్తృత వివరాలు", "Day Name": "రోజు పేరు", "Ayanamsa Name": "అయనాంశ పేరు", "Ayanamsa Number": "అయనాంశ సంఖ్య", "Rasi Name": "రాశి పేరు", "Advanced Details Sun Rise": "సూర్యోదయం", "Advanced Details Sun Set": "సూర్యాస్తమయం", "Advanced Details Moon Rise": "చంద్రోదయం", "Advanced Details Moon Set": "చంద్రాస్తమయం", "Advanced Details Next Full Moon": "తదుపరి పూర్ణచంద్రుడు", "Advanced Details Next New Moon": "తదుపరి అమావాస్య", "Advanced Details Masa Amanta Number": "మాస అమాంత సంఖ్య", "Advanced Details Masa Amanta Date": "మాస అమాంత తేదీ", "Advanced Details Masa Amanta Name": "మాస అమాంత పేరు", "Advanced Details Masa Alternate Amanta Name": "ప్రత్యామ్నాయ అమాంత పేరు", "Advanced Details Masa Amanta Start": "మాస అమాంత ప్రారంభం", "Advanced Details Masa Amanta End": "మాస అమాంత ముగింపు", "Advanced Details Masa Adhik Maasa": "అధిక మాసం", "Advanced Details Masa Ayana": "మాస అయన", "Advanced Details Masa Real Ayana": "మాస నిజమైన అయన", "Advanced Details Masa Tamil Month Num": "తమిళ మాస సంఖ్య", "Advanced Details Masa Tamil Month": "తమిళ మాసం", "Advanced Details Masa Tamil Day": "తమిళ రోజు", "Advanced Details Masa Purnimanta Date": "పూర్ణిమాంత తేదీ", "Advanced Details Masa Purnimanta Number": "పూర్ణిమాంత సంఖ్య", "Advanced Details Masa Purnimanta Name": "పూర్ణిమాంత పేరు", "Advanced Details Masa Alternate Purnimanta Name": "ప్రత్యామ్నాయ పూర్ణిమాంత పేరు", "Advanced Details Masa Purnimanta Start": "పూర్ణిమాంత ప్రారంభం", "Advanced Details Masa Purnimanta End": "పూర్ణిమాంత ముగింపు", "Advanced Details Masa Moon Phase": "చంద్రుడు దశ", "Advanced Details Masa Paksha": "పక్షం", "Advanced Details Masa Ritu": "ఋతువు", "Advanced Details Masa Ritu Tamil": "తమిళ ఋతువు", "Advanced Details Moon Yogini Nivas": "యోగిని నివాసం", "Advanced Details Ahargana": "అహర్గణ", "Advanced Details Years Kali": "కలి సంవత్సరం", "Advanced Details Years Saka": "శక సంవత్సరం", "Advanced Details Years Vikram Samvaat": "విక్రమ్ సంవత్", "Advanced Details Years Kali Samvaat Number": "కలి సంవత్ సంఖ్య", "Advanced Details Years Kali Samvaat Name": "కలి సంవత్ పేరు", "Advanced Details Years Vikram Samvaat Number": "విక్రమ్ సంవత్ సంఖ్య", "Advanced Details Years Vikram Samvaat Name": "విక్రమ్ సంవత్ పేరు", "Advanced Details Years Saka Samvaat Number": "శక సంవత్ సంఖ్య", "Advanced Details Years Saka Samvaat Name": "శక సంవత్ పేరు", "Advanced Details Vaara": "వారము", "Advanced Details Disha Shool": "దిశా శూల్", "Advanced Details Abhijit Muhurta Start": "అభిజిత్ ముహూర్త ప్రారంభం", "Advanced Details Abhijit Muhurta End": "అభిజిత్ ముహూర్త ముగింపు",
+                        "Rahukaal": "రాహుకాలం", "Rahukaal": "రాహుకాలం",
+                        "Yamakanta": "యమకాంత", "Yamakanta": "యమకాంత"
                     }
+                };
+
+                // Table structure definition
+                const panchangTableStructure = [
+                    { cat: "Tithi", keys: ["Tithi Name", "Tithi Number", "Tithi Next Tithi", "Tithi Type", "Tithi Diety", "Tithi Start", "Tithi End", "Tithi Meaning", "Tithi Special"] },
+                    { cat: "Nakshatra", keys: ["Nakshatra Pada", "Nakshatra Name", "Nakshatra Number", "Nakshatra Lord", "Nakshatra Diety", "Nakshatra Start", "Nakshatra Next Nakshatra", "Nakshatra End", "Nakshatra Auspicious Disha", "Nakshatra Meaning", "Nakshatra Special", "Nakshatra Summary"] },
+                    { cat: "Yoga", keys: ["Yoga", "Yoga Name", "Yoga Number", "Yoga Start", "Yoga End", "Yoga Next Yoga", "Yoga Meaning", "Yoga Special"] },
+                    { cat: "Karana", keys: ["Karana Name", "Karana Number", "Karana Type", "Karana Lord", "Karana Diety", "Karana Start", "Karana End", "Karana Special", "Karana Next Karana"] },
+                    { cat: "Sun", keys: ["Sun Position Zodiac", "Sun Position Rasi No", "Sun Position Nakshatra No", "Sun Position Sun Degree At Rise"] },
+                    { cat: "Moon", keys: ["Moon Position Moon Degree"] },
+                    { cat: "Gulika", keys: ["Gulika"] },
+                    { cat: "Advanced Details", keys: ["Day Name", "Ayanamsa Name", "Ayanamsa Number", "Rasi Name", "Advanced Details Sun Rise", "Advanced Details Sun Set", "Advanced Details Moon Rise", "Advanced Details Moon Set", "Advanced Details Next Full Moon", "Advanced Details Next New Moon", "Advanced Details Masa Amanta Number", "Advanced Details Masa Amanta Date", "Advanced Details Masa Amanta Name", "Advanced Details Masa Alternate Amanta Name", "Advanced Details Masa Amanta Start", "Advanced Details Masa Amanta End", "Advanced Details Masa Adhik Maasa", "Advanced Details Masa Ayana", "Advanced Details Masa Real Ayana", "Advanced Details Masa Tamil Month Num", "Advanced Details Masa Tamil Month", "Advanced Details Masa Tamil Day", "Advanced Details Masa Purnimanta Date", "Advanced Details Masa Purnimanta Number", "Advanced Details Masa Purnimanta Name", "Advanced Details Masa Alternate Purnimanta Name", "Advanced Details Masa Purnimanta Start", "Advanced Details Masa Purnimanta End", "Advanced Details Masa Moon Phase", "Advanced Details Masa Paksha", "Advanced Details Masa Ritu", "Advanced Details Masa Ritu Tamil", "Advanced Details Moon Yogini Nivas", "Advanced Details Ahargana", "Advanced Details Years Kali", "Advanced Details Years Saka", "Advanced Details Years Vikram Samvaat", "Advanced Details Years Kali Samvaat Number", "Advanced Details Years Kali Samvaat Name", "Advanced Details Years Vikram Samvaat Number", "Advanced Details Years Vikram Samvaat Name", "Advanced Details Years Saka Samvaat Number", "Advanced Details Years Saka Samvaat Name", "Advanced Details Vaara", "Advanced Details Disha Shool", "Advanced Details Abhijit Muhurta Start", "Advanced Details Abhijit Muhurta End"] },
+                    { cat: "Rahukaal", keys: ["Rahukaal"] },
+                    { cat: "Yamakanta", keys: ["Yamakanta"] }
+                ];
+
+                function renderBlankTable(lang) {
+                    const t = panchangTranslations[lang] || panchangTranslations['en'];
+                    let html = `<style>
+                        .panchang-table tr:not(.cat-row):hover { background: #fff7e6; transition: background 0.2s; }
+                        .panchang-table td { padding: 12px 20px; font-size: 1.04em; color: #2d2d2d; border-bottom: 1px solid #f3e6c4; vertical-align: top; }
+                        .panchang-table tr:last-child td { border-bottom: none; }
+                        .panchang-table .panchang-key { font-weight: 600; color: #4f3a1a; letter-spacing: 0.01em; }
+                        .panchang-table .panchang-value { color: #2d2d2d; }
+                        .panchang-table .date-row td { background: #f7f7d7; color: #7c5a00; font-weight: 600; border-radius: 10px 10px 0 0; }
+                        .panchang-table .cat-row td { background: #800000; color: #FFD700; font-weight: bold; text-align: left; padding: 13px 20px; font-size: 1.08em; letter-spacing: 0.5px; border-radius: 0; }
+                    </style>`;
+                    html += `<table class="panchang-table"><tbody>`;
+                    for (const section of panchangTableStructure) {
+                        html += `<tr class="cat-row"><td colspan="2">${t[section.cat] || section.cat}</td></tr>`;
+                        for (const key of section.keys) {
+                            html += `<tr><td class="panchang-key">${t[key] || key}</td><td class="panchang-value"></td></tr>`;
+                        }
+                    }
+                    html += `</tbody></table>`;
+                    document.getElementById('panchang-blank-table').innerHTML = html;
                 }
-                return out;
-            };';
-            echo 'var flat = flatten(json, "");';
-            echo 'function formatTitle(key) {';
-            echo '  return key.replace(/^Response[ ._]?/i, "").replace(/[._]/g, " ").replace(/\\b\\w/g, function(l) { return l.toUpperCase(); });';
-            echo '};';
-            echo 'var cleanedFlat = {};';
-            echo 'for (var k in flat) { cleanedFlat[formatTitle(k)] = flat[k]; }';
-            // Removed the Title/Value header row here:
-            echo 'var html = "<style>"
-                + ".panchang-table {"
-                + "  width: auto; max-width: 100%; background: #fffdfa; border-radius: 14px; box-shadow: 0 4px 24px #0002; border-collapse: separate; border-spacing: 0; margin-bottom: 1.5em; }"
-                + ".panchang-table tr:not(.cat-row):hover { background: #fff7e6; transition: background 0.2s; }"
-                + ".panchang-table td { padding: 12px 20px; font-size: 1.04em; color: #2d2d2d; border-bottom: 1px solid #f3e6c4; vertical-align: top; }"
-                + ".panchang-table tr:last-child td { border-bottom: none; }"
-                + ".panchang-table .panchang-key { font-weight: 600; color: #4f3a1a; letter-spacing: 0.01em; }"
-                + ".panchang-table .panchang-value { color: #2d2d2d; }"
-                + ".panchang-table .date-row td { background: #f7f7d7; color: #7c5a00; font-weight: 600; border-radius: 10px 10px 0 0; }"
-                + ".panchang-table .cat-row td { background: #800000; color: #fff; font-weight: bold; text-align: left; padding: 13px 20px; font-size: 1.08em; letter-spacing: 0.5px; border-radius: 0; }"
-                + "</style>";
-            html += "<table class=\"panchang-table\"><tbody>";';
-            echo 'var dateVal = (json && json.date) ? new Date(json.date).toDateString() : "";';
-            echo 'if(dateVal && dateVal !== "Invalid Date") {';
-            echo '    html += "<tr class=\"date-row\"><td>Date</td><td>" + dateVal + "</td></tr>";';
-            echo '}';
-            echo 'var categories = ["Tithi", "Nakshatra", "Yoga", "Karana", "Sun", "Moon", "Rahukalam", "Gulika", "Yamaganda", "Abhijit", "Hora", "Auspicious", "Inauspicious", "Muhurta", "Panchang", "Choghadiya", "Festival", "Other"];';
-            echo 'var grouped = {};';
-            echo 'for (var k in cleanedFlat) {';
-            echo '    if (k === "Status" || k === "Remaining Api Calls" || k === "Day") continue;';
-            echo '    var found = false;';
-            echo '    for (var i = 0; i < categories.length; i++) {';
-            echo '        var cat = categories[i];';
-            echo '        if (k.toLowerCase().startsWith(cat.toLowerCase())) {';
-            echo '            if (!grouped[cat]) grouped[cat] = [];';
-            echo '            grouped[cat].push({ key: k, value: cleanedFlat[k] });';
-            echo '            found = true;';
-            echo '            break;';
-            echo '        }';
-            echo '    }';
-            echo '    if (!found) {';
-            echo '        if (!grouped["Other"]) grouped["Other"] = [];';
-            echo '        grouped["Other"].push({ key: k, value: cleanedFlat[k] });';
-            echo '    }';
-            echo '}';
-            echo 'for (var i = 0; i < categories.length; i++) {';
-            echo '    var cat = categories[i];';
-            echo '    if (grouped[cat] && grouped[cat].length > 0) {';
-            echo '        html += "<tr class=\"cat-row\"><td colspan=\"2\">" + cat + "</td></tr>";';
-            echo '        for (var j = 0; j < grouped[cat].length; j++) {';
-            echo '            var row = grouped[cat][j];';
-            echo '            html += "<tr><td class=\"panchang-key\">" + row.key + "</td><td class=\"panchang-value\">" + (Array.isArray(row.value) ? JSON.stringify(row.value) : row.value) + "</td></tr>";';
-            echo '        }';
-            echo '    }';
-            echo '}';
-            echo 'resultDiv.innerHTML = html;';
-            echo '});</script>';
-        }
-        // ...existing code...
-        ?>
+
+                document.addEventListener('DOMContentLoaded', function() {
+                    // Initial render with default language
+                    let lang = document.querySelector('.panchang-lang-static-select select').value || 'en';
+                    renderBlankTable(lang);
+                    // Listen for language change
+                    document.querySelector('.panchang-lang-static-select select').addEventListener('change', function() {
+                        renderBlankTable(this.value);
+                    });
+                });
+                </script>
+        <div id="panchang-result" style="margin-top:2em;"></div>
 
         <!-- jQuery and Select2 for searchable dropdown -->
         <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
