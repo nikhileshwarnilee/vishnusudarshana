@@ -2,17 +2,21 @@
 
 <main class="main-content panchang-page" style="background-color:var(--cream-bg);">
         <?php
-        // Load latest Panchang JSON from DB
+        // Load latest Panchang JSON from DB for each language
         require_once __DIR__ . '/config/db.php';
-        $latestPanchang = null;
+        $panchangByLang = [];
+        $languages = ['en', 'hi', 'mr', 'gu', 'ka', 'te'];
         try {
-            $stmt = $pdo->query("SELECT panchang_json FROM panchang ORDER BY request_date DESC, id DESC LIMIT 1");
-            $row = $stmt->fetch();
-            if ($row && $row['panchang_json']) {
-                $latestPanchang = $row['panchang_json'];
+            foreach ($languages as $langCode) {
+                $stmt = $pdo->prepare("SELECT panchang_json FROM panchang WHERE lang = ? ORDER BY request_date DESC, id DESC LIMIT 1");
+                $stmt->execute([$langCode]);
+                $row = $stmt->fetch();
+                if ($row && $row['panchang_json']) {
+                    $panchangByLang[$langCode] = json_decode($row['panchang_json'], true);
+                }
             }
         } catch (Exception $e) {
-            $latestPanchang = null;
+            $panchangByLang = [];
         }
         ?>
         <style>
@@ -33,7 +37,7 @@
             box-shadow: 0 2px 16px rgba(0,0,0,0.07);
             padding: 18px 18px 10px 18px;
             width: 100%;
-            max-width: 700px;
+            max-width: 100%;
             display: flex;
             flex-direction: column;
             gap: 10px;
@@ -94,13 +98,13 @@
             min-width: 120px;
             transition: border 0.2s, background 0.2s;
         }
-        /* New modern style for city dropdown */
+        /* Modern style for city dropdown matching language dropdown */
         .panchang-form select#city {
-            background: linear-gradient(90deg, #f0f4ff 0%, #e0e7ff 100%);
-            border: 2px solid #4f8cff;
-            color: #1a237e;
+            background: linear-gradient(90deg, #ffe066 0%, #fffbe6 100%);
+            border: 2px solid #800000;
+            color: #800000;
             font-weight: 600;
-            box-shadow: 0 2px 8px rgba(79,140,255,0.08);
+            box-shadow: 0 2px 8px rgba(255,215,0,0.08);
             padding: 10px 14px;
             border-radius: 12px;
             font-size: 1.05rem;
@@ -108,9 +112,65 @@
             transition: border 0.2s, background 0.2s, box-shadow 0.2s;
         }
         .panchang-form select#city:focus {
-            border: 2px solid #1a73e8;
-            background: #e3f0ff;
-            box-shadow: 0 4px 16px rgba(79,140,255,0.13);
+            border: 2px solid #ffd700;
+            background: #fffbe6;
+            box-shadow: 0 4px 16px rgba(255,215,0,0.13);
+        }
+        /* Modern style for timezone dropdown matching language dropdown */
+        .panchang-form select#tz {
+            background: linear-gradient(90deg, #ffe066 0%, #fffbe6 100%);
+            border: 2px solid #800000;
+            color: #800000;
+            font-weight: 600;
+            box-shadow: 0 2px 8px rgba(255,215,0,0.08);
+            padding: 10px 14px;
+            border-radius: 12px;
+            font-size: 1.05rem;
+            min-width: 140px;
+            transition: border 0.2s, background 0.2s, box-shadow 0.2s;
+        }
+        .panchang-form select#tz:focus {
+            border: 2px solid #ffd700;
+            background: #fffbe6;
+            box-shadow: 0 4px 16px rgba(255,215,0,0.13);
+        }
+        /* Style for language dropdown in form */
+        .panchang-form select#lang {
+            background: linear-gradient(90deg, #ffe066 0%, #fffbe6 100%);
+            border: 2px solid #800000;
+            color: #800000;
+            font-weight: 600;
+            box-shadow: 0 2px 8px rgba(255,215,0,0.08);
+            padding: 10px 14px;
+            border-radius: 12px;
+            font-size: 1.05rem;
+            min-width: 140px;
+            transition: border 0.2s, background 0.2s, box-shadow 0.2s;
+        }
+        .panchang-form select#lang:focus {
+            border: 2px solid #ffd700;
+            background: #fffbe6;
+            box-shadow: 0 4px 16px rgba(255,215,0,0.13);
+        }
+        /* Select2 container styling to match */
+        .panchang-form .select2-container--default .select2-selection--single {
+            background: linear-gradient(90deg, #ffe066 0%, #fffbe6 100%);
+            border: 2px solid #800000;
+            border-radius: 12px;
+            height: 44px;
+            padding: 6px 8px;
+        }
+        .panchang-form .select2-container--default .select2-selection--single .select2-selection__rendered {
+            color: #800000;
+            font-weight: 600;
+            line-height: 28px;
+        }
+        .panchang-form .select2-container--default .select2-selection--single .select2-selection__arrow {
+            height: 42px;
+        }
+        .panchang-form .select2-container--default.select2-container--focus .select2-selection--single {
+            border: 2px solid #ffd700;
+            background: #fffbe6;
         }
         .panchang-form select:focus {
             border: 1.5px solid #ffd700;
@@ -139,7 +199,7 @@
                 padding: 12px 0 0 0;
             }
             .panchang-form {
-                max-width: 98vw;
+                max-width: 100%;
                 padding: 12px 4vw 8px 4vw;
             }
             .panchang-form-row {
@@ -401,8 +461,40 @@
                             cleanedFlat[formatTitle(k)] = flat[k];
                         }
                     }
+                    // Extract date and day for Tithi header
+                    let panchangDate = "";
+                    let panchangDay = "";
+                    if (cleanedFlat) {
+                        // Try to get day name from various possible keys
+                        panchangDay = cleanedFlat["Day Name"] || cleanedFlat["Advanced Details Day Name"] || 
+                                      cleanedFlat["Response Day Name"] || cleanedFlat["Response Advanced Details Day Name"] ||
+                                      cleanedFlat["Vaara"] || cleanedFlat["Advanced Details Vaara"] || "";
+                        // Try to get date from various possible keys (API uses different formats)
+                        panchangDate = cleanedFlat["Date"] || cleanedFlat["Response Date"] || 
+                                       cleanedFlat["Advanced Details Date"] || cleanedFlat["Response Advanced Details Date"] ||
+                                       cleanedFlat["Masa Amanta Date"] || cleanedFlat["Advanced Details Masa Amanta Date"] || "";
+                    }
+                    // If still no date/day found, try directly from jsonData
+                    if (jsonData && !panchangDate) {
+                        panchangDate = jsonData.date || (jsonData.response && jsonData.response.date) || "";
+                    }
+                    if (jsonData && !panchangDay) {
+                        panchangDay = jsonData.day_name || jsonData.vaara || 
+                                     (jsonData.response && (jsonData.response.day_name || jsonData.response.vaara)) ||
+                                     (jsonData.response && jsonData.response.advanced_details && jsonData.response.advanced_details.day_name) || "";
+                    }
                     for (const section of panchangTableStructure) {
-                        html += `<tr class="cat-row"><td colspan="2">${t[section.cat] || section.cat}</td></tr>`;
+                        let catTitle = t[section.cat] || section.cat;
+                        // For Tithi section, append date and day
+                        if (section.cat === "Tithi" && (panchangDate || panchangDay)) {
+                            let dateDay = [];
+                            if (panchangDate) dateDay.push(panchangDate);
+                            if (panchangDay) dateDay.push(panchangDay);
+                            if (dateDay.length > 0) {
+                                catTitle += " - " + dateDay.join(", ");
+                            }
+                        }
+                        html += `<tr class="cat-row"><td colspan="2">${catTitle}</td></tr>`;
                         for (const key of section.keys) {
                             let val = (cleanedFlat && cleanedFlat[key] !== undefined && cleanedFlat[key] !== null) ? cleanedFlat[key] : "";
                             if (Array.isArray(val)) val = JSON.stringify(val);
@@ -414,17 +506,14 @@
                 }
 
                 document.addEventListener('DOMContentLoaded', function() {
-                    // Get latest Panchang JSON from PHP (if available)
-                    let latestPanchang = null;
-                    try {
-                        latestPanchang = <?php echo $latestPanchang ? $latestPanchang : 'null'; ?>;
-                    } catch(e) { latestPanchang = null; }
+                    // Get Panchang JSON for all languages from PHP
+                    let panchangByLang = <?php echo json_encode($panchangByLang); ?>;
                     // Initial render with default language
                     let lang = document.querySelector('.panchang-lang-static-select select').value || 'en';
-                    renderPanchangTable(lang, latestPanchang);
+                    renderPanchangTable(lang, panchangByLang[lang] || null);
                     // Listen for language change
                     document.querySelector('.panchang-lang-static-select select').addEventListener('change', function() {
-                        renderPanchangTable(this.value, latestPanchang);
+                        renderPanchangTable(this.value, panchangByLang[this.value] || null);
                     });
                 });
                 </script>
