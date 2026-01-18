@@ -121,7 +121,7 @@ html,body{
     text-align: center;
     font-size: 2rem;
     margin-bottom: 1.5rem;
-    color: var(--text-dark);
+    color: #800000;
 }
 /* Responsive grid and card design improvements */
 .categories-grid {

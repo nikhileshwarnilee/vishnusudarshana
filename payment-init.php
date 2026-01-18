@@ -251,6 +251,31 @@ if ($source === 'appointment') {
 
 // UI
 ?>
+<style>@import url('https://fonts.googleapis.com/css2?family=Marcellus&display=swap');html,body{font-family:'Marcellus',serif!important;}</style>
+<style>
+/* ...reuse review page styles for consistency... */
+.main-content { max-width: 480px; margin: 0 auto; background: #fff; border-radius: 18px; box-shadow: 0 4px 24px #e0bebe33; padding: 18px 12px 28px 12px; }
+.review-title { font-size: 1.18em; font-weight: bold; margin-bottom: 18px; text-align: center; color: #800000; }
+.review-card { background: #f9eaea; border-radius: 14px; box-shadow: 0 2px 8px #e0bebe33; padding: 16px; margin-bottom: 18px; }
+.section-title { font-size: 1.05em; color: #800000; margin-bottom: 10px; font-weight: 600; }
+.details-list { display: flex; flex-direction: column; gap: 8px; }
+.details-row { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px dashed #e0bebe; padding-bottom: 4px; }
+.details-label { color: #a03c3c; font-weight: 500; margin-right: 6px; }
+.details-value { color: #333; max-width: 60%; word-break: break-word; }
+.product-list { margin: 0; padding: 0; list-style: none; }
+.product-item { display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #f3caca; padding: 10px 0; }
+.product-item:last-child { border-bottom: none; }
+.product-info { flex: 1; }
+.product-name { font-weight: 600; color: #800000; font-size: 1em; }
+.product-desc { font-size: 0.95em; color: #555; margin: 2px 0 2px 0; }
+.qty-controls { display: flex; align-items: center; gap: 4px; }
+.line-total { font-size: 0.98em; color: #800000; font-weight: 600; min-width: 60px; text-align: right; }
+.sticky-total { position: sticky; bottom: 0; background: #fff; padding: 14px 0 0 0; text-align: right; font-size: 1.13em; border-top: 1px solid #e0bebe; box-shadow: 0 -2px 8px #e0bebe22; z-index: 10; }
+.pay-btn { width: 100%; background: #800000; color: #fff; border: none; border-radius: 8px; padding: 14px 0; font-size: 1.08em; font-weight: 600; margin-top: 10px; cursor: pointer; box-shadow: 0 2px 8px #80000022; transition: background 0.15s; }
+.pay-btn:disabled { background: #ccc; color: #fff; cursor: not-allowed; }
+.review-back-link { display:block;text-align:center;margin-top:18px;color:#1a8917;font-size:0.98em;text-decoration:none; }
+@media (max-width: 700px) { .main-content { padding: 8px 2px 16px 2px; border-radius: 0; } }
+</style>
 <main class="main-content" style="background-color:var(--cream-bg);">
     <h1 class="review-title">Payment Summary</h1>
     <div class="review-card">
@@ -464,28 +489,3 @@ document.getElementById('rzpPayBtn').onclick = function(e){
 };
 </script>
 <?php require_once 'footer.php'; ?>
-<style>@import url('https://fonts.googleapis.com/css2?family=Marcellus&display=swap');html,body{font-family:'Marcellus',serif!important;}</style>
-<style>
-/* ...reuse review page styles for consistency... */
-.main-content { max-width: 480px; margin: 0 auto; background: #fff; border-radius: 18px; box-shadow: 0 4px 24px #e0bebe33; padding: 18px 12px 28px 12px; }
-.review-title { font-size: 1.18em; font-weight: bold; margin-bottom: 18px; text-align: center; }
-.review-card { background: #f9eaea; border-radius: 14px; box-shadow: 0 2px 8px #e0bebe33; padding: 16px; margin-bottom: 18px; }
-.section-title { font-size: 1.05em; color: #800000; margin-bottom: 10px; font-weight: 600; }
-.details-list { display: flex; flex-direction: column; gap: 8px; }
-.details-row { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px dashed #e0bebe; padding-bottom: 4px; }
-.details-label { color: #a03c3c; font-weight: 500; margin-right: 6px; }
-.details-value { color: #333; max-width: 60%; word-break: break-word; }
-.product-list { margin: 0; padding: 0; list-style: none; }
-.product-item { display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #f3caca; padding: 10px 0; }
-.product-item:last-child { border-bottom: none; }
-.product-info { flex: 1; }
-.product-name { font-weight: 600; color: #800000; font-size: 1em; }
-.product-desc { font-size: 0.95em; color: #555; margin: 2px 0 2px 0; }
-.qty-controls { display: flex; align-items: center; gap: 4px; }
-.line-total { font-size: 0.98em; color: #800000; font-weight: 600; min-width: 60px; text-align: right; }
-.sticky-total { position: sticky; bottom: 0; background: #fff; padding: 14px 0 0 0; text-align: right; font-size: 1.13em; border-top: 1px solid #e0bebe; box-shadow: 0 -2px 8px #e0bebe22; z-index: 10; }
-.pay-btn { width: 100%; background: #800000; color: #fff; border: none; border-radius: 8px; padding: 14px 0; font-size: 1.08em; font-weight: 600; margin-top: 10px; cursor: pointer; box-shadow: 0 2px 8px #80000022; transition: background 0.15s; }
-.pay-btn:disabled { background: #ccc; color: #fff; cursor: not-allowed; }
-.review-back-link { display:block;text-align:center;margin-top:18px;color:#1a8917;font-size:0.98em;text-decoration:none; }
-@media (max-width: 700px) { .main-content { padding: 8px 2px 16px 2px; border-radius: 0; } }
-</style>

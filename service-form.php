@@ -288,7 +288,7 @@ function handleSelectChange(field) {
 html,body{font-family:'Marcellus',serif!important;}
 body { background: #FFD700 !important; }
 .main-content { max-width: 480px; margin: 0 auto; background: #FFD700; border-radius: 18px; box-shadow: 0 4px 24px #e0bebe33; padding: 18px 12px 28px 12px; }
-.form-title { font-size: 1.18em; font-weight: bold; margin-bottom: 18px; text-align: center; }
+.form-title { font-size: 1.18em; font-weight: bold; margin-bottom: 18px; text-align: center; color: #800000; }
 .form-section { margin-bottom: 18px; }
 .form-section-title { font-size: 1.05em; color: #800000; margin-bottom: 10px; font-weight: 600; }
 .form-group { margin-bottom: 12px; }
