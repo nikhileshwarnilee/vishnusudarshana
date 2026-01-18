@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'vishnusudarshana-pwa-v2';
+const CACHE_VERSION = 'vishnusudarshana-pwa-v3';
 const PRECACHE_ASSETS = [
   '/assets/images/logo/icon-iconpwa192.png',
   '/assets/images/logo/icon-iconpwa512.png'
