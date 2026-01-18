@@ -4,9 +4,8 @@ include 'header.php';
 
 require_once __DIR__ . '/config/db.php';
 
-// Load horoscope data from DB for each zodiac and language
-$horoscopeByZodiacLang = [];
-$languages = ['en', 'hi', 'mr', 'gu', 'ka', 'te'];
+// Fetch all 12 zodiacs for English language only - DEBUG
+$debugEnglishData = [];
 $zodiacs = [
     1 => 'Aries', 2 => 'Taurus', 3 => 'Gemini', 4 => 'Cancer', 
     5 => 'Leo', 6 => 'Virgo', 7 => 'Libra', 8 => 'Scorpio', 
@@ -14,15 +13,25 @@ $zodiacs = [
 ];
 
 try {
-    // Debug: Check if any data exists
-    $checkStmt = $pdo->query("SELECT COUNT(*) as count FROM daily_horoscope");
-    $countRow = $checkStmt->fetch();
-    $totalRecords = $countRow['count'];
+    $stmt = $pdo->prepare("SELECT zodiac_number, zodiac_name, horoscope_json FROM daily_horoscope WHERE lang = 'en' ORDER BY zodiac_number");
+    $stmt->execute();
+    $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
-    // Get sample data to debug
-    $sampleStmt = $pdo->query("SELECT zodiac_number, lang, LEFT(horoscope_json, 100) as json_preview FROM daily_horoscope LIMIT 3");
-    $sampleData = $sampleStmt->fetchAll();
-    
+    foreach ($results as $row) {
+        $debugEnglishData[$row['zodiac_number']] = [
+            'zodiac_name' => $row['zodiac_name'],
+            'json' => $row['horoscope_json']
+        ];
+    }
+} catch (Exception $e) {
+    echo "<div style='background:red;color:white;padding:20px;'>Error: " . $e->getMessage() . "</div>";
+}
+
+// Load horoscope data from DB for each zodiac and language
+$horoscopeByZodiacLang = [];
+$languages = ['en', 'hi', 'mr', 'gu', 'ka', 'te'];
+
+try {
     foreach ($languages as $langCode) {
         $horoscopeByZodiacLang[$langCode] = [];
         foreach ($zodiacs as $zodiacNum => $zodiacName) {
@@ -38,20 +47,9 @@ try {
             }
         }
     }
-    
 } catch (Exception $e) {
     error_log("Horoscope fetch error: " . $e->getMessage());
     $horoscopeByZodiacLang = [];
-    $totalRecords = 0;
-    $sampleData = [];
-}
-
-// Debug output (remove after testing)
-echo "<!-- DEBUG INFO: Total DB records: $totalRecords -->";
-echo "<!-- Sample data: " . print_r($sampleData, true) . " -->";
-echo "<!-- Languages with data: " . implode(', ', array_keys($horoscopeByZodiacLang)) . " -->";
-foreach ($horoscopeByZodiacLang as $lang => $zodiacs_data) {
-    echo "<!-- $lang has " . count($zodiacs_data) . " zodiacs -->";
 }
 ?>
 
@@ -61,17 +59,17 @@ foreach ($horoscopeByZodiacLang as $lang => $zodiacs_data) {
         font-family: 'Marcellus', serif !important;
     }
     
-    .din-vishesh-page {
+    .horoscope-page {
         background-color: var(--cream-bg);
     }
     
-    .din-container {
+    .horoscope-container {
         max-width: 1200px;
         margin: 60px auto;
         padding: 0 20px;
     }
     
-    .din-header {
+    .horoscope-header {
         display: flex;
         flex-wrap: wrap;
         align-items: center;
@@ -80,7 +78,7 @@ foreach ($horoscopeByZodiacLang as $lang => $zodiacs_data) {
         gap: 20px;
     }
     
-    .din-title {
+    .horoscope-title {
         font-size: 2.2em;
         font-weight: bold;
         color: #800000;
@@ -97,11 +95,11 @@ foreach ($horoscopeByZodiacLang as $lang => $zodiacs_data) {
         min-width: 180px;
     }
     
-    .din-lang-select, .din-zodiac-select {
+    .horoscope-lang-select, .horoscope-zodiac-select {
         width: 100%;
     }
     
-    .din-lang-select select, .din-zodiac-select select {
+    .horoscope-lang-select select, .horoscope-zodiac-select select {
         background: linear-gradient(90deg, #ffe066 0%, #fffbe6 100%);
         border: 2px solid #800000;
         color: #800000;
@@ -114,13 +112,13 @@ foreach ($horoscopeByZodiacLang as $lang => $zodiacs_data) {
         transition: border 0.2s, background 0.2s, box-shadow 0.2s;
     }
     
-    .din-lang-select select:focus, .din-zodiac-select select:focus {
+    .horoscope-lang-select select:focus, .horoscope-zodiac-select select:focus {
         border: 2px solid #ffd700;
         background: #fffbe6;
         outline: none;
     }
     
-    .festival-content {
+    .horoscope-content {
         background: #fff;
         border-radius: 16px;
         box-shadow: 0 2px 16px rgba(0,0,0,0.07);
@@ -130,18 +128,18 @@ foreach ($horoscopeByZodiacLang as $lang => $zodiacs_data) {
         font-size: 1.1em;
     }
     
-    .festival-table {
+    .horoscope-table {
         width: 100%;
         border-collapse: collapse;
         margin-top: 20px;
     }
     
-    .festival-table tbody tr:not(.festival-cat-row):hover {
+    .horoscope-table tbody tr:not(.horoscope-cat-row):hover {
         background: #fff7e6;
         transition: background 0.2s;
     }
     
-    .festival-table td {
+    .horoscope-table td {
         padding: 14px 18px;
         font-size: 1em;
         color: #2d2d2d;
@@ -149,23 +147,23 @@ foreach ($horoscopeByZodiacLang as $lang => $zodiacs_data) {
         vertical-align: top;
     }
     
-    .festival-table tr:last-child td {
+    .horoscope-table tr:last-child td {
         border-bottom: none;
     }
     
-    .festival-key {
+    .horoscope-key {
         font-weight: 700;
         color: #4f3a1a;
         letter-spacing: 0.01em;
         width: 35%;
     }
     
-    .festival-value {
+    .horoscope-value {
         color: #2d2d2d;
         word-break: break-word;
     }
     
-    .festival-cat-row td {
+    .horoscope-cat-row td {
         background: #800000;
         color: #FFD700;
         font-weight: bold;
@@ -183,21 +181,21 @@ foreach ($horoscopeByZodiacLang as $lang => $zodiacs_data) {
     }
 
     /* Share Section Styles */
-    .din-share-section {
+    .horoscope-share-section {
         margin-top: 50px;
         padding: 30px;
         background: linear-gradient(135deg, #f9f3f0, #fef9f6);
         border-radius: 16px;
         text-align: center;
     }
-    .din-share-section h3 {
+    .horoscope-share-section h3 {
         color: #800000;
         font-size: 1.5em;
         margin-bottom: 20px;
     }
 
     /* Navigation Section Styles */
-    .din-nav-section {
+    .horoscope-nav-section {
         margin: 50px 0 0 0;
         padding: 24px 0 0 0;
         border-top: 2px solid #f0f0f0;
@@ -206,7 +204,7 @@ foreach ($horoscopeByZodiacLang as $lang => $zodiacs_data) {
         align-items: center;
         gap: 16px;
     }
-    .din-nav-link {
+    .horoscope-nav-link {
         display: flex;
         align-items: center;
         gap: 8px;
@@ -224,11 +222,11 @@ foreach ($horoscopeByZodiacLang as $lang => $zodiacs_data) {
         padding: 10px 16px;
         box-shadow: 0 2px 8px rgba(128,0,0,0.07);
     }
-    .din-nav-link:hover {
+    .horoscope-nav-link:hover {
         color: #b36b00 !important;
         background: #ffe5d0;
     }
-    .din-nav-label {
+    .horoscope-nav-label {
         font-size: 1em;
         color: #800000;
         font-weight: 600;
@@ -281,26 +279,26 @@ foreach ($horoscopeByZodiacLang as $lang => $zodiacs_data) {
             padding: 0 16px;
         }
         
-        .din-header {
+        .horoscope-header {
             flex-direction: column;
             align-items: flex-start;
         }
         
-        .din-title {
+        .horoscope-title {
             font-size: 1.8em;
         }
         
-        .din-lang-select {
+        .horoscope-lang-select {
             min-width: auto;
             width: 100%;
         }
         
-        .festival-content {
+        .horoscope-content {
             padding: 20px;
             font-size: 1em;
         }
 
-        .din-share-section {
+        .horoscope-share-section {
             padding: 20px 15px;
         }
         .share-buttons {
@@ -310,31 +308,105 @@ foreach ($horoscopeByZodiacLang as $lang => $zodiacs_data) {
             padding: 10px 16px;
             font-size: 0.9rem;
         }
+        
+        .zodiac-cards-grid {
+            grid-template-columns: repeat(12, 1fr);
+            gap: 8px;
+        }
+        
+        .zodiac-card {
+            padding: 10px 6px;
+        }
+        
+        .zodiac-icon {
+            font-size: 1.6em;
+            margin-bottom: 2px;
+        }
+        
+        .zodiac-name {
+            font-size: 0.75em;
+        }
+        
+        .zodiac-hindi {
+            font-size: 0.65em;
+        }
+    }
+
+    /* Zodiac Cards Grid */
+    .zodiac-cards-container {
+        margin-bottom: 40px;
+    }
+    
+    .zodiac-cards-grid {
+        display: grid;
+        grid-template-columns: repeat(12, 1fr);
+        gap: 10px;
+        margin-top: 30px;
+    }
+    
+    .zodiac-card {
+        background: linear-gradient(135deg, #fff 0%, #fffef7 100%);
+        border: 2px solid #e6d5b8;
+        border-radius: 12px;
+        padding: 12px 8px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        box-shadow: 0 2px 8px rgba(128, 0, 0, 0.08);
+    }
+    
+    .zodiac-card:hover {
+        transform: translateY(-3px);
+        border-color: #800000;
+        box-shadow: 0 4px 12px rgba(128, 0, 0, 0.15);
+        background: linear-gradient(135deg, #fffbe6 0%, #fff7e6 100%);
+    }
+    
+    .zodiac-card.active {
+        background: linear-gradient(135deg, #800000 0%, #a52a2a 100%);
+        border-color: #FFD700;
+        color: #FFD700;
+        box-shadow: 0 4px 12px rgba(128, 0, 0, 0.3);
+    }
+    
+    .zodiac-icon {
+        font-size: 1.8em;
+        margin-bottom: 4px;
+        display: block;
+    }
+    
+    .zodiac-card.active .zodiac-icon {
+        transform: scale(1.15);
+    }
+    
+    .zodiac-name {
+        font-size: 0.85em;
+        font-weight: 700;
+        color: #800000;
+        margin-bottom: 2px;
+    }
+    
+    .zodiac-card.active .zodiac-name {
+        color: #FFD700;
+    }
+    
+    .zodiac-hindi {
+        font-size: 0.75em;
+        color: #666;
+    }
+    
+    .zodiac-card.active .zodiac-hindi {
+        color: #fff;
     }
 </style>
 
-<main class="main-content din-vishesh-page">
-    <div class="din-container">
-        <div class="din-header">
-            <h1 class="din-title">Your Daily Horoscope</h1>
+<main class="main-content horoscope-page">
+    <div class="horoscope-container">
+        <!-- Header with Title and Language Selector -->
+        <div class="horoscope-header">
+            <h1 class="horoscope-title">Your Daily Horoscope</h1>
             <div class="header-controls">
-                <div class="din-zodiac-select">
-                    <select id="horoscopeZodiac" onchange="displayHoroscope()">
-                        <option value="1">Aries (मेष)</option>
-                        <option value="2">Taurus (वृष)</option>
-                        <option value="3">Gemini (मिथुन)</option>
-                        <option value="4">Cancer (कर्क)</option>
-                        <option value="5">Leo (सिंह)</option>
-                        <option value="6">Virgo (कन्या)</option>
-                        <option value="7">Libra (तुला)</option>
-                        <option value="8">Scorpio (वृश्चिक)</option>
-                        <option value="9">Sagittarius (धनु)</option>
-                        <option value="10">Capricorn (मकर)</option>
-                        <option value="11">Aquarius (कुंभ)</option>
-                        <option value="12">Pisces (मीन)</option>
-                    </select>
-                </div>
-                <div class="din-lang-select">
+                <div class="horoscope-lang-select">
                     <select id="horoscopeLang" onchange="displayHoroscope()">
                         <option value="en">English (English)</option>
                         <option value="hi">Hindi (हिन्दी)</option>
@@ -346,13 +418,79 @@ foreach ($horoscopeByZodiacLang as $lang => $zodiacs_data) {
                 </div>
             </div>
         </div>
+
+        <!-- Zodiac Cards Grid -->
+        <div class="zodiac-cards-container">
+            <div class="zodiac-cards-grid">
+                <div class="zodiac-card active" data-zodiac="1" onclick="selectZodiac(1)">
+                    <span class="zodiac-icon">♈</span>
+                    <div class="zodiac-name">Aries</div>
+                    <div class="zodiac-hindi">मेष</div>
+                </div>
+                <div class="zodiac-card" data-zodiac="2" onclick="selectZodiac(2)">
+                    <span class="zodiac-icon">♉</span>
+                    <div class="zodiac-name">Taurus</div>
+                    <div class="zodiac-hindi">वृष</div>
+                </div>
+                <div class="zodiac-card" data-zodiac="3" onclick="selectZodiac(3)">
+                    <span class="zodiac-icon">♊</span>
+                    <div class="zodiac-name">Gemini</div>
+                    <div class="zodiac-hindi">मिथुन</div>
+                </div>
+                <div class="zodiac-card" data-zodiac="4" onclick="selectZodiac(4)">
+                    <span class="zodiac-icon">♋</span>
+                    <div class="zodiac-name">Cancer</div>
+                    <div class="zodiac-hindi">कर्क</div>
+                </div>
+                <div class="zodiac-card" data-zodiac="5" onclick="selectZodiac(5)">
+                    <span class="zodiac-icon">♌</span>
+                    <div class="zodiac-name">Leo</div>
+                    <div class="zodiac-hindi">सिंह</div>
+                </div>
+                <div class="zodiac-card" data-zodiac="6" onclick="selectZodiac(6)">
+                    <span class="zodiac-icon">♍</span>
+                    <div class="zodiac-name">Virgo</div>
+                    <div class="zodiac-hindi">कन्या</div>
+                </div>
+                <div class="zodiac-card" data-zodiac="7" onclick="selectZodiac(7)">
+                    <span class="zodiac-icon">♎</span>
+                    <div class="zodiac-name">Libra</div>
+                    <div class="zodiac-hindi">तुला</div>
+                </div>
+                <div class="zodiac-card" data-zodiac="8" onclick="selectZodiac(8)">
+                    <span class="zodiac-icon">♏</span>
+                    <div class="zodiac-name">Scorpio</div>
+                    <div class="zodiac-hindi">वृश्चिक</div>
+                </div>
+                <div class="zodiac-card" data-zodiac="9" onclick="selectZodiac(9)">
+                    <span class="zodiac-icon">♐</span>
+                    <div class="zodiac-name">Sagittarius</div>
+                    <div class="zodiac-hindi">धनु</div>
+                </div>
+                <div class="zodiac-card" data-zodiac="10" onclick="selectZodiac(10)">
+                    <span class="zodiac-icon">♑</span>
+                    <div class="zodiac-name">Capricorn</div>
+                    <div class="zodiac-hindi">मकर</div>
+                </div>
+                <div class="zodiac-card" data-zodiac="11" onclick="selectZodiac(11)">
+                    <span class="zodiac-icon">♒</span>
+                    <div class="zodiac-name">Aquarius</div>
+                    <div class="zodiac-hindi">कुंभ</div>
+                </div>
+                <div class="zodiac-card" data-zodiac="12" onclick="selectZodiac(12)">
+                    <span class="zodiac-icon">♓</span>
+                    <div class="zodiac-name">Pisces</div>
+                    <div class="zodiac-hindi">मीन</div>
+                </div>
+            </div>
+        </div>
         
-        <div id="horoscope-display" class="festival-content">
+        <div id="horoscope-display" class="horoscope-content">
             <div class="no-data">No horoscope data available</div>
         </div>
 
         <!-- Share Section -->
-        <div class="din-share-section">
+        <div class="horoscope-share-section">
             <h3>Share Your Horoscope</h3>
             <div class="share-buttons">
                 <a href="https://www.facebook.com/sharer/sharer.php?u=<?= urlencode('https://' . $_SERVER['HTTP_HOST'] . '/horoscope.php') ?>" target="_blank" class="share-btn facebook">
@@ -379,11 +517,11 @@ foreach ($horoscopeByZodiacLang as $lang => $zodiacs_data) {
         </div>
 
         <!-- Navigation Section -->
-        <div class="din-nav-section">
-            <a class="din-nav-link" href="din-vishesh.php">
+        <div class="horoscope-nav-section">
+            <a class="horoscope-nav-link" href="din-vishesh.php">
                 <span>&#8592; Today's Festivals</span>
             </a>
-            <a class="din-nav-link" href="panchang.php" style="text-align:right;">
+            <a class="horoscope-nav-link" href="panchang.php" style="text-align:right;">
                 <span>Panchang &#8594;</span>
             </a>
         </div>
@@ -393,6 +531,23 @@ foreach ($horoscopeByZodiacLang as $lang => $zodiacs_data) {
 <script>
     const horoscopeData = <?= json_encode($horoscopeByZodiacLang) ?>;
     console.log('Horoscope Data:', horoscopeData);
+    
+    let selectedZodiac = 1; // Default to Aries
+
+    function selectZodiac(zodiacNum) {
+        selectedZodiac = zodiacNum;
+        
+        // Remove active class from all cards
+        document.querySelectorAll('.zodiac-card').forEach(card => {
+            card.classList.remove('active');
+        });
+        
+        // Add active class to selected card
+        document.querySelector(`.zodiac-card[data-zodiac="${zodiacNum}"]`).classList.add('active');
+        
+        // Display horoscope
+        displayHoroscope();
+    }
 
     function formatValue(key, value) {
         if (typeof value === 'object') {
@@ -418,54 +573,107 @@ foreach ($horoscopeByZodiacLang as $lang => $zodiacs_data) {
 
     function displayHoroscope() {
         const lang = document.getElementById('horoscopeLang').value;
-        const zodiac = document.getElementById('horoscopeZodiac').value;
+        const zodiac = selectedZodiac;
         const displayDiv = document.getElementById('horoscope-display');
 
         console.log('Selected Language:', lang, 'Zodiac:', zodiac);
         console.log('Available data for this lang:', horoscopeData[lang]);
 
         if (!horoscopeData || Object.keys(horoscopeData).length === 0) {
-            displayDiv.innerHTML = '<div class="no-data"><p>❌ No horoscope data available.</p><p style="font-size:0.9em; margin-top:10px;">Please run the horoscope cronjob to populate data: <code>scripts/horoscope_cronjob.php</code></p></div>';
+            displayDiv.innerHTML = '<div class="no-data"><p>❌ No horoscope data available.</p></div>';
             return;
         }
 
         if (!horoscopeData[lang] || !horoscopeData[lang][zodiac]) {
-            displayDiv.innerHTML = '<div class="no-data"><p>❌ No horoscope data available for this zodiac sign.</p><p style="font-size:0.9em; margin-top:10px;">Available languages: ' + Object.keys(horoscopeData).join(', ') + '</p></div>';
+            displayDiv.innerHTML = '<div class="no-data"><p>❌ No horoscope data available for this zodiac sign.</p></div>';
             return;
         }
 
         const data = horoscopeData[lang][zodiac];
-        const response = data.response || {};
-        const botResponse = response.bot_response || {};
-
-        let html = '<table class="festival-table"><tbody>';
-
-        // Lucky Color & Numbers
-        if (response.lucky_color) {
-            html += `<tr class="festival-cat-row"><td colspan="2">✨ Lucky Details</td></tr>`;
-            html += `<tr><td class="festival-key">Lucky Color</td><td class="festival-value">${formatValue('lucky_color', response.lucky_color)}</td></tr>`;
-            if (response.lucky_number) {
-                html += `<tr><td class="festival-key">Lucky Numbers</td><td class="festival-value">${formatValue('lucky_number', response.lucky_number)}</td></tr>`;
-            }
-        }
-
-        // Horoscope Details
-        if (Object.keys(botResponse).length > 0) {
-            html += `<tr class="festival-cat-row"><td colspan="2">📖 Your Horoscope</td></tr>`;
-            
-            Object.entries(botResponse).forEach(([key, value]) => {
-                if (typeof value === 'object' && value.split_response) {
-                    const formattedKey = formatKey(key);
-                    const isBold = styleKey(key);
-                    const keyClass = isBold ? 'style="font-weight: bold;"' : '';
-                    const score = value.score || 0;
-                    html += `<tr><td class="festival-key" ${keyClass}>${formattedKey}</td><td class="festival-value">${value.split_response} <span style="font-size:0.9em; color:#999;">(Score: ${score}/100)</span></td></tr>`;
-                }
-            });
-        }
-
-        html += '</tbody></table>';
+        
+        // Display formatted JSON data
+        let html = '<div style="margin-bottom: 30px;">';
+        html += '<h3 style="color: #800000; margin: 0 0 15px 0; font-size: 1.3em;">📋 Complete Horoscope Data:</h3>';
+        html += formatJSONDisplay(data);
+        html += '</div>';
+        
         displayDiv.innerHTML = html;
+    }
+    
+    function formatJSONDisplay(obj, indent = 0) {
+        let html = '<div style="background: #f9f9f9; border: 1px solid #ddd; border-radius: 8px; padding: 15px; font-family: monospace; font-size: 0.95em; line-height: 1.8;">';
+        
+        function renderValue(value, key = '', level = 0) {
+            const padding = 'padding-left: ' + (level * 20) + 'px;';
+            const keyColor = '#d63384';
+            const stringColor = '#198754';
+            const numberColor = '#0d6efd';
+            const boolColor = '#fd7e14';
+            
+            if (value === null || value === undefined) {
+                return `<span style="color: #999;">null</span>`;
+            }
+            
+            if (typeof value === 'string') {
+                return `<span style="color: ${stringColor};">"${htmlspecialchars(value)}"</span>`;
+            }
+            
+            if (typeof value === 'number') {
+                return `<span style="color: ${numberColor};">${value}</span>`;
+            }
+            
+            if (typeof value === 'boolean') {
+                return `<span style="color: ${boolColor};">${value}</span>`;
+            }
+            
+            if (Array.isArray(value)) {
+                if (value.length === 0) {
+                    return '<span style="color: #666;">[]</span>';
+                }
+                let arrayHtml = '<span style="color: #666;">[</span><br>';
+                value.forEach((item, idx) => {
+                    arrayHtml += '<div style="' + padding + 'margin-left: 20px;">';
+                    arrayHtml += renderValue(item, '', level + 1);
+                    if (idx < value.length - 1) arrayHtml += '<span style="color: #666;">,</span>';
+                    arrayHtml += '</div>';
+                });
+                arrayHtml += '<div style="' + padding + '"><span style="color: #666;">]</span></div>';
+                return arrayHtml;
+            }
+            
+            if (typeof value === 'object') {
+                const keys = Object.keys(value);
+                if (keys.length === 0) {
+                    return '<span style="color: #666;">{}</span>';
+                }
+                let objHtml = '<span style="color: #666;">{</span><br>';
+                keys.forEach((k, idx) => {
+                    objHtml += '<div style="' + padding + 'margin-left: 20px;">';
+                    objHtml += '<span style="color: ' + keyColor + ';">"' + htmlspecialchars(k) + '"</span>';
+                    objHtml += '<span style="color: #666;">: </span>';
+                    objHtml += renderValue(value[k], k, level + 1);
+                    if (idx < keys.length - 1) objHtml += '<span style="color: #666;">,</span>';
+                    objHtml += '</div>';
+                });
+                objHtml += '<div style="' + padding + '"><span style="color: #666;">}</span></div>';
+                return objHtml;
+            }
+            
+            return String(value);
+        }
+        
+        html += renderValue(obj, '', 0);
+        html += '</div>';
+        return html;
+    }
+    
+    function htmlspecialchars(str) {
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
     }
 
     function copyHoroscopeLink() {
@@ -476,7 +684,9 @@ foreach ($horoscopeByZodiacLang as $lang => $zodiacs_data) {
     }
 
     // Initialize on page load
-    displayHoroscope();
+    document.addEventListener('DOMContentLoaded', function() {
+        selectZodiac(1); // Select Aries by default
+    });
 </script>
 
 <?php include 'footer.php'; ?>

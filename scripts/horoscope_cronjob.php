@@ -29,7 +29,7 @@ $zodiacNames = [
 ];
 
 $date = date('d/m/Y');
-$api_key = 'aa16b52b73-65fb-56af-b92d-7f35d3105d8f';
+$api_key = '16b52b73-65fb-56af-b92d-7f35d3105d8f';
 
 // API parameters:
 // split: true/false - true returns detailed/split data format
