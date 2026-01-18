@@ -310,7 +310,7 @@ try {
         }
         
         .zodiac-cards-grid {
-            grid-template-columns: repeat(12, 1fr);
+            grid-template-columns: repeat(4, 1fr);
             gap: 8px;
         }
         
@@ -397,6 +397,35 @@ try {
     
     .zodiac-card.active .zodiac-hindi {
         color: #fff;
+    }
+
+    /* Tablet view: 6 cards per row */
+    @media (min-width: 769px) and (max-width: 1024px) {
+        .zodiac-cards-grid {
+            grid-template-columns: repeat(6, 1fr);
+            gap: 10px;
+        }
+    }
+
+    /* Mobile view: 4 cards per row (override after base+tablet) */
+    @media (max-width: 768px) {
+        .zodiac-cards-grid {
+            grid-template-columns: repeat(4, 1fr);
+            gap: 6px;
+        }
+        .zodiac-card {
+            padding: 8px 4px;
+        }
+        .zodiac-icon {
+            font-size: 1.4em;
+            margin-bottom: 2px;
+        }
+        .zodiac-name {
+            font-size: 0.7em;
+        }
+        .zodiac-hindi {
+            font-size: 0.6em;
+        }
     }
 </style>
 
