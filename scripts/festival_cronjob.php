@@ -47,7 +47,7 @@ foreach ($languages as $lang) {
                 tz VARCHAR(50),
                 lang VARCHAR(10),
                 festival_json TEXT,
-                request_date DATE DEFAULT CURDATE(),
+                request_date DATE,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 INDEX idx_lang (lang),
                 INDEX idx_request_date (request_date)
