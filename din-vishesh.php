@@ -1,5 +1,9 @@
 <?php 
 $pageTitle = 'Todays Festivals and Yoga';
+// Prevent browsers (especially mobile/PWA) from serving a cached copy that might have empty data
+header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+header('Pragma: no-cache');
+header('Expires: 0');
 include 'header.php';
 require_once __DIR__ . '/config/db.php';
 
