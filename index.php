@@ -52,11 +52,11 @@ function getPanchangValue($key, $default = '—') {
                 </div>
             </a>
             <!-- Card 3: Muhurats -->
-            <a href="muhurat.php" class="home-top-card-link" aria-label="Muhurat">
+            <a href="horoscope.php" class="home-top-card-link" aria-label="Muhurat">
                 <div class="home-top-card">
-                    <img src="assets/images/religious-bg/muhurat.png" alt="Muhurat Icon" class="home-top-card-icon" />
-                    <div class="home-top-card-title">Shubh Muhurats</div>
-                    <div class="home-top-card-desc">Auspicious Timings</div>
+                    <img src="assets/images/religious-bg/dailyhoroscope.png" alt="Muhurat Icon" class="home-top-card-icon" />
+                    <div class="home-top-card-title">Daily Horoscope</div>
+                    <div class="home-top-card-desc">Daily zodiac insights</div>
                 </div>
             </a>
             <!-- Card 4: Today's Knowledge -->
