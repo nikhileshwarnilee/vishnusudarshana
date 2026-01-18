@@ -406,40 +406,10 @@ try {
         border-radius: 18px;
         padding: 22px;
         display: grid;
-        grid-template-columns: 160px 1fr;
-        gap: 18px;
-        align-items: center;
+        grid-template-columns: 1fr;
+        gap: 12px;
+        align-items: start;
         box-shadow: 0 12px 30px rgba(45, 0, 90, 0.06);
-    }
-
-    .score-ring {
-        width: 140px;
-        height: 140px;
-        border-radius: 50%;
-        display: grid;
-        place-items: center;
-        background: conic-gradient(from 0deg, var(--lucky-color, #a45deb) 0deg, var(--lucky-color, #a45deb) var(--score-angle, 0deg), #e9d7ff var(--score-angle, 0deg), #e9d7ff 360deg);
-        position: relative;
-    }
-    .score-ring::after {
-        content: '';
-        position: absolute;
-        inset: 10px;
-        background: #fff;
-        border-radius: 50%;
-        box-shadow: inset 0 0 0 1px #f1e9ff;
-    }
-    .score-value {
-        position: relative;
-        font-size: 1.9rem;
-        font-weight: 800;
-        color: #5b2ca1;
-    }
-    .score-label {
-        position: relative;
-        margin-top: 6px;
-        font-size: 0.95rem;
-        color: #7a7395;
     }
 
     .hero-content h2 {
@@ -879,21 +849,16 @@ try {
         const luckyNumber = response.lucky_number || '';
         const mainMessage = botResponse.status?.split_response || botResponse.overall?.split_response || botResponse.general?.split_response || 'Have a balanced day ahead.';
 
-        // Build hero summary
-        const scoreAngle = Math.max(0, Math.min(100, totalScore)) * 3.6;
-
+        // Build hero summary without score ring
         let html = `
             <div class="horoscope-hero">
-                <div class="score-ring" style="--score-angle: ${scoreAngle}deg; --lucky-color: ${htmlspecialchars(luckyColor)};">
-                    <div class="score-value">${Math.round(totalScore)}</div>
-                    <div class="score-label">${translations[lang].totalScore}</div>
-                </div>
                 <div class="hero-content">
                     <h2>${translations[lang].todaysGuidance}</h2>
                     <p class="hero-message">${htmlspecialchars(mainMessage)}</p>
                     <div class="hero-badges">
                         <span class="pill"><span class="color-dot" style="background:${htmlspecialchars(luckyColor)}"></span><strong>${translations[lang].luckyColor}</strong> ${htmlspecialchars(luckyColor)}</span>
                         <span class="pill number-pill"><strong>${translations[lang].luckyNumbers}</strong> ${htmlspecialchars(Array.isArray(luckyNumber) ? luckyNumber.join(', ') : luckyNumber)}</span>
+                        <span class="pill number-pill"><strong>${translations[lang].totalScore}</strong> ${Math.round(totalScore)}/100</span>
                     </div>
                 </div>
             </div>
