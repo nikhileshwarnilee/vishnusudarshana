@@ -1,4 +1,6 @@
-<?php include 'header.php'; ?>
+<?php 
+$pageTitle = 'Daily Panchang';
+include 'header.php'; ?>
 
 <main class="main-content panchang-page" style="background-color:var(--cream-bg);">
         <?php
