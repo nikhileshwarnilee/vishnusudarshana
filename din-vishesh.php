@@ -148,6 +148,46 @@ try {
         font-size: 1.5em;
         margin-bottom: 20px;
     }
+
+    /* Navigation Section Styles */
+    .din-nav-section {
+        margin: 50px 0 0 0;
+        padding: 24px 0 0 0;
+        border-top: 2px solid #f0f0f0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 16px;
+    }
+    .din-nav-link {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: #800000 !important;
+        text-decoration: none;
+        font-weight: 700;
+        font-size: 1.15em;
+        transition: color 0.3s ease;
+        max-width: 48%;
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+        background: #f9f3f0;
+        border-radius: 8px;
+        padding: 10px 16px;
+        box-shadow: 0 2px 8px rgba(128,0,0,0.07);
+    }
+    .din-nav-link:hover {
+        color: #b36b00 !important;
+        background: #ffe5d0;
+    }
+    .din-nav-label {
+        font-size: 1em;
+        color: #800000;
+        font-weight: 600;
+        margin-right: 4px;
+    }
+
     .share-buttons {
         display: flex;
         justify-content: center;
@@ -271,6 +311,16 @@ try {
                     Copy Link
                 </button>
             </div>
+        </div>
+
+        <!-- Navigation Section -->
+        <div class="din-nav-section">
+            <a class="din-nav-link" href="panchang.php">
+                <span class="din-nav-label">&#8592; Today's Panchang</span>
+            </a>
+            <a class="din-nav-link" href="horoscope.php" style="text-align:right;">
+                <span class="din-nav-label">Daily Horoscope &#8594;</span>
+            </a>
         </div>
     </div>
 </main>

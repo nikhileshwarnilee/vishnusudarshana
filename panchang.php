@@ -561,6 +561,16 @@
         }
         </script>
 
+        <!-- Navigation Section -->
+        <div class="panchang-nav-section">
+            <a class="panchang-nav-link" href="din-vishesh.php">
+                <span class="panchang-nav-label">&#8592; Today's Festivals</span>
+            </a>
+            <a class="panchang-nav-link" href="horoscope.php" style="text-align:right;">
+                <span class="panchang-nav-label">Daily Horoscope &#8594;</span>
+            </a>
+        </div>
+
         <!-- jQuery and Select2 for searchable dropdown -->
         <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
         <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
@@ -791,6 +801,45 @@
             color: #800000;
             font-size: 1.5em;
             margin-bottom: 20px;
+        }
+
+        /* Navigation Section Styles */
+        .panchang-nav-section {
+            margin: 50px 0 0 0;
+            padding: 24px 0 0 0;
+            border-top: 2px solid #f0f0f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+        }
+        .panchang-nav-link {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #800000 !important;
+            text-decoration: none;
+            font-weight: 700;
+            font-size: 1.15em;
+            transition: color 0.3s ease;
+            max-width: 48%;
+            overflow: hidden;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+            background: #f9f3f0;
+            border-radius: 8px;
+            padding: 10px 16px;
+            box-shadow: 0 2px 8px rgba(128,0,0,0.07);
+        }
+        .panchang-nav-link:hover {
+            color: #b36b00 !important;
+            background: #ffe5d0;
+        }
+        .panchang-nav-label {
+            font-size: 1em;
+            color: #800000;
+            font-weight: 600;
+            margin-right: 4px;
         }
         .share-buttons {
             display: flex;
