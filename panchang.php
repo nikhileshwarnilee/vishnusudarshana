@@ -808,7 +808,7 @@ include 'header.php'; ?>
         /* Navigation Section Styles */
         .panchang-nav-section {
             margin: 50px 0 0 0;
-            padding: 24px 0 0 0;
+            padding: 24px 0 30px 0;
             border-top: 2px solid #f0f0f0;
             display: flex;
             justify-content: space-between;

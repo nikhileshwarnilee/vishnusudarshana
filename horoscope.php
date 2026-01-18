@@ -229,7 +229,7 @@ try {
     .horoscope-nav-label {
         font-size: 1em;
         color: #800000;
-        font-weight: 600;
+        font-weight: 700;
         margin-right: 4px;
     }
 
@@ -399,6 +399,143 @@ try {
         color: #fff;
     }
 
+    /* Horoscope UI */
+    .horoscope-hero {
+        background: linear-gradient(135deg, #f9f3ff 0%, #f6f9ff 50%, #fffaf2 100%);
+        border: 1px solid #ede7ff;
+        border-radius: 18px;
+        padding: 22px;
+        display: grid;
+        grid-template-columns: 160px 1fr;
+        gap: 18px;
+        align-items: center;
+        box-shadow: 0 12px 30px rgba(45, 0, 90, 0.06);
+    }
+
+    .score-ring {
+        width: 140px;
+        height: 140px;
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+        background: conic-gradient(var(--lucky-color, #a45deb) var(--score-angle, 0deg), #e9d7ff var(--score-angle, 0deg));
+        position: relative;
+    }
+    .score-ring::after {
+        content: '';
+        position: absolute;
+        inset: 10px;
+        background: #fff;
+        border-radius: 50%;
+        box-shadow: inset 0 0 0 1px #f1e9ff;
+    }
+    .score-value {
+        position: relative;
+        font-size: 1.9rem;
+        font-weight: 800;
+        color: #5b2ca1;
+    }
+    .score-label {
+        position: relative;
+        margin-top: 6px;
+        font-size: 0.95rem;
+        color: #7a7395;
+    }
+
+    .hero-content h2 {
+        margin: 0 0 8px 0;
+        font-size: 1.4rem;
+        color: #1f1534;
+    }
+    .hero-message {
+        margin: 0 0 12px 0;
+        color: #4a4066;
+        line-height: 1.6;
+    }
+    .hero-badges {
+        display: flex;
+        gap: 14px;
+        flex-wrap: wrap;
+    }
+    .pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 12px;
+        border-radius: 999px;
+        background: #f3f0ff;
+        color: #4a3c6b;
+        font-weight: 600;
+        font-size: 0.95rem;
+    }
+    .color-dot {
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        border: 1px solid rgba(0,0,0,0.08);
+        box-shadow: 0 0 0 3px rgba(0,0,0,0.03);
+    }
+    .number-pill {
+        background: #fff6e6;
+        border: 1px solid #ffe1a8;
+        color: #8a5b00;
+    }
+
+    .areas-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 16px;
+        margin-top: 22px;
+    }
+    .area-card {
+        background: #fff;
+        border: 1px solid #f0ecff;
+        border-radius: 14px;
+        padding: 14px 16px;
+        box-shadow: 0 8px 20px rgba(20, 10, 50, 0.04);
+    }
+    .area-card.warning {
+        border-color: #ffe0e0;
+        background: linear-gradient(135deg, #fff7f7, #fffaf5);
+        box-shadow: 0 10px 22px rgba(190, 30, 30, 0.08);
+    }
+    .area-title {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+        font-weight: 700;
+        color: #2d1b4e;
+    }
+    .area-score {
+        font-weight: 700;
+        color: #5b2ca1;
+    }
+    .area-text {
+        color: #544a6b;
+        line-height: 1.5;
+        margin: 0 0 10px 0;
+        font-size: 0.98rem;
+    }
+    .progress-bar {
+        width: 100%;
+        height: 8px;
+        border-radius: 999px;
+        background: #f2edf9;
+        overflow: hidden;
+        position: relative;
+    }
+    .progress-fill {
+        height: 100%;
+        border-radius: inherit;
+        background: linear-gradient(90deg, #7a5af8, #ff9bd1);
+        width: 0%;
+        transition: width 0.4s ease;
+    }
+    .area-card.warning .progress-fill {
+        background: linear-gradient(90deg, #ff7a7a, #ffb199);
+    }
+
     /* Tablet view: 6 cards per row */
     @media (min-width: 769px) and (max-width: 1024px) {
         .zodiac-cards-grid {
@@ -515,7 +652,7 @@ try {
         </div>
         
         <div id="horoscope-display" class="horoscope-content">
-            <div class="no-data">No horoscope data available</div>
+            <div class="no-data">Select a zodiac to view today's horoscope.</div>
         </div>
 
         <!-- Share Section -->
@@ -548,10 +685,10 @@ try {
         <!-- Navigation Section -->
         <div class="horoscope-nav-section">
             <a class="horoscope-nav-link" href="din-vishesh.php">
-                <span>&#8592; Today's Festivals</span>
+                <span class="horoscope-nav-label">&#8592; Today's Festivals</span>
             </a>
             <a class="horoscope-nav-link" href="panchang.php" style="text-align:right;">
-                <span>Panchang &#8594;</span>
+                <span class="horoscope-nav-label">Panchang &#8594;</span>
             </a>
         </div>
     </div>
@@ -560,6 +697,118 @@ try {
 <script>
     const horoscopeData = <?= json_encode($horoscopeByZodiacLang) ?>;
     console.log('Horoscope Data:', horoscopeData);
+    
+    // Translation object for all labels
+    const translations = {
+        en: {
+            todaysGuidance: "Today's Guidance",
+            luckyColor: "Lucky Color:",
+            luckyNumbers: "Lucky Numbers:",
+            totalScore: "Total Score",
+            career: "Career",
+            family: "Family",
+            friends: "Friends",
+            health: "Health",
+            relationship: "Relationship",
+            finance: "Finance",
+            travel: "Travel",
+            finances: "Finances",
+            physique: "Physique",
+            status: "Status",
+            overall: "Overall",
+            general: "General"
+        },
+        hi: {
+            todaysGuidance: "आज का मार्गदर्शन",
+            luckyColor: "भाग्यशाली रंग:",
+            luckyNumbers: "भाग्यशाली संख्या:",
+            totalScore: "कुल स्कोर",
+            career: "कैरियर",
+            family: "परिवार",
+            friends: "दोस्त",
+            health: "स्वास्थ्य",
+            relationship: "संबंध",
+            finance: "वित्त",
+            travel: "यात्रा",
+            finances: "वित्त",
+            physique: "शारीरिक",
+            status: "स्थिति",
+            overall: "समग्र",
+            general: "सामान्य"
+        },
+        mr: {
+            todaysGuidance: "आजचे मार्गदर्शन",
+            luckyColor: "भाग्यवान रंग:",
+            luckyNumbers: "भाग्यवान संख्या:",
+            totalScore: "एकूण स्कोर",
+            career: "करिअर",
+            family: "कुटुंब",
+            friends: "मित्र",
+            health: "आरोग्य",
+            relationship: "संबंध",
+            finance: "वित्त",
+            travel: "प्रवास",
+            finances: "वित्त",
+            physique: "शारीरिक",
+            status: "स्थिती",
+            overall: "एकूण",
+            general: "सामान्य"
+        },
+        gu: {
+            todaysGuidance: "આજનું માર્ગદર્શન",
+            luckyColor: "ભાગ્યશાળી રંગ:",
+            luckyNumbers: "ભાગ્યશાળી નંબર:",
+            totalScore: "કુલ સ્કોર",
+            career: "કેરિયર",
+            family: "પરિવાર",
+            friends: "મિત્રો",
+            health: "આરોગ્ય",
+            relationship: "સંબંધ",
+            finance: "ફાયનાન્સ",
+            travel: "ટ્રાવેલ",
+            finances: "ફાયનાન્સ",
+            physique: "શારીરિક",
+            status: "સ્થિતિ",
+            overall: "સમગ્ર",
+            general: "સામાન્ય"
+        },
+        ka: {
+            todaysGuidance: "ಇಂದಿನ ಮಾರ್ಗದರ್ಶನ",
+            luckyColor: "ಭಾಗ್ಯವಂತ ಬಣ್ಣ:",
+            luckyNumbers: "ಭಾಗ್ಯವಂತ ಸಂಖ್ಯೆಗಳು:",
+            totalScore: "ಒಟ್ಟು ಸ್ಕೋರ್",
+            career: "ವೃತ್ತಿ",
+            family: "ಕುಟುಂಬ",
+            friends: "ಸ್ನೇಹಿತರು",
+            health: "ಆರೋಗ್ಯ",
+            relationship: "ಸಂಬಂಧ",
+            finance: "ಹಣಕಾಸು",
+            travel: "ಯಾತ್ರೆ",
+            finances: "ಹಣಕಾಸು",
+            physique: "ಶಾರೀರಿಕ",
+            status: "ಸ್ಥಿತಿ",
+            overall: "ಒಟ್ಟು",
+            general: "ಸಾಮಾನ್ಯ"
+        },
+        te: {
+            todaysGuidance: "ఈ రోజు మార్గదర్శన",
+            luckyColor: "అదృష్ట రంగు:",
+            luckyNumbers: "అదృష్ట సంఖ్యలు:",
+            totalScore: "మొత్తం స్కోర్",
+            career: "కెరీర్",
+            family: "కుటుంబం",
+            friends: "స్నేహితులు",
+            health: "ఆరోగ్యం",
+            relationship: "సంబంధం",
+            finance: "ఆర్థిక",
+            travel: "ప్రయాణం",
+            finances: "ఆర్థిక",
+            physique: "శారీరక",
+            status: "స్థితి",
+            overall: "మొత్తం",
+            general: "సాధారణ"
+        }
+    };
     
     let selectedZodiac = 1; // Default to Aries
 
@@ -588,7 +837,14 @@ try {
         return String(value);
     }
 
-    function formatKey(key) {
+    function formatKey(key, lang = 'en') {
+        // Check if translation exists
+        const keyLower = key.toLowerCase();
+        if (translations[lang] && translations[lang][keyLower]) {
+            return translations[lang][keyLower];
+        }
+        
+        // Fallback: format the key
         return key
             .replace(/_/g, ' ')
             .replace(/^./, str => str.toUpperCase())
@@ -605,9 +861,6 @@ try {
         const zodiac = selectedZodiac;
         const displayDiv = document.getElementById('horoscope-display');
 
-        console.log('Selected Language:', lang, 'Zodiac:', zodiac);
-        console.log('Available data for this lang:', horoscopeData[lang]);
-
         if (!horoscopeData || Object.keys(horoscopeData).length === 0) {
             displayDiv.innerHTML = '<div class="no-data"><p>❌ No horoscope data available.</p></div>';
             return;
@@ -619,81 +872,62 @@ try {
         }
 
         const data = horoscopeData[lang][zodiac];
-        
-        // Display formatted JSON data
-        let html = '<div style="margin-bottom: 30px;">';
-        html += '<h3 style="color: #800000; margin: 0 0 15px 0; font-size: 1.3em;">📋 Complete Horoscope Data:</h3>';
-        html += formatJSONDisplay(data);
-        html += '</div>';
-        
-        displayDiv.innerHTML = html;
-    }
-    
-    function formatJSONDisplay(obj, indent = 0) {
-        let html = '<div style="background: #f9f9f9; border: 1px solid #ddd; border-radius: 8px; padding: 15px; font-family: monospace; font-size: 0.95em; line-height: 1.8;">';
-        
-        function renderValue(value, key = '', level = 0) {
-            const padding = 'padding-left: ' + (level * 20) + 'px;';
-            const keyColor = '#d63384';
-            const stringColor = '#198754';
-            const numberColor = '#0d6efd';
-            const boolColor = '#fd7e14';
-            
-            if (value === null || value === undefined) {
-                return `<span style="color: #999;">null</span>`;
-            }
-            
-            if (typeof value === 'string') {
-                return `<span style="color: ${stringColor};">"${htmlspecialchars(value)}"</span>`;
-            }
-            
-            if (typeof value === 'number') {
-                return `<span style="color: ${numberColor};">${value}</span>`;
-            }
-            
-            if (typeof value === 'boolean') {
-                return `<span style="color: ${boolColor};">${value}</span>`;
-            }
-            
-            if (Array.isArray(value)) {
-                if (value.length === 0) {
-                    return '<span style="color: #666;">[]</span>';
-                }
-                let arrayHtml = '<span style="color: #666;">[</span><br>';
-                value.forEach((item, idx) => {
-                    arrayHtml += '<div style="' + padding + 'margin-left: 20px;">';
-                    arrayHtml += renderValue(item, '', level + 1);
-                    if (idx < value.length - 1) arrayHtml += '<span style="color: #666;">,</span>';
-                    arrayHtml += '</div>';
-                });
-                arrayHtml += '<div style="' + padding + '"><span style="color: #666;">]</span></div>';
-                return arrayHtml;
-            }
-            
-            if (typeof value === 'object') {
-                const keys = Object.keys(value);
-                if (keys.length === 0) {
-                    return '<span style="color: #666;">{}</span>';
-                }
-                let objHtml = '<span style="color: #666;">{</span><br>';
-                keys.forEach((k, idx) => {
-                    objHtml += '<div style="' + padding + 'margin-left: 20px;">';
-                    objHtml += '<span style="color: ' + keyColor + ';">"' + htmlspecialchars(k) + '"</span>';
-                    objHtml += '<span style="color: #666;">: </span>';
-                    objHtml += renderValue(value[k], k, level + 1);
-                    if (idx < keys.length - 1) objHtml += '<span style="color: #666;">,</span>';
-                    objHtml += '</div>';
-                });
-                objHtml += '<div style="' + padding + '"><span style="color: #666;">}</span></div>';
-                return objHtml;
-            }
-            
-            return String(value);
+        const response = data.response || {};
+        const botResponse = response.bot_response || {};
+        const totalScore = response.total_score || 0;
+        const luckyColor = response.lucky_color || '#c5a3ff';
+        const luckyNumber = response.lucky_number || '';
+        const mainMessage = botResponse.status?.split_response || botResponse.overall?.split_response || botResponse.general?.split_response || 'Have a balanced day ahead.';
+
+        // Build hero summary
+        const scoreAngle = Math.max(0, Math.min(100, totalScore)) * 3.6;
+
+        let html = `
+            <div class="horoscope-hero">
+                <div class="score-ring" style="--score-angle: ${scoreAngle}deg; --lucky-color: ${htmlspecialchars(luckyColor)};">
+                    <div class="score-value">${Math.round(totalScore)}</div>
+                    <div class="score-label">${translations[lang].totalScore}</div>
+                </div>
+                <div class="hero-content">
+                    <h2>${translations[lang].todaysGuidance}</h2>
+                    <p class="hero-message">${htmlspecialchars(mainMessage)}</p>
+                    <div class="hero-badges">
+                        <span class="pill"><span class="color-dot" style="background:${htmlspecialchars(luckyColor)}"></span><strong>${translations[lang].luckyColor}</strong> ${htmlspecialchars(luckyColor)}</span>
+                        <span class="pill number-pill"><strong>${translations[lang].luckyNumbers}</strong> ${htmlspecialchars(Array.isArray(luckyNumber) ? luckyNumber.join(', ') : luckyNumber)}</span>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Life areas grid
+        const lifeAreas = Object.entries(botResponse)
+            .filter(([key, value]) => value && typeof value === 'object' && (value.split_response || value.score !== undefined));
+
+        if (lifeAreas.length > 0) {
+            html += '<div class="areas-grid">';
+            lifeAreas.forEach(([key, value]) => {
+                const score = value.score ?? 0;
+                const text = value.split_response || '';
+                const isHealth = key.toLowerCase().includes('health');
+                const isLowHealth = isHealth && score < 40;
+                const cardClass = isLowHealth ? 'area-card warning' : 'area-card';
+                const progressWidth = Math.max(0, Math.min(100, score));
+                const translatedKey = formatKey(key, lang);
+                html += `
+                    <div class="${cardClass}">
+                        <div class="area-title">
+                            <span><strong>${translatedKey}</strong></span>
+                            <span class="area-score">${score}/100</span>
+                        </div>
+                        <p class="area-text">${htmlspecialchars(text)}</p>
+                        <div class="progress-bar"><div class="progress-fill" style="width:${progressWidth}%"></div></div>
+                    </div>
+                `;
+            });
+            html += '</div>';
         }
-        
-        html += renderValue(obj, '', 0);
-        html += '</div>';
-        return html;
+
+        displayDiv.innerHTML = html;
     }
     
     function htmlspecialchars(str) {
