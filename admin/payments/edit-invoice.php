@@ -43,8 +43,6 @@ $items = $pdo->prepare("SELECT * FROM invoice_items WHERE invoice_id = ?");
 $items->execute([$id]);
 $items = $items->fetchAll();
 $customers = $pdo->query("SELECT id, name FROM customers ORDER BY name")->fetchAll();
-
-require_once __DIR__ . '/../includes/top-menu.php';
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -53,6 +51,7 @@ require_once __DIR__ . '/../includes/top-menu.php';
 	<title>Edit Invoice</title>
 	<link rel="stylesheet" href="../../assets/css/style.css">
 	<style>
+		body { margin: 0; background: #f7f7fa; }
 		.form-box { background:#fff; border-radius:14px; box-shadow:0 4px 24px rgba(128,0,0,0.10), 0 1.5px 6px rgba(0,0,0,0.04); padding:38px 36px 30px 36px; width:100%; max-width:700px; margin:32px auto; border:1px solid #ececec; }
 		label { font-weight:600; color:#333; margin-bottom:4px; display:block; }
 		input[type="text"], input[type="number"], input[type="date"], textarea { width:100%; padding:11px 12px; border:1px solid #d2d2d2; border-radius:6px; font-size:1em; margin-top:6px; margin-bottom:14px; background:#fafbfc; transition: border 0.2s; }
@@ -66,6 +65,7 @@ require_once __DIR__ . '/../includes/top-menu.php';
 	</style>
 </head>
 <body>
+<?php require_once __DIR__ . '/../includes/top-menu.php'; ?>
 <div class="form-box">
 	<h1 style="margin:0 0 18px 0; font-size:1.7em; color:#800000; font-weight:700; letter-spacing:0.5px;">Edit Invoice #<?= $inv['id'] ?></h1>
 	<form method="post" id="editInvoiceForm" autocomplete="off">

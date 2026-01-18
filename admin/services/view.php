@@ -215,7 +215,7 @@ $adminNotes = $stmt->fetchAll(PDO::FETCH_ASSOC);
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin - View Service Request</title>
     <style>
-        body { font-family: Arial, sans-serif; background: #f7f7fa; margin: 0; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f7f7fa; margin: 0; }
         .admin-container { max-width: 700px; margin: 0 auto; padding: 28px 12px; }
         h1 { font-size: 1.3em; margin-bottom: 18px; color: #800000; }
         .details-table { width: 100%; border-collapse: collapse; background: #fff; box-shadow: 0 2px 12px #e0bebe22; border-radius: 12px; overflow: hidden; margin-bottom: 24px; }
@@ -430,7 +430,7 @@ $adminNotes = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     <!-- Add Internal Note Form -->
     <div style="background:#fef9f9;border:1px solid #f3caca;border-radius:8px;padding:12px;margin-bottom:18px;">
-        <textarea id="note_text" placeholder="Add internal note (admin only)" style="width:100%;padding:10px;border:1px solid #f3caca;border-radius:6px;font-size:0.98em;font-family:Arial,sans-serif;min-height:80px;box-sizing:border-box;"></textarea>
+        <textarea id="note_text" placeholder="Add internal note (admin only)" style="width:100%;padding:10px;border:1px solid #f3caca;border-radius:6px;font-size:0.98em;font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;min-height:80px;box-sizing:border-box;"></textarea>
         <button onclick="saveNote()" style="background:#800000;color:#fff;border:none;border-radius:8px;padding:8px 18px;font-size:0.98em;font-weight:600;cursor:pointer;margin-top:8px;">Save Note</button>
         <span id="note_status" style="margin-left:10px;font-size:0.95em;"></span>
     </div>

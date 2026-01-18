@@ -108,7 +108,7 @@ $users = $pdo->query('SELECT * FROM users ORDER BY id DESC')->fetchAll();
     <link rel="stylesheet" href="../assets/css/style.css">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Marcellus&display=swap');
-        html,body{font-family:'Marcellus',serif!important;}
+        html,body{font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif!important;}
         .admin-container { max-width: 1100px; margin: 0 auto; padding: 24px 12px; }
         /* Summary cards now in responsive-cards.css */
         .form-box { margin-bottom: 20px; padding: 18px; border: 1px solid #ccc; border-radius: 12px; background: #fff; max-width: none; width: 100%; box-sizing: border-box; }

@@ -103,7 +103,7 @@ $recentRows = $recentStmt->fetchAll(PDO::FETCH_ASSOC);
         <link rel="stylesheet" href="/assets/css/style.css">
         <style>
         body {
-            font-family: Arial, sans-serif;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: #f7f7fa;
             margin: 0;
         }

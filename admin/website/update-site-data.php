@@ -20,55 +20,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     try {
         if ($action === 'refresh-festivals') {
-            // Trigger festival data refresh
-            $languages = ['en', 'hi', 'mr', 'gu', 'ka', 'te'];
-            $successCount = 0;
-            $failCount = 0;
-            
-            foreach ($languages as $lang) {
-                $city = 'Solapur, India';
-                $lat = 17.6599;
-                $lon = 75.9064;
-                $tz = '5.5';
-                $date = date('d/m/Y');
-                $api_key = '16b52b73-65fb-56af-b92d-7f35d3105d8f';
-                
-                $api_url = "https://api.vedicastroapi.com/v3-json/panchang/festivals?api_key={$api_key}&date={$date}&tz={$tz}&lat={$lat}&lon={$lon}&lang={$lang}";
-                
-                $ch = curl_init();
-                curl_setopt($ch, CURLOPT_URL, $api_url);
-                curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-                curl_setopt($ch, CURLOPT_TIMEOUT, 10);
-                $response = curl_exec($ch);
-                $httpcode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-                curl_close($ch);
-                
-                if ($httpcode == 200 && $response) {
-                    $stmt = $pdo->prepare("INSERT INTO festivals (city, lat, lon, tz, lang, festival_json, request_date) 
-                                           VALUES (?, ?, ?, ?, ?, ?, CURDATE())
-                                           ON DUPLICATE KEY UPDATE festival_json = VALUES(festival_json), request_date = CURDATE()");
-                    $stmt->execute([$city, $lat, $lon, $tz, $lang, $response]);
-                    $successCount++;
-                } else {
-                    $failCount++;
-                }
-            }
-            
-            if ($successCount > 0) {
-                $successMessage = "Festival data refreshed successfully! ($successCount/$successCount languages updated)";
-            } else {
-                $errorMessage = "Failed to refresh festival data. Please try again.";
-            }
+            // Placeholder - will be executed when page opens in new window
+            $successMessage = "Opening festival update page...";
         }
         
         if ($action === 'refresh-horoscope') {
-            // Trigger horoscope data refresh - placeholder for now
-            $successMessage = "Horoscope refresh initiated. Data will be updated via scheduled cronjob.";
+            // Placeholder - will be executed when page opens in new window
+            $successMessage = "Opening horoscope update page...";
         }
         
         if ($action === 'refresh-panchang') {
-            // Trigger panchang data refresh - placeholder for now
-            $successMessage = "Panchang data refresh initiated. Data will be updated via scheduled cronjob.";
+            // Placeholder - will be executed when page opens in new window
+            $successMessage = "Opening panchang update page...";
         }
         
         if ($action === 'clear-cache') {
@@ -313,9 +276,8 @@ try {
                         </div>
                     </div>
                     <div class="update-actions">
-                        <form method="POST" style="margin: 0;">
-                            <input type="hidden" name="action" value="refresh-festivals">
-                            <button type="submit" class="btn btn-primary">Refresh Now</button>
+                        <form action="../../scripts/festival_cronjob.php" method="GET" target="_blank" style="margin: 0;">
+                            <button type="submit" class="btn btn-primary">Update</button>
                         </form>
                     </div>
                 </div>
@@ -333,9 +295,8 @@ try {
                         </div>
                     </div>
                     <div class="update-actions">
-                        <form method="POST" style="margin: 0;">
-                            <input type="hidden" name="action" value="refresh-horoscope">
-                            <button type="submit" class="btn btn-secondary">Scheduled Auto-Update</button>
+                        <form action="../../scripts/horoscope_cronjob.php" method="GET" target="_blank" style="margin: 0;">
+                            <button type="submit" class="btn btn-secondary">Update</button>
                         </form>
                     </div>
                 </div>
@@ -353,9 +314,8 @@ try {
                         </div>
                     </div>
                     <div class="update-actions">
-                        <form method="POST" style="margin: 0;">
-                            <input type="hidden" name="action" value="refresh-panchang">
-                            <button type="submit" class="btn btn-secondary">Scheduled Auto-Update</button>
+                        <form action="../../scripts/panchang_cronjob.php" method="GET" target="_blank" style="margin: 0;">
+                            <button type="submit" class="btn btn-secondary">Update</button>
                         </form>
                     </div>
                 </div>

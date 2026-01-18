@@ -26,7 +26,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <title>Delete Product</title>
     <link rel="stylesheet" href="/assets/css/style.css">
     <style>
-    body { font-family: Arial, sans-serif; background: #f7f7fa; margin: 0; }
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f7f7fa; margin: 0; }
     .admin-container { max-width: 500px; margin: 0 auto; padding: 24px 12px; }
     h1 { color: #800000; margin-bottom: 18px; font-family: inherit; }
     .form-btn { background:#800000; color:#fff; border:none; border-radius:8px; padding:12px 0; font-size:1.08em; font-weight:600; width:48%; cursor:pointer; margin:0 2% 0 0; transition: background 0.15s; }

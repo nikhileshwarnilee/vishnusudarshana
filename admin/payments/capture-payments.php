@@ -5,7 +5,6 @@ if (!isset($_SESSION['user_id'])) {
 	header('Location: ../login.php');
 	exit;
 }
-require_once __DIR__ . '/../includes/top-menu.php';
 require_once __DIR__ . '/../../config/db.php';
 
 // Fetch all online payments from service_requests table
@@ -22,6 +21,7 @@ $payments = $stmt->fetchAll();
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<link rel="stylesheet" href="../../assets/css/style.css">
 	<style>
+		body { margin: 0; background: #f7f7fa; }
 		.capture-container { background:#fff; border-radius:12px; box-shadow:0 2px 12px rgba(128,0,0,0.07); padding:32px 24px; max-width:1100px; margin:32px auto; }
 		table { width:100%; border-collapse:collapse; margin-top:10px; }
 		th, td { padding:12px 10px; border-bottom:1px solid #eee; text-align:left; }
@@ -31,6 +31,7 @@ $payments = $stmt->fetchAll();
 	</style>
 </head>
 <body>
+<?php require_once __DIR__ . '/../includes/top-menu.php'; ?>
 <div class="capture-container">
 	<h1 style="margin-bottom:18px; color:#800000; font-size:1.5em;">Collected Online Payments</h1>
 	<table>

@@ -273,7 +273,7 @@ if (!function_exists('isActivePage')) {
      ======================= -->
 <style>
 html, body {
-    font-family: Arial, sans-serif !important;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif !important;
 }
 
 *, *::before, *::after {

@@ -142,7 +142,7 @@ if ($selected_client_id > 0) {
 <!-- Admin panel styles (copied from appointments) -->
 <style>
 body {
-    font-family: Arial, sans-serif;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     background: #f7f7fa;
     margin: 0;
 }

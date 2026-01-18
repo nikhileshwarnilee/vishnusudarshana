@@ -108,7 +108,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <title>Edit Blog - Admin</title>
     <style>
         /* Copy all styles from blog-create.php here */
-        body { font-family: Arial, sans-serif; background: #f7f7fa; margin: 0; padding: 0; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f7f7fa; margin: 0; padding: 0; }
         .admin-container { max-width: 1200px; margin: 0 auto; padding: 32px 20px; }
         h1 { color: #800000; margin-bottom: 22px; font-family: inherit; font-size: 2.1em; font-weight: 700; }
         .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px; }

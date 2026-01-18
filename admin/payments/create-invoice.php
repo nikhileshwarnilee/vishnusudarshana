@@ -4,7 +4,6 @@ if (!isset($_SESSION['user_id'])) {
 	header('Location: ../login.php');
 	exit;
 }
-require_once __DIR__ . '/../includes/top-menu.php';
 require_once __DIR__ . '/../../config/db.php';
 ?>
 <!DOCTYPE html>
@@ -29,7 +28,8 @@ require_once __DIR__ . '/../../config/db.php';
 					   margin-left: 4px;
 					   white-space: nowrap;
 				   }
-		body {
+	body {
+			margin: 0;
 			background: #f4f6fa;
 		}
 		.admin-container {
@@ -208,6 +208,7 @@ require_once __DIR__ . '/../../config/db.php';
 </head>
 
 <body>
+<?php require_once __DIR__ . '/../includes/top-menu.php'; ?>
 
 <div class="admin-container" style="display:flex; flex-direction:column; align-items:center; min-height:100vh; justify-content:flex-start; padding-top:32px;">
 	<div class="form-box" style="width:100%; max-width:1000px; margin-bottom:32px; box-shadow:0 2px 12px rgba(128,0,0,0.06);">

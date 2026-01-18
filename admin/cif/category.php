@@ -59,7 +59,7 @@ $total_categories = count($categories);
 <title>CIF Category</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
-body { font-family: Arial, sans-serif; background: #f7f7fa; margin: 0; }
+body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f7f7fa; margin: 0; }
 .admin-container { max-width: 1100px; margin: 0 auto; padding: 24px 12px; }
 h1 { color: #800000; margin-bottom: 18px; }
 .summary-cards { display: flex; gap: 18px; margin-bottom: 24px; flex-wrap: wrap; }

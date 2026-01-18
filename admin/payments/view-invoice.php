@@ -5,7 +5,6 @@ if (!isset($_SESSION['user_id'])) {
 	header('Location: ../login.php');
 	exit;
 }
-require_once __DIR__ . '/../includes/top-menu.php';
 require_once __DIR__ . '/../../config/db.php';
 
 $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
@@ -24,6 +23,7 @@ $items = $items->fetchAll();
 	<title>View Invoice</title>
 	<link rel="stylesheet" href="../../assets/css/style.css">
 	<style>
+		body { margin: 0; background: #f7f7fa; }
 		.view-invoice-box { background:#fff; border-radius:12px; box-shadow:0 2px 12px rgba(128,0,0,0.07); padding:32px 24px; max-width:700px; margin:32px auto; }
 		.inv-title { color:#800000; font-size:1.4em; font-weight:700; margin-bottom:18px; }
 		.inv-section { margin-bottom:18px; }
@@ -35,6 +35,7 @@ $items = $items->fetchAll();
 	</style>
 </head>
 <body>
+<?php require_once __DIR__ . '/../includes/top-menu.php'; ?>
 <div class="view-invoice-box">
 	<div class="inv-title">Invoice #<?= $inv['id'] ?></div>
 	<div class="inv-section"><span class="inv-label">Date:</span> <?= htmlspecialchars($inv['invoice_date']) ?></div>

@@ -60,7 +60,7 @@ function generateSlug($str) {
     <title>Add Product</title>
     <link rel="stylesheet" href="/assets/css/style.css">
     <style>
-    body { font-family: Arial, sans-serif; background: #f7f7fa; margin: 0; }
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f7f7fa; margin: 0; }
     .admin-container { max-width: 700px; margin: 0 auto; padding: 24px 12px; }
     h1 { color: #800000; margin-bottom: 18px; font-family: inherit; }
     .form-label { font-weight: 600; display:block; margin-bottom:6px; }
