@@ -215,29 +215,7 @@ h1 {
     color: #800000;
     margin-bottom: 18px;
 }
-.summary-cards {
-    display: flex;
-    gap: 18px;
-    margin-bottom: 24px;
-    flex-wrap: wrap;
-}
-.summary-card {
-    flex: 1 1 180px;
-    background: #fffbe7;
-    border-radius: 14px;
-    padding: 16px;
-    text-align: center;
-    box-shadow: 0 2px 8px #e0bebe22;
-}
-.summary-count {
-    font-size: 2.2em;
-    font-weight: 700;
-    color: #800000;
-}
-.summary-label {
-    font-size: 1em;
-    color: #444;
-}
+/* Summary cards now in responsive-cards.css */
 .filter-bar {
     display: flex;
     flex-wrap: wrap;
@@ -451,9 +429,9 @@ h1 {
 #appointmentDateSelect option[data-date] {
     padding: 8px;
 }
-@media (max-width: 700px) {
-    .summary-cards { flex-direction: column; }
-    #appointmentDateSelect { min-width: 200px; }
+/* Mobile styles now in responsive-cards.css */
+#appointmentDateSelect { 
+    width: 100%;
 }
 </style>
 </head>

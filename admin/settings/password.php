@@ -37,13 +37,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <title>Change Password</title>
     <link rel="stylesheet" href="../../assets/css/style.css">
     <style>
-        .admin-container { max-width: 500px; margin: 40px auto; padding: 24px; background: #fff; border-radius: 12px; box-shadow: 0 2px 12px #e0bebe22; }
+        body { margin: 0; background: #f7f7fa; }
+        .admin-container { max-width: 500px; margin: 40px auto; padding: 24px; background: #fff; border-radius: 12px; box-shadow: 0 2px 12px #e0bebe22; box-sizing: border-box; }
+        h1 { color: #800000; margin-top: 0; }
         .form-group { margin-bottom: 18px; }
         .form-group label { display: block; font-weight: 600; margin-bottom: 6px; color: #333; }
-        .form-group input { width: 100%; padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 1em; }
-        .btn-main { padding: 8px 18px; background: #800000; color: #fff; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; }
+        .form-group input { width: 100%; padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 1em; box-sizing: border-box; }
+        .form-group input:focus { border-color: #800000; outline: none; }
+        .btn-main { padding: 8px 18px; background: #800000; color: #fff; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; width: 100%; }
         .btn-main:hover { background: #600000; }
         .msg { margin-bottom: 16px; font-weight: 600; }
+        @media (max-width: 768px) {
+            .admin-container { margin: 30px auto; padding: 20px; }
+            h1 { font-size: 1.4em; margin-bottom: 14px; }
+            .form-group { margin-bottom: 14px; }
+            .form-group label { margin-bottom: 4px; }
+            .form-group input { padding: 8px 10px; font-size: 0.95em; }
+            .btn-main { padding: 10px 0; font-size: 0.95em; }
+        }
+        @media (max-width: 600px) {
+            .admin-container { margin: 20px 12px; padding: 16px 14px; border-radius: 10px; }
+            h1 { font-size: 1.2em; margin-bottom: 12px; }
+            .form-group { margin-bottom: 12px; }
+            .form-group label { font-size: 0.9em; margin-bottom: 3px; }
+            .form-group input { padding: 8px 8px; font-size: 0.9em; }
+            .msg { font-size: 0.9em; }
+        }
+        @media (max-width: 400px) {
+            .admin-container { margin: 15px 8px; padding: 12px 10px; }
+            h1 { font-size: 1.1em; }
+            .form-group input { font-size: 0.85em; }
+        }
     </style>
 </head>
 <body>

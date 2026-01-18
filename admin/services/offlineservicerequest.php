@@ -98,10 +98,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['category_slug'])) {
     <link rel="stylesheet" href="/assets/css/style.css">
     <style>
     body { font-family: Arial, sans-serif; background: #f7f7fa; margin: 0; }
-    .admin-container { max-width: 700px; margin: 0 auto; padding: 24px 12px; }
+    .admin-container { max-width: 700px; margin: 0 auto; padding: 24px 12px; box-sizing: border-box; }
     h1 { color: #800000; margin-bottom: 18px; font-family: inherit; }
     .form-label { font-weight: 600; display:block; margin-bottom:6px; }
-    .form-input, .form-select, .form-textarea { width:100%; padding:10px 12px; border-radius:8px; border:1px solid #e0bebe; font-size:1.08em; margin-bottom:16px; font-family: inherit; }
+    .form-input, .form-select, .form-textarea { width:100%; padding:10px 12px; border-radius:8px; border:1px solid #e0bebe; font-size:1.08em; margin-bottom:16px; font-family: inherit; box-sizing: border-box; }
     .form-input:focus, .form-select:focus, .form-textarea:focus { border-color: #800000; outline: none; }
     .form-btn { background:#800000; color:#fff; border:none; border-radius:8px; padding:12px 0; font-size:1.08em; font-weight:600; width:100%; cursor:pointer; margin-top:10px; transition: background 0.15s; }
     .form-btn:hover { background: #a00000; }
@@ -109,6 +109,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['category_slug'])) {
     .error-list { color:#c00; margin-bottom:18px; }
     .success-msg { color: #1a8917; margin-bottom: 18px; font-weight: 600; }
     .loading { color: #800000; font-weight: 600; margin-bottom: 12px; }
+    @media (max-width: 768px) {
+        .admin-container { padding: 18px 10px; }
+        h1 { font-size: 1.6em; margin-bottom: 14px; }
+        .form-label { font-size: 0.95em; margin-bottom: 4px; }
+        .form-input, .form-select, .form-textarea { font-size: 1em; padding: 9px 10px; margin-bottom: 14px; }
+        .form-btn { font-size: 1em; padding: 10px 0; }
+    }
+    @media (max-width: 600px) {
+        .admin-container { padding: 14px 8px; }
+        h1 { font-size: 1.3em; margin-bottom: 12px; }
+        .form-label { font-size: 0.9em; }
+        .form-input, .form-select, .form-textarea { font-size: 0.95em; padding: 8px 9px; margin-bottom: 12px; }
+        .form-btn { font-size: 0.95em; padding: 9px 0; }
+    }
     </style>
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 </head>

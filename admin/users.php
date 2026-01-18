@@ -110,16 +110,46 @@ $users = $pdo->query('SELECT * FROM users ORDER BY id DESC')->fetchAll();
         @import url('https://fonts.googleapis.com/css2?family=Marcellus&display=swap');
         html,body{font-family:'Marcellus',serif!important;}
         .admin-container { max-width: 1100px; margin: 0 auto; padding: 24px 12px; }
-        .summary-cards { display: flex; gap: 18px; margin-bottom: 24px; flex-wrap: wrap; }
-        .summary-card { flex: 1 1 180px; background: #fffbe7; border-radius: 14px; padding: 16px; text-align: center; box-shadow: 0 2px 8px #e0bebe22; }
-        .summary-count { font-size: 2.2em; font-weight: 700; color: #800000; }
-        .summary-label { font-size: 1em; color: #444; }
-        .form-box { margin-bottom: 20px; padding: 18px; border: 1px solid #ccc; border-radius: 12px; background: #fff; max-width: none; width: 100%; }
+        /* Summary cards now in responsive-cards.css */
+        .form-box { margin-bottom: 20px; padding: 18px; border: 1px solid #ccc; border-radius: 12px; background: #fff; max-width: none; width: 100%; box-sizing: border-box; }
         .form-group { margin-bottom: 16px; }
         .form-group label { display: block; font-weight: 600; margin-bottom: 6px; color: #333; }
-        .form-group input { width: 100%; padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 1em; }
+        .form-group input { width: 100%; padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 1em; box-sizing: border-box; }
+        .form-group input:focus { border-color: #800000; outline: none; }
         .btn-main { padding: 8px 18px; background: #800000; color: #fff; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; }
         .btn-main:hover { background: #600000; }
+        @media (max-width: 768px) {
+            .admin-container { padding: 18px 10px; }
+            h1 { font-size: 1.4em; margin-bottom: 14px; }
+            .form-box { padding: 14px; }
+            .form-group { margin-bottom: 12px; }
+            .form-group label { font-size: 0.9em; margin-bottom: 4px; }
+            .form-group input { padding: 8px 10px; font-size: 0.95em; }
+            .btn-main { padding: 6px 14px; font-size: 0.9em; }
+            .users-table { font-size: 0.9em; }
+            .users-table th, .users-table td { padding: 8px 6px; }
+            .action-btn { padding: 4px 8px; font-size: 0.85em; margin-right: 2px; }
+        }
+        @media (max-width: 600px) {
+            .admin-container { padding: 14px 8px; }
+            h1 { font-size: 1.2em; margin-bottom: 12px; }
+            .form-box { padding: 12px; }
+            .form-group { margin-bottom: 10px; }
+            .form-group label { font-size: 0.85em; margin-bottom: 3px; }
+            .form-group input { padding: 7px 8px; font-size: 0.9em; }
+            .btn-main { padding: 6px 12px; font-size: 0.85em; width: auto; }
+            .users-table { font-size: 0.8em; }
+            .users-table th, .users-table td { padding: 6px 4px; }
+            .action-btn { padding: 3px 6px; font-size: 0.75em; margin-right: 1px; margin-bottom: 2px; }
+        }
+        @media (max-width: 400px) {
+            .admin-container { padding: 10px 6px; }
+            h1 { font-size: 1.1em; }
+            .form-box { padding: 10px; }
+            .form-group input { font-size: 0.85em; }
+            .users-table { font-size: 0.75em; }
+            .users-table th, .users-table td { padding: 4px 3px; }
+        }
         .users-table { width: 100%; border-collapse: collapse; background: #fff; box-shadow: 0 2px 12px #e0bebe22; border-radius: 12px; overflow: hidden; }
         .users-table th, .users-table td { padding: 12px 10px; border-bottom: 1px solid #f3caca; text-align: left; }
         .users-table th { background: #f9eaea; color: #800000; }
@@ -136,7 +166,7 @@ $users = $pdo->query('SELECT * FROM users ORDER BY id DESC')->fetchAll();
         .permissions-table tr:last-child td { border-bottom: none; }
         .perm-check { display: inline-flex; align-items: center; cursor: pointer; }
         .perm-check input[type="checkbox"] { accent-color: #800000; width: 18px; height: 18px; margin-right: 4px; }
-        @media (max-width: 700px) { .summary-cards { flex-direction: column; } }
+        /* Mobile styles now in responsive-cards.css */
     </style>
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 </head>

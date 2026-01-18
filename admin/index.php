@@ -116,30 +116,7 @@ $recentRows = $recentStmt->fetchAll(PDO::FETCH_ASSOC);
             color: #800000;
             margin-bottom: 18px;
         }
-        /* SUMMARY CARDS */
-        .summary-cards {
-            display: flex;
-            gap: 18px;
-            margin-bottom: 24px;
-            flex-wrap: wrap;
-        }
-        .summary-card {
-            flex: 1 1 180px;
-            background: #fffbe7;
-            border-radius: 14px;
-            padding: 16px;
-            text-align: center;
-            box-shadow: 0 2px 8px #e0bebe22;
-        }
-        .summary-count {
-            font-size: 2.2em;
-            font-weight: 700;
-            color: #800000;
-        }
-        .summary-label {
-            font-size: 1em;
-            color: #444;
-        }
+        /* SUMMARY CARDS - Now in responsive-cards.css */
         .filter-bar label {
             font-weight: 600;
         }
@@ -238,11 +215,7 @@ $recentRows = $recentStmt->fetchAll(PDO::FETCH_ASSOC);
             opacity: 0.4;
             cursor: not-allowed;
         }
-        @media (max-width: 700px) {
-            .summary-cards {
-                flex-direction: column;
-            }
-        }
+        /* Mobile styles now in responsive-cards.css */
         </style>
 </head>
 <body>
@@ -252,10 +225,10 @@ $recentRows = $recentStmt->fetchAll(PDO::FETCH_ASSOC);
 
 
     <!-- SECTION A: Dashboard Stats by Category (Grouped) -->
-    <div style="display: flex; gap: 32px; flex-wrap: wrap; margin-bottom: 32px; justify-content: space-between;">
+    <div class="dashboard-groups">
         <!-- Appointments Group: Only Today's Appointments and Pending -->
-        <div style="flex:1; min-width:220px; background:#f8faff; border-radius:14px; padding:18px 14px; box-shadow:0 2px 8px #e0bebe22; margin-bottom:0;">
-            <div style="font-weight:700; color:#0056b3; margin-bottom:10px; font-size:1.08em;">Appointments (Today)</div>
+        <div class="stat-group" style="background:#f8faff;">
+            <h3 style="color:#0056b3;">Appointments (Today)</h3>
             <div class="summary-card" style="background:#e5f0ff; border:2px solid #0056b3; margin-bottom:10px;">
                 <div class="summary-count" style="color:#0056b3;"><?php echo $todayAppointments; ?></div>
                 <div class="summary-label">Today's Appointments</div>
@@ -266,8 +239,8 @@ $recentRows = $recentStmt->fetchAll(PDO::FETCH_ASSOC);
             </div>
         </div>
         <!-- Payments Group -->
-        <div style="flex:1; min-width:220px; background:#f0f7ff; border-radius:14px; padding:18px 14px; box-shadow:0 2px 8px #e0bebe22; margin-bottom:0;">
-            <div style="font-weight:700; color:#007bff; margin-bottom:10px; font-size:1.08em;">Payments (Today)</div>
+        <div class="stat-group" style="background:#f0f7ff;">
+            <h3 style="color:#007bff;">Payments (Today)</h3>
             <div class="summary-card" style="background:#e5f0ff; border:2px solid #007bff; margin-bottom:10px;">
                 <div class="summary-count" style="color:#007bff;">₹<?php echo number_format($todays_offline,2); ?></div>
                 <div class="summary-label">Offline Collection</div>
@@ -278,8 +251,8 @@ $recentRows = $recentStmt->fetchAll(PDO::FETCH_ASSOC);
             </div>
         </div>
         <!-- Service Requests Group: Pending and Today's -->
-        <div style="flex:1; min-width:220px; background:#f8f6f2; border-radius:14px; padding:18px 14px; box-shadow:0 2px 8px #e0bebe22; margin-bottom:0;">
-            <div style="font-weight:700; color:#800000; margin-bottom:10px; font-size:1.08em;">Service Requests</div>
+        <div class="stat-group" style="background:#f8f6f2;">
+            <h3 style="color:#800000;">Service Requests</h3>
             <div class="summary-card" style="background:#f8f6f2; border:2px solid #800000; margin-bottom:10px;">
                 <div class="summary-count" style="color:#800000;">
                     <?php echo getCount($pdo, "SELECT COUNT(*) FROM service_requests WHERE category_slug != ? AND service_status = ?", ['appointment', 'Received']); ?>
@@ -297,18 +270,18 @@ $recentRows = $recentStmt->fetchAll(PDO::FETCH_ASSOC);
 
 
     <!-- QUICK ACCESS CARDS -->
-    <div class="summary-cards" style="gap:18px;margin-bottom:32px;flex-wrap:wrap;">
-        <div class="summary-card" onclick="window.location.href='cif/index.php'" style="cursor:pointer;background:#e5f0ff;">
-            <div class="summary-count" style="font-size:2.2em;font-weight:700;color:#0056b3;"><span style="font-size:1.2em;">📄</span></div>
-            <div class="summary-label" style="font-size:1em;color:#0056b3;">CIF Home</div>
+    <div class="summary-cards">
+        <div class="summary-card quick-access-card" onclick="window.location.href='cif/index.php'" style="cursor:pointer;background:#e5f0ff;">
+            <div class="summary-count" style="color:#0056b3;"><span style="font-size:1.2em;">📄</span></div>
+            <div class="summary-label" style="color:#0056b3;">CIF Home</div>
         </div>
-        <div class="summary-card" onclick="window.location.href='services/service-request-list.php'" style="cursor:pointer;background:#fffbe7;">
-            <div class="summary-count" style="font-size:2.2em;font-weight:700;color:#b36b00;"><span style="font-size:1.2em;">🛠️</span></div>
-            <div class="summary-label" style="font-size:1em;color:#b36b00;">Service Request List</div>
+        <div class="summary-card quick-access-card" onclick="window.location.href='services/service-request-list.php'" style="cursor:pointer;background:#fffbe7;">
+            <div class="summary-count" style="color:#b36b00;"><span style="font-size:1.2em;">🛠️</span></div>
+            <div class="summary-label" style="color:#b36b00;">Service Request List</div>
         </div>
-        <div class="summary-card" onclick="window.location.href='services/accepted-appointments.php'" style="cursor:pointer;background:#e5ffe5;">
-            <div class="summary-count" style="font-size:2.2em;font-weight:700;color:#1a8917;"><span style="font-size:1.2em;">✅</span></div>
-            <div class="summary-label" style="font-size:1em;color:#1a8917;">Accepted Appointments</div>
+        <div class="summary-card quick-access-card" onclick="window.location.href='services/accepted-appointments.php'" style="cursor:pointer;background:#e5ffe5;">
+            <div class="summary-count" style="color:#1a8917;"><span style="font-size:1.2em;">✅</span></div>
+            <div class="summary-label" style="color:#1a8917;">Accepted Appointments</div>
         </div>
     </div>
 

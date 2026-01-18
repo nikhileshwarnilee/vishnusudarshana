@@ -259,6 +259,16 @@ if (!function_exists('isActivePage')) {
 </nav>
 
 <!-- =======================
+     RESPONSIVE TABLES CSS
+     ======================= -->
+<link rel="stylesheet" href="<?= $baseUrl ?>/admin/includes/responsive-tables.css">
+
+<!-- =======================
+     RESPONSIVE CARDS CSS
+     ======================= -->
+<link rel="stylesheet" href="<?= $baseUrl ?>/admin/includes/responsive-cards.css">
+
+<!-- =======================
      MENU CSS
      ======================= -->
 <style>
@@ -992,3 +1002,6 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 });
 </script>
+
+<!-- RESPONSIVE TABLES AUTO-WRAPPER SCRIPT -->
+<script src="<?= $baseUrl ?>/admin/includes/responsive-tables.js"></script>

@@ -160,6 +160,50 @@ require_once __DIR__ . '/../../config/db.php';
 			gap: 32px;
 			flex-wrap: wrap;
 		}
+		@media (max-width: 1200px) {
+			.form-box { padding: 28px 24px 20px 24px; }
+			.form-box h1 { font-size: 1.8em; }
+			.addProductRowBtn, .removeProductRowBtn { padding: 6px 12px; font-size: 1.2em; }
+			#addNewCustomerBtn { padding: 6px 12px; font-size: 0.95em; }
+		}
+		@media (max-width: 768px) {
+			.admin-container { padding: 20px 10px !important; }
+			.form-box { padding: 20px 16px 14px 16px; border-radius: 10px; }
+			.form-box h1 { font-size: 1.4em; margin-bottom: 14px; }
+			label { font-weight: 600; margin-bottom: 3px; }
+			input[type="text"], input[type="number"], input[type="date"], textarea {
+				padding: 9px 10px; margin-top: 4px; margin-bottom: 12px; font-size: 0.95em;
+			}
+			.product-row { padding: 10px 6px; margin-bottom: 8px; display: flex; gap: 6px; flex-wrap: wrap; }
+			.product-row input { flex: 1; min-width: 100px; padding: 8px 8px; }
+			.addProductRowBtn, .removeProductRowBtn { padding: 6px 10px; font-size: 1.1em; margin: 0; }
+			#submitInvoiceBtn { padding: 10px 24px; font-size: 1em; }
+			#addNewCustomerBtn { padding: 6px 10px; font-size: 0.9em; margin-left: 2px; }
+			.form-sections-row { gap: 16px; }
+			.form-section { min-width: 100% !important; }
+		}
+		@media (max-width: 600px) {
+			.admin-container { padding: 14px 8px !important; }
+			.form-box { padding: 16px 12px 10px 12px; }
+			.form-box h1 { font-size: 1.2em; margin-bottom: 12px; }
+			input[type="text"], input[type="number"], input[type="date"], textarea {
+				padding: 8px 8px; margin-top: 3px; margin-bottom: 10px; font-size: 0.9em;
+			}
+			#customerSearch { width: 100%; margin-bottom: 8px; }
+			#addNewCustomerBtn { display: block; width: 100%; padding: 8px 0; margin: 8px 0 0 0; }
+			.product-row { flex-direction: column; gap: 6px; }
+			.product-row input { width: 100% !important; min-width: auto; }
+			.addProductRowBtn, .removeProductRowBtn { width: 100%; padding: 8px 0; font-size: 1em; margin: 0; }
+			#submitInvoiceBtn { width: 100%; padding: 10px 0; font-size: 0.95em; }
+			#productTotals { font-size: 0.95em; padding: 8px 0; }
+		}
+		@media (max-width: 400px) {
+			.form-box { padding: 12px 10px 8px 10px; }
+			.form-box h1 { font-size: 1.1em; }
+			input[type="text"], input[type="number"], input[type="date"], textarea {
+				font-size: 0.85em; padding: 7px 6px; margin-bottom: 8px;
+			}
+		}
 	</style>
 </head>
 

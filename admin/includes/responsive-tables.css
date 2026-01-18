@@ -1,0 +1,355 @@
+/* ========================================
+   RESPONSIVE TABLES FOR ADMIN PANEL
+   Mobile and Tablet Friendly
+   ======================================== */
+
+/* General table wrapper for scrolling */
+.table-responsive-wrapper {
+    display: block;
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 8px;
+}
+
+/* All tables */
+table {
+    border-collapse: collapse;
+    width: 100%;
+    background: #ffffff;
+}
+
+/* Table cells */
+table th,
+table td {
+    padding: 12px 16px;
+    text-align: left;
+    border-bottom: 1px solid #e9ecef;
+}
+
+/* Table headers */
+table th {
+    background: #f8f9fa;
+    color: #333333;
+    font-weight: 600;
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    white-space: nowrap;
+}
+
+/* Table rows */
+table tbody tr {
+    transition: background 0.2s ease;
+}
+
+table tbody tr:hover {
+    background: #f8f9fa;
+}
+
+/* Alternating row colors (optional) */
+table tbody tr:nth-child(even) {
+    background: #fafbfc;
+}
+
+table tbody tr:nth-child(even):hover {
+    background: #f1f3f5;
+}
+
+/* Last row border fix */
+table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+/* Action buttons in tables */
+table .action-btn,
+table .btn {
+    padding: 6px 12px;
+    margin-right: 4px;
+    border: none;
+    border-radius: 4px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+table .action-btn:last-child {
+    margin-right: 0;
+}
+
+/* Button styles */
+table .btn-edit {
+    background: #007bff;
+    color: #ffffff;
+}
+
+table .btn-edit:hover {
+    background: #0056b3;
+}
+
+table .btn-delete {
+    background: #dc3545;
+    color: #ffffff;
+}
+
+table .btn-delete:hover {
+    background: #c82333;
+}
+
+table .btn-view {
+    background: #17a2b8;
+    color: #ffffff;
+}
+
+table .btn-view:hover {
+    background: #117a8b;
+}
+
+table .btn-success {
+    background: #28a745;
+    color: #ffffff;
+}
+
+table .btn-success:hover {
+    background: #1f7620;
+}
+
+table .btn-warning {
+    background: #ffc107;
+    color: #333333;
+}
+
+table .btn-warning:hover {
+    background: #e0a800;
+}
+
+/* Badge styles */
+table .badge {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+table .badge-success {
+    background: #d4edda;
+    color: #155724;
+}
+
+table .badge-danger {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+table .badge-warning {
+    background: #fff3cd;
+    color: #856404;
+}
+
+table .badge-info {
+    background: #d1ecf1;
+    color: #0c5460;
+}
+
+/* Specific table classes */
+.users-table,
+.service-table,
+.blog-table,
+.details-table,
+.permissions-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+/* ========================================
+   TABLET RESPONSIVE (768px - 1200px)
+   ======================================== */
+@media (max-width: 1200px) {
+    .table-responsive-wrapper {
+        border-radius: 6px;
+    }
+
+    table th,
+    table td {
+        padding: 10px 12px;
+        font-size: 13px;
+    }
+
+    table th {
+        font-size: 12px;
+    }
+
+    table .action-btn,
+    table .btn {
+        padding: 5px 10px;
+        font-size: 11px;
+        margin-right: 2px;
+    }
+}
+
+/* ========================================
+   MOBILE RESPONSIVE (below 768px)
+   ======================================== */
+@media (max-width: 768px) {
+    .table-responsive-wrapper {
+        border-radius: 6px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    table {
+        font-size: 13px;
+    }
+
+    table th {
+        font-size: 11px;
+        padding: 8px 10px;
+    }
+
+    table td {
+        padding: 10px;
+        font-size: 12px;
+    }
+
+    /* Make headers sticky on mobile scroll */
+    table thead {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+    }
+
+    /* Action buttons - stack on mobile */
+    table .action-btn,
+    table .btn {
+        display: inline-block;
+        padding: 5px 8px;
+        font-size: 11px;
+        margin-right: 2px;
+        margin-bottom: 2px;
+    }
+
+    /* Badge text wrapping */
+    table .badge {
+        padding: 3px 6px;
+        font-size: 11px;
+    }
+
+    /* Scrollable indicator */
+    .table-responsive-wrapper::after {
+        content: '';
+        display: block;
+        height: 6px;
+        background: linear-gradient(90deg, #800000 0%, transparent 100%);
+        opacity: 0;
+    }
+
+    .table-responsive-wrapper::-webkit-scrollbar {
+        height: 6px;
+    }
+
+    .table-responsive-wrapper::-webkit-scrollbar-track {
+        background: #f1f1f1;
+    }
+
+    .table-responsive-wrapper::-webkit-scrollbar-thumb {
+        background: #800000;
+        border-radius: 3px;
+    }
+
+    .table-responsive-wrapper::-webkit-scrollbar-thumb:hover {
+        background: #600000;
+    }
+}
+
+/* ========================================
+   SMALL MOBILE (below 600px)
+   ======================================== */
+@media (max-width: 600px) {
+    table th,
+    table td {
+        padding: 8px 8px;
+        font-size: 11px;
+    }
+
+    table th {
+        font-size: 10px;
+    }
+
+    table .action-btn,
+    table .btn {
+        display: block;
+        width: 100%;
+        padding: 6px 8px;
+        font-size: 11px;
+        margin-right: 0;
+        margin-bottom: 3px;
+    }
+
+    table .action-btn:last-child {
+        margin-bottom: 0;
+    }
+
+    /* Compact layout for very small screens */
+    table {
+        font-size: 11px;
+    }
+
+    table .badge {
+        padding: 2px 4px;
+        font-size: 10px;
+    }
+}
+
+/* ========================================
+   EXTRA SMALL MOBILE (below 400px)
+   ======================================== */
+@media (max-width: 400px) {
+    table th,
+    table td {
+        padding: 6px 6px;
+        font-size: 10px;
+    }
+
+    table th {
+        font-size: 9px;
+        word-break: break-word;
+    }
+
+    table .action-btn,
+    table .btn {
+        padding: 4px 6px;
+        font-size: 10px;
+    }
+
+    table .badge {
+        padding: 2px 3px;
+        font-size: 9px;
+    }
+
+    /* Minimal spacing for ultra-compact view */
+    table {
+        font-size: 10px;
+    }
+}
+
+/* ========================================
+   PRINT STYLES
+   ======================================== */
+@media print {
+    .table-responsive-wrapper {
+        overflow: visible;
+    }
+
+    table {
+        page-break-inside: avoid;
+    }
+
+    table thead {
+        display: table-header-group;
+    }
+
+    table tr {
+        page-break-inside: avoid;
+    }
+}
