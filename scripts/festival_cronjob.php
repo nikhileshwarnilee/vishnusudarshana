@@ -18,11 +18,23 @@ $api_key = '16b52b73-65fb-56af-b92d-7f35d3105d8f';
 $successCount = 0;
 $failCount = 0;
 
-// Delete all existing data before inserting new rows
+// Create table if it doesn't exist first
 try {
-    $pdo->exec("TRUNCATE TABLE festivals");
+    $pdo->exec("CREATE TABLE IF NOT EXISTS festivals (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        city VARCHAR(255),
+        lat DECIMAL(10,8),
+        lon DECIMAL(11,8),
+        tz VARCHAR(50),
+        lang VARCHAR(10),
+        festival_json TEXT,
+        request_date DATE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_lang (lang),
+        INDEX idx_request_date (request_date)
+    )");
 } catch (Exception $e) {
-    echo "Error truncating festivals table: " . $e->getMessage() . "\n";
+    echo "Error creating festivals table: " . $e->getMessage() . "\n";
 }
 
 foreach ($languages as $lang) {
@@ -38,22 +50,7 @@ foreach ($languages as $lang) {
     
     if ($httpcode == 200 && $response) {
         try {
-            // Check if festivals table exists, create if not
-            $pdo->exec("CREATE TABLE IF NOT EXISTS festivals (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                city VARCHAR(255),
-                lat DECIMAL(10,8),
-                lon DECIMAL(11,8),
-                tz VARCHAR(50),
-                lang VARCHAR(10),
-                festival_json TEXT,
-                request_date DATE,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                INDEX idx_lang (lang),
-                INDEX idx_request_date (request_date)
-            )");
-            
-            // Insert festival data
+            // Insert or update festival data for today
             $stmt = $pdo->prepare("INSERT INTO festivals (city, lat, lon, tz, lang, festival_json, request_date) 
                                    VALUES (?, ?, ?, ?, ?, ?, CURDATE())
                                    ON DUPLICATE KEY UPDATE festival_json = VALUES(festival_json), request_date = CURDATE()");
