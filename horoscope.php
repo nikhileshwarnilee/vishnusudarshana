@@ -1,5 +1,9 @@
 <?php 
 $pageTitle = 'Todays Rashi Bhavishya | Daily Horoscope';
+// Force fresh fetch to avoid cached HTML served by PWA/service worker
+header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+header('Pragma: no-cache');
+header('Expires: 0');
 include 'header.php';
 
 require_once __DIR__ . '/config/db.php';
