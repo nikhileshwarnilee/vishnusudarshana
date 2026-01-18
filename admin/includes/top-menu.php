@@ -103,10 +103,11 @@ $menu = [
         ]
     ],
 
-    'Website Management' => [
+    'Site Mgt' => [
         'icon' => '<svg width="20" height="20" fill="none" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2" fill="#800000" fill-opacity=".08" stroke="#800000" stroke-width="2"/><path d="M2 8h20" stroke="#800000" stroke-width="2"/><circle cx="6" cy="6" r="1" fill="#800000"/><circle cx="9" cy="6" r="1" fill="#800000"/><circle cx="12" cy="6" r="1" fill="#800000"/><rect x="6" y="12" width="5" height="2" rx="1" fill="#800000"/><rect x="6" y="15" width="12" height="2" rx="1" fill="#800000" fill-opacity=".5"/></svg>',
         'submenu' => [
             'Blogs Management' => $baseUrl . '/admin/website/blogs-management.php',
+            'Update Site Data' => $baseUrl . '/admin/website/update-site-data.php',
         ]
     ],
 
