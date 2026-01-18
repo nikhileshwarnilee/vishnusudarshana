@@ -193,10 +193,7 @@ if (!function_exists('isActivePage')) {
 <nav class="admin-top-menu">
     <div class="admin-top-menu-inner">
 
-        <!-- Logo -->
-        <div class="admin-top-menu-logo">
-            <img src="<?=$baseUrl?>/assets/images/logo/logomain.png" alt="Logo" style="height:38px;vertical-align:middle;">
-        </div>
+        
 
         <!-- Menu -->
         <ul class="admin-top-menu-list" id="adminTopMenuList">
@@ -309,7 +306,7 @@ body {
     display: flex;
     align-items: center;
     height: 60px;
-    padding: 0 16px;
+    padding: 0 10px;
     text-decoration: none;
     color: #800000;
     font-weight: 600;
