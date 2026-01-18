@@ -34,11 +34,11 @@ $currentPage = basename(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH));
 $menu = [
     'Dashboard' => [
         'url'  => $baseUrl . '/admin/index.php',
-        'icon' => '<svg width="20" height="20" fill="none" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="2" fill="#800000"/><rect x="14" y="3" width="7" height="7" rx="2" fill="#800000"/><rect x="14" y="14" width="7" height="7" rx="2" fill="#800000"/><rect x="3" y="14" width="7" height="7" rx="2" fill="#800000"/></svg>',
+        'icon' => '<svg width="20" height="20" fill="none" viewBox="0 0 24 24"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z" fill="#495057"/></svg>',
     ],
 
     'Reception' => [
-        'icon' => '<svg width="20" height="20" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="7" r="3" fill="#800000"/><rect x="6" y="12" width="12" height="5" rx="2" fill="#800000" fill-opacity=".15"/><rect x="4" y="17" width="16" height="2" rx="1" fill="#800000" fill-opacity=".25"/></svg>',
+        'icon' => '<svg width="20" height="20" fill="none" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z" fill="#495057"/></svg>',
         'submenu' => [
             'Visitors Log' => $baseUrl . '/admin/reception/visitors-log.php',
             'Closed Visitors Log' => $baseUrl . '/admin/reception/closed-visitors-log.php',
@@ -46,7 +46,7 @@ $menu = [
     ],
 
     'Appointments' => [
-        'icon' => '<svg width="20" height="20" fill="none" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" fill="#800000" fill-opacity=".08" stroke="#800000" stroke-width="2"/><path d="M8 2v4M16 2v4" stroke="#800000" stroke-width="2"/><path d="M7 13l3 3 7-7" stroke="#800000" stroke-width="2" fill="none"/></svg>',
+        'icon' => '<svg width="20" height="20" fill="none" viewBox="0 0 24 24"><path d="M19 4h-1V3c0-.55-.45-1-1-1s-1 .45-1 1v1H8V3c0-.55-.45-1-1-1s-1 .45-1 1v1H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zm0-12H5V6h14v2z" fill="#495057"/><circle cx="12" cy="15" r="1.5" fill="#495057"/></svg>',
         'submenu' => [
             'Pending Appointments'   => $baseUrl . '/admin/services/appointments.php',
             'Accepted Appointments'  => $baseUrl . '/admin/services/accepted-appointments.php',
@@ -55,7 +55,7 @@ $menu = [
     ],
 
     'Services' => [
-        'icon' => '<svg width="20" height="20" fill="none" viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 0 1 1.4 1.4l-8 8a1 1 0 0 1-1.4-1.4l8-8zM17.7 3.3a3 3 0 0 1 4.2 4.2l-2.1 2.1-4.2-4.2 2.1-2.1zM2.3 17.7a3 3 0 0 1 4.2 0l2.1-2.1-4.2-4.2-2.1 2.1a3 3 0 0 1 0 4.2z" fill="#800000"/></svg>',
+        'icon' => '<svg width="20" height="20" fill="none" viewBox="0 0 24 24"><path d="M22.7 19l-9.1-9.1c.9-2.3.4-5-1.5-6.9-2-2-5-2.4-7.4-1.3L9 6 6 9 1.6 4.7C.4 7.1.9 10.1 2.9 12.1c1.9 1.9 4.6 2.4 6.9 1.5l9.1 9.1c.4.4 1 .4 1.4 0l2.3-2.3c.5-.4.5-1.1.1-1.4z" fill="#495057"/></svg>',
         'submenu' => [
             // 'Service Requests'   => $baseUrl . '/admin/services/index.php',
             'Service Request List' => $baseUrl . '/admin/services/service-request-list.php',
@@ -69,7 +69,7 @@ $menu = [
     // 'Reels' menu removed
 
     'Payments' => [
-        'icon' => '<svg width="20" height="20" fill="none" viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2" fill="#800000" fill-opacity=".08" stroke="#800000" stroke-width="2"/><rect x="6" y="10" width="6" height="4" rx="1" fill="#800000"/><circle cx="18" cy="14" r="2" fill="#800000"/></svg>',
+        'icon' => '<svg width="20" height="20" fill="none" viewBox="0 0 24 24"><path d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z" fill="#495057"/></svg>',
         'submenu' => [
             'All Payments'    => $baseUrl . '/admin/payments/payments.php',
             'Create Invoice'  => $baseUrl . '/admin/payments/create-invoice.php',
@@ -81,7 +81,7 @@ $menu = [
 
 
     'CIF' => [
-        'icon' => '<svg width="20" height="20" fill="none" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2" fill="#800000" fill-opacity=".08" stroke="#800000" stroke-width="2"/><path d="M8 8h8v8H8z" fill="#fff"/><path d="M8 2v4M16 2v4" stroke="#800000" stroke-width="2"/></svg>',
+        'icon' => '<svg width="20" height="20" fill="none" viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM8 20H4v-4h4v4zm0-6H4v-4h4v4zm0-6H4V4h4v4zm6 12h-4v-4h4v4zm0-6h-4v-4h4v4zm0-6h-4V4h4v4zm6 12h-4v-4h4v4zm0-6h-4v-4h4v4zm0-6h-4V4h4v4z" fill="#495057"/></svg>',
         'submenu' => [
             'CIF Home'   => $baseUrl . '/admin/cif/index.php',
             'Category'   => $baseUrl . '/admin/cif/category.php',
@@ -90,21 +90,21 @@ $menu = [
     ],
 
     'Schedule' => [
-        'icon' => '<svg width="20" height="20" fill="none" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2" fill="#800000" fill-opacity=".08" stroke="#800000" stroke-width="2"/><path d="M8 2v4M16 2v4" stroke="#800000" stroke-width="2"/><path d="M7 13l3 3 7-7" stroke="#800000" stroke-width="2" fill="none"/></svg>',
+        'icon' => '<svg width="20" height="20" fill="none" viewBox="0 0 24 24"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z" fill="#495057"/></svg>',
         'submenu' => [
             'Manage Schedule' => $baseUrl . '/admin/schedule/manage-schedule.php',
         ]
     ],
 
     'CRM' => [
-        'icon' => '<svg width="20" height="20" fill="none" viewBox="0 0 24 24"><circle cx="7" cy="8" r="3" fill="#800000"/><circle cx="17" cy="8" r="3" fill="#800000"/><ellipse cx="12" cy="17" rx="9" ry="5" fill="#800000" fill-opacity=".08"/></svg>',
+        'icon' => '<svg width="20" height="20" fill="none" viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5s-3 1.34-3 3 1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z" fill="#495057"/></svg>',
         'submenu' => [
             'Customer Database' => $baseUrl . '/admin/crm/customerdatabase.php',
         ]
     ],
 
     'Site Mgt' => [
-        'icon' => '<svg width="20" height="20" fill="none" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2" fill="#800000" fill-opacity=".08" stroke="#800000" stroke-width="2"/><path d="M2 8h20" stroke="#800000" stroke-width="2"/><circle cx="6" cy="6" r="1" fill="#800000"/><circle cx="9" cy="6" r="1" fill="#800000"/><circle cx="12" cy="6" r="1" fill="#800000"/><rect x="6" y="12" width="5" height="2" rx="1" fill="#800000"/><rect x="6" y="15" width="12" height="2" rx="1" fill="#800000" fill-opacity=".5"/></svg>',
+        'icon' => '<svg width="20" height="20" fill="none" viewBox="0 0 24 24"><path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm-5 14H4v-4h11v4zm0-5H4V9h11v4zm5 5h-4V9h4v9z" fill="#495057"/></svg>',
         'submenu' => [
             'Blogs Management' => $baseUrl . '/admin/website/blogs-management.php',
             'Update Site Data' => $baseUrl . '/admin/website/update-site-data.php',
@@ -112,7 +112,7 @@ $menu = [
     ],
 
     'Settings' => [
-        'icon' => '<svg width="20" height="20" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" stroke="#800000" stroke-width="2" fill="#800000" fill-opacity=".2"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.09A1.65 1.65 0 0 0 11 3.09V3a2 2 0 0 1 4 0v.09c.28.11.53.28.74.5.21.21.39.46.5.74H15a1.65 1.65 0 0 0 1.51 1c.2 0 .39-.07.56-.18l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.09c.11.28.28.53.5.74.21.21.46.39.74.5V9a2 2 0 0 1 0 4h-.09c-.28.11-.53.28-.74.5-.21.21-.39.46-.5.74v.09z" stroke="#800000" stroke-width="2" fill="none"/></svg>',
+        'icon' => '<svg width="20" height="20" fill="none" viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z" fill="#495057"/></svg>',
         'submenu' => [
             // 'Profile' removed
             'Change Password' => $baseUrl . '/admin/settings/password.php',
@@ -124,7 +124,7 @@ $menu = [
 
     'Logout' => [
         'url'  => $baseUrl . '/admin/logout.php',
-        'icon' => '<svg width="20" height="20" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" stroke="#800000" stroke-width="2" fill="#800000" fill-opacity=".08"/><path d="M12 4v8" stroke="#800000" stroke-width="2" stroke-linecap="round"/><path d="M7 12a5 5 0 1 0 10 0" stroke="#800000" stroke-width="2" fill="none"/></svg>',
+        'icon' => '<svg width="20" height="20" fill="none" viewBox="0 0 24 24"><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z" fill="#495057"/></svg>',
     ],
 ];
 
@@ -194,7 +194,11 @@ if (!function_exists('isActivePage')) {
 <nav class="admin-top-menu">
     <div class="admin-top-menu-inner">
 
-        
+        <!-- Logo -->
+        <a href="<?= $baseUrl ?>/admin/index.php" class="admin-top-menu-logo">
+            <img src="<?= $baseUrl ?>/assets/images/logo/logo-iconpwa192.png" alt="Logo" class="admin-logo-img">
+            <span class="admin-logo-text">Admin Panel</span>
+        </a>
 
         <!-- Menu -->
         <ul class="admin-top-menu-list" id="adminTopMenuList">
@@ -258,137 +262,608 @@ if (!function_exists('isActivePage')) {
      MENU CSS
      ======================= -->
 <style>
+html, body {
+    font-family: Arial, sans-serif !important;
+}
+
+*, *::before, *::after {
+    font-family: inherit;
+}
+
 body {
-    padding-top: 60px;
+    padding-top: 64px;
     margin: 0;
 }
 
 .admin-top-menu {
     position: fixed;
-    top: 0; left: 0; right: 0;
-    background: #fffbe7;
-    border-bottom: 2px solid #f3caca;
-        background: #f8f6f2;
-        border-bottom: 2px solid #e0bebe;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    top: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+    border-bottom: 1px solid #dee2e6;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
     z-index: 9999;
+    backdrop-filter: blur(10px);
 }
 
 .admin-top-menu-inner {
-    max-width: 1300px;
+    max-width: 1400px;
     margin: 0 auto;
     display: flex;
     align-items: center;
-    height: 60px;
-    padding: 0 0px;
+    height: 64px;
+    padding: 0 20px;
+    gap: 24px;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .admin-top-menu-logo {
-    font-size: 1.25em;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    text-decoration: none;
+    padding: 8px 16px 8px 8px;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+}
+
+.admin-top-menu-logo:hover {
+    background: rgba(128, 0, 0, 0.05);
+}
+
+.admin-logo-img {
+    width: 40px;
+    height: 40px;
+    object-fit: contain;
+    border-radius: 8px;
+}
+
+.admin-logo-text {
+    font-size: 1.2em;
     font-weight: 700;
     color: #800000;
-    margin-right: 16px;
+    letter-spacing: -0.3px;
 }
 
 .admin-top-menu-list {
     list-style: none;
     display: flex;
-    gap: 4px;
+    gap: 2px;
     margin: 0;
     padding: 0;
     flex: 1;
+    align-items: center;
 }
 
 .admin-top-menu-item {
     position: relative;
+    display: flex;
+    align-items: center;
 }
 
 .admin-top-menu-link {
     display: flex;
     align-items: center;
-    height: 60px;
-    padding: 0 10px;
+    gap: 6px;
+    height: 40px;
+    padding: 0 12px;
     text-decoration: none;
-    color: #800000;
-    font-weight: 600;
+    color: #495057;
+    font-weight: 500;
+    font-size: 14px;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    position: relative;
 }
 
-.admin-top-menu-item.active > .admin-top-menu-link,
+.admin-top-menu-link .icon {
+    display: flex;
+    align-items: center;
+    opacity: 0.85;
+    transition: opacity 0.2s ease;
+}
+
+.admin-top-menu-link .dropdown-arrow {
+    font-size: 10px;
+    margin-left: 2px;
+    opacity: 0.6;
+    transition: transform 0.2s ease;
+}
+
+.admin-top-menu-item:hover > .admin-top-menu-link .dropdown-arrow {
+    transform: translateY(2px);
+}
+
 .admin-top-menu-link:hover {
-    background: #f9eaea;
-    color: #b30000;
-    background: #f3e6e6;
-    color: #a00000;
-    font-weight: 700;
+    background: #f8f9fa;
+    color: #800000;
+}
+
+.admin-top-menu-link:hover .icon {
+    opacity: 1;
+}
+
+.admin-top-menu-item.active > .admin-top-menu-link {
+    background: linear-gradient(135deg, #800000 0%, #a00000 100%);
+    color: #ffffff;
+    font-weight: 600;
+    box-shadow: 0 2px 8px rgba(128, 0, 0, 0.25);
+}
+
+.admin-top-menu-item.active > .admin-top-menu-link .icon svg {
+    fill: #ffffff !important;
+    stroke: #ffffff !important;
+}
+
+.admin-top-menu-item.active > .admin-top-menu-link .icon svg path,
+.admin-top-menu-item.active > .admin-top-menu-link .icon svg rect,
+.admin-top-menu-item.active > .admin-top-menu-link .icon svg circle,
+.admin-top-menu-item.active > .admin-top-menu-link .icon svg ellipse {
+    fill: #ffffff;
+    stroke: #ffffff;
 }
 
 .admin-top-menu-item.has-sub:hover .admin-top-menu-dropdown {
     display: block;
+    animation: slideDown 0.2s ease;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 .admin-top-menu-dropdown {
     display: none;
     position: absolute;
-    top: 60px;
+    top: 100%;
     left: 0;
-    background: #fff;
-    min-width: 230px;
-    border: 1px solid #f3caca;
-        border: 1px solid #e0bebe;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+    background: #ffffff;
+    min-width: 260px;
+    border-radius: 8px;
+    border: 1px solid #e0e0e0;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(0, 0, 0, 0.02);
+    overflow: hidden;
+    z-index: 10000;
+    padding: 6px 0;
+    margin-top: 0;
+    list-style: none;
+}
+
+.admin-top-menu-dropdown::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 6px;
+    background: transparent;
+}
+
+.admin-top-menu-dropdown li {
+    list-style: none;
+    margin: 2px 0;
+}
+
+.admin-top-menu-dropdown li:last-child {
+    margin-bottom: 0;
 }
 
 .admin-top-menu-dropdown li a {
     display: block;
-    padding: 12px 16px;
-    color: #800000;
+    padding: 10px 16px;
+    color: #333;
     text-decoration: none;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.15s ease;
+    position: relative;
+    border-left: 3px solid transparent;
 }
 
-.admin-top-menu-dropdown li.active a,
+.admin-top-menu-dropdown li a::before {
+    display: none;
+}
+
 .admin-top-menu-dropdown li a:hover {
-    background: #f9eaea;
-    color: #b30000;
+    background: #f5f5f5;
+    color: #800000;
+    border-left-color: #800000;
+    padding-left: 18px;
+}
+
+.admin-top-menu-dropdown li.active a {
+    background: linear-gradient(90deg, #fff0f0 0%, #ffffff 100%);
+    color: #800000;
     font-weight: 600;
-    background: #f3e6e6;
-    color: #a00000;
-    font-weight: 700;
+    border-left-color: #800000;
 }
 
 .admin-top-menu-mobile-toggle {
     display: none;
-    font-size: 26px;
+    font-size: 28px;
     cursor: pointer;
     color: #800000;
+    padding: 8px;
+    border-radius: 8px;
+    transition: background 0.2s ease;
+    margin-left: auto;
 }
 
-/* MOBILE */
-@media (max-width: 900px) {
+.admin-top-menu-mobile-toggle:hover {
+    background: #f8f9fa;
+}
+
+/* TABLET RESPONSIVE */
+@media (max-width: 1400px) {
     .admin-top-menu-inner {
-        flex-wrap: wrap;
-        height: auto;
+        gap: 16px;
+        padding: 0 16px;
     }
 
+    .admin-top-menu-logo {
+        padding: 6px 12px;
+    }
+
+    .admin-logo-img {
+        width: 36px;
+        height: 36px;
+    }
+
+    .admin-logo-text {
+        font-size: 1.1em;
+    }
+
+    .admin-top-menu-link {
+        height: 38px;
+        padding: 0 10px;
+        font-size: 13px;
+        gap: 5px;
+    }
+
+    .admin-top-menu-dropdown {
+        min-width: 220px;
+    }
+}
+
+/* MOBILE RESPONSIVE - ACTIVATED FROM 1200px AND BELOW */
+@media (max-width: 1400px) {
+    /* Body adjustment */
+    body {
+        padding-top: 60px;
+    }
+
+    /* Fixed header */
+    .admin-top-menu {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        width: 100%;
+        height: 60px;
+        background: #ffffff;
+        border-bottom: 2px solid #dee2e6;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+
+    /* Header container */
+    .admin-top-menu-inner {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        height: 60px;
+        padding: 0 12px;
+        max-width: 100%;
+        gap: 12px;
+        flex-wrap: nowrap;
+    }
+
+    /* Logo section */
+    .admin-top-menu-logo {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 0;
+        height: 60px;
+        flex: 0 0 auto;
+        border-radius: 0;
+    }
+
+    .admin-top-menu-logo:hover {
+        background: transparent;
+    }
+
+    .admin-logo-img {
+        width: 36px;
+        height: 36px;
+        border-radius: 6px;
+    }
+
+    .admin-logo-text {
+        font-size: 1.1em;
+        font-weight: 700;
+        color: #800000;
+    }
+
+    /* Hide desktop menu */
     .admin-top-menu-list {
         display: none;
-        flex-direction: column;
+        position: fixed;
+        top: 60px;
+        left: 0;
+        right: 0;
         width: 100%;
-        background: #fffbe7;
-            background: #f8f6f2;
+        height: calc(100vh - 60px);
+        background: #ffffff;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        overflow-y: auto;
+        z-index: 9998;
+        flex-direction: column;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     }
 
     .admin-top-menu-list.show {
-        display: flex;
+        display: block;
     }
 
+    /* Menu items */
+    .admin-top-menu-item {
+        display: block;
+        width: 100%;
+        border-bottom: 1px solid #e9ecef;
+        position: relative;
+    }
+
+    .admin-top-menu-item:last-child {
+        border-bottom: none;
+    }
+
+    /* Menu links */
+    .admin-top-menu-link {
+        display: flex;
+        align-items: center;
+        width: 100%;
+        height: 52px;
+        padding: 0 20px;
+        gap: 12px;
+        background: #ffffff;
+        color: #333333;
+        font-size: 15px;
+        font-weight: 500;
+        border-radius: 0;
+        border-left: 4px solid transparent;
+        transition: all 0.25s ease;
+        cursor: pointer;
+    }
+
+    .admin-top-menu-link .icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 24px;
+        opacity: 0.85;
+    }
+
+    .admin-top-menu-link .icon svg {
+        width: 22px;
+        height: 22px;
+    }
+
+    .admin-top-menu-link .dropdown-arrow {
+        margin-left: auto;
+        font-size: 11px;
+        transform: rotate(0deg);
+        transition: transform 0.25s ease;
+        opacity: 0.6;
+    }
+
+    .admin-top-menu-link:active,
+    .admin-top-menu-link:hover {
+        background: #f8f9fa;
+        border-left-color: #800000;
+        color: #800000;
+    }
+
+    .admin-top-menu-link:hover .icon {
+        opacity: 1;
+    }
+
+    /* Active menu item */
+    .admin-top-menu-item.active > .admin-top-menu-link {
+        background: #fff5f5;
+        border-left-color: #800000;
+        color: #800000;
+        font-weight: 600;
+    }
+
+    .admin-top-menu-item.active > .admin-top-menu-link .icon svg path {
+        fill: #800000;
+    }
+
+    /* Expanded dropdown arrow */
+    .admin-top-menu-item.has-sub.expanded > .admin-top-menu-link .dropdown-arrow {
+        transform: rotate(180deg);
+    }
+
+    /* Disable hover dropdown on mobile */
+    .admin-top-menu-item.has-sub:hover .admin-top-menu-dropdown {
+        display: none;
+    }
+
+    /* Submenu dropdown */
     .admin-top-menu-item.has-sub .admin-top-menu-dropdown {
         position: static;
-        box-shadow: none;
+        display: none;
+        width: 100%;
+        background: #f5f5f5;
         border: none;
+        border-radius: 0;
+        box-shadow: none;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+
+    .admin-top-menu-item.has-sub.expanded .admin-top-menu-dropdown {
+        display: block;
+    }
+
+    /* Submenu items */
+    .admin-top-menu-dropdown li {
+        display: block;
+        margin: 0;
+        border-bottom: 1px solid #e0e0e0;
+        list-style: none;
+    }
+
+    .admin-top-menu-dropdown li:last-child {
+        border-bottom: none;
+    }
+
+    .admin-top-menu-dropdown li a {
+        display: block;
+        padding: 14px 20px 14px 56px;
+        background: #f5f5f5;
+        color: #555555;
+        font-size: 14px;
+        font-weight: 500;
+        text-decoration: none;
+        border-left: 4px solid transparent;
+        transition: all 0.2s ease;
+    }
+
+    .admin-top-menu-dropdown li a:active,
+    .admin-top-menu-dropdown li a:hover {
+        background: #ececec;
+        color: #800000;
+        border-left-color: #800000;
+        padding-left: 60px;
+    }
+
+    .admin-top-menu-dropdown li.active a {
+        background: #e8e8e8;
+        color: #800000;
+        font-weight: 600;
+        border-left-color: #800000;
+    }
+
+    /* Mobile toggle button */
+    .admin-top-menu-mobile-toggle {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 44px;
+        height: 44px;
+        font-size: 26px;
+        color: #800000;
+        background: transparent;
+        border: 2px solid #e9ecef;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all 0.25s ease;
+        flex: 0 0 auto;
+        margin-left: auto;
+    }
+
+    .admin-top-menu-mobile-toggle:hover {
+        background: #f8f9fa;
+        border-color: #800000;
+    }
+
+    .admin-top-menu-mobile-toggle.active {
+        background: #800000;
+        color: #ffffff;
+        border-color: #800000;
+    }
+}
+
+/* SMALL MOBILE */
+@media (max-width: 600px) {
+    body {
+        padding-top: 56px;
+    }
+
+    .admin-top-menu {
+        height: 56px;
+    }
+
+    .admin-top-menu-inner {
+        height: 56px;
+        padding: 0 10px;
+    }
+
+    .admin-top-menu-logo {
+        height: 56px;
+        gap: 6px;
+    }
+
+    .admin-logo-img {
+        width: 32px;
+        height: 32px;
+    }
+
+    .admin-logo-text {
+        font-size: 1em;
+    }
+
+    .admin-top-menu-list {
+        top: 56px;
+        height: calc(100vh - 56px);
+    }
+
+    .admin-top-menu-link {
+        height: 48px;
+        padding: 0 16px;
+        font-size: 14px;
+    }
+
+    .admin-top-menu-dropdown li a {
+        padding: 12px 16px 12px 48px;
+        font-size: 13px;
+    }
+
+    .admin-top-menu-dropdown li a:hover {
+        padding-left: 52px;
     }
 
     .admin-top-menu-mobile-toggle {
-        display: block;
+        width: 40px;
+        height: 40px;
+        font-size: 24px;
+    }
+}
+
+/* EXTRA SMALL MOBILE */
+@media (max-width: 400px) {
+    .admin-logo-text {
+        font-size: 0.95em;
+    }
+
+    .admin-top-menu-link {
+        padding: 0 12px;
+        font-size: 13px;
+        gap: 10px;
+    }
+
+    .admin-top-menu-link .icon svg {
+        width: 20px;
+        height: 20px;
+    }
+
+    .admin-top-menu-dropdown li a {
+        padding: 11px 12px 11px 44px;
+        font-size: 12px;
     }
 }
 </style>
@@ -398,26 +873,122 @@ body {
      ======================= -->
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+    const toggle = document.getElementById('adminTopMenuToggle');
+    const menu = document.getElementById('adminTopMenuList');
+    const body = document.body;
 
-    var toggle = document.getElementById('adminTopMenuToggle');
-    var menu   = document.getElementById('adminTopMenuList');
-
-    if (toggle) {
-        toggle.addEventListener('click', function () {
-            menu.classList.toggle('show');
+    // Toggle main menu on mobile
+    if (toggle && menu) {
+        toggle.addEventListener('click', function (e) {
+            e.stopPropagation();
+            const isOpen = menu.classList.contains('show');
+            
+            if (isOpen) {
+                closeMainMenu();
+            } else {
+                openMainMenu();
+            }
         });
     }
 
-    // Mobile submenu toggle
-    document.querySelectorAll('.admin-top-menu-item.has-sub > .admin-top-menu-link')
-        .forEach(function (link) {
-            link.addEventListener('click', function (e) {
-                if (window.innerWidth <= 900) {
-                    e.preventDefault();
-                    var dropdown = this.nextElementSibling;
-                    dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
-                }
-            });
+    // Open main menu
+    function openMainMenu() {
+        menu.classList.add('show');
+        toggle.classList.add('active');
+        body.style.overflow = 'hidden'; // Prevent body scroll when menu is open
+    }
+
+    // Close main menu
+    function closeMainMenu() {
+        menu.classList.remove('show');
+        toggle.classList.remove('active');
+        body.style.overflow = '';
+        // Close all expanded submenus
+        document.querySelectorAll('.admin-top-menu-item.has-sub.expanded').forEach(function(item) {
+            item.classList.remove('expanded');
         });
+    }
+
+    // Handle submenu toggle on mobile
+    document.querySelectorAll('.admin-top-menu-item.has-sub > .admin-top-menu-link').forEach(function(link) {
+        link.addEventListener('click', function(e) {
+            if (window.innerWidth <= 1400) {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                const parentItem = this.parentElement;
+                const isExpanded = parentItem.classList.contains('expanded');
+                
+                // Close all other expanded menus
+                document.querySelectorAll('.admin-top-menu-item.has-sub.expanded').forEach(function(item) {
+                    if (item !== parentItem) {
+                        item.classList.remove('expanded');
+                    }
+                });
+                
+                // Toggle current submenu
+                if (isExpanded) {
+                    parentItem.classList.remove('expanded');
+                } else {
+                    parentItem.classList.add('expanded');
+                }
+            }
+        });
+    });
+
+    // Close menu when clicking a non-submenu link
+    document.querySelectorAll('.admin-top-menu-item:not(.has-sub) .admin-top-menu-link').forEach(function(link) {
+        link.addEventListener('click', function() {
+            if (window.innerWidth <= 1400) {
+                closeMainMenu();
+            }
+        });
+    });
+
+    // Close menu when clicking a submenu item
+    document.querySelectorAll('.admin-top-menu-dropdown a').forEach(function(link) {
+        link.addEventListener('click', function() {
+            if (window.innerWidth <= 1400) {
+                closeMainMenu();
+            }
+        });
+    });
+
+    // Close menu when clicking outside
+    document.addEventListener('click', function(e) {
+        if (window.innerWidth <= 1400) {
+            const isClickInsideMenu = menu && menu.contains(e.target);
+            const isClickOnToggle = toggle && toggle.contains(e.target);
+            
+            if (!isClickInsideMenu && !isClickOnToggle && menu && menu.classList.contains('show')) {
+                closeMainMenu();
+            }
+        }
+    });
+
+    // Handle window resize
+    window.addEventListener('resize', function() {
+        if (window.innerWidth > 1200) {
+            if (menu) {
+                menu.classList.remove('show');
+            }
+            if (toggle) {
+                toggle.classList.remove('active');
+            }
+            body.style.overflow = '';
+            // Remove expanded class from all items
+            document.querySelectorAll('.admin-top-menu-item.has-sub.expanded').forEach(function(item) {
+                item.classList.remove('expanded');
+            });
+        }
+    });
+
+    // Prevent menu from being accidentally opened on desktop
+    if (window.innerWidth > 1200 && menu) {
+        menu.classList.remove('show');
+        if (toggle) {
+            toggle.classList.remove('active');
+        }
+    }
 });
 </script>
