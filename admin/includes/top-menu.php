@@ -449,17 +449,6 @@ body {
     list-style: none;
 }
 
-/* Hover trap to prevent closing when moving mouse from menu item to dropdown */
-.admin-top-menu-item.has-sub .admin-top-menu-dropdown::before {
-    content: '';
-    position: absolute;
-    top: -10px;
-    left: 0;
-    right: 0;
-    height: 10px;
-    background: transparent;
-}
-
 .admin-top-menu-dropdown li {
     list-style: none;
     margin: 2px 0;
@@ -1000,6 +989,28 @@ document.addEventListener('DOMContentLoaded', function () {
         if (toggle) {
             toggle.classList.remove('active');
         }
+    }
+
+    // Desktop hover behavior for dropdowns
+    if (window.innerWidth > 1400) {
+        document.querySelectorAll('.admin-top-menu-item.has-sub').forEach(function(item) {
+            let hoverTimeout;
+            item.addEventListener('mouseenter', function() {
+                clearTimeout(hoverTimeout);
+                const dropdown = this.querySelector('.admin-top-menu-dropdown');
+                if (dropdown) {
+                    dropdown.style.display = 'block';
+                }
+            });
+            item.addEventListener('mouseleave', function() {
+                hoverTimeout = setTimeout(() => {
+                    const dropdown = this.querySelector('.admin-top-menu-dropdown');
+                    if (dropdown) {
+                        dropdown.style.display = 'none';
+                    }
+                }, 150);
+            });
+        });
     }
 });
 </script>
