@@ -1,4 +1,3 @@
-
 <?php
 // payments.php
 session_start();
@@ -90,9 +89,15 @@ $unionSql = "
 	ORDER BY paid_date DESC, id DESC
 	LIMIT $perPage OFFSET $offset
 ";
-$stmt = $pdo->prepare($unionSql);
-$stmt->execute(array_merge($params, $paramsSR));
-$rows = $stmt->fetchAll();
+
+try {
+	$stmt = $pdo->prepare($unionSql);
+	$stmt->execute(array_merge($params, $paramsSR));
+	$rows = $stmt->fetchAll();
+} catch (Exception $e) {
+	$rows = [];
+	error_log("Payments query error: " . $e->getMessage());
+}
 
 // For pagination (approximate, not exact due to UNION)
 $totalPayments = $pdo->prepare("SELECT COUNT(*) FROM payments p LEFT JOIN customers c ON p.customer_id = c.id $whereSqlPayments");

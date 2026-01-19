@@ -1,6 +1,22 @@
 <?php
 require_once __DIR__ . '/../../config/db.php';
 
+// Ensure session is started
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+// Check authentication
+if (!isset($_SESSION['user_id'])) {
+    header('Location: ../login.php');
+    exit;
+}
+
+// Check if we have a valid database connection
+if (!$pdo) {
+    die('Database connection error');
+}
+
 // Default categories/services from services.php
 $default_categories = [
     [
@@ -49,21 +65,33 @@ $default_categories = [
 
 // Insert default categories if not present
 foreach ($default_categories as $cat) {
-    $stmt = $pdo->prepare("SELECT id FROM service_categories WHERE category_slug = ?");
-    $stmt->execute([$cat['category_slug']]);
-    if (!$stmt->fetch()) {
-        $ins = $pdo->prepare("INSERT INTO service_categories (category_name, category_slug, description, services_include, logo) VALUES (?, ?, ?, ?, ?)");
-        $ins->execute([$cat['category_name'], $cat['category_slug'], $cat['description'], $cat['services_include'], $cat['logo']]);
+    try {
+        $stmt = $pdo->prepare("SELECT id FROM service_categories WHERE category_slug = ?");
+        $stmt->execute([$cat['category_slug']]);
+        if (!$stmt->fetch()) {
+            $ins = $pdo->prepare("INSERT INTO service_categories (category_name, category_slug, description, services_include, logo) VALUES (?, ?, ?, ?, ?)");
+            $ins->execute([$cat['category_name'], $cat['category_slug'], $cat['description'], $cat['services_include'], $cat['logo']]);
+        }
+    } catch (Exception $e) {
+        error_log("Error inserting default category: " . $e->getMessage());
     }
 }
 
 // Ensure sequence column exists in DB
-$pdo->exec("ALTER TABLE service_categories ADD COLUMN IF NOT EXISTS sequence INT DEFAULT 0");
+try {
+    $pdo->exec("ALTER TABLE service_categories ADD COLUMN IF NOT EXISTS sequence INT DEFAULT 0");
+} catch (Exception $e) {
+    // Column may already exist
+}
 
 // Ensure all categories have unique, ordered sequence values
-$allCats = $pdo->query("SELECT id FROM service_categories ORDER BY sequence ASC, id ASC")->fetchAll(PDO::FETCH_ASSOC);
-foreach ($allCats as $i => $cat) {
-    $pdo->prepare("UPDATE service_categories SET sequence=? WHERE id=?")->execute([$i+1, $cat['id']]);
+try {
+    $allCats = $pdo->query("SELECT id FROM service_categories ORDER BY sequence ASC, id ASC")->fetchAll(PDO::FETCH_ASSOC);
+    foreach ($allCats as $i => $cat) {
+        $pdo->prepare("UPDATE service_categories SET sequence=? WHERE id=?")->execute([$i+1, $cat['id']]);
+    }
+} catch (Exception $e) {
+    error_log("Error updating sequences: " . $e->getMessage());
 }
 
 // Handle AJAX reorder (robust)

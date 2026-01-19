@@ -419,12 +419,13 @@ body {
 .admin-top-menu-item.has-sub:hover .admin-top-menu-dropdown {
     display: block;
     animation: slideDown 0.2s ease;
+    pointer-events: auto;
 }
 
 @keyframes slideDown {
     from {
         opacity: 0;
-        transform: translateY(-10px);
+        transform: translateY(-8px);
     }
     to {
         opacity: 1;
@@ -445,18 +446,13 @@ body {
     overflow: hidden;
     z-index: 10000;
     padding: 6px 0;
-    margin-top: 0;
+    margin-top: 8px;
     list-style: none;
+    pointer-events: none;
 }
 
-.admin-top-menu-dropdown::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 6px;
-    background: transparent;
+.admin-top-menu-item.has-sub:hover .admin-top-menu-dropdown {
+    pointer-events: auto;
 }
 
 .admin-top-menu-dropdown li {
