@@ -1,17 +1,13 @@
 <?php
 /**
- * WhatsApp Business API Configuration
- * Centralized configuration for WhatsApp Cloud API
+ * AiSensy WhatsApp API Configuration
+ * Centralized configuration for AiSensy WhatsApp messaging
  * Used across admin panel and website
  */
 
-// WhatsApp Cloud API Credentials
-define('WHATSAPP_PHONE_NUMBER_ID', '872295572641175');
-define('WHATSAPP_ACCESS_TOKEN', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5NjU3NzMxODFhMDg2MTIzZWUyMmI3MiIsIm5hbWUiOiJWaXNobnVzdWRhcnNoYW5hIERoYXJtaWsgU2Fuc2thciBLZW5kcmEiLCJhcHBOYW1lIjoiQWlTZW5zeSIsImNsaWVudElkIjoiNjk2NTc3MzE4MWEwODYxMjNlZTIyYjZkIiwiYWN0aXZlUGxhbiI6IlBST19NT05USExZIiwiaWF0IjoxNzY4ODIyODc2fQ.y826CXzzagFeITfVMpuIzph01rLZ2OmvwPaHT6ZpvUM');
-
-// WhatsApp API Configuration
-define('WHATSAPP_API_VERSION', 'v18.0');
-define('WHATSAPP_API_BASE_URL', 'https://graph.facebook.com');
+// AiSensy API Credentials
+define('AISENSY_API_KEY', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5NjU3NzMxODFhMDg2MTIzZWUyMmI3MiIsIm5hbWUiOiJWaXNobnVzdWRhcnNoYW5hIERoYXJtaWsgU2Fuc2thciBLZW5kcmEiLCJhcHBOYW1lIjoiQWlTZW5zeSIsImNsaWVudElkIjoiNjk2NTc3MzE4MWEwODYxMjNlZTIyYjZkIiwiYWN0aXZlUGxhbiI6IlBST19NT05USExZIiwiaWF0IjoxNzY4ODUwMTc2fQ.AOfSsmh8v310FZrHZwA369nSGR6RZHm2joCqwgkWFZc');
+define('AISENSY_API_URL', 'https://backend.aisensy.com/campaign/t1/api/v2');
 
 // Test Mode - Set to true to log messages instead of sending
 define('WHATSAPP_TEST_MODE', false);
@@ -20,42 +16,43 @@ define('WHATSAPP_TEST_MODE', false);
 define('WHATSAPP_DEFAULT_LANGUAGE', 'en');
 
 // Business Details
-define('WHATSAPP_BUSINESS_NAME', 'Vishnu Sudarshana');
-define('WHATSAPP_BUSINESS_PHONE', '919999999999'); // Your business WhatsApp number
+define('WHATSAPP_BUSINESS_NAME', 'Vishnusudarshana Dharmik Sanskar Kendra');
+define('WHATSAPP_BUSINESS_PHONE', '918975224444'); // Your business WhatsApp number
 
 /**
- * Template Names - All approved WhatsApp templates
- * Update these as you create new templates in Meta Business Manager
+ * Template Names - Mapped to AiSensy Campaign Names
+ * These map internal template references to actual AiSensy campaign names
+ * Campaign names must match exactly as created in AiSensy dashboard
  */
 define('WHATSAPP_TEMPLATES', [
-    // Service Request Templates
-    'SERVICE_RECEIVED' => 'service_received',
-    'SERVICE_ACCEPTED' => 'service_accepted_notification',
-    'SERVICE_IN_PROGRESS' => 'service_in_progress',
-    'SERVICE_COMPLETED' => 'service_completed',
-    'SERVICE_CANCELLED' => 'service_cancelled',
-    'SERVICE_FILE_UPLOADED' => 'file_upload_notification',
+    // Service Request Templates - All use "Services Booking" campaign
+    'SERVICE_RECEIVED' => 'Services Booking',
+    'SERVICE_ACCEPTED' => 'Services Booking',
+    'SERVICE_IN_PROGRESS' => 'Services Booking',
+    'SERVICE_COMPLETED' => 'Services Booking',
+    'SERVICE_CANCELLED' => 'Services Booking',
+    'SERVICE_FILE_UPLOADED' => 'Services Booking',
     
-    // Appointment Templates
-    'APPOINTMENT_BOOKED_PAYMENT_SUCCESS' => 'appointment_booked_payment_successful',
-    'APPOINTMENT_RECEIVED' => 'appointment_received',
-    'APPOINTMENT_ACCEPTED' => 'appointment_accepted',
-    'APPOINTMENT_REMINDER' => 'appointment_reminder',
-    'APPOINTMENT_COMPLETED' => 'appointment_completed',
-    'APPOINTMENT_CANCELLED' => 'appointment_cancelled',
-    'APPOINTMENT_MISSED' => 'appointment_missed',
+    // Appointment Templates - All use "Appointment Booking" campaign
+    'APPOINTMENT_BOOKED_PAYMENT_SUCCESS' => 'Appointment Booking',
+    'APPOINTMENT_RECEIVED' => 'Appointment Booking',
+    'APPOINTMENT_ACCEPTED' => 'Appointment Booking',
+    'APPOINTMENT_REMINDER' => 'Appointment Booking',
+    'APPOINTMENT_COMPLETED' => 'Appointment Booking',
+    'APPOINTMENT_CANCELLED' => 'Appointment Booking',
+    'APPOINTMENT_MISSED' => 'Appointment Booking',
     
-    // Payment Templates
-    'PAYMENT_RECEIVED' => 'payment_received',
-    'PAYMENT_PENDING' => 'payment_pending',
-    'PAYMENT_CONFIRMED' => 'payment_confirmed',
-    'INVOICE_GENERATED' => 'invoice_generated',
-    'PAYMENT_REMINDER' => 'payment_reminder',
+    // Payment Templates - Use "Services Booking" campaign
+    'PAYMENT_RECEIVED' => 'Services Booking',
+    'PAYMENT_PENDING' => 'Services Booking',
+    'PAYMENT_CONFIRMED' => 'Services Booking',
+    'INVOICE_GENERATED' => 'Services Booking',
+    'PAYMENT_REMINDER' => 'Services Booking',
     
     // General Templates
-    'WELCOME_MESSAGE' => 'welcome_message',
-    'OTP_VERIFICATION' => 'otp_verification_code',
-    'CUSTOM_MESSAGE' => 'custom_message'
+    'WELCOME_MESSAGE' => 'Services Booking',
+    'OTP_VERIFICATION' => 'OTP for Downloads',
+    'CUSTOM_MESSAGE' => 'Services Booking'
 ]);
 
 /**
@@ -72,7 +69,7 @@ define('WHATSAPP_TEMPLATE_VARIABLES', [
     'APPOINTMENT_MISSED' => ['name', 'tracking_code'],
     'PAYMENT_RECEIVED' => ['name', 'amount', 'tracking_code'],
     'PAYMENT_CONFIRMED' => ['name', 'amount', 'payment_id'],
-    'OTP_VERIFICATION' => ['otp_code', 'validity_minutes']
+    'OTP_VERIFICATION' => ['otp_code']  // Only 1 parameter: {{1}} = otp_code
 ]);
 
 /**

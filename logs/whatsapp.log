@@ -1,4 +1,8 @@
-[2026-01-19 12:38:02] TO: 919595744266 | TEMPLATE: otp_verification_code | STATUS: API_ERROR | DETAILS: {"error":{"message":"Bad signature","type":"OAuthException","code":190,"fbtrace_id":"ALvcGhlYSD2T173NQAZmEcl"}}
-[2026-01-19 12:39:31] TO: 919595744266 | TEMPLATE: service_received | STATUS: API_ERROR | DETAILS: {"error":{"message":"Bad signature","type":"OAuthException","code":190,"fbtrace_id":"ABEzTqoQ8Rx9eQ9tfgtEBsy"}}
-[2026-01-19 12:45:35] TO: 919595744266 | TEMPLATE: otp_verification_code | STATUS: API_ERROR | DETAILS: {"error":{"message":"Bad signature","type":"OAuthException","code":190,"fbtrace_id":"AfaXTG4-iK8X3pQv1qXf3hF"}}
-[2026-01-19 12:53:59] TO: 919595744266 | TEMPLATE: otp_verification_code | STATUS: API_ERROR | DETAILS: {"error":{"message":"Bad signature","type":"OAuthException","code":190,"fbtrace_id":"AarETs97ynQNZNUB60i8N6S"}}
+[2026-01-19 20:16:33] TO: 919595744266 | TEMPLATE: otp_verification_code | STATUS: API_ERROR | DETAILS: {"error":{"message":"Bad signature","type":"OAuthException","code":190,"fbtrace_id":"ApRrCF0qFGYCE8f_MMkPJaC"}}
+[2026-01-19 20:26:39] TO: 919595744266 | TEMPLATE: otp_verification_code | STATUS: API_ERROR | DETAILS: {"error":{"message":"Bad signature","type":"OAuthException","code":190,"fbtrace_id":"Aqpy0eOuQR9Ya0CH5BqLB9j"}}
+[2026-01-19 20:54:11] TO: 919595744266 | TEMPLATE: OTP for Downloads | STATUS: API_ERROR | DETAILS: {"message":"Template params does not match the campaign"}
+[2026-01-19 20:58:09] TO: 919595744266 | TEMPLATE: OTP for Downloads | STATUS: API_ERROR | DETAILS: {"message":"Template params does not match the campaign"}
+[2026-01-19 20:59:21] TO: 919595744266 | TEMPLATE: Services Booking | STATUS: SUCCESS | DETAILS: {"success":"true","submitted_message_id":"cc0ad943-052d-4abf-9236-fa306aa81857"}
+[2026-01-19 21:12:39] TO: 919922550797 | TEMPLATE: Appointment Booking | STATUS: SUCCESS | DETAILS: {"success":"true","submitted_message_id":"5b814d6a-094f-4575-8747-14e62cb53ebf"}
+[2026-01-19 21:18:48] TO: 919595744266 | TEMPLATE: OTP for Downloads | STATUS: API_ERROR | DETAILS: {"message":"Template params does not match the campaign"}
+[2026-01-19 21:21:42] TO: 919595744266 | TEMPLATE: OTP for Downloads | STATUS: SUCCESS | DETAILS: {"success":"true","submitted_message_id":"2679b525-ca85-456f-8252-47e94a989a79"}

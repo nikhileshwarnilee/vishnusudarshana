@@ -1,7 +1,7 @@
 <?php
 /**
- * WhatsApp Business API Helper
- * Centralized WhatsApp messaging system for admin panel and website
+ * AiSensy WhatsApp API Helper
+ * Centralized WhatsApp messaging system using AiSensy platform
  * 
  * Usage:
  * - sendWhatsAppMessage($to, $templateName, $variables)
@@ -12,12 +12,12 @@
 require_once __DIR__ . '/../config/whatsapp_config.php';
 
 /**
- * Send WhatsApp message using Cloud API template
+ * Send WhatsApp message using AiSensy API
  * 
  * @param string $to Recipient phone number (with or without country code)
  * @param string $templateName Template identifier from WHATSAPP_TEMPLATES
  * @param array $variables Associative array of template variables
- * @param string $language Language code (default: 'en')
+ * @param string $language Language code (not used in AiSensy, kept for compatibility)
  * @return array ['success' => bool, 'message' => string, 'data' => array]
  */
 function sendWhatsAppMessage($to, $templateName, $variables = [], $language = null) {
@@ -61,40 +61,38 @@ function sendWhatsAppMessage($to, $templateName, $variables = [], $language = nu
         ];
     }
     
-    // Validate credentials
-    if (!WHATSAPP_PHONE_NUMBER_ID || !WHATSAPP_ACCESS_TOKEN) {
+    // Validate AiSensy credentials
+    if (!defined('AISENSY_API_KEY') || !AISENSY_API_KEY || !defined('AISENSY_API_URL')) {
         return [
             'success' => false,
-            'message' => 'WhatsApp API credentials not configured',
+            'message' => 'AiSensy API credentials not configured',
             'data' => null
         ];
     }
     
-    // Build API request
-    $url = WHATSAPP_API_BASE_URL . '/' . WHATSAPP_API_VERSION . '/' . WHATSAPP_PHONE_NUMBER_ID . '/messages';
+    // Build AiSensy API request
+    $url = AISENSY_API_URL;
     $headers = [
-        'Authorization: Bearer ' . WHATSAPP_ACCESS_TOKEN,
         'Content-Type: application/json'
     ];
     
-    // Prepare template parameters
-    $params = buildTemplateParameters($templateName, $variables);
+    // Extract variables for AiSensy format using configured order
+    $templateParams = buildAiSensyTemplateParams($templateName, $variables);
+    $userName = isset($variables['name']) ? $variables['name'] : '';
     
+    // Build AiSensy API payload
     $payload = [
-        'messaging_product' => 'whatsapp',
-        'to' => $to,
-        'type' => 'template',
-        'template' => [
-            'name' => $templateActualName,
-            'language' => ['code' => $language],
-            'components' => [
-                [
-                    'type' => 'body',
-                    'parameters' => $params
-                ]
-            ]
-        ]
+        'apiKey' => AISENSY_API_KEY,
+        'campaignName' => $templateActualName,
+        'destination' => $to,
+        'userName' => $userName,
+        'templateParams' => $templateParams
     ];
+    
+    // Add optional source if available
+    if (isset($variables['source'])) {
+        $payload['source'] = $variables['source'];
+    }
     
     // Send request
     $ch = curl_init($url);
@@ -121,21 +119,22 @@ function sendWhatsAppMessage($to, $templateName, $variables = [], $language = nu
     
     $responseData = json_decode($response, true);
     
-    // Check success
-    if ($httpCode === 200 && isset($responseData['messages'][0]['id'])) {
+    // Check success - AiSensy returns status 200 for success
+    if ($httpCode === 200) {
         logWhatsAppActivity($to, $templateActualName, 'SUCCESS', $response);
         return [
             'success' => true,
-            'message' => 'Message sent successfully',
+            'message' => 'Message sent successfully via AiSensy',
             'data' => [
-                'message_id' => $responseData['messages'][0]['id'],
-                'phone' => $to
+                'phone' => $to,
+                'campaign' => $templateActualName,
+                'response' => $responseData
             ]
         ];
     } else {
         $errorMsg = isset($responseData['error']['message']) 
             ? $responseData['error']['message'] 
-            : 'Unknown error';
+            : (isset($responseData['message']) ? $responseData['message'] : 'Unknown error');
         logWhatsAppActivity($to, $templateActualName, 'API_ERROR', $response);
         return [
             'success' => false,
@@ -197,31 +196,32 @@ function getTemplateName($identifier) {
 }
 
 /**
- * Build template parameters array
- * 
- * @param string $templateName Template name
- * @param array $variables Variables array
- * @return array Parameters for API
+ * Build AiSensy template params based on configured variables
+ *
+ * @param string $templateIdentifier Internal template key (e.g., 'OTP_VERIFICATION')
+ * @param array $variables Provided variables
+ * @return array Ordered list of string params for AiSensy
  */
-function buildTemplateParameters($templateName, $variables) {
+function buildAiSensyTemplateParams($templateIdentifier, $variables) {
     $params = [];
     
-    // Get expected variables for this template
-    $expectedVars = defined('WHATSAPP_TEMPLATE_VARIABLES') && isset(WHATSAPP_TEMPLATE_VARIABLES[$templateName])
-        ? WHATSAPP_TEMPLATE_VARIABLES[$templateName]
-        : array_keys($variables);
+    // Determine expected variables for this template
+    if (defined('WHATSAPP_TEMPLATE_VARIABLES') && isset(WHATSAPP_TEMPLATE_VARIABLES[$templateIdentifier])) {
+        $expected = WHATSAPP_TEMPLATE_VARIABLES[$templateIdentifier];
+    } else {
+        // Fallback: use provided variables order
+        $expected = array_keys($variables);
+    }
     
-    // Build parameters in order
-    foreach ($expectedVars as $key) {
-        $value = isset($variables[$key]) ? $variables[$key] : '';
-        $params[] = [
-            'type' => 'text',
-            'text' => (string)$value
-        ];
+    // Build params in expected order, ignoring extras
+    foreach ($expected as $key) {
+        $params[] = isset($variables[$key]) ? (string)$variables[$key] : '';
     }
     
     return $params;
 }
+
+
 
 /**
  * Log WhatsApp activity
