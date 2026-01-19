@@ -1,4 +1,4 @@
-[2026-01-19 12:28:29] TO: 919595744266 | TEMPLATE: otp_verification_code | STATUS: API_ERROR | DETAILS: {"error":{"message":"Bad signature","type":"OAuthException","code":190,"fbtrace_id":"AexMpOLaGaRlLc6ZBTCszf9"}}
-[2026-01-19 12:28:34] TO: 919595744266 | TEMPLATE: otp_verification_code | STATUS: API_ERROR | DETAILS: {"error":{"message":"Bad signature","type":"OAuthException","code":190,"fbtrace_id":"AxuTw7BNrhFJoxwxyRd6z9l"}}
-[2026-01-19 12:29:44] TO: 919595744266 | TEMPLATE: service_received | STATUS: API_ERROR | DETAILS: {"error":{"message":"Bad signature","type":"OAuthException","code":190,"fbtrace_id":"AcqZ5-IOkj3fVBljC3nZHHa"}}
-[2026-01-19 12:29:56] TO: 919595744266 | TEMPLATE: otp_verification_code | STATUS: API_ERROR | DETAILS: {"error":{"message":"Bad signature","type":"OAuthException","code":190,"fbtrace_id":"A8nzQTIrRiSvvZ1t7xelQfM"}}
+[2026-01-19 12:38:02] TO: 919595744266 | TEMPLATE: otp_verification_code | STATUS: API_ERROR | DETAILS: {"error":{"message":"Bad signature","type":"OAuthException","code":190,"fbtrace_id":"ALvcGhlYSD2T173NQAZmEcl"}}
+[2026-01-19 12:39:31] TO: 919595744266 | TEMPLATE: service_received | STATUS: API_ERROR | DETAILS: {"error":{"message":"Bad signature","type":"OAuthException","code":190,"fbtrace_id":"ABEzTqoQ8Rx9eQ9tfgtEBsy"}}
+[2026-01-19 12:45:35] TO: 919595744266 | TEMPLATE: otp_verification_code | STATUS: API_ERROR | DETAILS: {"error":{"message":"Bad signature","type":"OAuthException","code":190,"fbtrace_id":"AfaXTG4-iK8X3pQv1qXf3hF"}}
+[2026-01-19 12:53:59] TO: 919595744266 | TEMPLATE: otp_verification_code | STATUS: API_ERROR | DETAILS: {"error":{"message":"Bad signature","type":"OAuthException","code":190,"fbtrace_id":"AarETs97ynQNZNUB60i8N6S"}}
