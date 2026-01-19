@@ -18,11 +18,10 @@
     padding: 16px;
     text-align: center;
     box-shadow: 0 2px 8px #e0bebe22;
-    transition: all 0.3s ease;
+    transition: box-shadow 0.25s ease;
 }
 
 .summary-card:hover {
-    transform: translateY(-2px);
     box-shadow: 0 4px 12px #e0bebe33;
 }
 
@@ -46,7 +45,7 @@
     box-shadow: 0 2px 16px rgba(224, 190, 190, 0.15);
     padding: 28px;
     margin-bottom: 24px;
-    transition: all 0.3s ease;
+    transition: box-shadow 0.25s ease;
 }
 
 .content-card:hover {
@@ -279,11 +278,10 @@
 /* QUICK ACCESS / SPECIAL CARD STYLES */
 .quick-access-card {
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: box-shadow 0.25s ease;
 }
 
 .quick-access-card:hover {
-    transform: translateY(-3px);
     box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
 }
 

@@ -419,7 +419,6 @@ body {
 .admin-top-menu-item.has-sub:hover .admin-top-menu-dropdown {
     display: block;
     animation: slideDown 0.2s ease;
-    pointer-events: auto;
 }
 
 @keyframes slideDown {
@@ -446,13 +445,19 @@ body {
     overflow: hidden;
     z-index: 10000;
     padding: 6px 0;
-    margin-top: 8px;
+    margin-top: 0;
     list-style: none;
-    pointer-events: none;
 }
 
-.admin-top-menu-item.has-sub:hover .admin-top-menu-dropdown {
-    pointer-events: auto;
+/* Hover trap to prevent closing when moving mouse from menu item to dropdown */
+.admin-top-menu-item.has-sub .admin-top-menu-dropdown::before {
+    content: '';
+    position: absolute;
+    top: -10px;
+    left: 0;
+    right: 0;
+    height: 10px;
+    background: transparent;
 }
 
 .admin-top-menu-dropdown li {
