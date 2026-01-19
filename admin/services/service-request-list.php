@@ -107,10 +107,10 @@ if (session_status() === PHP_SESSION_NONE) {
         padding: 18px 0 14px 0;
         text-align: center;
         box-shadow: 0 2px 8px #e0bebe22;
-        transition: box-shadow 0.2s;
+        transition: box-shadow 0.25s ease;
     }
     .summary-card:hover {
-        box-shadow: 0 4px 16px #e0bebe44;
+        box-shadow: 0 4px 12px #e0bebe33;
     }
     .summary-count {
         font-size: 2.3em;
@@ -206,10 +206,46 @@ if (session_status() === PHP_SESSION_NONE) {
         opacity: 0.4;
         cursor: not-allowed;
     }
-    @media (max-width: 700px) {
-        .summary-cards { flex-direction: column; }
+    @media (max-width: 768px) {
+        .summary-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+        .summary-card {
+            flex: 1 1 auto;
+            padding: 12px 10px;
+            border-radius: 10px;
+            min-width: 0;
+        }
+        .summary-count {
+            font-size: 1.6em;
+            margin-bottom: 3px;
+        }
+        .summary-label {
+            font-size: 0.9em;
+        }
         .admin-container { padding: 12px 2vw; }
         .service-table th, .service-table td { padding: 10px 6px; font-size: 0.97em; }
+    }
+    @media (max-width: 600px) {
+        .summary-cards {
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+        .summary-card {
+            padding: 10px 8px;
+            border-radius: 8px;
+        }
+        .summary-count {
+            font-size: 1.4em;
+            margin-bottom: 2px;
+        }
+        .summary-label {
+            font-size: 0.85em;
+            line-height: 1.3;
+        }
     }
     </style>
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>

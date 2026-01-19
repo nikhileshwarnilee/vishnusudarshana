@@ -273,15 +273,15 @@ $recentRows = $recentStmt->fetchAll(PDO::FETCH_ASSOC);
 
     <!-- QUICK ACCESS CARDS -->
     <div class="summary-cards">
-        <div class="summary-card quick-access-card" onclick="window.location.href='cif/index.php'" style="cursor:pointer;background:#e5f0ff;">
+        <div class="summary-card quick-access-card" onclick="window.location.href='cif/index.php'">
             <div class="summary-count" style="color:#0056b3;"><span style="font-size:1.2em;">📄</span></div>
             <div class="summary-label" style="color:#0056b3;">CIF Home</div>
         </div>
-        <div class="summary-card quick-access-card" onclick="window.location.href='services/service-request-list.php'" style="cursor:pointer;background:#fffbe7;">
+        <div class="summary-card quick-access-card" onclick="window.location.href='services/service-request-list.php'">
             <div class="summary-count" style="color:#b36b00;"><span style="font-size:1.2em;">🛠️</span></div>
             <div class="summary-label" style="color:#b36b00;">Service Request List</div>
         </div>
-        <div class="summary-card quick-access-card" onclick="window.location.href='services/accepted-appointments.php'" style="cursor:pointer;background:#e5ffe5;">
+        <div class="summary-card quick-access-card" onclick="window.location.href='services/accepted-appointments.php'">
             <div class="summary-count" style="color:#1a8917;"><span style="font-size:1.2em;">✅</span></div>
             <div class="summary-label" style="color:#1a8917;">Accepted Appointments</div>
         </div>
