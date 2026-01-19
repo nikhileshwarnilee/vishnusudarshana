@@ -325,32 +325,62 @@ $(function() {
                         <button type="button" id="showEnquiryFormBtn" style="padding:10px 22px;background:#28a745;color:#fff;border:none;border-radius:6px;font-weight:600;">Add Enquiry</button>
                     </form>
                 </div>
-                <table style="width:100%;border-collapse:collapse;background:#fff;box-shadow:0 2px 8px #e0bebe22;border-radius:12px;overflow:hidden;margin-bottom:18px;">
-                    <thead>
-                        <tr style="background:#f9eaea;color:#800000;">
-                            <th style="padding:12px 10px;">Name</th>
-                            <th style="padding:12px 10px;">Mobile</th>
-                            <th style="padding:12px 10px;">Address</th>
-                            <th style="padding:12px 10px;">DOB</th>
-                            <th style="padding:12px 10px;">Birth Time</th>
-                            <th style="padding:12px 10px;">Birth Place</th>
-                            <th style="padding:12px 10px;">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td style="padding:10px;"> <?= htmlspecialchars($selected_client['name']) ?> </td>
-                            <td style="padding:10px;"> <?= htmlspecialchars($selected_client['mobile']) ?> </td>
-                            <td style="padding:10px;"> <?= htmlspecialchars($selected_client['address']) ?> </td>
-                            <td style="padding:10px;"> <?= htmlspecialchars($selected_client['dob']) ?> </td>
-                            <td style="padding:10px;"> <?= htmlspecialchars($selected_client['birth_time']) ?> </td>
-                            <td style="padding:10px;"> <?= htmlspecialchars($selected_client['birth_place']) ?> </td>
-                            <td style="padding:10px;">
-                                <a href="index.php?client_id=<?= (int)$selected_client['id'] ?>&edit=<?= (int)$selected_client['id'] ?>" style="padding:6px 14px;background:#007bff;color:#fff;border-radius:6px;text-decoration:none;font-weight:600;">Edit</a>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
+                
+                <!-- Client Details View (read-only) -->
+                <div id="clientDetailsView" style="margin-bottom:18px;">
+                    <table style="width:100%;border-collapse:collapse;background:#fff;box-shadow:0 2px 8px #e0bebe22;border-radius:12px;overflow:hidden;">
+                        <thead>
+                            <tr style="background:#f9eaea;color:#800000;">
+                                <th style="padding:12px 10px;">Name</th>
+                                <th style="padding:12px 10px;">Mobile</th>
+                                <th style="padding:12px 10px;">Address</th>
+                                <th style="padding:12px 10px;">DOB</th>
+                                <th style="padding:12px 10px;">Birth Time</th>
+                                <th style="padding:12px 10px;">Birth Place</th>
+                                <th style="padding:12px 10px;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td style="padding:10px;"> <?= htmlspecialchars($selected_client['name']) ?> </td>
+                                <td style="padding:10px;"> <?= htmlspecialchars($selected_client['mobile']) ?> </td>
+                                <td style="padding:10px;"> <?= htmlspecialchars($selected_client['address']) ?> </td>
+                                <td style="padding:10px;"> <?= htmlspecialchars($selected_client['dob']) ?> </td>
+                                <td style="padding:10px;"> <?= htmlspecialchars($selected_client['birth_time']) ?> </td>
+                                <td style="padding:10px;"> <?= htmlspecialchars($selected_client['birth_place']) ?> </td>
+                                <td style="padding:10px;">
+                                    <button type="button" id="editClientBtn" style="padding:6px 14px;background:#007bff;color:#fff;border:none;border-radius:6px;font-weight:600;cursor:pointer;">Edit</button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Client Details Edit Form (hidden by default) -->
+                <div id="clientEditForm" style="display:none;margin-bottom:18px;">
+                    <form method="post" style="display:flex;gap:18px;align-items:center;flex-wrap:wrap;background:#f9eaea;padding:18px;border-radius:10px;">
+                        <input type="text" name="name" placeholder="Name" required style="padding:8px 12px;border-radius:6px;border:1px solid #ccc;font-size:1em;" value="<?= htmlspecialchars($selected_client['name']) ?>">
+                        <input type="text" name="mobile" placeholder="Mobile No" required style="padding:8px 12px;border-radius:6px;border:1px solid #ccc;font-size:1em;" value="<?= htmlspecialchars($selected_client['mobile']) ?>">
+                        <input type="text" name="address" placeholder="Address" style="padding:8px 12px;border-radius:6px;border:1px solid #ccc;font-size:1em;min-width:180px;" value="<?= htmlspecialchars($selected_client['address']) ?>">
+                        <input type="date" name="dob" placeholder="DOB" style="padding:8px 12px;border-radius:6px;border:1px solid #ccc;font-size:1em;" value="<?= $selected_client['dob'] ? htmlspecialchars($selected_client['dob']) : '' ?>">
+                        <input type="time" name="birth_time" placeholder="Birth Time" style="padding:8px 12px;border-radius:6px;border:1px solid #ccc;font-size:1em;" value="<?= $selected_client['birth_time'] ? htmlspecialchars($selected_client['birth_time']) : '' ?>">
+                        <input type="text" name="birth_place" placeholder="Birth Place" style="padding:8px 12px;border-radius:6px;border:1px solid #ccc;font-size:1em;" value="<?= htmlspecialchars($selected_client['birth_place']) ?>">
+                        <input type="hidden" name="edit_id" value="<?= (int)$selected_client['id'] ?>">
+                        <button type="submit" style="padding:10px 22px;background:#800000;color:#fff;border:none;border-radius:6px;font-weight:600;">Update Client</button>
+                        <button type="button" id="cancelEditClientBtn" style="padding:10px 22px;background:#6c757d;color:#fff;border:none;border-radius:6px;font-weight:600;">Cancel</button>
+                    </form>
+                </div>
+                
+                <script>
+                document.getElementById('editClientBtn').onclick = function() {
+                    document.getElementById('clientDetailsView').style.display = 'none';
+                    document.getElementById('clientEditForm').style.display = 'block';
+                };
+                document.getElementById('cancelEditClientBtn').onclick = function() {
+                    document.getElementById('clientDetailsView').style.display = 'block';
+                    document.getElementById('clientEditForm').style.display = 'none';
+                };
+                </script>
 
                 <!-- Enquiry Form (hidden by default) -->
                 <div id="enquiryFormContainer" style="display:none;margin-bottom:24px;">

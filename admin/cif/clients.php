@@ -153,17 +153,42 @@ table tbody tr:hover { background: #f1f1f1; }
                 <?php if (empty($clients)): ?>
                     <tr><td colspan="8" style="text-align:center;color:#777;padding:24px;">No clients found.</td></tr>
                 <?php else: foreach ($clients as $c): ?>
-                    <tr>
+                    <tr id="client-row-<?= (int)$c['id'] ?>">
                         <td style="padding:10px;"> <?= (int)$c['id'] ?> </td>
-                        <td style="padding:10px;"> <?= htmlspecialchars($c['name']) ?> </td>
-                        <td style="padding:10px;"> <?= htmlspecialchars($c['mobile']) ?> </td>
-                        <td style="padding:10px;"> <?= htmlspecialchars($c['address']) ?> </td>
-                        <td style="padding:10px;"> <?= htmlspecialchars($c['dob']) ?> </td>
-                        <td style="padding:10px;"> <?= htmlspecialchars($c['birth_time']) ?> </td>
-                        <td style="padding:10px;"> <?= htmlspecialchars($c['birth_place']) ?> </td>
                         <td style="padding:10px;">
-                            <a href="clients.php?edit=<?= (int)$c['id'] ?>" style="padding:6px 14px;background:#007bff;color:#fff;border-radius:6px;text-decoration:none;font-weight:600;margin-right:8px;">Edit</a>
-                            <a href="clients.php?delete=<?= (int)$c['id'] ?>" onclick="return confirm('Delete this client?');" style="padding:6px 14px;background:#dc3545;color:#fff;border-radius:6px;text-decoration:none;font-weight:600;">Delete</a>
+                            <span class="client-view-<?= (int)$c['id'] ?>"> <?= htmlspecialchars($c['name']) ?> </span>
+                            <input type="text" name="name" value="<?= htmlspecialchars($c['name']) ?>" required class="client-edit-<?= (int)$c['id'] ?>" style="display:none;padding:6px 10px;border-radius:6px;border:1px solid #ccc;font-size:0.9em;width:120px;" form="client-form-<?= (int)$c['id'] ?>">
+                        </td>
+                        <td style="padding:10px;">
+                            <span class="client-view-<?= (int)$c['id'] ?>"> <?= htmlspecialchars($c['mobile']) ?> </span>
+                            <input type="text" name="mobile" value="<?= htmlspecialchars($c['mobile']) ?>" class="client-edit-<?= (int)$c['id'] ?>" style="display:none;padding:6px 10px;border-radius:6px;border:1px solid #ccc;font-size:0.9em;width:100px;" form="client-form-<?= (int)$c['id'] ?>">
+                        </td>
+                        <td style="padding:10px;">
+                            <span class="client-view-<?= (int)$c['id'] ?>"> <?= htmlspecialchars($c['address']) ?> </span>
+                            <input type="text" name="address" value="<?= htmlspecialchars($c['address']) ?>" class="client-edit-<?= (int)$c['id'] ?>" style="display:none;padding:6px 10px;border-radius:6px;border:1px solid #ccc;font-size:0.9em;width:140px;" form="client-form-<?= (int)$c['id'] ?>">
+                        </td>
+                        <td style="padding:10px;">
+                            <span class="client-view-<?= (int)$c['id'] ?>"> <?= htmlspecialchars($c['dob']) ?> </span>
+                            <input type="date" name="dob" value="<?= htmlspecialchars($c['dob']) ?>" class="client-edit-<?= (int)$c['id'] ?>" style="display:none;padding:6px 10px;border-radius:6px;border:1px solid #ccc;font-size:0.9em;width:130px;" form="client-form-<?= (int)$c['id'] ?>">
+                        </td>
+                        <td style="padding:10px;">
+                            <span class="client-view-<?= (int)$c['id'] ?>"> <?= htmlspecialchars($c['birth_time']) ?> </span>
+                            <input type="time" name="birth_time" value="<?= htmlspecialchars($c['birth_time']) ?>" class="client-edit-<?= (int)$c['id'] ?>" style="display:none;padding:6px 10px;border-radius:6px;border:1px solid #ccc;font-size:0.9em;width:100px;" form="client-form-<?= (int)$c['id'] ?>">
+                        </td>
+                        <td style="padding:10px;">
+                            <span class="client-view-<?= (int)$c['id'] ?>"> <?= htmlspecialchars($c['birth_place']) ?> </span>
+                            <input type="text" name="birth_place" value="<?= htmlspecialchars($c['birth_place']) ?>" class="client-edit-<?= (int)$c['id'] ?>" style="display:none;padding:6px 10px;border-radius:6px;border:1px solid #ccc;font-size:0.9em;width:120px;" form="client-form-<?= (int)$c['id'] ?>">
+                        </td>
+                        <td style="padding:10px;">
+                            <span class="client-view-<?= (int)$c['id'] ?>">
+                                <button type="button" onclick="toggleEditClient(<?= (int)$c['id'] ?>)" style="padding:6px 14px;background:#007bff;color:#fff;border:none;border-radius:6px;font-weight:600;margin-right:8px;cursor:pointer;">Edit</button>
+                                <a href="clients.php?delete=<?= (int)$c['id'] ?>" onclick="return confirm('Delete this client?');" style="padding:6px 14px;background:#dc3545;color:#fff;border-radius:6px;text-decoration:none;font-weight:600;">Delete</a>
+                            </span>
+                            <form id="client-form-<?= (int)$c['id'] ?>" method="post" class="client-edit-<?= (int)$c['id'] ?>" style="display:none;">
+                                <input type="hidden" name="edit_id" value="<?= (int)$c['id'] ?>">
+                                <button type="submit" style="padding:6px 14px;background:#28a745;color:#fff;border:none;border-radius:6px;font-weight:600;margin-right:8px;">Save</button>
+                                <button type="button" onclick="toggleEditClient(<?= (int)$c['id'] ?>)" style="padding:6px 14px;background:#6c757d;color:#fff;border:none;border-radius:6px;font-weight:600;">Cancel</button>
+                            </form>
                         </td>
                     </tr>
                 <?php endforeach; endif; ?>
@@ -251,6 +276,13 @@ document.addEventListener('DOMContentLoaded', function() {
     clearTimeout(hideTimeout);
   });
 });
+
+function toggleEditClient(id) {
+    const viewEls = document.querySelectorAll('.client-view-' + id);
+    const editEls = document.querySelectorAll('.client-edit-' + id);
+    viewEls.forEach(el => el.style.display = el.style.display === 'none' ? '' : 'none');
+    editEls.forEach(el => el.style.display = el.style.display === 'none' ? '' : 'none');
+}
 </script>
 </body>
 </html>

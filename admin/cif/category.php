@@ -113,16 +113,33 @@ h1 { color: #800000; margin-bottom: 18px; }
                 <?php if (empty($categories)): ?>
                     <tr><td colspan="4" style="text-align:center;color:#777;padding:24px;">No categories found.</td></tr>
                 <?php else: foreach ($categories as $cat): ?>
-                    <tr>
+                    <tr id="cat-row-<?= (int)$cat['id'] ?>">
                         <td style="padding:10px;"> <?= (int)$cat['id'] ?> </td>
-                        <td style="padding:10px;"> <?= htmlspecialchars($cat['name']) ?> </td>
                         <td style="padding:10px;">
-                            <span style="display:inline-block;width:28px;height:28px;border-radius:50%;background:<?= htmlspecialchars($cat['color']) ?>;border:1px solid #ccc;"></span>
-                            <span style="margin-left:8px;"> <?= htmlspecialchars($cat['color']) ?> </span>
+                            <span class="cat-view-<?= (int)$cat['id'] ?>"> <?= htmlspecialchars($cat['name']) ?> </span>
+                            <form method="post" class="cat-edit-<?= (int)$cat['id'] ?>" style="display:none;">
+                                <input type="text" name="category_name" value="<?= htmlspecialchars($cat['name']) ?>" required style="padding:6px 10px;border-radius:6px;border:1px solid #ccc;font-size:0.95em;">
+                            </form>
                         </td>
                         <td style="padding:10px;">
-                            <a href="category.php?edit=<?= (int)$cat['id'] ?>" style="padding:6px 14px;background:#007bff;color:#fff;border-radius:6px;text-decoration:none;font-weight:600;margin-right:8px;">Edit</a>
-                            <a href="category.php?delete=<?= (int)$cat['id'] ?>" onclick="return confirm('Delete this category?');" style="padding:6px 14px;background:#dc3545;color:#fff;border-radius:6px;text-decoration:none;font-weight:600;">Delete</a>
+                            <span class="cat-view-<?= (int)$cat['id'] ?>">
+                                <span style="display:inline-block;width:28px;height:28px;border-radius:50%;background:<?= htmlspecialchars($cat['color']) ?>;border:1px solid #ccc;"></span>
+                                <span style="margin-left:8px;"> <?= htmlspecialchars($cat['color']) ?> </span>
+                            </span>
+                            <span class="cat-edit-<?= (int)$cat['id'] ?>" style="display:none;">
+                                <input type="color" name="category_color" value="<?= htmlspecialchars($cat['color']) ?>" required style="width:48px;height:38px;border:none;" form="cat-form-<?= (int)$cat['id'] ?>">
+                            </span>
+                        </td>
+                        <td style="padding:10px;">
+                            <span class="cat-view-<?= (int)$cat['id'] ?>">
+                                <button type="button" onclick="toggleEditCat(<?= (int)$cat['id'] ?>)" style="padding:6px 14px;background:#007bff;color:#fff;border:none;border-radius:6px;font-weight:600;margin-right:8px;cursor:pointer;">Edit</button>
+                                <a href="category.php?delete=<?= (int)$cat['id'] ?>" onclick="return confirm('Delete this category?');" style="padding:6px 14px;background:#dc3545;color:#fff;border-radius:6px;text-decoration:none;font-weight:600;">Delete</a>
+                            </span>
+                            <form id="cat-form-<?= (int)$cat['id'] ?>" method="post" class="cat-edit-<?= (int)$cat['id'] ?>" style="display:none;">
+                                <input type="hidden" name="edit_id" value="<?= (int)$cat['id'] ?>">
+                                <button type="submit" style="padding:6px 14px;background:#28a745;color:#fff;border:none;border-radius:6px;font-weight:600;margin-right:8px;">Save</button>
+                                <button type="button" onclick="toggleEditCat(<?= (int)$cat['id'] ?>)" style="padding:6px 14px;background:#6c757d;color:#fff;border:none;border-radius:6px;font-weight:600;">Cancel</button>
+                            </form>
                         </td>
                     </tr>
                 <?php endforeach; endif; ?>
@@ -130,6 +147,14 @@ h1 { color: #800000; margin-bottom: 18px; }
         </table>
     </div>
 </div>
+<script>
+function toggleEditCat(id) {
+    const viewEls = document.querySelectorAll('.cat-view-' + id);
+    const editEls = document.querySelectorAll('.cat-edit-' + id);
+    viewEls.forEach(el => el.style.display = el.style.display === 'none' ? '' : 'none');
+    editEls.forEach(el => el.style.display = el.style.display === 'none' ? '' : 'none');
+}
+</script>
 <script src="/assets/js/language.js"></script>
 </body>
 </html>
