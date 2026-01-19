@@ -664,20 +664,40 @@ require_once __DIR__ . '/config/db.php';
 $results = [];
 $errorMsg = '';
 $searched = false;
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+$trackingInput = '';
+
+// Check for URL parameter first (from WhatsApp links)
+if (isset($_GET['id']) && !empty($_GET['id'])) {
     $searched = true;
-    $input = trim($_POST['track_input'] ?? '');
-    if ($input === '') {
+    $trackingInput = trim($_GET['id']);
+    
+    if (preg_match('/^[0-9]{10,15}$/', $trackingInput)) {
+        // Numeric: treat as mobile
+        $stmt = $pdo->prepare('SELECT * FROM service_requests WHERE mobile = ? ORDER BY created_at DESC');
+        $stmt->execute([$trackingInput]);
+    } else {
+        // Otherwise: treat as tracking ID
+        $stmt = $pdo->prepare('SELECT * FROM service_requests WHERE tracking_id = ? ORDER BY created_at DESC');
+        $stmt->execute([$trackingInput]);
+    }
+    $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
+// Handle form submission
+elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $searched = true;
+    $trackingInput = trim($_POST['track_input'] ?? '');
+    
+    if ($trackingInput === '') {
         $errorMsg = 'Please enter your mobile number or tracking ID.';
     } else {
-        if (preg_match('/^[0-9]{10,15}$/', $input)) {
+        if (preg_match('/^[0-9]{10,15}$/', $trackingInput)) {
             // Numeric: treat as mobile
             $stmt = $pdo->prepare('SELECT * FROM service_requests WHERE mobile = ? ORDER BY created_at DESC');
-            $stmt->execute([$input]);
+            $stmt->execute([$trackingInput]);
         } else {
             // Otherwise: treat as tracking ID
             $stmt = $pdo->prepare('SELECT * FROM service_requests WHERE tracking_id = ? ORDER BY created_at DESC');
-            $stmt->execute([$input]);
+            $stmt->execute([$trackingInput]);
         }
         $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
@@ -693,7 +713,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <section class="track-form-section">
         <form class="track-form" method="post" autocomplete="off">
             <div class="form-group track-form-card">
-                <input type="text" id="track_input" name="track_input" maxlength="30" placeholder="Enter Mobile Number or Tracking ID" required value="<?php echo isset($_POST['track_input']) ? htmlspecialchars($_POST['track_input']) : ''; ?>">
+                <input type="text" id="track_input" name="track_input" maxlength="30" placeholder="Enter Mobile Number or Tracking ID" required value="<?php echo htmlspecialchars($trackingInput); ?>">
             </div>
             <div class="track-btn-wrap">
                 <button type="submit" class="track-btn redesigned-cta-btn">Track Service</button>
