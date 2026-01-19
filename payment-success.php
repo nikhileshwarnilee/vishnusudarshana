@@ -236,6 +236,33 @@ try {
         $payment_id
     ]);
 
+    // Format products list for WhatsApp message
+    $productsList = '';
+    if (!empty($products) && is_array($products)) {
+        $productNames = [];
+        foreach ($products as $product) {
+            if (isset($product['id'])) {
+                // Try to fetch product name from database
+                try {
+                    $prodStmt = $pdo->prepare('SELECT name FROM products WHERE id = ? LIMIT 1');
+                    $prodStmt->execute([$product['id']]);
+                    $prodName = $prodStmt->fetchColumn();
+                    if ($prodName) {
+                        $productNames[] = $prodName;
+                    }
+                } catch (Exception $e) {
+                    // Fallback to product ID if query fails
+                    $productNames[] = 'Product #' . $product['id'];
+                }
+            }
+        }
+        // Join with comma and space
+        $productsList = implode(', ', $productNames);
+    }
+    if (empty($productsList)) {
+        $productsList = ucwords(str_replace('-', ' ', $category));
+    }
+
     // WhatsApp: Appointment Booked + Payment Successful (only for appointments)
     if ($category === 'appointment') {
         require_once __DIR__ . '/helpers/send_whatsapp.php';
@@ -243,10 +270,10 @@ try {
             // Send automatic WhatsApp notification to customer
             $whatsappResult = sendWhatsAppNotification('appointment_booked_payment_success', [
                 'mobile' => $mobile,
-                'customer_name' => $customerName,
-                'tracking_id' => $tracking_id,
-                'service_name' => 'Appointment',
-                'tracking_url' => 'https://' . $_SERVER['HTTP_HOST'] . '/track.php?id=' . $tracking_id
+                'name' => $customerName,
+                'category' => 'Appointment',
+                'products_list' => $productsList,
+                'tracking_url' => $tracking_id  // Only tracking ID, URL structure is in template
             ]);
             
             if (!$whatsappResult['success']) {
@@ -261,13 +288,13 @@ try {
         // For other services (Birth & Child, Marriage, Astrology, Muhurat, Pooja, Vastu)
         require_once __DIR__ . '/helpers/send_whatsapp.php';
         try {
-            $serviceName = ucwords(str_replace('-', ' ', $category));
+            $serviceCategoryDisplay = ucwords(str_replace('-', ' ', $category));
             $whatsappResult = sendWhatsAppNotification('service_received', [
                 'mobile' => $mobile,
-                'customer_name' => $customerName,
-                'tracking_id' => $tracking_id,
-                'service_name' => $serviceName,
-                'tracking_url' => 'https://' . $_SERVER['HTTP_HOST'] . '/track.php?id=' . $tracking_id
+                'name' => $customerName,
+                'category' => $serviceCategoryDisplay,
+                'products_list' => $productsList,
+                'tracking_url' => $tracking_id  // Only tracking ID, URL structure is in template
             ]);
             
             if (!$whatsappResult['success']) {

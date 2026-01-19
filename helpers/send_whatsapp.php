@@ -325,10 +325,9 @@ function sendWhatsAppNotification($eventType, $data) {
                 $data['mobile'],
                 'APPOINTMENT_BOOKED_PAYMENT_SUCCESS',
                 [
-                    'name' => $data['customer_name'],
-                    'tracking_code' => $data['tracking_id'],
-                    'service_name' => $data['service_name'] ?? 'Appointment',
-                    'tracking_url' => $data['tracking_url'] ?? 'track.php'
+                    'name' => $data['name'] ?? $data['customer_name'] ?? '',
+                    'category' => $data['category'] ?? 'Appointment',
+                    'products_list' => $data['products_list'] ?? ''
                 ]
             );
             
@@ -337,10 +336,9 @@ function sendWhatsAppNotification($eventType, $data) {
                 $data['mobile'],
                 'SERVICE_RECEIVED',
                 [
-                    'name' => $data['customer_name'],
-                    'tracking_code' => $data['tracking_id'],
-                    'service_name' => $data['service_name'] ?? 'Service',
-                    'tracking_url' => $data['tracking_url'] ?? 'track.php'
+                    'name' => $data['name'] ?? $data['customer_name'] ?? '',
+                    'category' => $data['category'] ?? 'Service',
+                    'products_list' => $data['products_list'] ?? ''
                 ]
             );
             

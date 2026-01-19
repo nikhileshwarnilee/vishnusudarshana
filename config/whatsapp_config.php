@@ -25,34 +25,34 @@ define('WHATSAPP_BUSINESS_PHONE', '918975224444'); // Your business WhatsApp num
  * Campaign names must match exactly as created in AiSensy dashboard
  */
 define('WHATSAPP_TEMPLATES', [
-    // Service Request Templates - All use "Services Booking" campaign
-    'SERVICE_RECEIVED' => 'Services Booking',
-    'SERVICE_ACCEPTED' => 'Services Booking',
-    'SERVICE_IN_PROGRESS' => 'Services Booking',
-    'SERVICE_COMPLETED' => 'Services Booking',
-    'SERVICE_CANCELLED' => 'Services Booking',
-    'SERVICE_FILE_UPLOADED' => 'Services Booking',
+    // Service Request Templates - All use "Website Service Request Confirmation" campaign
+    'SERVICE_RECEIVED' => 'Website Service Request Confirmation',
+    'SERVICE_ACCEPTED' => 'Website Service Request Confirmation',
+    'SERVICE_IN_PROGRESS' => 'Website Service Request Confirmation',
+    'SERVICE_COMPLETED' => 'Website Service Request Confirmation',
+    'SERVICE_CANCELLED' => 'Website Service Request Confirmation',
+    'SERVICE_FILE_UPLOADED' => 'Website Service Request Confirmation',
     
-    // Appointment Templates - All use "Appointment Booking" campaign
-    'APPOINTMENT_BOOKED_PAYMENT_SUCCESS' => 'Appointment Booking',
-    'APPOINTMENT_RECEIVED' => 'Appointment Booking',
-    'APPOINTMENT_ACCEPTED' => 'Appointment Booking',
-    'APPOINTMENT_REMINDER' => 'Appointment Booking',
-    'APPOINTMENT_COMPLETED' => 'Appointment Booking',
-    'APPOINTMENT_CANCELLED' => 'Appointment Booking',
-    'APPOINTMENT_MISSED' => 'Appointment Booking',
+    // Appointment Templates - Also use "Website Service Request Confirmation" campaign (same template)
+    'APPOINTMENT_BOOKED_PAYMENT_SUCCESS' => 'Website Service Request Confirmation',
+    'APPOINTMENT_RECEIVED' => 'Website Service Request Confirmation',
+    'APPOINTMENT_ACCEPTED' => 'Website Service Request Confirmation',
+    'APPOINTMENT_REMINDER' => 'Website Service Request Confirmation',
+    'APPOINTMENT_COMPLETED' => 'Website Service Request Confirmation',
+    'APPOINTMENT_CANCELLED' => 'Website Service Request Confirmation',
+    'APPOINTMENT_MISSED' => 'Website Service Request Confirmation',
     
-    // Payment Templates - Use "Services Booking" campaign
-    'PAYMENT_RECEIVED' => 'Services Booking',
-    'PAYMENT_PENDING' => 'Services Booking',
-    'PAYMENT_CONFIRMED' => 'Services Booking',
-    'INVOICE_GENERATED' => 'Services Booking',
-    'PAYMENT_REMINDER' => 'Services Booking',
+    // Payment Templates - Use "Website Service Request Confirmation" campaign
+    'PAYMENT_RECEIVED' => 'Website Service Request Confirmation',
+    'PAYMENT_PENDING' => 'Website Service Request Confirmation',
+    'PAYMENT_CONFIRMED' => 'Website Service Request Confirmation',
+    'INVOICE_GENERATED' => 'Website Service Request Confirmation',
+    'PAYMENT_REMINDER' => 'Website Service Request Confirmation',
     
     // General Templates
-    'WELCOME_MESSAGE' => 'Services Booking',
+    'WELCOME_MESSAGE' => 'Website Service Request Confirmation',
     'OTP_VERIFICATION' => 'OTP for Download',
-    'CUSTOM_MESSAGE' => 'Services Booking'
+    'CUSTOM_MESSAGE' => 'Website Service Request Confirmation'
 ]);
 
 /**
@@ -60,15 +60,33 @@ define('WHATSAPP_TEMPLATES', [
  * Define required variables for each template
  */
 define('WHATSAPP_TEMPLATE_VARIABLES', [
-    'SERVICE_RECEIVED' => ['name', 'tracking_code', 'service_name', 'tracking_url'],
-    'SERVICE_ACCEPTED_NOTIFICATION' => ['name', 'tracking_code'],
-    'SERVICE_COMPLETED' => ['name', 'tracking_code', 'service_name'],
-    'FILE_UPLOAD_NOTIFICATION' => ['name', 'tracking_code'],
-    'APPOINTMENT_BOOKED_PAYMENT_SUCCESS' => ['name', 'tracking_code', 'service_name', 'tracking_url'],
-    'APPOINTMENT_ACCEPTED' => ['name', 'tracking_code', 'appointment_date', 'appointment_time'],
-    'APPOINTMENT_MISSED' => ['name', 'tracking_code'],
+    // Service & Appointment Templates - All use same 4 parameters
+    'SERVICE_RECEIVED' => ['name', 'category', 'products_list', 'tracking_url'],
+    'SERVICE_ACCEPTED_NOTIFICATION' => ['name', 'category', 'products_list', 'tracking_url'],
+    'SERVICE_COMPLETED' => ['name', 'category', 'products_list', 'tracking_url'],
+    'SERVICE_IN_PROGRESS' => ['name', 'category', 'products_list', 'tracking_url'],
+    'SERVICE_CANCELLED' => ['name', 'category', 'products_list', 'tracking_url'],
+    'SERVICE_FILE_UPLOADED' => ['name', 'category', 'products_list', 'tracking_url'],
+    'FILE_UPLOAD_NOTIFICATION' => ['name', 'category', 'products_list', 'tracking_url'],
+    
+    'APPOINTMENT_BOOKED_PAYMENT_SUCCESS' => ['name', 'category', 'products_list', 'tracking_url'],
+    'APPOINTMENT_RECEIVED' => ['name', 'category', 'products_list', 'tracking_url'],
+    'APPOINTMENT_ACCEPTED' => ['name', 'category', 'products_list', 'tracking_url'],
+    'APPOINTMENT_MISSED' => ['name', 'category', 'products_list', 'tracking_url'],
+    'APPOINTMENT_REMINDER' => ['name', 'category', 'products_list', 'tracking_url'],
+    'APPOINTMENT_COMPLETED' => ['name', 'category', 'products_list', 'tracking_url'],
+    'APPOINTMENT_CANCELLED' => ['name', 'category', 'products_list', 'tracking_url'],
+    
+    // Payment Templates
     'PAYMENT_RECEIVED' => ['name', 'amount', 'tracking_code'],
     'PAYMENT_CONFIRMED' => ['name', 'amount', 'payment_id'],
+    'PAYMENT_PENDING' => ['name', 'amount', 'tracking_code'],
+    'PAYMENT_REMINDER' => ['name', 'amount', 'tracking_code'],
+    'INVOICE_GENERATED' => ['name', 'amount', 'tracking_code'],
+    
+    // General Templates
+    'WELCOME_MESSAGE' => ['name'],
+    'CUSTOM_MESSAGE' => ['name'],
     'OTP_VERIFICATION' => ['otp_code']  // {{1}} = otp_code for message body
 ]);
 
@@ -79,6 +97,12 @@ define('WHATSAPP_TEMPLATE_VARIABLES', [
 define('WHATSAPP_TEMPLATE_BUTTONS', [
     'OTP_VERIFICATION' => [
         ['type' => 'url', 'param' => 'otp_code']  // Button index 0 uses otp_code
+    ],
+    'SERVICE_RECEIVED' => [
+        ['type' => 'url', 'param' => 'tracking_url']  // Track button uses tracking_url
+    ],
+    'APPOINTMENT_BOOKED_PAYMENT_SUCCESS' => [
+        ['type' => 'url', 'param' => 'tracking_url']  // Track button uses tracking_url
     ]
 ]);
 
