@@ -49,6 +49,28 @@ html, body {
     border-radius: 18px;
     background: transparent;
     padding: 0.5rem 0.5rem 0 0.5rem;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    position: relative;
+}
+
+/* Scrollbar styling for webkit browsers */
+.table-responsive::-webkit-scrollbar {
+    height: 8px;
+}
+
+.table-responsive::-webkit-scrollbar-track {
+    background: #f7e9c7;
+    border-radius: 10px;
+}
+
+.table-responsive::-webkit-scrollbar-thumb {
+    background: linear-gradient(90deg, #FFD700 0%, #FFFACD 100%);
+    border-radius: 10px;
+}
+
+.table-responsive::-webkit-scrollbar-thumb:hover {
+    background: #FFD700;
 }
 .status-badge {
     background: #fffbe6;
@@ -115,6 +137,8 @@ html, body {
     height: 100%;
     background-color: rgba(0, 0, 0, 0.5);
     animation: fadeIn 0.3s;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
 @keyframes fadeIn {
@@ -178,6 +202,7 @@ html, body {
     letter-spacing: 2px;
     font-family: 'Courier New', monospace;
     transition: border-color 0.2s;
+    box-sizing: border-box;
 }
 
 .otp-input:focus {
@@ -207,10 +232,12 @@ html, body {
     display: flex;
     gap: 12px;
     margin-top: 24px;
+    flex-wrap: wrap;
 }
 
 .otp-modal-btn {
     flex: 1;
+    min-width: 120px;
     padding: 12px 18px;
     font-size: 1em;
     border: none;
@@ -219,6 +246,8 @@ html, body {
     cursor: pointer;
     transition: all 0.2s;
     font-family: 'Marcellus', serif;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
 }
 
 .otp-submit-btn {
@@ -231,6 +260,10 @@ html, body {
     background: #FFD700;
     color: #fff;
     box-shadow: 0 6px 18px rgba(212,175,55,0.18);
+}
+
+.otp-submit-btn:active {
+    transform: scale(0.98);
 }
 
 .otp-submit-btn:disabled {
@@ -248,6 +281,10 @@ html, body {
     background: #e0e0e0;
 }
 
+.otp-cancel-btn:active {
+    transform: scale(0.98);
+}
+
 .otp-resend {
     text-align: center;
     margin-top: 16px;
@@ -259,6 +296,9 @@ html, body {
     text-decoration: none;
     cursor: pointer;
     font-weight: 600;
+    padding: 8px 12px;
+    display: inline-block;
+    touch-action: manipulation;
 }
 
 .otp-resend-btn:hover {
@@ -275,6 +315,138 @@ html, body {
     font-size: 0.9em;
     margin-top: 12px;
     text-align: center;
+}
+
+/* Tablet Responsive */
+@media screen and (max-width: 768px) {
+    .otp-modal-content {
+        margin: 15% auto;
+        padding: 28px 20px;
+        width: 85%;
+        max-width: 380px;
+    }
+    
+    .otp-modal-header {
+        font-size: 1.3em;
+    }
+    
+    .otp-modal-subtitle {
+        font-size: 0.9em;
+    }
+    
+    .otp-input {
+        padding: 12px 10px;
+        font-size: 1em;
+    }
+    
+    .otp-modal-btn {
+        padding: 11px 16px;
+        font-size: 0.95em;
+    }
+}
+
+/* Mobile Responsive */
+@media screen and (max-width: 480px) {
+    .otp-modal {
+        align-items: flex-start;
+        padding: 20px 0;
+    }
+    
+    .otp-modal-content {
+        margin: 60px auto 20px;
+        padding: 24px 18px;
+        width: 92%;
+        max-width: 340px;
+        border-radius: 16px;
+    }
+    
+    .otp-modal-header {
+        font-size: 1.2em;
+        margin-bottom: 10px;
+    }
+    
+    .otp-modal-subtitle {
+        font-size: 0.88em;
+        margin-bottom: 18px;
+    }
+    
+    .otp-input-group {
+        margin-bottom: 18px;
+    }
+    
+    .otp-input {
+        padding: 12px 10px;
+        font-size: 1em;
+        letter-spacing: 1.5px;
+    }
+    
+    .otp-button-group {
+        gap: 10px;
+        margin-top: 20px;
+    }
+    
+    .otp-modal-btn {
+        padding: 13px 16px;
+        font-size: 0.95em;
+        min-width: 100px;
+    }
+    
+    .otp-resend {
+        font-size: 0.88em;
+        margin-top: 14px;
+    }
+    
+    .otp-timer {
+        font-size: 0.85em;
+    }
+}
+
+/* Small Mobile (320px) */
+@media screen and (max-width: 360px) {
+    .otp-modal-content {
+        width: 95%;
+        padding: 20px 16px;
+        margin: 40px auto 20px;
+    }
+    
+    .otp-modal-header {
+        font-size: 1.1em;
+    }
+    
+    .otp-button-group {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .otp-modal-btn {
+        width: 100%;
+        min-width: auto;
+    }
+}
+
+/* Landscape Mode for Mobile */
+@media screen and (max-height: 500px) and (orientation: landscape) {
+    .otp-modal-content {
+        margin: 20px auto;
+        padding: 20px 18px;
+    }
+    
+    .otp-modal-header {
+        font-size: 1.1em;
+        margin-bottom: 8px;
+    }
+    
+    .otp-modal-subtitle {
+        margin-bottom: 12px;
+    }
+    
+    .otp-input-group {
+        margin-bottom: 12px;
+    }
+    
+    .otp-button-group {
+        margin-top: 16px;
+    }
 }
 
 .otp-success {
@@ -363,17 +535,122 @@ html, body {
     .track-table th, .track-table td {
         padding: 10px 6px;
         font-size: 0.97em;
+        white-space: nowrap;
     }
     .track-table {
-        min-width: 600px;
+        min-width: 800px;
         border-radius: 10px;
     }
     .table-responsive {
         border-radius: 10px;
+        padding: 0.5rem;
+        margin: 0 -15px;
+        width: calc(100% + 30px);
     }
     .track-hero, .track-form-section {
         border-radius: 10px;
         padding: 18px 6px 14px 6px;
+    }
+}
+
+/* Tablet specific styles */
+@media (max-width: 768px) and (min-width: 481px) {
+    .table-responsive {
+        padding: 0.5rem;
+        margin: 0 -10px;
+        width: calc(100% + 20px);
+    }
+    
+    .track-table {
+        min-width: 750px;
+    }
+    
+    .track-table th, .track-table td {
+        font-size: 0.95em;
+        padding: 9px 7px;
+    }
+    
+    .status-badge {
+        font-size: 0.92em;
+        padding: 2px 10px;
+    }
+    
+    .download-btn {
+        font-size: 0.95em;
+        padding: 9px 18px;
+        min-width: 100px;
+    }
+}
+
+/* Mobile specific styles */
+@media (max-width: 480px) {
+    .table-responsive {
+        border-radius: 8px;
+        padding: 0.3rem;
+        margin: 0 -10px;
+        width: calc(100% + 20px);
+        position: relative;
+    }
+    
+    /* Scroll indicator hint */
+    .table-responsive::after {
+        content: '← Swipe to view more →';
+        position: sticky;
+        right: 0;
+        bottom: 0;
+        background: rgba(255, 215, 0, 0.15);
+        color: var(--maroon);
+        font-size: 0.75em;
+        padding: 4px 8px;
+        border-radius: 4px;
+        text-align: center;
+        display: block;
+        width: 100%;
+        font-weight: 600;
+        animation: fadeInOut 3s ease-in-out;
+        pointer-events: none;
+    }
+    
+    @keyframes fadeInOut {
+        0%, 100% { opacity: 0; }
+        50% { opacity: 1; }
+    }
+    
+    .track-table {
+        min-width: 850px;
+        font-size: 0.9em;
+    }
+    
+    .track-table th {
+        font-size: 0.88em;
+        padding: 8px 5px;
+        position: sticky;
+        top: 0;
+        z-index: 10;
+    }
+    
+    .track-table td {
+        padding: 8px 5px;
+        font-size: 0.85em;
+    }
+    
+    .status-badge {
+        font-size: 0.85em;
+        padding: 2px 8px;
+    }
+    
+    .download-btn {
+        font-size: 0.88em;
+        padding: 8px 14px;
+        min-width: 90px;
+    }
+    
+    .track-hero h2 {
+        font-size: 1.5rem;
+    }
+    
+    .track-hero p {
+        font-size: 1rem;
     }
 }
 </style>
