@@ -61,6 +61,7 @@ body {
     display: flex;
     flex-direction: column;
     padding-top: 60px;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif !important;
 }
 
 .admin-content {

@@ -103,7 +103,7 @@ $recentRows = $recentStmt->fetchAll(PDO::FETCH_ASSOC);
     <link rel="stylesheet" href="/assets/css/style.css">
         <style>
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif !important;
             background: #f7f7fa;
             margin: 0;
         }
@@ -221,7 +221,6 @@ $recentRows = $recentStmt->fetchAll(PDO::FETCH_ASSOC);
         </style>
 </head>
 <body>
-<?php include __DIR__ . '/../includes/top-menu.php'; ?>
 <div class="admin-container" style="max-width:1100px;margin:0 auto;padding:24px 12px;">
     <h1 style="color:var(--maroon);margin-bottom:18px;">Admin Dashboard</h1>
     <div style="text-align:center;color:#666;font-size:1.08rem;margin-bottom:28px;">Overview of appointments, services, and payments</div>
