@@ -69,7 +69,7 @@ define('WHATSAPP_TEMPLATE_VARIABLES', [
     'APPOINTMENT_MISSED' => ['name', 'tracking_code'],
     'PAYMENT_RECEIVED' => ['name', 'amount', 'tracking_code'],
     'PAYMENT_CONFIRMED' => ['name', 'amount', 'payment_id'],
-    'OTP_VERIFICATION' => ['name']  // {{1}} = name for message body
+    'OTP_VERIFICATION' => ['otp_code']  // {{1}} = otp_code for message body
 ]);
 
 /**

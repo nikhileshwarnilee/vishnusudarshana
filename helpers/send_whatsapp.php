@@ -246,6 +246,11 @@ function buildAiSensyButtons($templateIdentifier, $variables) {
     foreach ($buttonConfig as $index => $button) {
         $buttonParam = isset($variables[$button['param']]) ? (string)$variables[$button['param']] : '';
         
+        // Skip button if parameter is empty
+        if (empty($buttonParam)) {
+            continue;
+        }
+        
         $buttons[] = [
             'type' => 'button',
             'sub_type' => $button['type'] ?? 'url',

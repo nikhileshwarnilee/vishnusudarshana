@@ -37,17 +37,14 @@ if ($action === 'send_otp') {
     }
 
     // Validate tracking ID and mobile exist together
-    $stmt = $pdo->prepare('SELECT mobile, name FROM service_requests WHERE tracking_id = ?');
+    $stmt = $pdo->prepare('SELECT mobile FROM service_requests WHERE tracking_id = ?');
     $stmt->execute([$trackingId]);
-    $service = $stmt->fetch(PDO::FETCH_ASSOC);
+    $dbMobile = $stmt->fetchColumn();
     
-    if (!$service) {
+    if (!$dbMobile) {
         respond(false, 'Service not found.');
     }
-    
-    $dbMobile = $service['mobile'];
-    $customerName = $service['name'] ?? 'Customer';
-    
+
     // Verify mobile matches (security)
     if (ltrim($dbMobile, '+91') !== ltrim($mobile, '+91') && 
         substr($dbMobile, -10) !== substr($mobile, -10)) {
@@ -75,8 +72,7 @@ if ($action === 'send_otp') {
             $mobile,
             'OTP_VERIFICATION',
             [
-                'name' => $customerName,     // For template body {{1}}
-                'otp_code' => $otp           // For button parameter
+                'otp_code' => $otp
             ]
         );
 
