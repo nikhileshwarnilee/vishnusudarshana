@@ -9,6 +9,8 @@
     gap: 18px;
     margin-bottom: 24px;
     flex-wrap: wrap;
+    position: relative;
+    z-index: 1;
 }
 
 .summary-card {
@@ -292,6 +294,8 @@
     flex-wrap: wrap;
     margin-bottom: 32px;
     justify-content: space-between;
+    position: relative;
+    z-index: 1;
 }
 
 @media (max-width: 1200px) {

@@ -111,6 +111,8 @@ $recentRows = $recentStmt->fetchAll(PDO::FETCH_ASSOC);
             max-width: 1100px;
             margin: 0 auto;
             padding: 24px 12px;
+            position: relative;
+            z-index: 1;
         }
         h1 {
             color: #800000;
