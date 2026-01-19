@@ -51,7 +51,7 @@ define('WHATSAPP_TEMPLATES', [
     
     // General Templates
     'WELCOME_MESSAGE' => 'Services Booking',
-    'OTP_VERIFICATION' => 'OTP for Downloads',
+    'OTP_VERIFICATION' => 'OTP for Download',
     'CUSTOM_MESSAGE' => 'Services Booking'
 ]);
 
@@ -69,7 +69,17 @@ define('WHATSAPP_TEMPLATE_VARIABLES', [
     'APPOINTMENT_MISSED' => ['name', 'tracking_code'],
     'PAYMENT_RECEIVED' => ['name', 'amount', 'tracking_code'],
     'PAYMENT_CONFIRMED' => ['name', 'amount', 'payment_id'],
-    'OTP_VERIFICATION' => ['otp_code']  // Only 1 parameter: {{1}} = otp_code
+    'OTP_VERIFICATION' => ['name']  // {{1}} = name for message body
+]);
+
+/**
+ * Template Button Configurations
+ * Define button parameters for templates with URL buttons
+ */
+define('WHATSAPP_TEMPLATE_BUTTONS', [
+    'OTP_VERIFICATION' => [
+        ['type' => 'url', 'param' => 'otp_code']  // Button index 0 uses otp_code
+    ]
 ]);
 
 /**

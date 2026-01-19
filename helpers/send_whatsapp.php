@@ -89,6 +89,12 @@ function sendWhatsAppMessage($to, $templateName, $variables = [], $language = nu
         'templateParams' => $templateParams
     ];
     
+    // Add button parameters if this template has buttons configured
+    $buttons = buildAiSensyButtons($templateName, $variables);
+    if (!empty($buttons)) {
+        $payload['buttons'] = $buttons;
+    }
+    
     // Add optional source if available
     if (isset($variables['source'])) {
         $payload['source'] = $variables['source'];
@@ -219,6 +225,41 @@ function buildAiSensyTemplateParams($templateIdentifier, $variables) {
     }
     
     return $params;
+}
+
+/**
+ * Build AiSensy buttons array for URL button parameters
+ * 
+ * @param string $templateIdentifier Internal template key
+ * @param array $variables Provided variables
+ * @return array Buttons array for AiSensy API
+ */
+function buildAiSensyButtons($templateIdentifier, $variables) {
+    // Check if this template has button configuration
+    if (!defined('WHATSAPP_TEMPLATE_BUTTONS') || !isset(WHATSAPP_TEMPLATE_BUTTONS[$templateIdentifier])) {
+        return [];
+    }
+    
+    $buttonConfig = WHATSAPP_TEMPLATE_BUTTONS[$templateIdentifier];
+    $buttons = [];
+    
+    foreach ($buttonConfig as $index => $button) {
+        $buttonParam = isset($variables[$button['param']]) ? (string)$variables[$button['param']] : '';
+        
+        $buttons[] = [
+            'type' => 'button',
+            'sub_type' => $button['type'] ?? 'url',
+            'index' => $index,
+            'parameters' => [
+                [
+                    'type' => 'text',
+                    'text' => $buttonParam
+                ]
+            ]
+        ];
+    }
+    
+    return $buttons;
 }
 
 
