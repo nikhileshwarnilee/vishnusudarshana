@@ -322,7 +322,7 @@ require_once 'header.php';
             Keep your tracking ID for reference.
         </p>
 
-        <a href="track.php?tracking_id=<?= urlencode($tracking_id) ?>" class="pay-btn">
+        <a href="track.php?id=<?= urlencode($tracking_id) ?>" class="pay-btn">
             Track Your Service
         </a>
     </div>
