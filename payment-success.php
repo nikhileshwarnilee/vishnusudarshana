@@ -236,24 +236,67 @@ try {
         $payment_id
     ]);
 
-    // WhatsApp: Appointment Booked (only for appointments)
+    // WhatsApp: Appointment Booked + Payment Successful (only for appointments)
     if ($category === 'appointment') {
         require_once __DIR__ . '/helpers/send_whatsapp.php';
         try {
-            // Use your approved template name below (update if needed)
-            sendWhatsAppMessage(
-                $mobile,
-                'appointment_confirmation', // <-- update if your template name is different
-                'en',
-                [
-                    'name' => $customerName,
-                    'tracking_code' => $tracking_id
-                ]
-            );
-        } catch (Throwable $e) {
-            error_log('WhatsApp booking failed: ' . $e->getMessage());
+            // Send automatic WhatsApp notification to customer
+            $whatsappResult = sendWhatsAppNotification('appointment_booked_payment_success', [
+                'mobile' => $mobile,
+                'customer_name' => $customerName,
+                'tracking_id' => $tracking_id,
+                'service_name' => 'Appointment',
+                'tracking_url' => 'https://' . $_SERVER['HTTP_HOST'] . '/track.php?id=' . $tracking_id
+            ]);
+            
+            if (!$whatsappResult['success']) {
+                error_log('WhatsApp notification failed for appointment ' . $tracking_id . ': ' . $whatsappResult['message']);
+            } else {
+                error_log('WhatsApp notification sent for appointment ' . $tracking_id);
+            }
+        } catch (Exception $e) {
+            error_log('WhatsApp error for appointment ' . $tracking_id . ': ' . $e->getMessage());
+        }
+    } else if ($category !== 'appointment') {
+        // For other services (Birth & Child, Marriage, Astrology, Muhurat, Pooja, Vastu)
+        require_once __DIR__ . '/helpers/send_whatsapp.php';
+        try {
+            $serviceName = ucwords(str_replace('-', ' ', $category));
+            $whatsappResult = sendWhatsAppNotification('service_received', [
+                'mobile' => $mobile,
+                'customer_name' => $customerName,
+                'tracking_id' => $tracking_id,
+                'service_name' => $serviceName,
+                'tracking_url' => 'https://' . $_SERVER['HTTP_HOST'] . '/track.php?id=' . $tracking_id
+            ]);
+            
+            if (!$whatsappResult['success']) {
+                error_log('WhatsApp notification failed for service ' . $tracking_id . ': ' . $whatsappResult['message']);
+            } else {
+                error_log('WhatsApp notification sent for service ' . $tracking_id);
+            }
+        } catch (Exception $e) {
+            error_log('WhatsApp error for service ' . $tracking_id . ': ' . $e->getMessage());
         }
     }
+    
+    // Old code reference (commented out - replaced with new event-based system above)
+    /*
+    try {
+        // Old implementation - no longer used
+        sendWhatsAppMessage(
+            $mobile,
+            'appointment_confirmation',
+            'en',
+            [
+                'name' => $customerName,
+                'tracking_code' => $tracking_id
+            ]
+        );
+    } catch (Throwable $e) {
+        error_log('WhatsApp booking failed: ' . $e->getMessage());
+    }
+    */
 } catch (Throwable $e) {
     error_log('Service request insert failed: ' . $e->getMessage() . ' (payment_id=' . $payment_id . ', tracking_id=' . $tracking_id . ')');
     // Continue - data is safe in pending_payments table for manual recovery

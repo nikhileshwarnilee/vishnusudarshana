@@ -103,6 +103,191 @@ html, body {
     color: #fff;
     box-shadow: 0 6px 18px rgba(212,175,55,0.18);
 }
+
+/* OTP Modal Styles */
+.otp-modal {
+    display: none;
+    position: fixed;
+    z-index: 9999;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    animation: fadeIn 0.3s;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.otp-modal-content {
+    background: linear-gradient(135deg, #fffbe6 0%, #fff9e0 60%, #f7e9c7 100%);
+    margin: 10% auto;
+    padding: 32px 24px;
+    border-radius: 18px;
+    width: 90%;
+    max-width: 400px;
+    box-shadow: 0 12px 36px rgba(212,175,55,0.3);
+    border: 1.5px solid var(--gold-border);
+    animation: slideDown 0.3s;
+}
+
+@keyframes slideDown {
+    from {
+        transform: translateY(-50px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.otp-modal-header {
+    color: var(--maroon);
+    font-size: 1.4em;
+    font-weight: 900;
+    margin-bottom: 12px;
+    text-align: center;
+}
+
+.otp-modal-subtitle {
+    color: #666;
+    font-size: 0.95em;
+    text-align: center;
+    margin-bottom: 20px;
+    line-height: 1.4;
+}
+
+.otp-input-group {
+    margin-bottom: 20px;
+}
+
+.otp-input {
+    width: 100%;
+    padding: 14px 12px;
+    font-size: 1.1em;
+    border: 2px solid var(--gold-border);
+    border-radius: 10px;
+    background: #fff;
+    color: var(--maroon);
+    font-weight: 600;
+    text-align: center;
+    letter-spacing: 2px;
+    font-family: 'Courier New', monospace;
+    transition: border-color 0.2s;
+}
+
+.otp-input:focus {
+    outline: none;
+    border-color: #FFD700;
+    box-shadow: 0 0 8px rgba(212,175,55,0.3);
+}
+
+.otp-input::placeholder {
+    color: #bbb;
+    letter-spacing: 0;
+}
+
+.otp-error {
+    color: #cf1322;
+    font-size: 0.92em;
+    margin-bottom: 12px;
+    text-align: center;
+    display: none;
+}
+
+.otp-error.show {
+    display: block;
+}
+
+.otp-button-group {
+    display: flex;
+    gap: 12px;
+    margin-top: 24px;
+}
+
+.otp-modal-btn {
+    flex: 1;
+    padding: 12px 18px;
+    font-size: 1em;
+    border: none;
+    border-radius: 10px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: 'Marcellus', serif;
+}
+
+.otp-submit-btn {
+    background: linear-gradient(90deg, #FFD700 0%, #FFFACD 100%);
+    color: var(--maroon);
+    box-shadow: 0 2px 8px rgba(212,175,55,0.1);
+}
+
+.otp-submit-btn:hover {
+    background: #FFD700;
+    color: #fff;
+    box-shadow: 0 6px 18px rgba(212,175,55,0.18);
+}
+
+.otp-submit-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.otp-cancel-btn {
+    background: #f0f0f0;
+    color: #666;
+    border: 1px solid #ddd;
+}
+
+.otp-cancel-btn:hover {
+    background: #e0e0e0;
+}
+
+.otp-resend {
+    text-align: center;
+    margin-top: 16px;
+    font-size: 0.92em;
+}
+
+.otp-resend-btn {
+    color: #FFD700;
+    text-decoration: none;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.otp-resend-btn:hover {
+    color: var(--maroon);
+}
+
+.otp-resend-btn:disabled {
+    color: #ccc;
+    cursor: not-allowed;
+}
+
+.otp-timer {
+    color: #666;
+    font-size: 0.9em;
+    margin-top: 12px;
+    text-align: center;
+}
+
+.otp-success {
+    color: #1b5e20;
+    font-size: 0.92em;
+    margin-bottom: 12px;
+    text-align: center;
+    display: none;
+}
+
+.otp-success.show {
+    display: block;
+}
 .track-hero, .track-form-section {
     background: #fffbe6;
     border-radius: 18px;
@@ -398,7 +583,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                         <?php foreach ($files as $file): ?>
                                             <li style="margin-bottom:6px;">
                                                 <span style="font-size:0.98em;"><?php echo htmlspecialchars($file['name']); ?></span>
-                                                <a href="download.php?tracking_id=<?php echo urlencode($row['tracking_id']); ?>&file=<?php echo urlencode($file['file']); ?>" class="download-btn" style="margin-left:8px;">Download</a>
+                                                <button type="button" class="download-btn" onclick="requestDownloadOTP('<?php echo htmlspecialchars($row['tracking_id']); ?>', '<?php echo htmlspecialchars($row['mobile']); ?>', '<?php echo htmlspecialchars($file['file']); ?>')" style="margin-left:8px;">Download</button>
                                             </li>
                                         <?php endforeach; ?>
                                         </ul>
@@ -417,5 +602,290 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </section>
 </main>
 
+
+<!-- OTP Verification Modal -->
+<div id="otpModal" class="otp-modal">
+    <div class="otp-modal-content">
+        <div class="otp-modal-header">Verify Download</div>
+        <div class="otp-modal-subtitle">
+            We've sent a 4-digit OTP to your registered mobile number. Please enter it below to download your file.
+        </div>
+        
+        <div class="otp-error" id="otpError"></div>
+        <div class="otp-success" id="otpSuccess"></div>
+        
+        <form id="otpForm" onsubmit="verifyOTP(event)">
+            <input type="hidden" id="trackingId" value="">
+            <input type="hidden" id="mobileNumber" value="">
+            <input type="hidden" id="fileName" value="">
+            <input type="hidden" id="downloadToken" value="">
+            
+            <div class="otp-input-group">
+                <input 
+                    type="text" 
+                    id="otpCode" 
+                    class="otp-input" 
+                    placeholder="Enter 4-digit OTP" 
+                    maxlength="4" 
+                    inputmode="numeric"
+                    autocomplete="off"
+                    required
+                >
+            </div>
+            
+            <div class="otp-timer">
+                <span id="timerText">OTP expires in: <strong id="timeLeft">10:00</strong></span>
+            </div>
+            
+            <div class="otp-button-group">
+                <button type="submit" class="otp-modal-btn otp-submit-btn" id="submitBtn">Verify & Download</button>
+                <button type="button" class="otp-modal-btn otp-cancel-btn" onclick="closeOTPModal()">Cancel</button>
+            </div>
+            
+            <div class="otp-resend">
+                <span>Didn't receive OTP? </span>
+                <button type="button" class="otp-resend-btn" id="resendBtn" onclick="resendOTP()">Resend</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+let otpTimer = null;
+let otpExpiryTime = null;
+let currentDownloadData = {};
+
+function requestDownloadOTP(trackingId, mobileNumber, fileName) {
+    currentDownloadData = {
+        trackingId: trackingId,
+        mobileNumber: mobileNumber,
+        fileName: fileName
+    };
+    
+    document.getElementById('trackingId').value = trackingId;
+    document.getElementById('mobileNumber').value = mobileNumber;
+    document.getElementById('fileName').value = fileName;
+    
+    // Request OTP
+    const formData = new FormData();
+    formData.append('action', 'send_otp');
+    formData.append('tracking_id', trackingId);
+    formData.append('mobile', mobileNumber);
+    
+    document.getElementById('submitBtn').disabled = true;
+    document.getElementById('submitBtn').textContent = 'Sending OTP...';
+    
+    fetch('api/verify_download_otp.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        document.getElementById('submitBtn').disabled = false;
+        document.getElementById('submitBtn').textContent = 'Verify & Download';
+        
+        if (data.success) {
+            // Show modal
+            document.getElementById('otpModal').style.display = 'block';
+            document.getElementById('otpCode').focus();
+            
+            // Clear any previous errors
+            clearOTPError();
+            clearOTPSuccess();
+            
+            // Start timer
+            otpExpiryTime = Date.now() + (10 * 60 * 1000); // 10 minutes
+            startOTPTimer();
+            
+            // Disable resend for 30 seconds
+            disableResendButton();
+        } else {
+            alert('Error: ' + data.message);
+        }
+    })
+    .catch(error => {
+        document.getElementById('submitBtn').disabled = false;
+        document.getElementById('submitBtn').textContent = 'Verify & Download';
+        console.error('Error:', error);
+        alert('Failed to send OTP. Please try again.');
+    });
+}
+
+function verifyOTP(e) {
+    e.preventDefault();
+    
+    const otp = document.getElementById('otpCode').value.trim();
+    const trackingId = document.getElementById('trackingId').value;
+    const mobile = document.getElementById('mobileNumber').value;
+    const file = document.getElementById('fileName').value;
+    
+    if (!otp || otp.length !== 4) {
+        showOTPError('Please enter a valid 4-digit OTP.');
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('action', 'verify_otp');
+    formData.append('tracking_id', trackingId);
+    formData.append('mobile', mobile);
+    formData.append('otp', otp);
+    formData.append('file', file);
+    
+    document.getElementById('submitBtn').disabled = true;
+    document.getElementById('submitBtn').textContent = 'Verifying...';
+    
+    fetch('api/verify_download_otp.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showOTPSuccess('OTP verified! Starting download...');
+            clearOTPError();
+            
+            // Download the file
+            setTimeout(() => {
+                window.location.href = 'download.php?tracking_id=' + encodeURIComponent(trackingId) + '&file=' + encodeURIComponent(file) + '&token=' + data.data.download_token;
+                
+                // Close modal after a brief delay
+                setTimeout(() => {
+                    closeOTPModal();
+                    document.getElementById('submitBtn').disabled = false;
+                    document.getElementById('submitBtn').textContent = 'Verify & Download';
+                }, 1000);
+            }, 1500);
+        } else {
+            document.getElementById('submitBtn').disabled = false;
+            document.getElementById('submitBtn').textContent = 'Verify & Download';
+            showOTPError(data.message);
+        }
+    })
+    .catch(error => {
+        document.getElementById('submitBtn').disabled = false;
+        document.getElementById('submitBtn').textContent = 'Verify & Download';
+        console.error('Error:', error);
+        showOTPError('Error verifying OTP. Please try again.');
+    });
+}
+
+function resendOTP() {
+    const trackingId = document.getElementById('trackingId').value;
+    const mobile = document.getElementById('mobileNumber').value;
+    
+    const formData = new FormData();
+    formData.append('action', 'send_otp');
+    formData.append('tracking_id', trackingId);
+    formData.append('mobile', mobile);
+    
+    document.getElementById('resendBtn').disabled = true;
+    
+    fetch('api/verify_download_otp.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            clearOTPError();
+            showOTPSuccess('OTP sent again! Check your phone.');
+            document.getElementById('otpCode').value = '';
+            
+            // Reset timer
+            otpExpiryTime = Date.now() + (10 * 60 * 1000);
+            startOTPTimer();
+            
+            // Disable resend for 30 seconds
+            disableResendButton();
+        } else {
+            showOTPError('Failed to resend OTP: ' + data.message);
+            document.getElementById('resendBtn').disabled = false;
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showOTPError('Error resending OTP. Please try again.');
+        document.getElementById('resendBtn').disabled = false;
+    });
+}
+
+function startOTPTimer() {
+    if (otpTimer) clearInterval(otpTimer);
+    
+    otpTimer = setInterval(() => {
+        const now = Date.now();
+        const remaining = otpExpiryTime - now;
+        
+        if (remaining <= 0) {
+            clearInterval(otpTimer);
+            showOTPError('OTP has expired. Please request a new OTP.');
+            document.getElementById('submitBtn').disabled = true;
+            return;
+        }
+        
+        const minutes = Math.floor(remaining / 60000);
+        const seconds = Math.floor((remaining % 60000) / 1000);
+        const timeText = (minutes < 10 ? '0' : '') + minutes + ':' + (seconds < 10 ? '0' : '') + seconds;
+        document.getElementById('timeLeft').textContent = timeText;
+    }, 1000);
+}
+
+function disableResendButton() {
+    const resendBtn = document.getElementById('resendBtn');
+    resendBtn.disabled = true;
+    
+    let countdown = 30;
+    const interval = setInterval(() => {
+        if (countdown > 0) {
+            resendBtn.textContent = 'Resend in ' + countdown + 's';
+            countdown--;
+        } else {
+            clearInterval(interval);
+            resendBtn.disabled = false;
+            resendBtn.textContent = 'Resend';
+        }
+    }, 1000);
+}
+
+function showOTPError(message) {
+    const errorEl = document.getElementById('otpError');
+    errorEl.textContent = message;
+    errorEl.classList.add('show');
+}
+
+function clearOTPError() {
+    const errorEl = document.getElementById('otpError');
+    errorEl.textContent = '';
+    errorEl.classList.remove('show');
+}
+
+function showOTPSuccess(message) {
+    const successEl = document.getElementById('otpSuccess');
+    successEl.textContent = message;
+    successEl.classList.add('show');
+}
+
+function clearOTPSuccess() {
+    const successEl = document.getElementById('otpSuccess');
+    successEl.textContent = '';
+    successEl.classList.remove('show');
+}
+
+function closeOTPModal() {
+    document.getElementById('otpModal').style.display = 'none';
+    clearInterval(otpTimer);
+    document.getElementById('otpCode').value = '';
+    clearOTPError();
+    clearOTPSuccess();
+}
+
+// Close modal when clicking outside
+window.onclick = function(event) {
+    const modal = document.getElementById('otpModal');
+    if (event.target === modal) {
+        closeOTPModal();
+    }
+}
+</script>
 
 <?php include 'footer.php'; ?>

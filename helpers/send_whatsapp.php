@@ -1,54 +1,92 @@
 <?php
-// helpers/send_whatsapp.php
-// WhatsApp Cloud API reusable helper
+/**
+ * WhatsApp Business API Helper
+ * Centralized WhatsApp messaging system for admin panel and website
+ * 
+ * Usage:
+ * - sendWhatsAppMessage($to, $templateName, $variables)
+ * - logWhatsAppActivity($to, $templateName, $status, $response)
+ */
 
-// WhatsApp Cloud API credentials (for development/testing only)
-define('WHATSAPP_PHONE_NUMBER_ID', '872295572641175'); // Correct Meta Phone Number ID
-define('WHATSAPP_ACCESS_TOKEN', 'EAAbx07ZA0plwBQSi20PsioqwZCaOR4ZAZAYSqAxFX6wmsToALx72qTCJ7rQRp0ew3HVZB02ZCU5vTNAYi3f78NNplZAYgVGGXZAOlnFT53hFBKD0L0i5neandRHrWZCZClHjGjWnto24MYRsBQHVipGpsOa57SMigfmR9OZBfnNMaHtx24CAo512Y2XV671sX6GiAZDZD');
+// Load configuration
+require_once __DIR__ . '/../config/whatsapp_config.php';
 
 /**
- * Send WhatsApp message using WhatsApp Cloud API template
- * @param string $to Recipient phone number in international format (e.g., 919999999999)
- * @param string $templateName Name of the WhatsApp template
- * @param string $language Language code (e.g., 'en')
- * @param array $variables Associative array of template variables (e.g., ['name' => 'John', ...])
- * @return bool True on success, false on failure
+ * Send WhatsApp message using Cloud API template
+ * 
+ * @param string $to Recipient phone number (with or without country code)
+ * @param string $templateName Template identifier from WHATSAPP_TEMPLATES
+ * @param array $variables Associative array of template variables
+ * @param string $language Language code (default: 'en')
+ * @return array ['success' => bool, 'message' => string, 'data' => array]
  */
-function sendWhatsAppMessage($to, $templateName, $language, $variables = []) {
-    if (defined('WHATSAPP_TEST_MODE') && WHATSAPP_TEST_MODE) {
-        error_log("WHATSAPP TEST MODE MESSAGE:");
-        error_log("To: " . $to);
-        error_log("Template: " . $templateName);
-        error_log("Language: " . $language);
-        error_log("Variables: " . json_encode($variables));
-        return true;
+function sendWhatsAppMessage($to, $templateName, $variables = [], $language = null) {
+    $language = $language ?? WHATSAPP_DEFAULT_LANGUAGE;
+    
+    // Format phone number
+    $to = formatWhatsAppPhone($to);
+    if (!$to) {
+        return [
+            'success' => false,
+            'message' => 'Invalid phone number format',
+            'data' => null
+        ];
     }
-
-    if (!defined('WHATSAPP_PHONE_NUMBER_ID') || !defined('WHATSAPP_ACCESS_TOKEN')) {
-        error_log('WhatsApp API constants not defined.');
-        return false;
+    
+    // Validate template exists
+    $templateActualName = getTemplateName($templateName);
+    if (!$templateActualName) {
+        return [
+            'success' => false,
+            'message' => "Template '$templateName' not found",
+            'data' => null
+        ];
     }
-
-    $url = 'https://graph.facebook.com/v18.0/' . WHATSAPP_PHONE_NUMBER_ID . '/messages';
+    
+    // Test mode - Log instead of sending
+    if (WHATSAPP_TEST_MODE) {
+        $logData = [
+            'to' => $to,
+            'template' => $templateActualName,
+            'language' => $language,
+            'variables' => $variables,
+            'timestamp' => date('Y-m-d H:i:s')
+        ];
+        logWhatsAppActivity($to, $templateActualName, 'TEST_MODE', json_encode($logData));
+        error_log("WHATSAPP TEST MODE: " . json_encode($logData));
+        return [
+            'success' => true,
+            'message' => 'Test mode - message logged',
+            'data' => $logData
+        ];
+    }
+    
+    // Validate credentials
+    if (!WHATSAPP_PHONE_NUMBER_ID || !WHATSAPP_ACCESS_TOKEN) {
+        return [
+            'success' => false,
+            'message' => 'WhatsApp API credentials not configured',
+            'data' => null
+        ];
+    }
+    
+    // Build API request
+    $url = WHATSAPP_API_BASE_URL . '/' . WHATSAPP_API_VERSION . '/' . WHATSAPP_PHONE_NUMBER_ID . '/messages';
     $headers = [
         'Authorization: Bearer ' . WHATSAPP_ACCESS_TOKEN,
         'Content-Type: application/json'
     ];
-
-    // Prepare template parameters (order matters as per template definition)
-    $params = [];
-    // Only two variables: name and tracking_code
-    foreach (['name', 'tracking_code'] as $key) {
-        $params[] = [ 'type' => 'text', 'text' => isset($variables[$key]) ? $variables[$key] : '' ];
-    }
-
+    
+    // Prepare template parameters
+    $params = buildTemplateParameters($templateName, $variables);
+    
     $payload = [
         'messaging_product' => 'whatsapp',
         'to' => $to,
         'type' => 'template',
         'template' => [
-            'name' => $templateName,
-            'language' => [ 'code' => $language ],
+            'name' => $templateActualName,
+            'language' => ['code' => $language],
             'components' => [
                 [
                     'type' => 'body',
@@ -57,25 +95,291 @@ function sendWhatsAppMessage($to, $templateName, $language, $variables = []) {
             ]
         ]
     ];
-
+    
+    // Send request
     $ch = curl_init($url);
     curl_setopt($ch, CURLOPT_POST, true);
     curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
+    curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+    
     $response = curl_exec($ch);
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    if (curl_errno($ch)) {
-        error_log('WhatsApp API cURL error: ' . curl_error($ch));
-        curl_close($ch);
-        return false;
-    }
+    $curlError = curl_error($ch);
     curl_close($ch);
-    $respArr = json_decode($response, true);
-    if ($httpCode === 200 && isset($respArr['messages'][0]['id'])) {
-        return true;
+    
+    // Handle errors
+    if ($curlError) {
+        logWhatsAppActivity($to, $templateActualName, 'CURL_ERROR', $curlError);
+        return [
+            'success' => false,
+            'message' => 'Network error: ' . $curlError,
+            'data' => null
+        ];
+    }
+    
+    $responseData = json_decode($response, true);
+    
+    // Check success
+    if ($httpCode === 200 && isset($responseData['messages'][0]['id'])) {
+        logWhatsAppActivity($to, $templateActualName, 'SUCCESS', $response);
+        return [
+            'success' => true,
+            'message' => 'Message sent successfully',
+            'data' => [
+                'message_id' => $responseData['messages'][0]['id'],
+                'phone' => $to
+            ]
+        ];
     } else {
-        error_log('WhatsApp API error: ' . $response);
+        $errorMsg = isset($responseData['error']['message']) 
+            ? $responseData['error']['message'] 
+            : 'Unknown error';
+        logWhatsAppActivity($to, $templateActualName, 'API_ERROR', $response);
+        return [
+            'success' => false,
+            'message' => 'API error: ' . $errorMsg,
+            'data' => $responseData
+        ];
+    }
+}
+
+/**
+ * Format phone number for WhatsApp
+ * 
+ * @param string $phone Phone number
+ * @return string|false Formatted phone or false if invalid
+ */
+function formatWhatsAppPhone($phone) {
+    if (!$phone) return false;
+    
+    // Remove all non-numeric characters
+    $phone = preg_replace('/[^0-9]/', '', $phone);
+    
+    // Remove leading zeros
+    $phone = ltrim($phone, '0');
+    
+    // Add country code if missing
+    if (strlen($phone) === 10) {
+        $phone = WHATSAPP_COUNTRY_CODE . $phone;
+    }
+    
+    // Validate length (should be 12 digits for India: 91 + 10 digits)
+    if (WHATSAPP_PHONE_VALIDATION && strlen($phone) < 10) {
         return false;
     }
+    
+    return $phone;
+}
+
+/**
+ * Get actual template name from identifier
+ * 
+ * @param string $identifier Template identifier
+ * @return string|false Template name or false
+ */
+function getTemplateName($identifier) {
+    // If it's a key in WHATSAPP_TEMPLATES
+    if (defined('WHATSAPP_TEMPLATES')) {
+        $templates = WHATSAPP_TEMPLATES;
+        if (isset($templates[$identifier])) {
+            return $templates[$identifier];
+        }
+    }
+    
+    // If it's already a template name
+    if (in_array($identifier, WHATSAPP_TEMPLATES)) {
+        return $identifier;
+    }
+    
+    return false;
+}
+
+/**
+ * Build template parameters array
+ * 
+ * @param string $templateName Template name
+ * @param array $variables Variables array
+ * @return array Parameters for API
+ */
+function buildTemplateParameters($templateName, $variables) {
+    $params = [];
+    
+    // Get expected variables for this template
+    $expectedVars = defined('WHATSAPP_TEMPLATE_VARIABLES') && isset(WHATSAPP_TEMPLATE_VARIABLES[$templateName])
+        ? WHATSAPP_TEMPLATE_VARIABLES[$templateName]
+        : array_keys($variables);
+    
+    // Build parameters in order
+    foreach ($expectedVars as $key) {
+        $value = isset($variables[$key]) ? $variables[$key] : '';
+        $params[] = [
+            'type' => 'text',
+            'text' => (string)$value
+        ];
+    }
+    
+    return $params;
+}
+
+/**
+ * Log WhatsApp activity
+ * 
+ * @param string $to Recipient
+ * @param string $template Template name
+ * @param string $status Status (SUCCESS, ERROR, TEST_MODE)
+ * @param string $details Additional details
+ */
+function logWhatsAppActivity($to, $template, $status, $details = '') {
+    if (!WHATSAPP_LOG_ENABLED) return;
+    
+    $logEntry = sprintf(
+        "[%s] TO: %s | TEMPLATE: %s | STATUS: %s | DETAILS: %s\n",
+        date('Y-m-d H:i:s'),
+        $to,
+        $template,
+        $status,
+        $details
+    );
+    
+    // Create logs directory if it doesn't exist
+    $logDir = dirname(WHATSAPP_LOG_FILE);
+    if (!is_dir($logDir)) {
+        mkdir($logDir, 0755, true);
+    }
+    
+    error_log($logEntry, 3, WHATSAPP_LOG_FILE);
+}
+
+/**
+ * Send notification based on event type
+ * Automatically determines which template to use
+ * 
+ * @param string $eventType Event identifier (e.g., 'service_status_changed')
+ * @param array $data Event data
+ * @return array Result of sendWhatsAppMessage
+ */
+function sendWhatsAppNotification($eventType, $data) {
+    // Check if auto notification is enabled for this event
+    if (defined('WHATSAPP_AUTO_NOTIFICATIONS') && 
+        isset(WHATSAPP_AUTO_NOTIFICATIONS[$eventType]) && 
+        !WHATSAPP_AUTO_NOTIFICATIONS[$eventType]) {
+        return [
+            'success' => false,
+            'message' => 'Auto notification disabled for this event',
+            'data' => null
+        ];
+    }
+    
+    // Map event types to templates and extract variables
+    switch ($eventType) {
+        case 'appointment_booked_payment_success':
+            return sendWhatsAppMessage(
+                $data['mobile'],
+                'APPOINTMENT_BOOKED_PAYMENT_SUCCESS',
+                [
+                    'name' => $data['customer_name'],
+                    'tracking_code' => $data['tracking_id'],
+                    'service_name' => $data['service_name'] ?? 'Appointment',
+                    'tracking_url' => $data['tracking_url'] ?? 'track.php'
+                ]
+            );
+            
+        case 'service_received':
+            return sendWhatsAppMessage(
+                $data['mobile'],
+                'SERVICE_RECEIVED',
+                [
+                    'name' => $data['customer_name'],
+                    'tracking_code' => $data['tracking_id'],
+                    'service_name' => $data['service_name'] ?? 'Service',
+                    'tracking_url' => $data['tracking_url'] ?? 'track.php'
+                ]
+            );
+            
+        case 'service_accepted':
+            return sendWhatsAppMessage(
+                $data['mobile'],
+                'SERVICE_ACCEPTED',
+                [
+                    'name' => $data['customer_name'],
+                    'tracking_code' => $data['tracking_id']
+                ]
+            );
+            
+        case 'service_completed':
+            return sendWhatsAppMessage(
+                $data['mobile'],
+                'SERVICE_COMPLETED',
+                [
+                    'name' => $data['customer_name'],
+                    'tracking_code' => $data['tracking_id'],
+                    'service_name' => $data['service_name'] ?? 'Service'
+                ]
+            );
+            
+        case 'file_uploaded':
+            return sendWhatsAppMessage(
+                $data['mobile'],
+                'SERVICE_FILE_UPLOADED',
+                [
+                    'name' => $data['customer_name'],
+                    'tracking_code' => $data['tracking_id']
+                ]
+            );
+            
+        case 'appointment_accepted':
+            return sendWhatsAppMessage(
+                $data['mobile'],
+                'APPOINTMENT_ACCEPTED',
+                [
+                    'name' => $data['customer_name'],
+                    'tracking_code' => $data['tracking_id'],
+                    'appointment_date' => $data['appointment_date'],
+                    'appointment_time' => $data['appointment_time']
+                ]
+            );
+            
+        case 'appointment_missed':
+            return sendWhatsAppMessage(
+                $data['mobile'],
+                'APPOINTMENT_MISSED',
+                [
+                    'name' => $data['customer_name'],
+                    'tracking_code' => $data['tracking_id']
+                ]
+            );
+            
+        case 'payment_received':
+            return sendWhatsAppMessage(
+                $data['mobile'],
+                'PAYMENT_RECEIVED',
+                [
+                    'name' => $data['customer_name'],
+                    'amount' => $data['amount'],
+                    'tracking_code' => $data['tracking_id']
+                ]
+            );
+            
+        default:
+            return [
+                'success' => false,
+                'message' => "Unknown event type: $eventType",
+                'data' => null
+            ];
+    }
+}
+
+/**
+ * Get WhatsApp notification history from database
+ * (Optional - requires database table)
+ * 
+ * @param string $trackingId Tracking ID
+ * @return array Notification history
+ */
+function getWhatsAppHistory($trackingId) {
+    // This would query a whatsapp_logs table if you create one
+    // For now, return empty array
+    return [];
 }
