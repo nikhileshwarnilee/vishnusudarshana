@@ -241,18 +241,31 @@ try {
     if (!empty($products) && is_array($products)) {
         $productNames = [];
         foreach ($products as $product) {
-            if (isset($product['id'])) {
-                // Try to fetch product name from database
+            // Prefer already-available names to avoid extra queries
+            if (!empty($product['name'])) {
+                $productNames[] = $product['name'];
+                continue;
+            }
+            if (!empty($product['product_name'])) {
+                $productNames[] = $product['product_name'];
+                continue;
+            }
+            // Fallback: fetch by ID if present
+            $productId = $product['id'] ?? $product['product_id'] ?? null;
+            if ($productId) {
                 try {
-                    $prodStmt = $pdo->prepare('SELECT name FROM products WHERE id = ? LIMIT 1');
-                    $prodStmt->execute([$product['id']]);
+                    $prodStmt = $pdo->prepare('SELECT product_name FROM products WHERE id = ? LIMIT 1');
+                    $prodStmt->execute([$productId]);
                     $prodName = $prodStmt->fetchColumn();
                     if ($prodName) {
                         $productNames[] = $prodName;
+                    } else {
+                        error_log('Product name not found for ID: ' . $productId);
+                        $productNames[] = 'Service Item';
                     }
                 } catch (Exception $e) {
-                    // Fallback to product ID if query fails
-                    $productNames[] = 'Product #' . $product['id'];
+                    error_log('Product lookup failed for ID ' . $productId . ': ' . $e->getMessage());
+                    $productNames[] = 'Service Item';
                 }
             }
         }
@@ -270,10 +283,10 @@ try {
             // Send automatic WhatsApp notification to customer
             $whatsappResult = sendWhatsAppNotification('appointment_booked_payment_success', [
                 'mobile' => $mobile,
-                'name' => $customerName,
+                'name' => $customerName ?: 'Customer',
                 'category' => 'Appointment',
                 'products_list' => $productsList,
-                'tracking_url' => $tracking_id  // Only tracking ID, URL structure is in template
+                'tracking_url' => $tracking_id  // Ensure tracking_id is passed
             ]);
             
             if (!$whatsappResult['success']) {
@@ -291,10 +304,10 @@ try {
             $serviceCategoryDisplay = ucwords(str_replace('-', ' ', $category));
             $whatsappResult = sendWhatsAppNotification('service_received', [
                 'mobile' => $mobile,
-                'name' => $customerName,
+                'name' => $customerName ?: 'Customer',
                 'category' => $serviceCategoryDisplay,
                 'products_list' => $productsList,
-                'tracking_url' => $tracking_id  // Only tracking ID, URL structure is in template
+                'tracking_url' => $tracking_id  // Ensure tracking_id is passed
             ]);
             
             if (!$whatsappResult['success']) {

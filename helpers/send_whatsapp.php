@@ -246,9 +246,9 @@ function buildAiSensyButtons($templateIdentifier, $variables) {
     foreach ($buttonConfig as $index => $button) {
         $buttonParam = isset($variables[$button['param']]) ? (string)$variables[$button['param']] : '';
         
-        // Skip button if parameter is empty
+        // Use fallback if parameter is empty (button is mandatory in template)
         if (empty($buttonParam)) {
-            continue;
+            $buttonParam = 'N/A';
         }
         
         $buttons[] = [
@@ -327,7 +327,8 @@ function sendWhatsAppNotification($eventType, $data) {
                 [
                     'name' => $data['name'] ?? $data['customer_name'] ?? '',
                     'category' => $data['category'] ?? 'Appointment',
-                    'products_list' => $data['products_list'] ?? ''
+                    'products_list' => $data['products_list'] ?? '',
+                    'tracking_url' => $data['tracking_url'] ?? $data['tracking_id'] ?? ''
                 ]
             );
             
@@ -338,7 +339,8 @@ function sendWhatsAppNotification($eventType, $data) {
                 [
                     'name' => $data['name'] ?? $data['customer_name'] ?? '',
                     'category' => $data['category'] ?? 'Service',
-                    'products_list' => $data['products_list'] ?? ''
+                    'products_list' => $data['products_list'] ?? '',
+                    'tracking_url' => $data['tracking_url'] ?? $data['tracking_id'] ?? ''
                 ]
             );
             
