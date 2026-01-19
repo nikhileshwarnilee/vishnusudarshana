@@ -187,90 +187,11 @@ if (!function_exists('isActivePage')) {
     }
 }
 ?>
-
 <!-- =======================
-     ADMIN TOP MENU BAR
-     ======================= -->
-<nav class="admin-top-menu">
-    <div class="admin-top-menu-inner">
-
-        <!-- Logo -->
-        <a href="<?= $baseUrl ?>/admin/index.php" class="admin-top-menu-logo">
-            <img src="<?= $baseUrl ?>/assets/images/logo/logo-iconpwa192.png" alt="Logo" class="admin-logo-img">
-            <span class="admin-logo-text">Admin Panel</span>
-        </a>
-
-        <!-- Menu -->
-        <ul class="admin-top-menu-list" id="adminTopMenuList">
-            <?php foreach ($menu as $label => $item): ?>
-                <?php
-                $hasSubmenu = isset($item['submenu']);
-                $isActive = false;
-                $activeSub = null;
-                if ($hasSubmenu) {
-                    foreach ($item['submenu'] as $subLabel => $subUrl) {
-                        if (isActivePage($subUrl, $currentPage)) {
-                            $isActive = true;
-                            $activeSub = $subLabel;
-                            break;
-                        }
-                    }
-                } else {
-                    if (isset($item['url']) && isActivePage($item['url'], $currentPage)) {
-                        $isActive = true;
-                    }
-                }
-                ?>
-
-                <li class="admin-top-menu-item <?= $hasSubmenu ? 'has-sub' : '' ?> <?= $isActive ? 'active' : '' ?>">
-
-                    <?php if ($hasSubmenu): ?>
-                        <a href="javascript:void(0)" class="admin-top-menu-link">
-                            <span class="icon"><?= $item['icon'] ?></span>
-                            <?php if ($label !== 'Settings') echo htmlspecialchars($label); ?>
-                            <span class="dropdown-arrow">▼</span>
-                        </a>
-
-                        <ul class="admin-top-menu-dropdown">
-                            <?php foreach ($item['submenu'] as $subLabel => $subUrl): ?>
-                                <li class="<?= ($activeSub === $subLabel) ? 'active' : '' ?>">
-                                    <a href="<?= htmlspecialchars($subUrl) ?>">
-                                        <?= htmlspecialchars($subLabel) ?>
-                                    </a>
-                                </li>
-                            <?php endforeach; ?>
-                        </ul>
-
-                    <?php else: ?>
-                        <a href="<?= htmlspecialchars($item['url']) ?>" class="admin-top-menu-link">
-                            <span class="icon"><?= $item['icon'] ?></span>
-                            <?php if ($label !== 'Logout') echo htmlspecialchars($label); ?>
-                        </a>
-                    <?php endif; ?>
-
-                </li>
-            <?php endforeach; ?>
-        </ul>
-
-        <!-- Mobile toggle -->
-        <div class="admin-top-menu-mobile-toggle" id="adminTopMenuToggle">☰</div>
-
-    </div>
-</nav>
-
-<!-- =======================
-     RESPONSIVE TABLES CSS
+     ADMIN MENU CSS (LOADED FIRST TO PREVENT FOUC)
      ======================= -->
 <link rel="stylesheet" href="<?= $baseUrl ?>/admin/includes/responsive-tables.css">
-
-<!-- =======================
-     RESPONSIVE CARDS CSS
-     ======================= -->
 <link rel="stylesheet" href="<?= $baseUrl ?>/admin/includes/responsive-cards.css">
-
-<!-- =======================
-     MENU CSS
-     ======================= -->
 <style>
 html, body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif !important;
@@ -503,46 +424,34 @@ body {
     background: #f8f9fa;
 }
 
-/* TABLET RESPONSIVE */
+/* Responsive styles */
 @media (max-width: 1400px) {
     .admin-top-menu-inner {
         gap: 16px;
         padding: 0 16px;
     }
-
     .admin-top-menu-logo {
         padding: 6px 12px;
     }
-
     .admin-logo-img {
         width: 36px;
         height: 36px;
     }
-
     .admin-logo-text {
         font-size: 1.1em;
     }
-
     .admin-top-menu-link {
         height: 38px;
         padding: 0 10px;
         font-size: 13px;
         gap: 5px;
     }
-
     .admin-top-menu-dropdown {
         min-width: 220px;
     }
-}
-
-/* MOBILE RESPONSIVE - ACTIVATED FROM 1200px AND BELOW */
-@media (max-width: 1400px) {
-    /* Body adjustment */
     body {
         padding-top: 60px;
     }
-
-    /* Fixed header */
     .admin-top-menu {
         position: fixed;
         top: 0;
@@ -554,8 +463,6 @@ body {
         border-bottom: 2px solid #dee2e6;
         box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
     }
-
-    /* Header container */
     .admin-top-menu-inner {
         display: flex;
         align-items: center;
@@ -566,8 +473,6 @@ body {
         gap: 12px;
         flex-wrap: nowrap;
     }
-
-    /* Logo section */
     .admin-top-menu-logo {
         display: flex;
         align-items: center;
@@ -577,24 +482,19 @@ body {
         flex: 0 0 auto;
         border-radius: 0;
     }
-
     .admin-top-menu-logo:hover {
         background: transparent;
     }
-
     .admin-logo-img {
         width: 36px;
         height: 36px;
         border-radius: 6px;
     }
-
     .admin-logo-text {
         font-size: 1.1em;
         font-weight: 700;
         color: #800000;
     }
-
-    /* Hide desktop menu */
     .admin-top-menu-list {
         display: none;
         position: fixed;
@@ -612,24 +512,18 @@ body {
         flex-direction: column;
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     }
-
     .admin-top-menu-list.show {
         display: block;
     }
-
-    /* Menu items */
     .admin-top-menu-item {
         display: block;
         width: 100%;
         border-bottom: 1px solid #e9ecef;
         position: relative;
     }
-
     .admin-top-menu-item:last-child {
         border-bottom: none;
     }
-
-    /* Menu links */
     .admin-top-menu-link {
         display: flex;
         align-items: center;
@@ -646,7 +540,6 @@ body {
         transition: all 0.25s ease;
         cursor: pointer;
     }
-
     .admin-top-menu-link .icon {
         display: flex;
         align-items: center;
@@ -654,12 +547,10 @@ body {
         min-width: 24px;
         opacity: 0.85;
     }
-
     .admin-top-menu-link .icon svg {
         width: 22px;
         height: 22px;
     }
-
     .admin-top-menu-link .dropdown-arrow {
         margin-left: auto;
         font-size: 11px;
@@ -667,41 +558,30 @@ body {
         transition: transform 0.25s ease;
         opacity: 0.6;
     }
-
     .admin-top-menu-link:active,
     .admin-top-menu-link:hover {
         background: #f8f9fa;
         border-left-color: #800000;
         color: #800000;
     }
-
     .admin-top-menu-link:hover .icon {
         opacity: 1;
     }
-
-    /* Active menu item */
     .admin-top-menu-item.active > .admin-top-menu-link {
         background: #fff5f5;
         border-left-color: #800000;
         color: #800000;
         font-weight: 600;
     }
-
     .admin-top-menu-item.active > .admin-top-menu-link .icon svg path {
         fill: #800000;
     }
-
-    /* Expanded dropdown arrow */
     .admin-top-menu-item.has-sub.expanded > .admin-top-menu-link .dropdown-arrow {
         transform: rotate(180deg);
     }
-
-    /* Disable hover dropdown on mobile */
     .admin-top-menu-item.has-sub:hover .admin-top-menu-dropdown {
         display: none;
     }
-
-    /* Submenu dropdown */
     .admin-top-menu-item.has-sub .admin-top-menu-dropdown {
         position: static;
         display: none;
@@ -714,23 +594,18 @@ body {
         padding: 0;
         list-style: none;
     }
-
     .admin-top-menu-item.has-sub.expanded .admin-top-menu-dropdown {
         display: block;
     }
-
-    /* Submenu items */
     .admin-top-menu-dropdown li {
         display: block;
         margin: 0;
         border-bottom: 1px solid #e0e0e0;
         list-style: none;
     }
-
     .admin-top-menu-dropdown li:last-child {
         border-bottom: none;
     }
-
     .admin-top-menu-dropdown li a {
         display: block;
         padding: 14px 20px 14px 56px;
@@ -742,7 +617,6 @@ body {
         border-left: 4px solid transparent;
         transition: all 0.2s ease;
     }
-
     .admin-top-menu-dropdown li a:active,
     .admin-top-menu-dropdown li a:hover {
         background: #ececec;
@@ -750,15 +624,12 @@ body {
         border-left-color: #800000;
         padding-left: 60px;
     }
-
     .admin-top-menu-dropdown li.active a {
         background: #e8e8e8;
         color: #800000;
         font-weight: 600;
         border-left-color: #800000;
     }
-
-    /* Mobile toggle button */
     .admin-top-menu-mobile-toggle {
         display: flex;
         align-items: center;
@@ -775,12 +646,10 @@ body {
         flex: 0 0 auto;
         margin-left: auto;
     }
-
     .admin-top-menu-mobile-toggle:hover {
         background: #f8f9fa;
         border-color: #800000;
     }
-
     .admin-top-menu-mobile-toggle.active {
         background: #800000;
         color: #ffffff;
@@ -788,55 +657,44 @@ body {
     }
 }
 
-/* SMALL MOBILE */
 @media (max-width: 600px) {
     body {
         padding-top: 56px;
     }
-
     .admin-top-menu {
         height: 56px;
     }
-
     .admin-top-menu-inner {
         height: 56px;
         padding: 0 10px;
     }
-
     .admin-top-menu-logo {
         height: 56px;
         gap: 6px;
     }
-
     .admin-logo-img {
         width: 32px;
         height: 32px;
     }
-
     .admin-logo-text {
         font-size: 1em;
     }
-
     .admin-top-menu-list {
         top: 56px;
         height: calc(100vh - 56px);
     }
-
     .admin-top-menu-link {
         height: 48px;
         padding: 0 16px;
         font-size: 14px;
     }
-
     .admin-top-menu-dropdown li a {
         padding: 12px 16px 12px 48px;
         font-size: 13px;
     }
-
     .admin-top-menu-dropdown li a:hover {
         padding-left: 52px;
     }
-
     .admin-top-menu-mobile-toggle {
         width: 40px;
         height: 40px;
@@ -844,29 +702,95 @@ body {
     }
 }
 
-/* EXTRA SMALL MOBILE */
 @media (max-width: 400px) {
     .admin-logo-text {
         font-size: 0.95em;
     }
-
     .admin-top-menu-link {
         padding: 0 12px;
         font-size: 13px;
         gap: 10px;
     }
-
     .admin-top-menu-link .icon svg {
         width: 20px;
         height: 20px;
     }
-
     .admin-top-menu-dropdown li a {
         padding: 11px 12px 11px 44px;
         font-size: 12px;
     }
 }
 </style>
+
+<!-- =======================
+     ADMIN TOP MENU BAR
+     ======================= -->
+<nav class="admin-top-menu">
+    <div class="admin-top-menu-inner">
+
+        <!-- Logo -->
+        <a href="<?= $baseUrl ?>/admin/index.php" class="admin-top-menu-logo">
+            <img src="<?= $baseUrl ?>/assets/images/logo/logo-iconpwa192.png" alt="Logo" class="admin-logo-img">
+            <span class="admin-logo-text">Admin Panel</span>
+        </a>
+
+        <!-- Menu -->
+        <ul class="admin-top-menu-list" id="adminTopMenuList">
+            <?php foreach ($menu as $label => $item): ?>
+                <?php
+                $hasSubmenu = isset($item['submenu']);
+                $isActive = false;
+                $activeSub = null;
+                if ($hasSubmenu) {
+                    foreach ($item['submenu'] as $subLabel => $subUrl) {
+                        if (isActivePage($subUrl, $currentPage)) {
+                            $isActive = true;
+                            $activeSub = $subLabel;
+                            break;
+                        }
+                    }
+                } else {
+                    if (isset($item['url']) && isActivePage($item['url'], $currentPage)) {
+                        $isActive = true;
+                    }
+                }
+                ?>
+
+                <li class="admin-top-menu-item <?= $hasSubmenu ? 'has-sub' : '' ?> <?= $isActive ? 'active' : '' ?>">
+
+                    <?php if ($hasSubmenu): ?>
+                        <a href="javascript:void(0)" class="admin-top-menu-link">
+                            <span class="icon"><?= $item['icon'] ?></span>
+                            <?php if ($label !== 'Settings') echo htmlspecialchars($label); ?>
+                            <span class="dropdown-arrow">▼</span>
+                        </a>
+
+                        <ul class="admin-top-menu-dropdown">
+                            <?php foreach ($item['submenu'] as $subLabel => $subUrl): ?>
+                                <li class="<?= ($activeSub === $subLabel) ? 'active' : '' ?>">
+                                    <a href="<?= htmlspecialchars($subUrl) ?>">
+                                        <?= htmlspecialchars($subLabel) ?>
+                                    </a>
+                                </li>
+                            <?php endforeach; ?>
+                        </ul>
+
+                    <?php else: ?>
+                        <a href="<?= htmlspecialchars($item['url']) ?>" class="admin-top-menu-link">
+                            <span class="icon"><?= $item['icon'] ?></span>
+                            <?php if ($label !== 'Logout') echo htmlspecialchars($label); ?>
+                        </a>
+                    <?php endif; ?>
+
+                </li>
+            <?php endforeach; ?>
+        </ul>
+
+        <!-- Mobile toggle -->
+        <div class="admin-top-menu-mobile-toggle" id="adminTopMenuToggle">☰</div>
+
+    </div>
+</nav>
 
 <!-- =======================
      MENU JS
