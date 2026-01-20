@@ -222,11 +222,26 @@ $customers = $stmt->fetchAll();
 // Select all checkboxes
 const selectAll = document.getElementById('selectAll');
 const rowChecks = () => Array.from(document.querySelectorAll('.row-check'));
+const updateBulkSelectedCount = () => {
+    const count = rowChecks().filter(cb => cb.checked).length;
+    const note = document.getElementById('bulkSelectionNote');
+    if (!note) return;
+    if (count > 0) {
+        note.textContent = `Selected: ${count} customer${count > 1 ? 's' : ''}`;
+        note.style.color = '#007bff';
+    } else {
+        note.textContent = 'None selected - will send to all in this list.';
+        note.style.color = '#444';
+    }
+};
 if (selectAll) {
     selectAll.addEventListener('change', () => {
         rowChecks().forEach(cb => cb.checked = selectAll.checked);
+        updateBulkSelectedCount();
     });
 }
+rowChecks().forEach(cb => cb.addEventListener('change', updateBulkSelectedCount));
+updateBulkSelectedCount();
 
 function openSingleMsgModal(name, mobile) {
     if (!mobile) { alert('No mobile number found.'); return; }
@@ -245,6 +260,7 @@ function closeMsgModal() {
 function openBulkMsgModal() {
     document.getElementById('bulkText').value = '';
     document.getElementById('bulkStatus').style.display = 'none';
+    updateBulkSelectedCount();
     document.getElementById('bulkModalBg').style.display = 'flex';
 }
 function closeBulkModal() {
@@ -343,7 +359,7 @@ document.getElementById('bulkForm').addEventListener('submit', function(e) {
         <div style="font-size:1.12em;color:#007bff;font-weight:700;margin-bottom:10px;">Send Bulk Messages</div>
         <form id="bulkForm" autocomplete="off">
             <input type="hidden" name="action" value="send_bulk">
-            <div style="margin-bottom:10px;color:#444;">If none selected, will send to all customers in this list.</div>
+            <div id="bulkSelectionNote" style="margin-bottom:10px;color:#444;">None selected - will send to all in this list.</div>
             <div style="margin-bottom:10px;">
                 <label for="bulkText" style="display:block; margin-bottom:6px;"><b>Message:</b></label>
                 <textarea name="message" id="bulkText" style="width:100%;height:110px;padding:8px;border-radius:6px;border:1px solid #ccc;font-family:Arial,sans-serif;resize:vertical;" placeholder="Enter your custom message..." required></textarea>
