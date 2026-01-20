@@ -19,6 +19,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (in_array($action, ['send_single', 'send_bulk'], true)) {
         $message = trim($data['message'] ?? '');
         $searchFilter = trim($data['search'] ?? '');
+        $selectAll = !empty($data['select_all']);
         $recipients = [];
 
         if ($action === 'send_single') {
@@ -28,7 +29,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $recipients[] = ['name' => $name, 'mobile' => $mobile];
             }
         } else { // send_bulk
-            if (!empty($data['recipients']) && is_array($data['recipients'])) {
+            if (!$selectAll && !empty($data['recipients']) && is_array($data['recipients'])) {
                 $recipients = $data['recipients'];
             } else {
                 // Fetch all customers (filtered by search if provided)
@@ -165,6 +166,7 @@ $customers = $stmt->fetchAll();
     <form class="filter-bar" method="get" action="">
         <input type="text" name="search" id="searchInput" value="<?= htmlspecialchars($search) ?>" placeholder="Search customers...">
         <button type="submit" class="btn-main">Search</button>
+        <button type="button" class="btn-main" style="background:#007bff;" onclick="selectAllCustomersDb()">Select All Customers (<?= $total_customers ?>)</button>
         <button type="button" class="btn-main" style="background:#25D366;" onclick="openBulkMsgModal()">Send Bulk Msgs</button>
     </form>
     <table>
@@ -219,13 +221,20 @@ $customers = $stmt->fetchAll();
     </div>
 </div>
 <script>
-// Select all checkboxes
+// Select all checkboxes and DB-wide selection
+let selectAllDb = false;
 const selectAll = document.getElementById('selectAll');
 const rowChecks = () => Array.from(document.querySelectorAll('.row-check'));
 const updateBulkSelectedCount = () => {
-    const count = rowChecks().filter(cb => cb.checked).length;
     const note = document.getElementById('bulkSelectionNote');
     if (!note) return;
+    const total = Number(note.dataset.total || 0);
+    if (selectAllDb) {
+        note.textContent = `Selected: ${total} customer${total === 1 ? '' : 's'} (all pages)`;
+        note.style.color = '#007bff';
+        return;
+    }
+    const count = rowChecks().filter(cb => cb.checked).length;
     if (count > 0) {
         note.textContent = `Selected: ${count} customer${count > 1 ? 's' : ''}`;
         note.style.color = '#007bff';
@@ -234,13 +243,23 @@ const updateBulkSelectedCount = () => {
         note.style.color = '#444';
     }
 };
+const selectAllCustomersDb = () => {
+    selectAllDb = true;
+    rowChecks().forEach(cb => cb.checked = false);
+    if (selectAll) selectAll.checked = false;
+    updateBulkSelectedCount();
+};
 if (selectAll) {
     selectAll.addEventListener('change', () => {
+        selectAllDb = false;
         rowChecks().forEach(cb => cb.checked = selectAll.checked);
         updateBulkSelectedCount();
     });
 }
-rowChecks().forEach(cb => cb.addEventListener('change', updateBulkSelectedCount));
+rowChecks().forEach(cb => cb.addEventListener('change', () => {
+    selectAllDb = false;
+    updateBulkSelectedCount();
+}));
 updateBulkSelectedCount();
 
 function openSingleMsgModal(name, mobile) {
@@ -303,7 +322,8 @@ document.getElementById('bulkForm').addEventListener('submit', function(e) {
     const payload = {
         action: 'send_bulk',
         message: document.getElementById('bulkText').value,
-        recipients: selected,
+        recipients: selectAllDb ? [] : selected,
+        select_all: selectAllDb ? 1 : 0,
         search: document.getElementById('searchInput') ? document.getElementById('searchInput').value : ''
     };
     fetch(window.location.pathname, {
@@ -359,7 +379,7 @@ document.getElementById('bulkForm').addEventListener('submit', function(e) {
         <div style="font-size:1.12em;color:#007bff;font-weight:700;margin-bottom:10px;">Send Bulk Messages</div>
         <form id="bulkForm" autocomplete="off">
             <input type="hidden" name="action" value="send_bulk">
-            <div id="bulkSelectionNote" style="margin-bottom:10px;color:#444;">None selected - will send to all in this list.</div>
+            <div id="bulkSelectionNote" data-total="<?= $total_customers ?>" style="margin-bottom:10px;color:#444;">None selected - will send to all in this list.</div>
             <div style="margin-bottom:10px;">
                 <label for="bulkText" style="display:block; margin-bottom:6px;"><b>Message:</b></label>
                 <textarea name="message" id="bulkText" style="width:100%;height:110px;padding:8px;border-radius:6px;border:1px solid #ccc;font-family:Arial,sans-serif;resize:vertical;" placeholder="Enter your custom message..." required></textarea>
