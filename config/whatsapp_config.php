@@ -65,7 +65,16 @@ define('WHATSAPP_TEMPLATES', [
     'APPOINTMENT_MESSAGE' => 'Admin Notes',
     
     // Offline Service Request - Admin submitted
-    'OFFLINE_SERVICE_REQUEST_RECEIVED' => 'Offline Service Request Received'
+    'OFFLINE_SERVICE_REQUEST_RECEIVED' => 'Offline Service Request Received',
+
+    // Payment - Offline service request collected
+    'SERVICE_REQUEST_PAYMENT_RECEIVED' => 'Service Request Payment Received',
+    
+    // Service Completed - Admin marks service as completed
+    'SERVICE_REQUEST_COMPLETED' => 'Service Request Completed',
+    
+    // File Upload - Admin uploads document for service request
+    'SERVICE_REQUEST_FILE_UPLOADED' => 'Service Request File Uploaded'
 ]);
 
 /**
@@ -113,7 +122,16 @@ define('WHATSAPP_TEMPLATE_VARIABLES', [
     'APPOINTMENT_MESSAGE' => ['name', 'message'],  // {{1}} = Customer Name, {{2}} = Custom message text
     
     // Offline Service Request - 4 parameters: name, category, products_list, tracking_id
-    'OFFLINE_SERVICE_REQUEST_RECEIVED' => ['name', 'category', 'products_list', 'tracking_id']
+    'OFFLINE_SERVICE_REQUEST_RECEIVED' => ['name', 'category', 'products_list', 'tracking_id'],
+
+    // Payment received for offline service request
+    'SERVICE_REQUEST_PAYMENT_RECEIVED' => ['name', 'tracking_id', 'amount'],
+    
+    // Service completed notification - 5 params: name, tracking_id, category, products_list, tracking_id
+    'SERVICE_REQUEST_COMPLETED' => ['name', 'tracking_id', 'category', 'products_list', 'tracking_id'],
+    
+    // File uploaded notification - 5 params: name, tracking_id, category, products_list, file_path
+    'SERVICE_REQUEST_FILE_UPLOADED' => ['name', 'tracking_id', 'category', 'products_list', 'file_path']
 ]);
 
 /**
@@ -135,6 +153,12 @@ define('WHATSAPP_TEMPLATE_BUTTONS', [
     ],
     'OFFLINE_SERVICE_REQUEST_RECEIVED' => [
         ['type' => 'url', 'param' => 'tracking_id']  // Track Service button uses tracking_id
+    ],
+    'SERVICE_REQUEST_COMPLETED' => [
+        ['type' => 'url', 'param' => 'tracking_id']  // Track Service button uses tracking_id (last param {{5}})
+    ],
+    'SERVICE_REQUEST_FILE_UPLOADED' => [
+        ['type' => 'url', 'param' => 'file_path']  // Download button uses file_path (param {{5}})
     ]
 ]);
 

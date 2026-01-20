@@ -7,6 +7,7 @@ if (!isset($_SESSION['user_id'])) {
 	exit;
 }
 require_once __DIR__ . '/../../config/db.php';
+require_once __DIR__ . '/../../helpers/send_whatsapp.php';
 
 $service_request_id = isset($_POST['service_request_id']) ? (int)$_POST['service_request_id'] : 0;
 $amount = isset($_POST['amount']) ? (float)$_POST['amount'] : 0;
@@ -62,6 +63,30 @@ try {
 		$transaction_details,
 		isset($_SESSION['user_id']) ? (int)$_SESSION['user_id'] : null
 	]);
+
+	// Send WhatsApp notification: Service Request Payment Received
+	try {
+		$customerName = $sr['customer_name'] ?? 'Customer';
+		$customerMobile = $sr['mobile'] ?? '';
+		$trackingId = $sr['tracking_id'] ?? '';
+		$amountCollected = number_format((float)$amount, 2, '.', '');
+		if ($customerMobile && $trackingId) {
+			sendWhatsAppMessage(
+				$customerMobile,
+				'SERVICE_REQUEST_PAYMENT_RECEIVED',
+				[
+					'name' => $customerName,
+					'tracking_id' => $trackingId,
+					'amount' => $amountCollected
+				]
+			);
+			error_log("Payment received WhatsApp sent to $customerMobile for tracking ID $trackingId, amount $amountCollected");
+		} else {
+			error_log('Payment received WhatsApp skipped: missing mobile or tracking ID for service_request_id ' . $service_request_id);
+		}
+	} catch (Throwable $e) {
+		error_log('Payment received WhatsApp failed: ' . $e->getMessage());
+	}
 
 	echo json_encode(['success'=>true]);
 } catch (Throwable $e) {
