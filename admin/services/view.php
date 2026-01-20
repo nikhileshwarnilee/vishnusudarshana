@@ -17,6 +17,42 @@ if (!$request) {
     exit;
 }
 
+// AJAX: Send note notification via Appointment Message template
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'send_note_notification') {
+    header('Content-Type: application/json');
+    $noteText = trim($_POST['note_text'] ?? '');
+    $mobile = $request['mobile'] ?? '';
+    $customerName = $request['customer_name'] ?? 'Customer';
+    
+    if ($noteText === '') {
+        echo json_encode(['success' => false, 'message' => 'Note text is required']);
+        exit;
+    }
+    if (!$mobile) {
+        echo json_encode(['success' => false, 'message' => 'Mobile number not available']);
+        exit;
+    }
+    try {
+        $result = sendWhatsAppNotification(
+            'admin_custom_message',
+            [
+                'mobile' => $mobile,
+                'name' => $customerName,
+                'message' => $noteText
+            ]
+        );
+        if ($result['success']) {
+            echo json_encode(['success' => true]);
+        } else {
+            echo json_encode(['success' => false, 'message' => $result['message'] ?? 'Failed to send']);
+        }
+    } catch (Throwable $e) {
+        error_log('Send note notification failed: ' . $e->getMessage());
+        echo json_encode(['success' => false, 'message' => 'Exception while sending']);
+    }
+    exit;
+}
+
 $statusOptions = ['Received', 'In Progress', 'Completed'];
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_status'])) {
     // Fetch latest service record BEFORE update
@@ -419,7 +455,11 @@ $adminNotes = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 <div style="background:#fff;border-left:3px solid #800000;padding:10px;margin-bottom:10px;border-radius:4px;">
                     <div style="color:#333;font-size:0.98em;margin-bottom:6px;"><?php echo nl2br(htmlspecialchars($note['note_text'])); ?></div>
                     <div style="color:#999;font-size:0.85em;font-style:italic;"><?php echo date('d M Y, h:i A', strtotime($note['created_at'])); ?></div>
-                    <button type="button" onclick="sendNoteNotification('<?php echo htmlspecialchars(addslashes($request['mobile'])); ?>', '<?php echo htmlspecialchars(addslashes($note['note_text'])); ?>')" style="background:#25D366;color:#fff;border:none;border-radius:6px;padding:6px 14px;font-size:0.95em;font-weight:600;cursor:pointer;margin-top:8px;">Send Notification</button>
+                        <?php $noteKey = 'note_' . md5($note['created_at'] . $note['note_text']); ?>
+                        <div style="display:flex;align-items:center;gap:10px;margin-top:8px;flex-wrap:wrap;">
+                            <button type="button" onclick="sendNoteNotification('<?php echo htmlspecialchars(addslashes($request['mobile'])); ?>', '<?php echo htmlspecialchars(addslashes($note['note_text'])); ?>', '<?php echo $noteKey; ?>')" style="background:#25D366;color:#fff;border:none;border-radius:6px;padding:6px 14px;font-size:0.95em;font-weight:600;cursor:pointer;">Send Notification</button>
+                            <span id="<?php echo $noteKey; ?>" class="note-status" style="color:#1a8917;font-size:0.9em;"></span>
+                        </div>
                 </div>
             <?php endforeach; ?>
         </div>
@@ -436,23 +476,46 @@ $adminNotes = $stmt->fetchAll(PDO::FETCH_ASSOC);
     </div>
 
     <script>
-        function sendNoteNotification(mobile, noteText) {
+        function sendNoteNotification(mobile, noteText, statusId) {
             if (!mobile) {
                 alert('Customer mobile number not available.');
                 return;
             }
-            var msg = encodeURIComponent(noteText);
-            var phone = mobile.replace(/[^0-9]/g, '');
-            if (phone.length < 10) {
-                alert('Invalid mobile number.');
-                return;
+            if (statusId) {
+                const el = document.getElementById(statusId);
+                if (el) { el.style.color = '#888'; el.textContent = 'Sending...'; }
             }
-            // If country code not present, add +91 (India) as default
-            if (phone.length === 10) {
-                phone = '91' + phone;
-            }
-            var waUrl = 'https://wa.me/' + phone + '?text=' + msg;
-            window.open(waUrl, '_blank');
+            const payload = new FormData();
+            payload.append('action', 'send_note_notification');
+            payload.append('note_text', noteText);
+            fetch(window.location.href, {
+                method: 'POST',
+                body: payload
+            }).then(r => r.json()).then(data => {
+                if (data.success) {
+                    if (statusId) {
+                        const el = document.getElementById(statusId);
+                        if (el) { el.style.color = '#1a8917'; el.textContent = 'Sent'; }
+                    } else {
+                        alert('Notification sent.');
+                    }
+                } else {
+                    if (statusId) {
+                        const el = document.getElementById(statusId);
+                        if (el) { el.style.color = '#c00'; el.textContent = data.message || 'Failed'; }
+                    } else {
+                        alert(data.message || 'Failed to send notification');
+                    }
+                }
+            }).catch(err => {
+                console.error(err);
+                if (statusId) {
+                    const el = document.getElementById(statusId);
+                    if (el) { el.style.color = '#c00'; el.textContent = 'Error'; }
+                } else {
+                    alert('Error sending notification');
+                }
+            });
         }
     function saveNote() {
         var noteText = document.getElementById('note_text').value.trim();
@@ -507,13 +570,19 @@ $adminNotes = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 if (data.notes.length > 0) {
                     var html = '<div style="background:#fef9f9;border:1px solid #f3caca;border-radius:8px;padding:12px;margin-bottom:18px;">';
                     data.notes.forEach(note => {
+                        var noteKey = 'note_' + Math.random().toString(36).substring(2, 10);
+                        var mobileEscaped = escapeJs(mobile);
+                        var noteTextEscaped = escapeJs(note.note_text);
                         var date = new Date(note.created_at);
                         var formattedDate = date.toLocaleDateString('en-GB', {day: '2-digit', month: 'short', year: 'numeric'}) + ', ' + 
                                            date.toLocaleTimeString('en-US', {hour: '2-digit', minute: '2-digit', hour12: true});
                         html += '<div style="background:#fff;border-left:3px solid #800000;padding:10px;margin-bottom:10px;border-radius:4px;">';
                         html += '<div style="color:#333;font-size:0.98em;margin-bottom:6px;">' + escapeHtml(note.note_text).replace(/\n/g, '<br>') + '</div>';
                         html += '<div style="color:#999;font-size:0.85em;font-style:italic;">' + formattedDate + '</div>';
-                        html += '<button type="button" onclick="sendNoteNotification(\'' + escapeJs(mobile) + '\', \'" + escapeJs(note.note_text) + "\')" style="background:#25D366;color:#fff;border:none;border-radius:6px;padding:6px 14px;font-size:0.95em;font-weight:600;cursor:pointer;margin-top:8px;">Send Notification</button>';
+                        html += '<div style="display:flex;align-items:center;gap:10px;margin-top:8px;flex-wrap:wrap;">';
+                        html += `<button type="button" onclick="sendNoteNotification('${mobileEscaped}', '${noteTextEscaped}', '${noteKey}')" style="background:#25D366;color:#fff;border:none;border-radius:6px;padding:6px 14px;font-size:0.95em;font-weight:600;cursor:pointer;">Send Notification</button>`;
+                        html += '<span id="' + noteKey + '" class="note-status" style="color:#1a8917;font-size:0.9em;"></span>';
+                        html += '</div>';
                         html += '</div>';
                     });
                     html += '</div>';

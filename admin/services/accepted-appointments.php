@@ -29,18 +29,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // WhatsApp: Appointment Completed (for each appointment)
             require_once __DIR__ . '/../../helpers/send_whatsapp.php';
             foreach ($appointmentIds as $id) {
-                $st = $pdo->prepare("SELECT customer_name, mobile, tracking_id FROM service_requests WHERE id = ?");
+                $st = $pdo->prepare("SELECT customer_name, mobile, tracking_id, form_data FROM service_requests WHERE id = ?");
                 $st->execute([$id]);
                 $row = $st->fetch(PDO::FETCH_ASSOC);
-                if ($row) {
+                if ($row && $row['mobile']) {
                     try {
-                        sendWhatsAppMessage(
-                            $row['mobile'],
-                            'appointment_completed',
-                            'en',
+                        $fd = json_decode($row['form_data'], true) ?? [];
+                        $assignedDate = $fd['assigned_date'] ?? '';
+                        $formattedDate = $assignedDate;
+                        if ($assignedDate) {
+                            $dobj = DateTime::createFromFormat('Y-m-d', $assignedDate);
+                            if ($dobj) {
+                                $formattedDate = $dobj->format('d F Y');
+                            }
+                        }
+
+                        sendWhatsAppNotification(
+                            'appointment_completed_admin',
                             [
+                                'mobile' => $row['mobile'],
                                 'name' => $row['customer_name'],
-                                'tracking_id' => $row['tracking_id']
+                                'tracking_id' => $row['tracking_id'],
+                                'appointment_date' => $formattedDate
                             ]
                         );
                     } catch (Throwable $e) {
@@ -50,6 +60,91 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             header('Location: accepted-appointments.php?success=completed');
+            exit;
+        }
+    }
+    
+    // Handle "Cancel" action
+    elseif (isset($_POST['action']) && $_POST['action'] === 'cancel') {
+        $appointmentIds = $_POST['appointment_ids'] ?? [];
+        if (!empty($appointmentIds)) {
+            $placeholders = implode(',', array_fill(0, count($appointmentIds), '?'));
+            $sql = "
+                UPDATE service_requests
+                SET service_status = 'Received',
+                    updated_at = NOW()
+                WHERE id IN ($placeholders)
+                  AND category_slug = 'appointment'
+                  AND payment_status = 'Paid'
+                  AND service_status = 'Accepted'
+            ";
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute($appointmentIds);
+
+            // WhatsApp: Appointment Cancelled (for each appointment)
+            require_once __DIR__ . '/../../helpers/send_whatsapp.php';
+            foreach ($appointmentIds as $id) {
+                $st = $pdo->prepare("SELECT customer_name, mobile, tracking_id FROM service_requests WHERE id = ?");
+                $st->execute([$id]);
+                $row = $st->fetch(PDO::FETCH_ASSOC);
+                if ($row && $row['mobile']) {
+                    try {
+                        sendWhatsAppNotification(
+                            'appointment_cancelled_admin',
+                            [
+                                'mobile' => $row['mobile'],
+                                'name' => $row['customer_name'],
+                                'tracking_id' => $row['tracking_id']
+                            ]
+                        );
+                    } catch (Throwable $e) {
+                        error_log('WhatsApp cancel failed: ' . $e->getMessage());
+                    }
+                }
+            }
+
+            header('Location: accepted-appointments.php?success=cancelled');
+            exit;
+        }
+    }
+    
+    // Handle "Send Custom Message" action
+    elseif (isset($_POST['action']) && $_POST['action'] === 'send_message') {
+        $appointmentIds = $_POST['appointment_ids'] ?? [];
+        $customMessage = $_POST['custom_message'] ?? '';
+        
+        if (!empty($appointmentIds) && !empty($customMessage)) {
+            require_once __DIR__ . '/../../helpers/send_whatsapp.php';
+            $successCount = 0;
+            
+            foreach ($appointmentIds as $id) {
+                $st = $pdo->prepare("SELECT customer_name, mobile FROM service_requests WHERE id = ?");
+                $st->execute([$id]);
+                $row = $st->fetch(PDO::FETCH_ASSOC);
+                if ($row && $row['mobile']) {
+                    try {
+                        $result = sendWhatsAppNotification(
+                            'admin_custom_message',
+                            [
+                                'mobile' => $row['mobile'],
+                                'name' => $row['customer_name'] ?? 'Customer',
+                                'message' => $customMessage
+                            ]
+                        );
+                        
+                        if ($result['success']) {
+                            $successCount++;
+                            error_log("Custom message sent to {$row['mobile']}: " . substr($customMessage, 0, 50));
+                        } else {
+                            error_log("Custom message failed to {$row['mobile']}: " . $result['message']);
+                        }
+                    } catch (Throwable $e) {
+                        error_log('Custom message failed: ' . $e->getMessage());
+                    }
+                }
+            }
+            
+            header('Location: accepted-appointments.php?success=message_sent&count=' . $successCount);
             exit;
         }
     }
@@ -110,12 +205,23 @@ h1 { color: #800000; margin-bottom: 18px; }
 .action-bar.show { display: flex; }
 .action-btn { padding: 8px 16px; border-radius: 6px; border: none; cursor: pointer; font-weight: 600; font-size: 0.95em; }
 .btn-complete { background: #28a745; color: #fff; }
+.btn-cancel { background: #dc3545; color: #fff; margin-left: 8px; }
+.btn-message { background: #007bff; color: #fff; margin-left: 8px; }
 .service-table { width: 100%; border-collapse: collapse; background: #fff; box-shadow: 0 2px 12px #e0bebe22; border-radius: 12px; overflow: hidden; }
 .service-table th, .service-table td { padding: 12px 10px; border-bottom: 1px solid #f3caca; text-align: left; }
 .service-table th { background: #f9eaea; color: #800000; }
 .no-data { text-align: center; color: #777; padding: 24px; }
 .status-badge { padding: 4px 12px; border-radius: 8px; font-weight: 600; font-size: 0.9em; display: inline-block; min-width: 80px; text-align: center; }
 .status-accepted { background: #e5f0ff; color: #0056b3; }
+.modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); }
+.modal.show { display: flex; align-items: center; justify-content: center; }
+.modal-content { background: #fff; padding: 24px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); width: 90%; max-width: 500px; }
+.modal-header { font-size: 1.3em; font-weight: 600; color: #800000; margin-bottom: 16px; }
+.modal-body { margin-bottom: 16px; }
+.modal-body textarea { width: 100%; height: 120px; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-family: Arial, sans-serif; resize: vertical; }
+.modal-footer { display: flex; gap: 10px; justify-content: flex-end; }
+.btn-send { background: #007bff; color: #fff; padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; }
+.btn-close { background: #ccc; color: #333; padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; }
 </style>
 </head>
 <body>
@@ -138,6 +244,8 @@ h1 { color: #800000; margin-bottom: 18px; }
         <div class="action-bar" id="actionBar">
             <span id="selectedCount">0</span> selected
             <button class="action-btn btn-complete" onclick="submitComplete()">Mark Completed</button>
+            <button class="action-btn btn-cancel" onclick="submitCancel()">Cancel Appointments</button>
+            <button class="action-btn btn-message" onclick="openMessageModal()">Send Message</button>
         </div>
 
         <form id="completeForm" method="POST">
@@ -238,8 +346,89 @@ function submitComplete() {
         input.value = id;
         form.appendChild(input);
     });
+    form.action = '?action=complete';
     form.submit();
 }
+
+function submitCancel() {
+    if (selectedIds.length === 0) return;
+    if (!confirm(`Cancel ${selectedIds.length} appointment(s)? Customers will be notified.`)) return;
+    const form = document.getElementById('completeForm');
+    // remove existing hidden inputs
+    Array.from(form.querySelectorAll('input[name="appointment_ids[]"]')).forEach(el => el.remove());
+    selectedIds.forEach(id => {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'appointment_ids[]';
+        input.value = id;
+        form.appendChild(input);
+    });
+    form.action = location.href;
+    document.querySelector('input[name="action"]').value = 'cancel';
+    form.submit();
+}
+
+function openMessageModal() {
+    if (selectedIds.length === 0) {
+        alert('Please select at least one appointment');
+        return;
+    }
+    document.getElementById('messageModal').classList.add('show');
+}
+
+function closeMessageModal() {
+    document.getElementById('messageModal').classList.remove('show');
+    document.getElementById('customMessage').value = '';
+}
+
+function submitMessage() {
+    const message = document.getElementById('customMessage').value.trim();
+    if (!message) {
+        alert('Please write a message');
+        return;
+    }
+    if (!confirm(`Send message to ${selectedIds.length} customer(s)?`)) return;
+    
+    const form = document.getElementById('completeForm');
+    Array.from(form.querySelectorAll('input[name="appointment_ids[]"]')).forEach(el => el.remove());
+    selectedIds.forEach(id => {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'appointment_ids[]';
+        input.value = id;
+        form.appendChild(input);
+    });
+    
+    const msgInput = document.createElement('input');
+    msgInput.type = 'hidden';
+    msgInput.name = 'custom_message';
+    msgInput.value = message;
+    form.appendChild(msgInput);
+    
+    form.action = location.href;
+    document.querySelector('input[name="action"]').value = 'send_message';
+    form.submit();
+    closeMessageModal();
+}
+
+document.getElementById('messageModal')?.addEventListener('click', (e) => {
+    if (e.target.id === 'messageModal') closeMessageModal();
+});
 </script>
+
+<!-- Custom Message Modal -->
+<div id="messageModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">Send Custom Message</div>
+        <div class="modal-body">
+            <textarea id="customMessage" placeholder="Type your message here..."></textarea>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-close" onclick="closeMessageModal()">Cancel</button>
+            <button class="btn-send" onclick="submitMessage()">Send Message</button>
+        </div>
+    </div>
+</div>
+
 </body>
 </html>

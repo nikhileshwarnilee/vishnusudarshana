@@ -1,5 +1,7 @@
 <?php
 require_once __DIR__ . '/../../config/db.php';
+require_once __DIR__ . '/../../helpers/send_whatsapp.php';
+
 // Fetch categories for dropdown
 $catStmt = $pdo->query("SELECT category_slug, category_name FROM service_categories ORDER BY sequence ASC, id ASC");
 $categoryOptions = $catStmt->fetchAll(PDO::FETCH_ASSOC);
@@ -88,6 +90,51 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['category_slug'])) {
         $tracking_id
     ]);
     $successMsg = 'Service request added successfully! Tracking ID: ' . $tracking_id;
+    
+    // Send WhatsApp notification
+    try {
+        $customerName = $data['full_name'] ?? 'Customer';
+        $customerMobile = $data['mobile'] ?? '';
+        
+        // Get category name
+        $categoryStmt = $pdo->prepare("SELECT category_name FROM service_categories WHERE category_slug = ?");
+        $categoryStmt->execute([$category]);
+        $categoryRow = $categoryStmt->fetch(PDO::FETCH_ASSOC);
+        $categoryName = $categoryRow ? $categoryRow['category_name'] : ucfirst(str_replace('-', ' ', $category));
+        
+        // Parse selected products for message
+        $productsArray = json_decode($selected_products, true) ?: [];
+        $productsList = '';
+        if (is_array($productsArray) && count($productsArray) > 0) {
+            foreach ($productsArray as $prod) {
+                $qty = isset($prod['qty']) ? $prod['qty'] : 1;
+                // Fetch product name
+                $pstmt = $pdo->prepare("SELECT product_name FROM products WHERE id = ?");
+                $pstmt->execute([$prod['id'] ?? 0]);
+                $prow = $pstmt->fetch(PDO::FETCH_ASSOC);
+                $prodName = $prow ? $prow['product_name'] : 'Product #' . ($prod['id'] ?? 'N/A');
+                $productsList .= ($productsList ? ', ' : '') . $prodName . ' (Qty: ' . $qty . ')';
+            }
+        } else {
+            $productsList = 'No products selected';
+        }
+        
+        // Send via WhatsApp using OFFLINE_SERVICE_REQUEST_RECEIVED template
+        sendWhatsAppMessage(
+            $customerMobile,
+            'OFFLINE_SERVICE_REQUEST_RECEIVED',
+            [
+                'name' => $customerName,
+                'category' => $categoryName,
+                'products_list' => $productsList,
+                'tracking_id' => $tracking_id
+            ]
+        );
+        error_log("Offline service request WhatsApp sent to $customerMobile for tracking ID $tracking_id");
+    } catch (Throwable $e) {
+        error_log('Offline service request WhatsApp failed: ' . $e->getMessage());
+        // Don't fail the request, just log the error
+    }
 }
 ?>
 <!DOCTYPE html>

@@ -42,6 +42,15 @@ define('WHATSAPP_TEMPLATES', [
     'APPOINTMENT_CANCELLED' => 'Website Service Request Confirmation',
     'APPOINTMENT_MISSED' => 'Website Service Request Confirmation',
     
+    // Admin Appointment Scheduled - New template for admin-triggered acceptance
+    'APPOINTMENT_SCHEDULED' => 'Appointment Scheduled',
+
+    // Admin Appointment Completed
+    'APPOINTMENT_COMPLETED' => 'Appointment Completed',
+    
+    // Admin Appointment Cancelled
+    'APPOINTMENT_CANCELLED' => 'Appointment Cancelled',
+    
     // Payment Templates - Use "Website Service Request Confirmation" campaign
     'PAYMENT_RECEIVED' => 'Website Service Request Confirmation',
     'PAYMENT_PENDING' => 'Website Service Request Confirmation',
@@ -52,7 +61,11 @@ define('WHATSAPP_TEMPLATES', [
     // General Templates
     'WELCOME_MESSAGE' => 'Website Service Request Confirmation',
     'OTP_VERIFICATION' => 'OTP for Download',
-    'CUSTOM_MESSAGE' => 'Website Service Request Confirmation'
+    'CUSTOM_MESSAGE' => 'Website Service Request Confirmation',
+    'APPOINTMENT_MESSAGE' => 'Admin Notes',
+    
+    // Offline Service Request - Admin submitted
+    'OFFLINE_SERVICE_REQUEST_RECEIVED' => 'Offline Service Request Received'
 ]);
 
 /**
@@ -77,6 +90,15 @@ define('WHATSAPP_TEMPLATE_VARIABLES', [
     'APPOINTMENT_COMPLETED' => ['name', 'category', 'products_list', 'tracking_url'],
     'APPOINTMENT_CANCELLED' => ['name', 'category', 'products_list', 'tracking_url'],
     
+    // Admin Appointment Scheduled - 6 parameters: name, tracking_id, date, from_time, to_time, tracking_url
+    'APPOINTMENT_SCHEDULED' => ['name', 'tracking_id', 'appointment_date', 'from_time', 'to_time', 'tracking_url'],
+
+    // Admin Appointment Completed - 3 parameters: name, tracking_id, appointment_date
+    'APPOINTMENT_COMPLETED' => ['name', 'tracking_id', 'appointment_date'],
+    
+    // Admin Appointment Cancelled - 2 parameters: name, tracking_id
+    'APPOINTMENT_CANCELLED' => ['name', 'tracking_id'],
+    
     // Payment Templates
     'PAYMENT_RECEIVED' => ['name', 'amount', 'tracking_code'],
     'PAYMENT_CONFIRMED' => ['name', 'amount', 'payment_id'],
@@ -87,7 +109,11 @@ define('WHATSAPP_TEMPLATE_VARIABLES', [
     // General Templates
     'WELCOME_MESSAGE' => ['name'],
     'CUSTOM_MESSAGE' => ['name'],
-    'OTP_VERIFICATION' => ['otp_code']  // {{1}} = otp_code for message body
+    'OTP_VERIFICATION' => ['otp_code'],  // {{1}} = otp_code for message body
+    'APPOINTMENT_MESSAGE' => ['name', 'message'],  // {{1}} = Customer Name, {{2}} = Custom message text
+    
+    // Offline Service Request - 4 parameters: name, category, products_list, tracking_id
+    'OFFLINE_SERVICE_REQUEST_RECEIVED' => ['name', 'category', 'products_list', 'tracking_id']
 ]);
 
 /**
@@ -103,6 +129,12 @@ define('WHATSAPP_TEMPLATE_BUTTONS', [
     ],
     'APPOINTMENT_BOOKED_PAYMENT_SUCCESS' => [
         ['type' => 'url', 'param' => 'tracking_url']  // Track button uses tracking_url
+    ],
+    'APPOINTMENT_SCHEDULED' => [
+        ['type' => 'url', 'param' => 'tracking_url']  // Track button uses tracking_url
+    ],
+    'OFFLINE_SERVICE_REQUEST_RECEIVED' => [
+        ['type' => 'url', 'param' => 'tracking_id']  // Track Service button uses tracking_id
     ]
 ]);
 

@@ -396,6 +396,39 @@ function sendWhatsAppNotification($eventType, $data) {
                     'tracking_code' => $data['tracking_id']
                 ]
             );
+            case 'appointment_completed_admin':
+                return sendWhatsAppMessage(
+                    $data['mobile'],
+                    'APPOINTMENT_COMPLETED',
+                    [
+                        'name' => $data['name'] ?? $data['customer_name'] ?? '',
+                        'tracking_id' => $data['tracking_id'] ?? '',
+                        'appointment_date' => $data['appointment_date'] ?? ''
+                    ]
+                );
+            
+        case 'appointment_cancelled_admin':
+            return sendWhatsAppMessage(
+                $data['mobile'],
+                'APPOINTMENT_CANCELLED',
+                [
+                    'name' => $data['name'] ?? $data['customer_name'] ?? '',
+                    'tracking_id' => $data['tracking_id'] ?? ''
+                ]
+            );
+        case 'admin_appointment_scheduled':
+            return sendWhatsAppMessage(
+                $data['mobile'],
+                'APPOINTMENT_SCHEDULED',
+                [
+                    'name' => $data['name'] ?? $data['customer_name'] ?? '',
+                    'tracking_id' => $data['tracking_id'] ?? '',
+                    'appointment_date' => $data['appointment_date'] ?? '',
+                    'from_time' => $data['from_time'] ?? '',
+                    'to_time' => $data['to_time'] ?? '',
+                    'tracking_url' => $data['tracking_id'] ?? ''
+                ]
+            );
             
         case 'payment_received':
             return sendWhatsAppMessage(
@@ -414,6 +447,16 @@ function sendWhatsAppNotification($eventType, $data) {
                 'message' => "Unknown event type: $eventType",
                 'data' => null
             ];
+        
+        case 'admin_custom_message':
+            return sendWhatsAppMessage(
+                $data['mobile'],
+                'APPOINTMENT_MESSAGE',
+                [
+                    'name' => $data['name'] ?? $data['customer_name'] ?? 'Customer',
+                    'message' => $data['message'] ?? ''
+                ]
+            );
     }
 }
 
