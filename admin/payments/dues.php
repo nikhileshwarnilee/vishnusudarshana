@@ -171,7 +171,7 @@ $queryStr = http_build_query(array_diff_key($_GET, ['page' => '']));
 			<th>Paid Till Date</th>
 			<th>Unpaid Dues</th>
 			<th>Action</th>
-			<th>Send Notification</th>
+			<th>MSG</th>
 		</tr>
 		<?php if (empty($with_dues)): ?>
 			<tr><td colspan="9" style="text-align:center; color:#888;">No customers with dues.</td></tr>
@@ -190,8 +190,9 @@ $queryStr = http_build_query(array_diff_key($_GET, ['page' => '']));
 				<td>
 					<button type="button" class="action-btn" style="background:#25D366;color:#fff;" onclick="sendDueReminder(<?= $row['id'] ?>, '<?= htmlspecialchars(addslashes($row['name'])) ?>', '<?= htmlspecialchars($row['mobile']) ?>', <?= $row['unpaid_dues'] ?>, this)">
 						<span class="btn-text">Send Reminder</span>
-					</button>
-				</td>
+					</button>				<button type="button" class="action-btn" style="background:#007bff;color:#fff;" onclick="openCustomMsgModal(<?= $row['id'] ?>, '<?= htmlspecialchars(addslashes($row['name'])) ?>', '<?= htmlspecialchars($row['mobile']) ?>')">
+					<span class="btn-text">Custom Msg</span>
+				</button>				</td>
 			</tr>
 		<?php endforeach; endif; ?>
 	</table>
