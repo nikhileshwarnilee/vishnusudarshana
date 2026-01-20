@@ -1,6 +1,4 @@
-[2026-01-20 15:55:50] TO: 919922550797 | TEMPLATE: Service Request File Uploaded | STATUS: API_ERROR | DETAILS: {"message":"Media URL Missing"}
-[2026-01-20 16:07:41] TO: 919922550797 | TEMPLATE: Service Request File Uploaded | STATUS: SUCCESS | DETAILS: {"success":"true","submitted_message_id":"a444db10-19dc-4322-9c64-3e2e18e340ac"}
-[2026-01-20 16:39:53] TO: 919595744266 | TEMPLATE: Payment Dues Reminder | STATUS: API_ERROR | DETAILS: {"message":"Campaign does not exist."}
-[2026-01-20 16:40:54] TO: 919595744266 | TEMPLATE: Payment Dues Reminder | STATUS: SUCCESS | DETAILS: {"success":"true","submitted_message_id":"106065af-7f22-48b2-8c97-cac0a5bac711"}
-[2026-01-20 17:02:25] TO: 919922550797 | TEMPLATE: Payment Dues Reminder | STATUS: SUCCESS | DETAILS: {"success":"true","submitted_message_id":"39a54ce0-7f41-40c5-ae2c-0af0a4a908f3"}
-[2026-01-20 17:02:26] TO: 919595744266 | TEMPLATE: Payment Dues Reminder | STATUS: SUCCESS | DETAILS: {"success":"true","submitted_message_id":"4f68800e-c209-415e-b618-051eb61ec1b1"}
+[2026-01-20 18:22:00] TO: 919595744266 | TEMPLATE: Schedule Manager Marathi | STATUS: SUCCESS | DETAILS: {"success":"true","submitted_message_id":"ef9d0336-6d6d-4fb6-99fd-79332a7d607d"}
+[2026-01-20 18:24:41] TO: 919922550797 | TEMPLATE: Schedule Manager Marathi | STATUS: SUCCESS | DETAILS: {"success":"true","submitted_message_id":"80954ad7-813b-43bc-a1f3-23ee58bfb9f1"}
+[2026-01-20 18:25:13] TO: 918237877268 | TEMPLATE: Schedule Manager Marathi | STATUS: SUCCESS | DETAILS: {"success":"true","submitted_message_id":"d6abacb2-c9ed-49ce-91d1-52254e2dbc0e"}
+[2026-01-20 18:26:03] TO: 919922550797 | TEMPLATE: Schedule Manager Marathi | STATUS: SUCCESS | DETAILS: {"success":"true","submitted_message_id":"89445824-3441-4ef0-9c85-c1327a458746"}

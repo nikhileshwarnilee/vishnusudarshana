@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../../config/db.php';
+require_once __DIR__ . '/../../helpers/send_whatsapp.php';
 session_start();
 $user_id = $_SESSION['user_id'] ?? 0;
 $isAdmin = ($user_id == 1);
@@ -107,6 +108,33 @@ if ($action === 'create') {
     }
     $stmt = $pdo->prepare("INSERT INTO admin_schedule (title, description, schedule_date, end_date, start_time, end_time, status, assigned_user_id, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
     $stmt->execute([$title, $description, $start_date, $end_date, $start_time, $end_time, $status, $assigned_user_id, $user_id]);
+
+    // Notify assigned user if admin creates a blocked schedule entry
+    if ($isAdmin && $status === 'blocked') {
+        $userStmt = $pdo->prepare('SELECT name, mobile FROM users WHERE id = ?');
+        $userStmt->execute([$assigned_user_id]);
+        $userData = $userStmt->fetch(PDO::FETCH_ASSOC);
+        if ($userData && !empty($userData['mobile'])) {
+            $dateRange = ($start_date === $end_date) ? $start_date : ($start_date . ' to ' . $end_date);
+            $timeRange = $start_time . ' - ' . $end_time;
+            $waResult = sendWhatsAppMessage(
+                $userData['mobile'],
+                'SCHEDULE_BLOCKED',
+                [
+                    'name' => $userData['name'] ?? '',
+                    'date_range' => $dateRange,
+                    'title' => $title,
+                    'time_range' => $timeRange,
+                    'status' => ucfirst($status),
+                    'description' => $description ?? ''
+                ]
+            );
+            error_log('Schedule blocked notification to ' . $userData['mobile'] . ': ' . json_encode($waResult));
+        } else {
+            error_log('Schedule blocked notification skipped for user ' . $assigned_user_id . ' (no mobile)');
+        }
+    }
+
     echo json_encode(['success' => true, 'msg' => 'Schedule created successfully.']);
     exit;
 }

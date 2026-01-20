@@ -187,12 +187,14 @@ $queryStr = http_build_query(array_diff_key($_GET, ['page' => '']));
 				<td>
 					<button type="button" class="action-btn collect-btn" onclick="openCollectModal(<?= $row['id'] ?>, '<?= htmlspecialchars(addslashes($row['name'])) ?>', <?= $row['unpaid_dues'] ?>)">Collect</button>
 				</td>
-				<td>
-					<button type="button" class="action-btn" style="background:#25D366;color:#fff;" onclick="sendDueReminder(<?= $row['id'] ?>, '<?= htmlspecialchars(addslashes($row['name'])) ?>', '<?= htmlspecialchars($row['mobile']) ?>', <?= $row['unpaid_dues'] ?>, this)">
-						<span class="btn-text">Send Reminder</span>
-					</button>				<button type="button" class="action-btn" style="background:#007bff;color:#fff;" onclick="openCustomMsgModal(<?= $row['id'] ?>, '<?= htmlspecialchars(addslashes($row['name'])) ?>', '<?= htmlspecialchars($row['mobile']) ?>')">
+			<td style="display:flex; gap:6px; flex-wrap:wrap;">
+				<button type="button" class="action-btn" style="background:#25D366;color:#fff;" onclick="sendDueReminder(<?= $row['id'] ?>, '<?= htmlspecialchars(addslashes($row['name'])) ?>', '<?= htmlspecialchars($row['mobile']) ?>', <?= $row['unpaid_dues'] ?>, this)">
+					<span class="btn-text">Send Reminder</span>
+				</button>
+				<button type="button" class="action-btn" style="background:#007bff;color:#fff;" onclick="openCustomMsgModal(<?= $row['id'] ?>, '<?= htmlspecialchars(addslashes($row['name'])) ?>', '<?= htmlspecialchars($row['mobile']) ?>')">
 					<span class="btn-text">Custom Msg</span>
-				</button>				</td>
+				</button>
+			</td>
 			</tr>
 		<?php endforeach; endif; ?>
 	</table>
@@ -275,6 +277,85 @@ function openCollectModal(id, name, due) {
 function closeCollectModal() {
 	document.getElementById('collectModalBg').style.display = 'none';
 }
+</script>
+
+<!-- Custom Message Modal -->
+<div id="customMsgModalBg" style="display:none; position:fixed; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.18); z-index:1000; align-items:center; justify-content:center;">
+	<div id="customMsgModal" style="background:#fff; border-radius:12px; box-shadow:0 2px 16px #80000033; padding:32px 28px 18px 28px; min-width:340px; max-width:95vw; width:420px; text-align:left; position:relative;">
+		<div style="font-size:1.18em;color:#007bff;font-weight:700;margin-bottom:10px;">Send Custom Message</div>
+		<form id="customMsgForm" autocomplete="off">
+			<input type="hidden" name="customer_id" id="customMsgCustomerId">
+			<input type="hidden" name="customer_name" id="customMsgCustomerNameInput">
+			<input type="hidden" name="mobile" id="customMsgCustomerMobileInput">
+			<input type="hidden" name="action" value="custom_msg">
+			<div style="margin-bottom:10px;color:#444;"><b>Customer:</b> <span id="customMsgCustomerName"></span></div>
+			<div style="margin-bottom:10px;color:#444;"><b>Mobile:</b> <span id="customMsgCustomerMobile"></span></div>
+			<div style="margin-bottom:10px;">
+				<label for="customMsgText" style="display:block; margin-bottom:5px;"><b>Message:</b></label>
+				<textarea name="message" id="customMsgText" style="width:100%;height:100px;padding:8px;border-radius:6px;border:1px solid #ccc;font-family:Arial,sans-serif;resize:vertical;" placeholder="Enter your custom message..." required></textarea>
+			</div>
+			<div style="margin-top:18px;text-align:center;">
+				<button type="submit" style="background:#007bff;color:#fff;padding:8px 24px;border:none;border-radius:8px;font-weight:600;cursor:pointer;">Send Message</button>
+				&nbsp;
+				<button type="button" onclick="closeCustomMsgModal()" style="background:#800000;color:#fff;padding:8px 24px;border:none;border-radius:8px;font-weight:600;cursor:pointer;">Cancel</button>
+			</div>
+			<div id="customMsgMsg" style="margin-top:10px; color:#c00; display:none;"></div>
+		</form>
+	</div>
+</div>
+<script>
+function openCustomMsgModal(id, name, mobile) {
+	document.getElementById('customMsgCustomerId').value = id;
+	document.getElementById('customMsgCustomerName').textContent = name;
+	document.getElementById('customMsgCustomerMobile').textContent = mobile;
+	document.getElementById('customMsgCustomerNameInput').value = name;
+	document.getElementById('customMsgCustomerMobileInput').value = mobile;
+	document.getElementById('customMsgText').value = '';
+	document.getElementById('customMsgMsg').textContent = '';
+	document.getElementById('customMsgModalBg').style.display = 'flex';
+}
+function closeCustomMsgModal() {
+	document.getElementById('customMsgModalBg').style.display = 'none';
+}
+</script>
+<script>
+document.getElementById('customMsgForm').addEventListener('submit', function(e) {
+	e.preventDefault();
+	var formData = new FormData(this);
+	var msg = document.getElementById('customMsgMsg');
+	var btn = document.querySelector('#customMsgForm button[type="submit"]');
+	msg.textContent = '';
+	btn.disabled = true;
+	
+	fetch('send_due_reminder.php', {
+		method: 'POST',
+		body: formData
+	})
+	.then(res => res.json())
+	.then(data => {
+		if (data.success) {
+			msg.style.color = '#28a745';
+			msg.style.display = 'block';
+			msg.textContent = 'Message sent successfully!';
+			setTimeout(() => { 
+				closeCustomMsgModal();
+				btn.disabled = false;
+				alert('Custom message sent successfully');
+			}, 900);
+		} else {
+			msg.style.color = '#800000';
+			msg.style.display = 'block';
+			msg.textContent = data.message || 'Failed to send message.';
+			btn.disabled = false;
+		}
+	})
+	.catch(() => {
+		msg.style.color = '#800000';
+		msg.style.display = 'block';
+		msg.textContent = 'Failed to send message.';
+		btn.disabled = false;
+	});
+});
 </script>
 <script>
 document.getElementById('collectForm').addEventListener('submit', function(e) {

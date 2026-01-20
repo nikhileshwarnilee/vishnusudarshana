@@ -15,14 +15,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax'])) {
     if ($_POST['ajax'] === 'add') {
         $name = trim($_POST['name'] ?? '');
         $email = trim($_POST['email'] ?? '');
+        $mobile = trim($_POST['mobile'] ?? '');
         $password = $_POST['password'] ?? '';
         $permissions = $_POST['perm'] ?? [];
-        if ($name && $email && $password) {
+        if ($name && $email && $mobile && $password) {
             $stmt = $pdo->prepare('SELECT COUNT(*) FROM users WHERE email = ?');
             $stmt->execute([$email]);
             if ($stmt->fetchColumn() == 0) {
-                $stmt = $pdo->prepare('INSERT INTO users (name, email, password) VALUES (?, ?, ?)');
-                $stmt->execute([$name, $email, $password]);
+                $stmt = $pdo->prepare('INSERT INTO users (name, email, mobile, password) VALUES (?, ?, ?, ?)');
+                $stmt->execute([$name, $email, $mobile, $password]);
                 $user_id = $pdo->lastInsertId();
                 // Save permissions
                 if (!empty($permissions)) {
@@ -58,17 +59,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax'])) {
         $id = (int)$_POST['id'];
         $name = trim($_POST['name'] ?? '');
         $email = trim($_POST['email'] ?? '');
+        $mobile = trim($_POST['mobile'] ?? '');
         $password = $_POST['password'] ?? '';
         $permissions = $_POST['perm'] ?? [];
         $stmt = $pdo->prepare('SELECT COUNT(*) FROM users WHERE email = ? AND id != ?');
         $stmt->execute([$email, $id]);
         if ($stmt->fetchColumn() == 0) {
+            if (!$mobile) {
+                echo json_encode(['success' => false, 'msg' => 'Mobile number is required.']);
+                exit;
+            }
             if ($password) {
-                $stmt = $pdo->prepare('UPDATE users SET name=?, email=?, password=? WHERE id=?');
-                $stmt->execute([$name, $email, $password, $id]);
+                $stmt = $pdo->prepare('UPDATE users SET name=?, email=?, mobile=?, password=? WHERE id=?');
+                $stmt->execute([$name, $email, $mobile, $password, $id]);
             } else {
-                $stmt = $pdo->prepare('UPDATE users SET name=?, email=? WHERE id=?');
-                $stmt->execute([$name, $email, $id]);
+                $stmt = $pdo->prepare('UPDATE users SET name=?, email=?, mobile=? WHERE id=?');
+                $stmt->execute([$name, $email, $mobile, $id]);
             }
             // Update permissions
             $pdo->prepare('DELETE FROM user_permissions WHERE user_id=?')->execute([$id]);
@@ -194,6 +200,10 @@ $users = $pdo->query('SELECT * FROM users ORDER BY id DESC')->fetchAll();
                 <input type="email" name="email" id="userEmail" required>
             </div>
             <div class="form-group">
+                <label>Mobile</label>
+                <input type="text" name="mobile" id="userMobile" required>
+            </div>
+            <div class="form-group">
                 <label>Password <span id="pwdNote" style="font-weight:400;font-size:0.95em;"></span></label>
                 <input type="password" name="password" id="userPassword">
             </div>
@@ -209,6 +219,7 @@ $users = $pdo->query('SELECT * FROM users ORDER BY id DESC')->fetchAll();
                 <th>ID</th>
                 <th>Name</th>
                 <th>Email</th>
+                <th>Mobile</th>
                 <th>Status</th>
                 <th>Created</th>
                 <th>Actions</th>
@@ -220,6 +231,7 @@ $users = $pdo->query('SELECT * FROM users ORDER BY id DESC')->fetchAll();
                 <td><?= $user['id'] ?></td>
                 <td><?= htmlspecialchars($user['name']) ?></td>
                 <td><?= htmlspecialchars($user['email']) ?></td>
+                <td><?= htmlspecialchars($user['mobile'] ?? '') ?></td>
                 <td><?= $user['status'] ? 'Active' : 'Inactive' ?></td>
                 <td><?= $user['created_at'] ?></td>
                 <td>
@@ -256,6 +268,7 @@ $(function() {
         $('#userId').val(editId);
         $('#userName').val(row.find('td:eq(1)').text());
         $('#userEmail').val(row.find('td:eq(2)').text());
+        $('#userMobile').val(row.find('td:eq(3)').text());
         $('#userPassword').val('');
         $('#pwdNote').text('(Leave blank to keep current password)');
         $('#cancelBtn').show();
@@ -286,6 +299,7 @@ $(function() {
         $('#userId').val('');
         $('#userName').val('');
         $('#userEmail').val('');
+        $('#userMobile').val('');
         $('#userPassword').val('');
         $('#pwdNote').text('');
         $('#cancelBtn').hide();

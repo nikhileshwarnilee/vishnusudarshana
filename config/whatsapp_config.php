@@ -77,7 +77,10 @@ define('WHATSAPP_TEMPLATES', [
     'SERVICE_REQUEST_FILE_UPLOADED' => 'Service Request File Uploaded',
     
     // Payment Dues Reminder - Admin sends payment due reminder
-    'PAYMENT_DUES_REMINDER' => 'Payment Dues Reminder'
+    'PAYMENT_DUES_REMINDER' => 'Payment Dues Reminder',
+
+    // Schedule blocked notification (admin created blocks)
+    'SCHEDULE_BLOCKED' => 'Schedule Manager Marathi'
 ]);
 
 /**
@@ -137,7 +140,10 @@ define('WHATSAPP_TEMPLATE_VARIABLES', [
     'SERVICE_REQUEST_FILE_UPLOADED' => ['name', 'tracking_id', 'category', 'products_list', 'file_path'],
     
     // Payment dues reminder - 2 params: name, due_amount
-    'PAYMENT_DUES_REMINDER' => ['name', 'due_amount']
+    'PAYMENT_DUES_REMINDER' => ['name', 'due_amount'],
+
+    // Schedule blocked notification - 6 params: name, date_range, title, time_range, status, description
+    'SCHEDULE_BLOCKED' => ['name', 'date_range', 'title', 'time_range', 'status', 'description']
 ]);
 
 /**

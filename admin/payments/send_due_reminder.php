@@ -47,6 +47,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         error_log('Payment due reminder exception: ' . $e->getMessage());
         echo json_encode(['success' => false, 'message' => 'Exception: ' . $e->getMessage()]);
     }
+} elseif ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'custom_msg') {
+    // Send custom message using Admin Notes template
+    $customerId = isset($_POST['customer_id']) ? (int)$_POST['customer_id'] : 0;
+    $customerName = trim($_POST['customer_name'] ?? '');
+    $mobile = trim($_POST['mobile'] ?? '');
+    $message = trim($_POST['message'] ?? '');
+    
+    if ($customerId <= 0 || !$customerName || !$mobile || !$message) {
+        echo json_encode(['success' => false, 'message' => 'Invalid parameters']);
+        exit;
+    }
+    
+    try {
+        $result = sendWhatsAppMessage(
+            $mobile,
+            'APPOINTMENT_MESSAGE',
+            [
+                'name' => $customerName,
+                'message' => $message
+            ]
+        );
+        
+        if ($result['success']) {
+            error_log("Custom message sent to $mobile for customer $customerName (ID $customerId)");
+            echo json_encode(['success' => true]);
+        } else {
+            error_log("Custom message failed for $mobile: " . ($result['message'] ?? 'Unknown error'));
+            echo json_encode(['success' => false, 'message' => $result['message'] ?? 'Failed to send']);
+        }
+    } catch (Throwable $e) {
+        error_log('Custom message exception: ' . $e->getMessage());
+        echo json_encode(['success' => false, 'message' => 'Exception: ' . $e->getMessage()]);
+    }
 } elseif ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'send_to_all') {
     // Bulk send to all customers with dues
     try {
