@@ -1,9 +1,9 @@
 Array
 (
-    [id] => 1
-    [name] => Vishnusudarshana
-    [email] => vishnusudarshana@gmail.com
-    [mobile] => 8237877268
-    [password] => 1234
-    [ajax] => edit
+    [ajax] => custom_msg
+    [id] => 7
+    [name] => rohini
+    [mobile] => 9922550797
+    [message] => hi rohini
+
 )

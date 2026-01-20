@@ -5,6 +5,7 @@ if (!isset($_SESSION['user_id']) || $_SESSION['user_id'] != 1) {
     exit;
 }
 require_once __DIR__ . '/../config/db.php';
+require_once __DIR__ . '/../helpers/send_whatsapp.php';
 $action = $_GET['action'] ?? '';
 $message = '';
 
@@ -12,6 +13,36 @@ $message = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax'])) {
     // Debug: log POST data to a file for troubleshooting
     file_put_contents(__DIR__ . '/debug_post.log', print_r($_POST, true));
+    if ($_POST['ajax'] === 'custom_msg') {
+        $userId = (int)($_POST['id'] ?? 0);
+        $name = trim($_POST['name'] ?? '');
+        $mobile = trim($_POST['mobile'] ?? '');
+        $message = trim($_POST['message'] ?? '');
+
+        if (!$userId || !$name || !$mobile || !$message) {
+            echo json_encode(['success' => false, 'msg' => 'All fields are required.']);
+            exit;
+        }
+        try {
+            $result = sendWhatsAppMessage(
+                $mobile,
+                'APPOINTMENT_MESSAGE',
+                [
+                    'name' => $name,
+                    'message' => $message
+                ]
+            );
+            if (!empty($result['success'])) {
+                echo json_encode(['success' => true, 'msg' => 'Message sent']);
+            } else {
+                echo json_encode(['success' => false, 'msg' => $result['message'] ?? 'Failed to send']);
+            }
+        } catch (Throwable $e) {
+            echo json_encode(['success' => false, 'msg' => 'Error: ' . $e->getMessage()]);
+        }
+        exit;
+    }
+
     if ($_POST['ajax'] === 'add') {
         $name = trim($_POST['name'] ?? '');
         $email = trim($_POST['email'] ?? '');
@@ -223,6 +254,7 @@ $users = $pdo->query('SELECT * FROM users ORDER BY id DESC')->fetchAll();
                 <th>Status</th>
                 <th>Created</th>
                 <th>Actions</th>
+                <th>Msg</th>
             </tr>
         </thead>
         <tbody>
@@ -241,10 +273,38 @@ $users = $pdo->query('SELECT * FROM users ORDER BY id DESC')->fetchAll();
                         <button class="action-btn delete" data-id="<?= $user['id'] ?>">Delete</button>
                     <?php endif; ?>
                 </td>
+                <td>
+                    <button class="action-btn" style="background:#25D366;color:#fff;" onclick="openUserMsgModal(<?= $user['id'] ?>, '<?= htmlspecialchars(addslashes($user['name'])) ?>', '<?= htmlspecialchars($user['mobile'] ?? '') ?>')">Send Msg</button>
+                </td>
             </tr>
         <?php endforeach; ?>
         </tbody>
     </table>
+</div>
+
+<!-- Custom Message Modal -->
+<div id="userMsgModalBg" style="display:none; position:fixed; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.18); z-index:1000; align-items:center; justify-content:center;">
+    <div id="userMsgModal" style="background:#fff; border-radius:12px; box-shadow:0 2px 16px #80000033; padding:28px 24px 18px 24px; min-width:340px; max-width:95vw; width:420px; text-align:left; position:relative;">
+        <div style="font-size:1.12em;color:#007bff;font-weight:700;margin-bottom:10px;">Send Custom Message</div>
+        <form id="userMsgForm" autocomplete="off">
+            <input type="hidden" name="ajax" value="custom_msg">
+            <input type="hidden" name="id" id="msgUserId">
+            <input type="hidden" name="name" id="msgUserNameInput">
+            <input type="hidden" name="mobile" id="msgUserMobileInput">
+            <div style="margin-bottom:10px;color:#444;"><b>User:</b> <span id="msgUserName"></span></div>
+            <div style="margin-bottom:10px;color:#444;"><b>Mobile:</b> <span id="msgUserMobile"></span></div>
+            <div style="margin-bottom:10px;">
+                <label for="msgUserText" style="display:block; margin-bottom:6px;"><b>Message:</b></label>
+                <textarea name="message" id="msgUserText" style="width:100%;height:110px;padding:8px;border-radius:6px;border:1px solid #ccc;font-family:Arial,sans-serif;resize:vertical;" placeholder="Enter your custom message..." required></textarea>
+            </div>
+            <div style="margin-top:14px;text-align:center;">
+                <button type="submit" style="background:#25D366;color:#fff;padding:8px 22px;border:none;border-radius:8px;font-weight:600;cursor:pointer;">Send Message</button>
+                &nbsp;
+                <button type="button" onclick="closeUserMsgModal()" style="background:#800000;color:#fff;padding:8px 22px;border:none;border-radius:8px;font-weight:600;cursor:pointer;">Cancel</button>
+            </div>
+            <div id="userMsgStatus" style="margin-top:10px; color:#c00; display:none;"></div>
+        </form>
+    </div>
 </div>
 <script>
 // AJAX add/edit
@@ -286,6 +346,48 @@ $(function() {
                 $('#formMsg').css('color','red').text(resp.msg);
             }
         }, 'json');
+    });
+
+    // Custom message modal
+    window.openUserMsgModal = function(id, name, mobile) {
+        if (!mobile) {
+            alert('No mobile number saved for this user.');
+            return;
+        }
+        $('#msgUserId').val(id);
+        $('#msgUserName').text(name);
+        $('#msgUserNameInput').val(name);
+        $('#msgUserMobile').text(mobile);
+        $('#msgUserMobileInput').val(mobile);
+        $('#msgUserText').val('');
+        $('#userMsgStatus').hide().text('');
+        $('#userMsgModalBg').css('display','flex');
+    };
+    window.closeUserMsgModal = function() {
+        $('#userMsgModalBg').hide();
+    };
+
+    $('#userMsgForm').on('submit', function(e) {
+        e.preventDefault();
+        const $status = $('#userMsgStatus');
+        const $btn = $(this).find('button[type="submit"]');
+        $status.hide();
+        $btn.prop('disabled', true).text('Sending...');
+        $.post('users.php', $(this).serialize(), function(resp) {
+            if (resp.success) {
+                $status.css('color','#28a745').text('Message sent!').show();
+                setTimeout(() => {
+                    closeUserMsgModal();
+                    $btn.prop('disabled', false).text('Send Message');
+                }, 800);
+            } else {
+                $status.css('color','#c00').text(resp.msg || 'Failed to send').show();
+                $btn.prop('disabled', false).text('Send Message');
+            }
+        }, 'json').fail(function() {
+            $status.css('color','#c00').text('Failed to send').show();
+            $btn.prop('disabled', false).text('Send Message');
+        });
     });
     function handleFormResponse(resp) {
         if (resp.success) {
