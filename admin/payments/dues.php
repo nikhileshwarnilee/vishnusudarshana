@@ -155,6 +155,12 @@ $queryStr = http_build_query(array_diff_key($_GET, ['page' => '']));
 		<label for="to_date">To:</label>
 		<input type="date" name="to_date" id="to_date" value="<?= htmlspecialchars($to_date) ?>">
 	</form>
+	<div style="margin-bottom:18px; display:flex; gap:10px; align-items:center;">
+		<button type="button" onclick="sendReminderToAll()" style="background:#25D366;color:#fff;border:none;border-radius:8px;padding:10px 20px;font-weight:600;cursor:pointer;font-size:0.98em;">
+			<span class="remind-all-text">📲 Send Reminder to All</span>
+		</button>
+		<span id="remindAllStatus" style="font-size:0.9em; color:#888; display:none;"></span>
+	</div>
 	<table>
 		<tr>
 			<th>Customer Name</th>
@@ -165,9 +171,10 @@ $queryStr = http_build_query(array_diff_key($_GET, ['page' => '']));
 			<th>Paid Till Date</th>
 			<th>Unpaid Dues</th>
 			<th>Action</th>
+			<th>Send Notification</th>
 		</tr>
 		<?php if (empty($with_dues)): ?>
-			<tr><td colspan="8" style="text-align:center; color:#888;">No customers with dues.</td></tr>
+			<tr><td colspan="9" style="text-align:center; color:#888;">No customers with dues.</td></tr>
 		<?php else: foreach ($with_dues as $row): ?>
 			<tr>
 				<td><?= htmlspecialchars($row['name']) ?></td>
@@ -179,6 +186,11 @@ $queryStr = http_build_query(array_diff_key($_GET, ['page' => '']));
 				<td style="color:#b30000; font-weight:700;">₹<?= number_format($row['unpaid_dues'],2) ?></td>
 				<td>
 					<button type="button" class="action-btn collect-btn" onclick="openCollectModal(<?= $row['id'] ?>, '<?= htmlspecialchars(addslashes($row['name'])) ?>', <?= $row['unpaid_dues'] ?>)">Collect</button>
+				</td>
+				<td>
+					<button type="button" class="action-btn" style="background:#25D366;color:#fff;" onclick="sendDueReminder(<?= $row['id'] ?>, '<?= htmlspecialchars(addslashes($row['name'])) ?>', '<?= htmlspecialchars($row['mobile']) ?>', <?= $row['unpaid_dues'] ?>, this)">
+						<span class="btn-text">Send Reminder</span>
+					</button>
 				</td>
 			</tr>
 		<?php endforeach; endif; ?>
@@ -316,6 +328,128 @@ function fetchDuesTable() {
 searchInput.addEventListener('input', fetchDuesTable);
 fromDateInput.addEventListener('input', fetchDuesTable);
 toDateInput.addEventListener('input', fetchDuesTable);
+
+// Send Due Reminder via WhatsApp
+function sendDueReminder(customerId, customerName, mobile, dueAmount, btn) {
+	const btnText = btn.querySelector('.btn-text');
+	const originalText = btnText.textContent;
+	btnText.textContent = 'Sending...';
+	btn.disabled = true;
+	btn.style.opacity = '0.6';
+	
+	const formData = new FormData();
+	formData.append('action', 'send_due_reminder');
+	formData.append('customer_id', customerId);
+	formData.append('customer_name', customerName);
+	formData.append('mobile', mobile);
+	formData.append('due_amount', dueAmount);
+	
+	fetch('send_due_reminder.php', {
+		method: 'POST',
+		body: formData
+	})
+	.then(res => res.json())
+	.then(data => {
+		if (data.success) {
+			btnText.textContent = '✓ Sent';
+			btn.style.background = '#1a8917';
+			setTimeout(() => {
+				btnText.textContent = originalText;
+				btn.disabled = false;
+				btn.style.opacity = '1';
+				btn.style.background = '#25D366';
+			}, 3000);
+		} else {
+			btnText.textContent = '✗ Failed';
+			btn.style.background = '#c00';
+			setTimeout(() => {
+				btnText.textContent = originalText;
+				btn.disabled = false;
+				btn.style.opacity = '1';
+				btn.style.background = '#25D366';
+			}, 3000);
+			alert(data.message || 'Failed to send reminder');
+		}
+	})
+	.catch(err => {
+		console.error(err);
+		btnText.textContent = '✗ Error';
+		btn.style.background = '#c00';
+		setTimeout(() => {
+			btnText.textContent = originalText;
+			btn.disabled = false;
+			btn.style.opacity = '1';
+			btn.style.background = '#25D366';
+		}, 3000);
+		alert('Error sending reminder');
+	});
+}
+
+// Send Due Reminder to All customers with dues
+function sendReminderToAll() {
+	if (!confirm('Are you sure you want to send reminder to all customers with dues? This may take a moment.')) {
+		return;
+	}
+	
+	const btn = event.target.closest('button');
+	const btnText = btn.querySelector('.remind-all-text');
+	const statusEl = document.getElementById('remindAllStatus');
+	const originalText = btnText.textContent;
+	
+	btnText.textContent = '⏳ Sending to all...';
+	statusEl.textContent = 'Processing...';
+	statusEl.style.display = 'inline';
+	btn.disabled = true;
+	btn.style.opacity = '0.6';
+	
+	fetch('send_due_reminder.php', {
+		method: 'POST',
+		headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+		body: 'action=send_to_all'
+	})
+	.then(res => res.json())
+	.then(data => {
+		if (data.success) {
+			btnText.textContent = '✓ Sent to All';
+			statusEl.textContent = `Successfully sent to ${data.count} customer(s)`;
+			statusEl.style.color = '#1a8917';
+			btn.style.background = '#1a8917';
+			setTimeout(() => {
+				btnText.textContent = originalText;
+				btn.disabled = false;
+				btn.style.opacity = '1';
+				btn.style.background = '#25D366';
+				statusEl.style.display = 'none';
+			}, 4000);
+		} else {
+			btnText.textContent = '✗ Failed';
+			statusEl.textContent = data.message || 'Failed to send reminders';
+			statusEl.style.color = '#c00';
+			btn.style.background = '#c00';
+			setTimeout(() => {
+				btnText.textContent = originalText;
+				btn.disabled = false;
+				btn.style.opacity = '1';
+				btn.style.background = '#25D366';
+				statusEl.style.display = 'none';
+			}, 4000);
+		}
+	})
+	.catch(err => {
+		console.error(err);
+		btnText.textContent = '✗ Error';
+		statusEl.textContent = 'Error processing request';
+		statusEl.style.color = '#c00';
+		btn.style.background = '#c00';
+		setTimeout(() => {
+			btnText.textContent = originalText;
+			btn.disabled = false;
+			btn.style.opacity = '1';
+			btn.style.background = '#25D366';
+			statusEl.style.display = 'none';
+		}, 4000);
+	});
+}
 </script>
 </script>
 </body>

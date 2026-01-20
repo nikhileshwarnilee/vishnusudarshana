@@ -74,7 +74,10 @@ define('WHATSAPP_TEMPLATES', [
     'SERVICE_REQUEST_COMPLETED' => 'Service Request Completed',
     
     // File Upload - Admin uploads document for service request
-    'SERVICE_REQUEST_FILE_UPLOADED' => 'Service Request File Uploaded'
+    'SERVICE_REQUEST_FILE_UPLOADED' => 'Service Request File Uploaded',
+    
+    // Payment Dues Reminder - Admin sends payment due reminder
+    'PAYMENT_DUES_REMINDER' => 'Payment Dues Reminder'
 ]);
 
 /**
@@ -131,7 +134,10 @@ define('WHATSAPP_TEMPLATE_VARIABLES', [
     'SERVICE_REQUEST_COMPLETED' => ['name', 'tracking_id', 'category', 'products_list', 'tracking_id'],
     
     // File uploaded notification - 5 params: name, tracking_id, category, products_list, file_path
-    'SERVICE_REQUEST_FILE_UPLOADED' => ['name', 'tracking_id', 'category', 'products_list', 'file_path']
+    'SERVICE_REQUEST_FILE_UPLOADED' => ['name', 'tracking_id', 'category', 'products_list', 'file_path'],
+    
+    // Payment dues reminder - 2 params: name, due_amount
+    'PAYMENT_DUES_REMINDER' => ['name', 'due_amount']
 ]);
 
 /**
