@@ -95,6 +95,17 @@ function sendWhatsAppMessage($to, $templateName, $variables = [], $language = nu
         $payload['buttons'] = $buttons;
     }
     
+    // Add media object if file_path is provided (for document sending)
+    if (isset($variables['file_path']) && !empty($variables['file_path'])) {
+        $filePath = $variables['file_path'];
+        $fileName = basename($filePath);
+        $publicUrl = 'https://vishnusudarshana.com/uploads/services/' . $filePath;
+        $payload['media'] = [
+            'url' => $publicUrl,
+            'filename' => $fileName
+        ];
+    }
+    
     // Add optional source if available
     if (isset($variables['source'])) {
         $payload['source'] = $variables['source'];
