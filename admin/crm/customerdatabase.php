@@ -1,7 +1,83 @@
 <?php
 // admin/customers/crm/index.php
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 require_once __DIR__ . '/../includes/top-menu.php';
 require_once __DIR__ . '/../../config/db.php';
+require_once __DIR__ . '/../../helpers/send_whatsapp.php';
+
+// Handle AJAX send message (single/bulk)
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $body = file_get_contents('php://input');
+    $data = $_POST;
+    if (empty($data) && $body) {
+        $json = json_decode($body, true);
+        if (is_array($json)) $data = $json;
+    }
+    $action = $data['action'] ?? '';
+    if (in_array($action, ['send_single', 'send_bulk'], true)) {
+        $message = trim($data['message'] ?? '');
+        $searchFilter = trim($data['search'] ?? '');
+        $recipients = [];
+
+        if ($action === 'send_single') {
+            $name = trim($data['name'] ?? '');
+            $mobile = trim($data['mobile'] ?? '');
+            if ($name && $mobile) {
+                $recipients[] = ['name' => $name, 'mobile' => $mobile];
+            }
+        } else { // send_bulk
+            if (!empty($data['recipients']) && is_array($data['recipients'])) {
+                $recipients = $data['recipients'];
+            } else {
+                // Fetch all customers (filtered by search if provided)
+                $params = [];
+                $where = '';
+                if ($searchFilter !== '') {
+                    $where = "WHERE name LIKE :q OR mobile LIKE :q OR address_city LIKE :q";
+                    $params['q'] = "%$searchFilter%";
+                }
+                $sqlAll = "
+                    SELECT name, mobile, address as address_city FROM cif_clients
+                    UNION ALL
+                    SELECT name, mobile, address as address_city FROM customers
+                    UNION ALL
+                    SELECT customer_name as name, mobile, city as address_city FROM service_requests
+                ";
+                if ($where !== '') {
+                    $sqlAll = "SELECT * FROM (" . $sqlAll . ") AS all_customers $where";
+                }
+                $stmtAll = $pdo->prepare($sqlAll);
+                $stmtAll->execute($params);
+                $recipients = $stmtAll->fetchAll(PDO::FETCH_ASSOC);
+            }
+        }
+
+        if (!$message || empty($recipients)) {
+            echo json_encode(['success' => false, 'msg' => 'Message and recipients are required.']);
+            exit;
+        }
+
+        $sent = 0; $failed = 0;
+        foreach ($recipients as $r) {
+            $mobile = trim($r['mobile'] ?? '');
+            $name = trim($r['name'] ?? '');
+            if (!$mobile || !$name) { $failed++; continue; }
+            $res = sendWhatsAppMessage($mobile, 'APPOINTMENT_MESSAGE', [
+                'name' => $name,
+                'message' => $message
+            ]);
+            if (!empty($res['success'])) {
+                $sent++;
+            } else {
+                $failed++;
+            }
+        }
+        echo json_encode(['success' => true, 'sent' => $sent, 'failed' => $failed]);
+        exit;
+    }
+}
 
 // Pagination and search
 $page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
@@ -87,25 +163,30 @@ $customers = $stmt->fetchAll();
         </div>
     </div>
     <form class="filter-bar" method="get" action="">
-        <input type="text" name="search" value="<?= htmlspecialchars($search) ?>" placeholder="Search customers...">
+        <input type="text" name="search" id="searchInput" value="<?= htmlspecialchars($search) ?>" placeholder="Search customers...">
         <button type="submit" class="btn-main">Search</button>
+        <button type="button" class="btn-main" style="background:#25D366;" onclick="openBulkMsgModal()">Send Bulk Msgs</button>
     </form>
     <table>
         <thead>
             <tr>
+                <th style="width:40px;"><input type="checkbox" id="selectAll"></th>
                 <th>Name</th>
                 <th>Mobile</th>
                 <th>Address/City</th>
+                <th>Msg</th>
             </tr>
         </thead>
         <tbody>
         <?php if (empty($customers)): ?>
-            <tr><td colspan="3" style="text-align:center;color:#888;">No customers found.</td></tr>
-        <?php else: foreach ($customers as $c): ?>
+            <tr><td colspan="5" style="text-align:center;color:#888;">No customers found.</td></tr>
+        <?php else: foreach ($customers as $idx => $c): ?>
             <tr>
+                <td><input type="checkbox" class="row-check" data-name="<?= htmlspecialchars($c['name']) ?>" data-mobile="<?= htmlspecialchars($c['mobile']) ?>"></td>
                 <td><?= htmlspecialchars($c['name']) ?></td>
                 <td><?= htmlspecialchars($c['mobile']) ?></td>
                 <td><?= htmlspecialchars($c['address_city']) ?></td>
+                <td><button type="button" style="background:#25D366;color:#fff;border:none;border-radius:6px;padding:6px 10px;font-weight:600;cursor:pointer;" onclick="openSingleMsgModal('<?= htmlspecialchars(addslashes($c['name'])) ?>','<?= htmlspecialchars($c['mobile']) ?>')">Send Msg</button></td>
             </tr>
         <?php endforeach; endif; ?>
         </tbody>
@@ -135,6 +216,145 @@ $customers = $stmt->fetchAll();
             echo '<a class="page-link" href="?search=' . urlencode($search) . '&page=' . $total_pages . '">' . $total_pages . '</a>';
         }
         ?>
+    </div>
+</div>
+<script>
+// Select all checkboxes
+const selectAll = document.getElementById('selectAll');
+const rowChecks = () => Array.from(document.querySelectorAll('.row-check'));
+if (selectAll) {
+    selectAll.addEventListener('change', () => {
+        rowChecks().forEach(cb => cb.checked = selectAll.checked);
+    });
+}
+
+function openSingleMsgModal(name, mobile) {
+    if (!mobile) { alert('No mobile number found.'); return; }
+    document.getElementById('msgNameInput').value = name;
+    document.getElementById('msgMobileInput').value = mobile;
+    document.getElementById('msgNameLabel').textContent = name;
+    document.getElementById('msgMobileLabel').textContent = mobile;
+    document.getElementById('msgText').value = '';
+    document.getElementById('msgStatus').style.display = 'none';
+    document.getElementById('msgModalBg').style.display = 'flex';
+}
+function closeMsgModal() {
+    document.getElementById('msgModalBg').style.display = 'none';
+}
+
+function openBulkMsgModal() {
+    document.getElementById('bulkText').value = '';
+    document.getElementById('bulkStatus').style.display = 'none';
+    document.getElementById('bulkModalBg').style.display = 'flex';
+}
+function closeBulkModal() {
+    document.getElementById('bulkModalBg').style.display = 'none';
+}
+
+document.getElementById('msgForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const status = document.getElementById('msgStatus');
+    status.style.display = 'none';
+    const formData = new FormData(this);
+    fetch(window.location.pathname, {
+        method: 'POST',
+        body: formData
+    }).then(res => res.json()).then(data => {
+        if (data.success) {
+            status.style.color = '#28a745';
+            status.textContent = 'Message sent!';
+            status.style.display = 'block';
+            setTimeout(() => { closeMsgModal(); }, 800);
+        } else {
+            status.style.color = '#c00';
+            status.textContent = data.msg || 'Failed to send';
+            status.style.display = 'block';
+        }
+    }).catch(() => {
+        status.style.color = '#c00';
+        status.textContent = 'Failed to send';
+        status.style.display = 'block';
+    });
+});
+
+document.getElementById('bulkForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const status = document.getElementById('bulkStatus');
+    status.style.display = 'none';
+    const selected = rowChecks()
+        .filter(cb => cb.checked)
+        .map(cb => ({name: cb.dataset.name, mobile: cb.dataset.mobile}));
+    const payload = {
+        action: 'send_bulk',
+        message: document.getElementById('bulkText').value,
+        recipients: selected,
+        search: document.getElementById('searchInput') ? document.getElementById('searchInput').value : ''
+    };
+    fetch(window.location.pathname, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(payload)
+    }).then(res => res.json()).then(data => {
+        if (data.success) {
+            status.style.color = '#28a745';
+            status.textContent = `Sent: ${data.sent || 0}${data.failed ? `, Failed: ${data.failed}` : ''}`;
+            status.style.display = 'block';
+            setTimeout(() => { closeBulkModal(); }, 900);
+        } else {
+            status.style.color = '#c00';
+            status.textContent = data.msg || 'Failed to send';
+            status.style.display = 'block';
+        }
+    }).catch(() => {
+        status.style.color = '#c00';
+        status.textContent = 'Failed to send';
+        status.style.display = 'block';
+    });
+});
+</script>
+
+<!-- Custom Message Modal -->
+<div id="msgModalBg" style="display:none; position:fixed; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.18); z-index:1000; align-items:center; justify-content:center;">
+    <div id="msgModal" style="background:#fff; border-radius:12px; box-shadow:0 2px 16px #80000033; padding:28px 24px 18px 24px; min-width:340px; max-width:95vw; width:420px; text-align:left; position:relative;">
+        <div style="font-size:1.12em;color:#007bff;font-weight:700;margin-bottom:10px;">Send Message</div>
+        <form id="msgForm" autocomplete="off">
+            <input type="hidden" name="action" value="send_single">
+            <input type="hidden" name="name" id="msgNameInput">
+            <input type="hidden" name="mobile" id="msgMobileInput">
+            <div style="margin-bottom:10px;color:#444;"><b>Customer:</b> <span id="msgNameLabel"></span></div>
+            <div style="margin-bottom:10px;color:#444;"><b>Mobile:</b> <span id="msgMobileLabel"></span></div>
+            <div style="margin-bottom:10px;">
+                <label for="msgText" style="display:block; margin-bottom:6px;"><b>Message:</b></label>
+                <textarea name="message" id="msgText" style="width:100%;height:110px;padding:8px;border-radius:6px;border:1px solid #ccc;font-family:Arial,sans-serif;resize:vertical;" placeholder="Enter your custom message..." required></textarea>
+            </div>
+            <div style="margin-top:14px;text-align:center;">
+                <button type="submit" style="background:#25D366;color:#fff;padding:8px 22px;border:none;border-radius:8px;font-weight:600;cursor:pointer;">Send Message</button>
+                &nbsp;
+                <button type="button" onclick="closeMsgModal()" style="background:#800000;color:#fff;padding:8px 22px;border:none;border-radius:8px;font-weight:600;cursor:pointer;">Cancel</button>
+            </div>
+            <div id="msgStatus" style="margin-top:10px; color:#c00; display:none;"></div>
+        </form>
+    </div>
+</div>
+
+<!-- Bulk Message Modal -->
+<div id="bulkModalBg" style="display:none; position:fixed; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.18); z-index:1000; align-items:center; justify-content:center;">
+    <div id="bulkModal" style="background:#fff; border-radius:12px; box-shadow:0 2px 16px #80000033; padding:28px 24px 18px 24px; min-width:340px; max-width:95vw; width:420px; text-align:left; position:relative;">
+        <div style="font-size:1.12em;color:#007bff;font-weight:700;margin-bottom:10px;">Send Bulk Messages</div>
+        <form id="bulkForm" autocomplete="off">
+            <input type="hidden" name="action" value="send_bulk">
+            <div style="margin-bottom:10px;color:#444;">If none selected, will send to all customers in this list.</div>
+            <div style="margin-bottom:10px;">
+                <label for="bulkText" style="display:block; margin-bottom:6px;"><b>Message:</b></label>
+                <textarea name="message" id="bulkText" style="width:100%;height:110px;padding:8px;border-radius:6px;border:1px solid #ccc;font-family:Arial,sans-serif;resize:vertical;" placeholder="Enter your custom message..." required></textarea>
+            </div>
+            <div style="margin-top:14px;text-align:center;">
+                <button type="submit" style="background:#25D366;color:#fff;padding:8px 22px;border:none;border-radius:8px;font-weight:600;cursor:pointer;">Send Bulk</button>
+                &nbsp;
+                <button type="button" onclick="closeBulkModal()" style="background:#800000;color:#fff;padding:8px 22px;border:none;border-radius:8px;font-weight:600;cursor:pointer;">Cancel</button>
+            </div>
+            <div id="bulkStatus" style="margin-top:10px; color:#c00; display:none;"></div>
+        </form>
     </div>
 </div>
 </body>
