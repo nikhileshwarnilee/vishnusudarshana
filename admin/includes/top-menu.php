@@ -1,4 +1,29 @@
 <?php
+// Handle AJAX for letterpad_titles (fetch/add)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax']) && $_POST['ajax'] === 'fetch_titles') {
+    require_once __DIR__ . '/../../config/db.php';
+    $stmt = $pdo->query('SELECT title FROM letterpad_titles ORDER BY id ASC');
+    $dbTitles = array_column($stmt->fetchAll(), 'title');
+    echo json_encode(['success'=>true, 'titles'=>$dbTitles]);
+    exit;
+}
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax']) && $_POST['ajax'] === 'add_title') {
+    require_once __DIR__ . '/../../config/db.php';
+    $title = trim($_POST['title'] ?? '');
+    if (!$title) {
+        echo json_encode(['success'=>false, 'msg'=>'Title required']);
+        exit;
+    }
+    $stmt = $pdo->prepare('SELECT COUNT(*) FROM letterpad_titles WHERE title = ?');
+    $stmt->execute([$title]);
+    if ($stmt->fetchColumn() > 0) {
+        echo json_encode(['success'=>false, 'msg'=>'Title already exists']);
+        exit;
+    }
+    $pdo->prepare('INSERT INTO letterpad_titles (title) VALUES (?)')->execute([$title]);
+    echo json_encode(['success'=>true, 'msg'=>'Title added']);
+    exit;
+}
 /**
  * admin/includes/top-menu.php
  * FULL admin top navigation bar
@@ -937,6 +962,163 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 });
+</script>
+
+
+<!-- GLOBAL FLOATING BUTTON -->
+<style>
+    .admin-floating-btn {
+        position: fixed;
+        right: 32px;
+        bottom: 32px;
+        z-index: 9999;
+        background: #800000;
+        color: #fff;
+        border: none;
+        border-radius: 50%;
+        width: 62px;
+        height: 62px;
+        box-shadow: 0 4px 16px #80000033;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+    .admin-floating-btn:hover {
+        background: #a83232;
+    }
+    .admin-floating-btn svg {
+        width: 32px;
+        height: 32px;
+        display: block;
+    }
+</style>
+<button class="admin-floating-btn" title="Quick Action">
+    <!-- Writing (edit) icon SVG -->
+    <svg viewBox="0 0 24 24" fill="none"><path d="M3 17.25V21h3.75l11.06-11.06-3.75-3.75L3 17.25zM20.71 7.04a1.003 1.003 0 0 0 0-1.42l-2.34-2.34a1.003 1.003 0 0 0-1.42 0l-1.83 1.83 3.75 3.75 1.84-1.82z" fill="#fff"/></svg>
+</button>
+
+<!-- Floating Modal Window -->
+<div id="adminFloatingModalBg" style="display:none; position:fixed; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.18); z-index:10000; align-items:center; justify-content:center;">
+    <div id="adminFloatingModal" style="background:#fff; border-radius:14px; box-shadow:0 4px 32px #80000033; padding:32px 28px 22px 28px; min-width:320px; max-width:95vw; width:400px; text-align:left; position:relative;">
+        <button onclick="closeAdminFloatingModal()" style="position:absolute;top:12px;right:12px;background:none;border:none;font-size:1.6em;color:#800000;cursor:pointer;">&times;</button>
+        <div style="font-size:1.18em;color:#800000;font-weight:700;margin-bottom:12px;">Quick Action</div>
+        <div style="margin-bottom:16px;">
+            <label for="adminFloatingTitle" style="font-weight:600;color:#333;">Select Title:</label><br>
+            <div style="display:flex;align-items:center;gap:8px;">
+                <select id="adminFloatingTitle" style="flex:1 1 0;width:100%;padding:8px 10px;border-radius:6px;border:1px solid #bbb;font-size:1em;margin-top:6px;">
+                </select>
+            </div>
+            <div style="margin-top:16px;">
+                <label for="adminFloatingRichText" style="font-weight:600;color:#333;">Message:</label><br>
+                <div id="adminFloatingToolbar" style="margin-bottom:6px;display:flex;gap:6px;flex-wrap:wrap;">
+                    <button type="button" title="Bold" onclick="execRichCmd('bold')" style="font-weight:bold;">B</button>
+                    <button type="button" title="Italic" onclick="execRichCmd('italic')" style="font-style:italic;">I</button>
+                    <button type="button" title="Underline" onclick="execRichCmd('underline')" style="text-decoration:underline;">U</button>
+                    <button type="button" title="Strikethrough" onclick="execRichCmd('strikeThrough')" style="text-decoration:line-through;">S</button>
+                    <button type="button" title="Ordered List" onclick="execRichCmd('insertOrderedList')">OL</button>
+                    <button type="button" title="Unordered List" onclick="execRichCmd('insertUnorderedList')">UL</button>
+                    <button type="button" title="Left Align" onclick="execRichCmd('justifyLeft')">&#8676;</button>
+                    <button type="button" title="Center Align" onclick="execRichCmd('justifyCenter')">&#8596;</button>
+                    <button type="button" title="Right Align" onclick="execRichCmd('justifyRight')">&#8677;</button>
+                    <button type="button" title="Link" onclick="addRichLink()">&#128279;</button>
+                    <button type="button" title="Remove Format" onclick="execRichCmd('removeFormat')">Tx</button>
+                </div>
+                <div id="adminFloatingRichText" contenteditable="true" style="min-height:120px;width:100%;border:1px solid #bbb;border-radius:6px;padding:10px;font-size:1em;background:#fff;outline:none;"></div>
+            </div>
+            <div id="addedTitlesList" style="margin-top:12px;font-size:0.98em;color:#444;"></div>
+        </div>
+        <div style="color:#444;">This is a floating window. You can put any content or form here.</div>
+    </div>
+</div>
+
+<script>
+// --- Floating Modal Logic ---
+function openAdminFloatingModal() {
+    document.getElementById('adminFloatingModalBg').style.display = 'flex';
+    renderTitleDropdown();
+    renderAddedTitlesList();
+}
+function closeAdminFloatingModal() {
+    document.getElementById('adminFloatingModalBg').style.display = 'none';
+}
+document.querySelector('.admin-floating-btn').addEventListener('click', openAdminFloatingModal);
+document.getElementById('adminFloatingModalBg').addEventListener('click', function(e) {
+    if (e.target === this) closeAdminFloatingModal();
+});
+
+// --- Title Dropdown and Add Logic ---
+function renderTitleDropdown() {
+    const select = document.getElementById('adminFloatingTitle');
+    select.innerHTML = '<option value="">-- Select a title --</option>';
+    fetchTitles(function(titles) {
+        titles.forEach(title => {
+            const opt = document.createElement('option');
+            opt.value = title;
+            opt.textContent = title;
+            select.appendChild(opt);
+        });
+    });
+}
+function renderAddedTitlesList() {
+    document.getElementById('addedTitlesList').innerHTML = '';
+}
+function fetchTitles(cb) {
+    var xhr = new XMLHttpRequest();
+    xhr.open('POST', window.location.pathname, true);
+    xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+    xhr.onload = function() {
+        try {
+            var resp = JSON.parse(xhr.responseText);
+            if (resp.success) {
+                cb(resp.titles, resp.added);
+            } else {
+                cb([]);
+            }
+        } catch { cb([]); }
+    };
+    xhr.send('ajax=fetch_titles');
+}
+document.getElementById('addTitleBtn').onclick = function() {
+    document.getElementById('addTitleBox').style.display = 'block';
+    document.getElementById('newTitleInput').focus();
+};
+document.getElementById('saveTitleBtn').onclick = function() {
+    const input = document.getElementById('newTitleInput');
+    let val = input.value.trim();
+    if (!val) return;
+    // AJAX add title
+    var xhr = new XMLHttpRequest();
+    xhr.open('POST', window.location.pathname, true);
+    xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+    xhr.onload = function() {
+        try {
+            var resp = JSON.parse(xhr.responseText);
+            if (resp.success) {
+                input.value = '';
+                document.getElementById('addTitleBox').style.display = 'none';
+                renderTitleDropdown();
+                renderAddedTitlesList();
+            } else {
+                alert(resp.msg || 'Failed to add title');
+            }
+        } catch { alert('Failed to add title'); }
+    };
+    xhr.send('ajax=add_title&title=' + encodeURIComponent(val));
+};
+document.getElementById('adminFloatingModalBg').addEventListener('click', function(e) {
+    if (e.target === this) {
+        document.getElementById('addTitleBox').style.display = 'none';
+    }
+});
+function execRichCmd(cmd) {
+    document.execCommand(cmd, false, null);
+}
+function addRichLink() {
+    var url = prompt('Enter URL:');
+    if (url) document.execCommand('createLink', false, url);
+}
 </script>
 
 <!-- RESPONSIVE TABLES AUTO-WRAPPER SCRIPT -->
