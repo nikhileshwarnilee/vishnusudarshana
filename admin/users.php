@@ -32,8 +32,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax'])) {
                     'message' => $message
                 ]
             );
-            if (!empty($result['success'])) {
-                echo json_encode(['success' => true, 'msg' => 'Message sent']);
+            
+            error_log('WhatsApp result: ' . json_encode($result));
+            
+            if (isset($result['success']) && $result['success'] === true) {
+                echo json_encode(['success' => true, 'msg' => 'Message sent successfully']);
             } else {
                 echo json_encode(['success' => false, 'msg' => $result['message'] ?? 'Failed to send']);
             }
