@@ -101,6 +101,7 @@ $recentRows = $recentStmt->fetchAll(PDO::FETCH_ASSOC);
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Dashboard</title>
     <link rel="stylesheet" href="/assets/css/style.css">
+    <link rel="stylesheet" href="includes/responsive-tables.css">
         <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif !important;
@@ -108,7 +109,7 @@ $recentRows = $recentStmt->fetchAll(PDO::FETCH_ASSOC);
             margin: 0;
         }
         .admin-container {
-            max-width: 1100px;
+            max-width: 1400px;
             margin: 0 auto;
             padding: 24px 12px;
             position: relative;
@@ -142,16 +143,23 @@ $recentRows = $recentStmt->fetchAll(PDO::FETCH_ASSOC);
             box-shadow: 0 2px 12px #e0bebe22;
             border-radius: 12px;
             overflow: hidden;
+            table-layout: auto;
+            font-size: 0.85em;
         }
         .service-table th,
         .service-table td {
-            padding: 12px 10px;
+            padding: 8px 6px;
             border-bottom: 1px solid #f3caca;
             text-align: left;
         }
         .service-table th {
             background: #f9eaea;
             color: #800000;
+            font-weight: 700;
+            font-size: 0.9em;
+        }
+        .service-table td {
+            font-size: 0.95em;
         }
         .service-table tbody tr:hover {
             background: #f3f7fa;
@@ -216,6 +224,15 @@ $recentRows = $recentStmt->fetchAll(PDO::FETCH_ASSOC);
         .pagination .page-link.disabled {
             opacity: 0.4;
             cursor: not-allowed;
+        }
+        @media (max-width: 1200px) {
+            .service-table { overflow-x: auto; display: block; }
+        }
+        @media (max-width: 768px) {
+            .admin-container { padding: 18px 10px; }
+            h1 { font-size: 1.4em; margin-bottom: 14px; }
+            .service-table { font-size: 0.85em; }
+            .service-table th, .service-table td { padding: 8px 6px; }
         }
         /* Mobile styles now in responsive-cards.css */
         </style>

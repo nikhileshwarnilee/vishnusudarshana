@@ -197,19 +197,30 @@ if ($selectedDate !== null) {
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
 body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f7f7fa; margin: 0; }
-.admin-container { max-width: 1100px; margin: 0 auto; padding: 24px 12px; }
+.admin-container { max-width: 1400px; margin: 0 auto; padding: 24px 12px; }
 h1 { color: #800000; margin-bottom: 18px; }
 .filter-bar { display: flex; gap: 12px; align-items: center; margin-bottom: 18px; }
 #dateSelect { padding: 8px 12px; border-radius: 6px; border: 1px solid #ddd; min-width: 260px; }
 .action-bar { display: none; background: #e9f7ef; border: 2px solid #28a745; border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; align-items: center; gap: 12px; }
 .action-bar.show { display: flex; }
-.action-btn { padding: 8px 16px; border-radius: 6px; border: none; cursor: pointer; font-weight: 600; font-size: 0.95em; }
+.action-btn { padding: 6px 12px; border-radius: 6px; border: none; cursor: pointer; font-weight: 600; font-size: 0.85em; }
 .btn-complete { background: #28a745; color: #fff; }
 .btn-cancel { background: #dc3545; color: #fff; margin-left: 8px; }
 .btn-message { background: #007bff; color: #fff; margin-left: 8px; }
-.service-table { width: 100%; border-collapse: collapse; background: #fff; box-shadow: 0 2px 12px #e0bebe22; border-radius: 12px; overflow: hidden; }
-.service-table th, .service-table td { padding: 12px 10px; border-bottom: 1px solid #f3caca; text-align: left; }
-.service-table th { background: #f9eaea; color: #800000; }
+.service-table { width: 100%; border-collapse: collapse; background: #fff; box-shadow: 0 2px 12px #e0bebe22; border-radius: 12px; table-layout: auto; font-size: 0.85em; }
+.service-table th, .service-table td { padding: 8px 6px; border-bottom: 1px solid #f3caca; text-align: left; white-space: nowrap; }
+.service-table th { background: #f9eaea; color: #800000; font-size: 0.9em; font-weight: 600; }
+.service-table td { font-size: 0.95em; }
+.service-table th:nth-child(1), .service-table td:nth-child(1) { width: 5%; }
+.service-table th:nth-child(2), .service-table td:nth-child(2) { width: 9%; }
+.service-table th:nth-child(3), .service-table td:nth-child(3) { width: 11%; }
+.service-table th:nth-child(4), .service-table td:nth-child(4) { width: 13%; }
+.service-table th:nth-child(5), .service-table td:nth-child(5) { width: 10%; }
+.service-table th:nth-child(6), .service-table td:nth-child(6) { width: 12%; }
+.service-table th:nth-child(7), .service-table td:nth-child(7) { width: 12%; }
+.service-table th:nth-child(8), .service-table td:nth-child(8) { width: 11%; }
+.service-table th:nth-child(9), .service-table td:nth-child(9) { width: 11%; }
+.service-table th:nth-child(10), .service-table td:nth-child(10) { width: 11%; }
 .no-data { text-align: center; color: #777; padding: 24px; }
 .status-badge { padding: 4px 12px; border-radius: 8px; font-weight: 600; font-size: 0.9em; display: inline-block; min-width: 80px; text-align: center; }
 .status-accepted { background: #e5f0ff; color: #0056b3; }
@@ -254,16 +265,15 @@ h1 { color: #800000; margin-bottom: 18px; }
                 <thead>
                     <tr>
                         <th><input type="checkbox" id="selectAll"></th>
+                        <th>View</th>
                         <th>Tracking ID</th>
                         <th>Customer Name</th>
                         <th>Mobile</th>
-                        <th>Email</th>
                         <th>Preferred Date</th>
                         <th>Scheduled Time</th>
                         <th>Payment Status</th>
                         <th>Service Status</th>
                         <th>Created Date</th>
-                        <th>Action</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -284,10 +294,12 @@ h1 { color: #800000; margin-bottom: 18px; }
                     ?>
                         <tr>
                             <td><input type="checkbox" class="rowCheckbox" value="<?= (int)$a['id'] ?>"></td>
+                            <td>
+                                <a href="view.php?id=<?= (int)$a['id'] ?>" class="view-btn" style="padding:6px 14px;background:#007bff;color:#fff;border-radius:6px;text-decoration:none;font-weight:600;display:inline-block;">View</a>
+                            </td>
                             <td><?= htmlspecialchars($a['tracking_id']) ?></td>
                             <td><?= htmlspecialchars($a['customer_name']) ?></td>
                             <td><?= htmlspecialchars($a['mobile']) ?></td>
-                            <td><?= htmlspecialchars($fd['email'] ?? '') ?></td>
                             <td style="font-weight:600;color:#800000;">
                                 <?= htmlspecialchars($preferredDisplay) ?>
                             </td>
@@ -305,9 +317,6 @@ h1 { color: #800000; margin-bottom: 18px; }
                             <td><span class="status-badge payment-paid">Paid</span></td>
                             <td><span class="status-badge status-accepted">Accepted</span></td>
                             <td><?= htmlspecialchars($createdDisplay) ?></td>
-                            <td>
-                                <a href="view.php?id=<?= (int)$a['id'] ?>" class="view-btn" style="padding:6px 14px;background:#007bff;color:#fff;border-radius:6px;text-decoration:none;font-weight:600;">View</a>
-                            </td>
                         </tr>
                     <?php endforeach; ?>
                 <?php endif; ?>

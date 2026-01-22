@@ -1,1 +1,4 @@
 [2026-01-21 14:31:30] TO: 919595744266 | TEMPLATE: Payment Dues Reminder | STATUS: SUCCESS | DETAILS: {"success":"true","submitted_message_id":"c0a81891-f15b-4aed-9fe1-3f43c111dcb1"}
+[2026-01-22 16:12:08] TO: 919595744266 | TEMPLATE: Website Service Request Confirmation | STATUS: API_ERROR | DETAILS: {"name":"ERR402","errorCode":402,"errorMessage":"Insufficient WhatsApp Conversation Credits (WCC)!"}
+[2026-01-22 16:12:52] TO: 919595744266 | TEMPLATE: Website Service Request Confirmation | STATUS: API_ERROR | DETAILS: {"name":"ERR402","errorCode":402,"errorMessage":"Insufficient WhatsApp Conversation Credits (WCC)!"}
+[2026-01-22 16:50:41] TO: 919595744266 | TEMPLATE: Payment Dues Reminder | STATUS: API_ERROR | DETAILS: {"name":"ERR402","errorCode":402,"errorMessage":"Insufficient WhatsApp Conversation Credits (WCC)!"}

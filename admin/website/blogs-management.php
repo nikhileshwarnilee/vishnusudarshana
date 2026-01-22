@@ -83,7 +83,7 @@ $blogs = $stmt->fetchAll();
         }
 
         .admin-container {
-            max-width: 1200px;
+            max-width: 1400px;
             margin: 0 auto;
             padding: 32px 20px;
         }
@@ -170,10 +170,10 @@ $blogs = $stmt->fetchAll();
 
         .blog-table th,
         .blog-table td {
-            padding: 16px 14px;
+            padding: 8px 6px;
             border-bottom: 1px solid #f3caca;
             text-align: left;
-            font-size: 1em;
+            font-size: 0.85em;
         }
 
         .blog-table th {
@@ -183,6 +183,10 @@ $blogs = $stmt->fetchAll();
             letter-spacing: 0.3px;
             text-transform: uppercase;
             font-size: 0.9em;
+        }
+
+        .blog-table td {
+            font-size: 0.95em;
         }
 
         .blog-table tr:last-child td {
@@ -253,6 +257,10 @@ $blogs = $stmt->fetchAll();
         }
 
         /* Responsive */
+        @media (max-width: 1200px) {
+            .blog-table { overflow-x: auto; display: block; }
+        }
+
         @media (max-width: 768px) {
             .admin-container {
                 padding: 20px 12px;
@@ -277,12 +285,12 @@ $blogs = $stmt->fetchAll();
             }
 
             .blog-table {
-                font-size: 0.9em;
+                font-size: 0.85em;
             }
 
             .blog-table th,
             .blog-table td {
-                padding: 12px 10px;
+                padding: 8px 6px;
             }
         }
     </style>

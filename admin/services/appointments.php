@@ -215,7 +215,7 @@ body {
     margin: 0;
 }
 .admin-container {
-    max-width: 1100px;
+    max-width: 1400px;
     margin: 0 auto;
     padding: 24px 12px;
 }
@@ -245,21 +245,37 @@ h1 {
     background: #fff;
     box-shadow: 0 2px 12px #e0bebe22;
     border-radius: 12px;
-    overflow: hidden;
+    table-layout: auto;
+    font-size: 0.85em;
 }
 .service-table th,
 .service-table td {
-    padding: 12px 10px;
+    padding: 8px 6px;
     border-bottom: 1px solid #f3caca;
     text-align: left;
+    white-space: nowrap;
 }
 .service-table th {
     background: #f9eaea;
     color: #800000;
+    font-size: 0.9em;
+    font-weight: 600;
+}
+.service-table td {
+    font-size: 0.95em;
 }
 .service-table tbody tr:hover {
     background: #f3f7fa;
 }
+.service-table th:nth-child(1), .service-table td:nth-child(1) { width: 5%; }
+.service-table th:nth-child(2), .service-table td:nth-child(2) { width: 10%; }
+.service-table th:nth-child(3), .service-table td:nth-child(3) { width: 12%; }
+.service-table th:nth-child(4), .service-table td:nth-child(4) { width: 14%; }
+.service-table th:nth-child(5), .service-table td:nth-child(5) { width: 11%; }
+.service-table th:nth-child(6), .service-table td:nth-child(6) { width: 13%; }
+.service-table th:nth-child(7), .service-table td:nth-child(7) { width: 12%; }
+.service-table th:nth-child(8), .service-table td:nth-child(8) { width: 11%; }
+.service-table th:nth-child(9), .service-table td:nth-child(9) { width: 12%; }
 .status-badge {
     padding: 4px 12px;
     border-radius: 8px;
@@ -529,21 +545,20 @@ if (isset($pendingDates[$todayDate])) {
     <thead>
         <tr>
             <th><input type="checkbox" id="selectAll"></th>
+            <th>View</th>
             <th>Tracking ID</th>
             <th>Customer Name</th>
             <th>Mobile</th>
-            <th>Email</th>
             <th>Preferred Date</th>
             <th>Payment Status</th>
             <th>Service Status</th>
             <th>Created Date</th>
-            <th>Action</th>
         </tr>
     </thead>
     <tbody>
         <?php if (empty($appointments)): ?>
             <tr>
-                <td colspan="10" class="no-data">No appointment bookings found.</td>
+                <td colspan="9" class="no-data">No appointment bookings found.</td>
             </tr>
         <?php else: ?>
             <?php foreach ($appointments as $a): ?>
@@ -561,19 +576,18 @@ if (isset($pendingDates[$todayDate])) {
                     <td>
                         <input type="checkbox" class="rowCheckbox" value="<?= (int)$a['id'] ?>" data-date="<?= htmlspecialchars($selectedDate) ?>">
                     </td>
+                    <td>
+                        <a href="view.php?id=<?= (int)$a['id'] ?>" class="view-btn" style="padding:6px 14px;background:#007bff;color:#fff;border-radius:6px;text-decoration:none;font-weight:600;">View</a>
+                    </td>
                     <td><?= htmlspecialchars($a['tracking_id']) ?></td>
                     <td><?= htmlspecialchars($a['customer_name']) ?></td>
                     <td><?= htmlspecialchars($a['mobile']) ?></td>
-                    <td><?= htmlspecialchars($a['email']) ?></td>
                     <td style="font-weight:600;color:#800000;">
                         <?= htmlspecialchars($preferredDisplay) ?>
                     </td>
                     <td><span class="status-badge payment-paid">Paid</span></td>
                     <td><span class="status-badge status-received">Unaccepted</span></td>
                     <td><?= htmlspecialchars($createdDisplay) ?></td>
-                    <td>
-                        <a href="view.php?id=<?= (int)$a['id'] ?>" class="view-btn" style="padding:6px 14px;background:#007bff;color:#fff;border-radius:6px;text-decoration:none;font-weight:600;">View</a>
-                    </td>
                 </tr>
             <?php endforeach; ?>
         <?php endif; ?>

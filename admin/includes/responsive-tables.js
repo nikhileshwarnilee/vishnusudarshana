@@ -27,7 +27,8 @@ document.addEventListener('DOMContentLoaded', function() {
         const wrappers = document.querySelectorAll('.table-responsive-wrapper');
         
         wrappers.forEach(function(wrapper) {
-            if (wrapper.scrollWidth > wrapper.clientWidth) {
+            // Only apply scroll indicators on tablet/mobile, not desktop
+            if (window.innerWidth <= 1200 && wrapper.scrollWidth > wrapper.clientWidth) {
                 wrapper.style.position = 'relative';
                 
                 // Add visual indicator that table is scrollable on mobile

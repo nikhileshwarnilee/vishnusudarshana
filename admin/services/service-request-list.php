@@ -83,7 +83,7 @@ if (session_status() === PHP_SESSION_NONE) {
         margin: 0;
     }
     .admin-container {
-        max-width: 1100px;
+        max-width: 1400px;
         margin: 0 auto;
         padding: 28px 16px 32px 16px;
     }
@@ -130,43 +130,60 @@ if (session_status() === PHP_SESSION_NONE) {
         background: #fff;
         box-shadow: 0 2px 12px #e0bebe22;
         border-radius: 12px;
-        overflow: hidden;
         margin-bottom: 18px;
+        table-layout: auto;
+        font-size: 0.85em;
     }
     .service-table th, .service-table td {
-        padding: 13px 11px;
+        padding: 8px 6px;
         border-bottom: 1px solid #f3caca;
         text-align: left;
-        font-size: 1.01em;
+        white-space: nowrap;
     }
     .service-table th {
         background: #f9eaea;
         color: #800000;
         font-weight: 600;
         letter-spacing: 0.3px;
+        font-size: 0.9em;
+    }
+    .service-table td {
+        font-size: 0.95em;
     }
     .service-table tbody tr:hover {
         background: #f3f7fa;
         cursor: pointer;
     }
+    .service-table th:nth-child(1), .service-table td:nth-child(1) { width: 8%; }
+    .service-table th:nth-child(2), .service-table td:nth-child(2) { width: 10%; }
+    .service-table th:nth-child(3), .service-table td:nth-child(3) { width: 10%; }
+    .service-table th:nth-child(4), .service-table td:nth-child(4) { width: 9%; }
+    .service-table th:nth-child(5), .service-table td:nth-child(5) { width: 15%; max-width: 180px; white-space: normal; word-wrap: break-word; }
+    .service-table th:nth-child(6), .service-table td:nth-child(6) { width: 12%; max-width: 120px; white-space: normal; word-wrap: break-word; }
+    .service-table th:nth-child(7), .service-table td:nth-child(7) { width: 8%; }
+    .service-table th:nth-child(8), .service-table td:nth-child(8) { width: 8%; }
+    .service-table th:nth-child(9), .service-table td:nth-child(9) { width: 8%; }
+    .service-table th:nth-child(10), .service-table td:nth-child(10) { width: 8%; }
+    .service-table th:nth-child(11), .service-table td:nth-child(11) { width: 9%; }
     .status-badge {
-        padding: 4px 12px;
+        padding: 4px 10px;
         border-radius: 8px;
         font-weight: 600;
-        font-size: 0.97em;
+        font-size: 0.9em;
         display: inline-block;
-        min-width: 80px;
+        min-width: 70px;
         text-align: center;
     }
     .view-btn {
         background: #800000;
         color: #fff;
-        padding: 7px 16px;
+        padding: 6px 12px;
         border-radius: 8px;
         text-decoration: none;
         font-weight: 600;
-        font-size: 1em;
+        font-size: 0.9em;
         transition: background 0.2s;
+        white-space: nowrap;
     }
     .view-btn:hover {
         background: #a00000;
@@ -380,6 +397,7 @@ include __DIR__ . '/../includes/top-menu.php';
     <table class="service-table">
         <thead>
             <tr>
+                <th>Action</th>
                 <th>Tracking ID</th>
                 <th>Customer</th>
                 <th>Mobile</th>
@@ -390,7 +408,6 @@ include __DIR__ . '/../includes/top-menu.php';
                 <th>Payment</th>
                 <th>Status</th>
                 <th>Date</th>
-                <th>Action</th>
             </tr>
         </thead>
         <tbody id="serviceTableBody">
@@ -399,6 +416,7 @@ include __DIR__ . '/../includes/top-menu.php';
         <?php else: ?>
             <?php foreach ($requests as $row): ?>
             <tr>
+                <td><a class="view-btn" href="view.php?id=<?= $row['id'] ?>">View</a></td>
                 <td><?= htmlspecialchars($row['tracking_id']) ?></td>
                 <td><?= htmlspecialchars($row['customer_name']) ?></td>
                 <td><?= htmlspecialchars($row['mobile']) ?></td>
@@ -473,7 +491,6 @@ include __DIR__ . '/../includes/top-menu.php';
                     </span>
                 </td>
                 <td><?= date('d-m-Y', strtotime($row['created_at'])) ?></td>
-                <td><a class="view-btn" href="view.php?id=<?= $row['id'] ?>">View</a></td>
             </tr>
             <?php endforeach; ?>
         <?php endif; ?>

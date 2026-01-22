@@ -20,14 +20,21 @@ $payments = $stmt->fetchAll();
 	<title>Capture Payments</title>
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<link rel="stylesheet" href="../../assets/css/style.css">
+	<link rel="stylesheet" href="../includes/responsive-tables.css">
 	<style>
-		body { margin: 0; background: #f7f7fa; }
-		.capture-container { background:#fff; border-radius:12px; box-shadow:0 2px 12px rgba(128,0,0,0.07); padding:32px 24px; max-width:1100px; margin:32px auto; }
-		table { width:100%; border-collapse:collapse; margin-top:10px; }
-		th, td { padding:12px 10px; border-bottom:1px solid #eee; text-align:left; }
-		th { background:#faf6f6; color:#800000; font-weight:700; }
+		body { margin: 0; background: #f7f7fa; font-family: 'Segoe UI', Arial, sans-serif; }
+		.capture-container { background:#fff; border-radius:12px; box-shadow:0 2px 12px rgba(128,0,0,0.07); padding:32px 24px; max-width:1400px; margin:32px auto; }
+		h1 { color:#800000; margin-bottom:18px; font-size:1.5em; }
+		table { width:100%; border-collapse:collapse; margin-top:10px; table-layout: auto; font-size: 0.85em; }
+		th, td { padding:8px 6px; border-bottom:1px solid #f3caca; text-align:left; white-space: nowrap; }
+		th { background:#f9eaea; color:#800000; font-weight:600; font-size: 0.9em; }
+		td { font-size: 0.95em; }
+		tbody tr:hover { background: #f3f7fa; }
 		tr:last-child td { border-bottom:none; }
 		.capture-btn { padding:7px 16px; border:none; border-radius:4px; font-weight:600; cursor:pointer; background:#007bff; color:#fff; }
+		@media (max-width: 1200px) {
+			table { overflow-x: auto; display: block; }
+		}
 	</style>
 </head>
 <body>
@@ -36,18 +43,19 @@ $payments = $stmt->fetchAll();
 	<h1 style="margin-bottom:18px; color:#800000; font-size:1.5em;">Collected Online Payments</h1>
 	<table>
 		<tr>
+			<th>Action</th>
 			<th>Payment ID</th>
 			<th>Customer Name</th>
 			<th>Product/Service(s)</th>
 			<th>Amount</th>
 			<th>Status</th>
 			<th>Date</th>
-			<th>Action</th>
 		</tr>
 		<?php if (empty($payments)): ?>
 			<tr><td colspan="7" style="text-align:center; color:#888;">No online payments found.</td></tr>
 		<?php else: foreach ($payments as $row): ?>
 			<tr>
+				<td><button class="capture-btn">Capture</button></td>
 				<td><?= htmlspecialchars($row['payment_id']) ?></td>
 				<td><?= htmlspecialchars($row['customer_name']) ?></td>
 				<td>
@@ -68,10 +76,10 @@ $payments = $stmt->fetchAll();
 				<td>₹<?= number_format($row['total_amount'],2) ?></td>
 				<td><?= htmlspecialchars($row['payment_status']) ?></td>
 				<td><?= htmlspecialchars($row['payment_date'] ?? $row['created_at']) ?></td>
-				<td><button class="capture-btn">Capture Payment</button></td>
 			</tr>
 		<?php endforeach; endif; ?>
 	</table>
 </div>
 </body>
+<script src="../includes/responsive-tables.js"></script>
 </html>

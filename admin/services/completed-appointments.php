@@ -38,7 +38,7 @@ $appointments = $stmt->fetchAll(PDO::FETCH_ASSOC);
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
 body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f7f7fa; margin: 0; }
-.admin-container { max-width: 1100px; margin: 0 auto; padding: 24px 12px; }
+.admin-container { max-width: 1400px; margin: 0 auto; padding: 24px 12px; }
 h1 { color: #800000; margin-bottom: 18px; }
 .summary-cards { display: flex; gap: 18px; margin-bottom: 24px; flex-wrap: wrap; }
 .summary-card { flex: 1 1 180px; background: #fffbe7; border-radius: 14px; padding: 16px; text-align: center; box-shadow: 0 2px 8px #e0bebe22; }
@@ -46,9 +46,19 @@ h1 { color: #800000; margin-bottom: 18px; }
 .summary-label { font-size: 1em; color: #444; }
 .filter-bar { display: flex; gap: 12px; align-items: center; margin-bottom: 18px; }
 #dateSelect { padding: 8px 12px; border-radius: 6px; border: 1px solid #ddd; min-width: 260px; }
-.service-table { width: 100%; border-collapse: collapse; background: #fff; box-shadow: 0 2px 12px #e0bebe22; border-radius: 12px; overflow: hidden; }
-.service-table th, .service-table td { padding: 12px 10px; border-bottom: 1px solid #f3caca; text-align: left; }
-.service-table th { background: #f9eaea; color: #800000; }
+.service-table { width: 100%; border-collapse: collapse; background: #fff; box-shadow: 0 2px 12px #e0bebe22; border-radius: 12px; table-layout: auto; font-size: 0.85em; }
+.service-table th, .service-table td { padding: 8px 6px; border-bottom: 1px solid #f3caca; text-align: left; white-space: nowrap; }
+.service-table th { background: #f9eaea; color: #800000; font-size: 0.9em; font-weight: 600; }
+.service-table td { font-size: 0.95em; }
+.service-table th:nth-child(1), .service-table td:nth-child(1) { width: 10%; }
+.service-table th:nth-child(2), .service-table td:nth-child(2) { width: 12%; }
+.service-table th:nth-child(3), .service-table td:nth-child(3) { width: 14%; }
+.service-table th:nth-child(4), .service-table td:nth-child(4) { width: 11%; }
+.service-table th:nth-child(5), .service-table td:nth-child(5) { width: 13%; }
+.service-table th:nth-child(6), .service-table td:nth-child(6) { width: 13%; }
+.service-table th:nth-child(7), .service-table td:nth-child(7) { width: 11%; }
+.service-table th:nth-child(8), .service-table td:nth-child(8) { width: 11%; }
+.service-table th:nth-child(9), .service-table td:nth-child(9) { width: 11%; }
 .no-data { text-align: center; color: #777; padding: 24px; }
 .status-badge { padding: 4px 12px; border-radius: 8px; font-weight: 600; font-size: 0.9em; display: inline-block; min-width: 80px; text-align: center; }
 .status-completed { background: #e5ffe5; color: #1a8917; }
@@ -75,16 +85,15 @@ h1 { color: #800000; margin-bottom: 18px; }
         <table class="service-table">
             <thead>
                 <tr>
+                    <th>View</th>
                     <th>Tracking ID</th>
                     <th>Customer Name</th>
                     <th>Mobile</th>
-                    <th>Email</th>
                     <th>Preferred Date</th>
                     <th>Scheduled Time</th>
                     <th>Payment Status</th>
                     <th>Service Status</th>
                     <th>Created Date</th>
-                    <th>Action</th>
                 </tr>
             </thead>
             <tbody>
@@ -101,10 +110,12 @@ h1 { color: #800000; margin-bottom: 18px; }
                 }
             ?>
                 <tr>
+                    <td>
+                        <a href="view.php?id=<?= (int)$a['id'] ?>" class="view-btn" style="padding:6px 14px;background:#007bff;color:#fff;border-radius:6px;text-decoration:none;font-weight:600;display:inline-block;">View</a>
+                    </td>
                     <td><?= htmlspecialchars($a['tracking_id']) ?></td>
                     <td><?= htmlspecialchars($a['customer_name']) ?></td>
                     <td><?= htmlspecialchars($a['mobile']) ?></td>
-                    <td><?= htmlspecialchars($a['email']) ?></td>
                     <td style="font-weight:600;color:#800000;">
                         <?= htmlspecialchars($preferredDisplay) ?>
                     </td>
@@ -122,9 +133,6 @@ h1 { color: #800000; margin-bottom: 18px; }
                     <td><span class="status-badge payment-paid">Paid</span></td>
                     <td><span class="status-badge status-completed">Completed</span></td>
                     <td><?= htmlspecialchars($createdDisplay) ?></td>
-                    <td>
-                        <a href="view.php?id=<?= (int)$a['id'] ?>" class="view-btn" style="padding:6px 14px;background:#007bff;color:#fff;border-radius:6px;text-decoration:none;font-weight:600;">View</a>
-                    </td>
                 </tr>
             <?php endforeach; ?>
             </tbody>

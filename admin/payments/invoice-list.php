@@ -65,15 +65,19 @@ $queryStr = http_build_query(array_diff_key($_GET, ['page' => '']));
 	<title>Invoice List</title>
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<link rel="stylesheet" href="../../assets/css/style.css">
+	<link rel="stylesheet" href="../includes/responsive-tables.css">
 	<style>
-		body { margin: 0; background: #f7f7fa; }
-		.invoice-list-container { background:#fff; border-radius:12px; box-shadow:0 2px 12px rgba(128,0,0,0.07); padding:32px 24px; max-width:1100px; margin:32px auto; }
+		body { margin: 0; background: #f7f7fa; font-family: 'Segoe UI', Arial, sans-serif; }
+		.invoice-list-container { background:#fff; border-radius:12px; box-shadow:0 2px 12px rgba(128,0,0,0.07); padding:32px 24px; max-width:1400px; margin:32px auto; }
+		h1 { color:#800000; margin-bottom:18px; font-size:1.5em; }
 		.filter-bar { display:flex; gap:18px; flex-wrap:wrap; align-items:center; margin-bottom:22px; }
 		.filter-bar label { font-weight:600; color:#333; margin-right:6px; }
 		.filter-bar input, .filter-bar select { padding:8px 10px; border:1px solid #ccc; border-radius:4px; }
-		table { width:100%; border-collapse:collapse; margin-top:10px; }
-		th, td { padding:12px 10px; border-bottom:1px solid #eee; text-align:left; }
-		th { background:#faf6f6; color:#800000; font-weight:700; }
+		table { width:100%; border-collapse:collapse; margin-top:10px; table-layout: auto; font-size: 0.85em; }
+		th, td { padding:8px 6px; border-bottom:1px solid #f3caca; text-align:left; white-space: nowrap; }
+		th { background:#f9eaea; color:#800000; font-weight:600; font-size: 0.9em; }
+		td { font-size: 0.95em; }
+		tbody tr:hover { background: #f3f7fa; }
 		tr:last-child td { border-bottom:none; }
 		.action-btn { padding:7px 16px; border:none; border-radius:4px; font-weight:600; cursor:pointer; margin-right:6px; text-decoration: none; }
 		.view-btn { background:#007bff; color:#fff; }
@@ -82,6 +86,9 @@ $queryStr = http_build_query(array_diff_key($_GET, ['page' => '']));
 		.pagination { margin-top:22px; text-align:right; }
 		.pagination a { display:inline-block; padding:7px 14px; margin:0 2px; border-radius:4px; background:#f4f4f4; color:#800000; text-decoration:none; font-weight:600; }
 		.pagination a.active, .pagination a:hover { background:#800000; color:#fff; }
+		@media (max-width: 1200px) {
+			table { overflow-x: auto; display: block; }
+		}
 	</style>
 </head>
 <body>
@@ -139,4 +146,5 @@ $queryStr = http_build_query(array_diff_key($_GET, ['page' => '']));
 	<?php endif; ?>
 </div>
 </body>
+<script src="../includes/responsive-tables.js"></script>
 </html>

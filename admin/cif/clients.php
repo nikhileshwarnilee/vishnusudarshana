@@ -73,23 +73,25 @@ $clients = $listStmt->fetchAll();
 <meta charset="UTF-8">
 <title>CIF Clients</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="../includes/responsive-tables.css">
 <style>
 body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f7f7fa; margin: 0; }
-.admin-container { max-width: 1100px; margin: 0 auto; padding: 24px 12px; }
+.admin-container { max-width: 1400px; margin: 0 auto; padding: 24px 12px; }
 h1 { color: #800000; margin-bottom: 18px; }
 .summary-cards { display: flex; gap: 18px; margin-bottom: 24px; flex-wrap: wrap; }
 .summary-card { flex: 1 1 180px; background: #fffbe7; border-radius: 14px; padding: 16px; text-align: center; box-shadow: 0 2px 8px #e0bebe22; }
 .summary-count { font-size: 2.2em; font-weight: 700; color: #800000; }
 .summary-label { font-size: 1em; color: #444; }
 @media (max-width: 700px) { .summary-cards { flex-direction: column; } }
-.filter-bar { display: flex; gap: 12px; align-items: center; margin-bottom: 18px; }
+.filter-bar { display: flex; gap: 12px; align-items: center; margin-bottom: 18px; flex-wrap: wrap; }
 .filter-bar input { min-width: 220px; padding: 7px 12px; border-radius: 6px; font-size: 1em; border: 1px solid #ddd; }
 .filter-bar .btn-main { padding: 8px 16px; background: #800000; color: #fff; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; }
 .filter-bar .btn-main:hover { background: #600000; }
-table { width: 100%; border-collapse: collapse; background: #fff; box-shadow: 0 2px 8px #e0bebe22; border-radius: 12px; overflow: hidden; }
-table th, table td { padding: 12px 10px; text-align: left; }
-table thead { background: #f9eaea; color: #800000; }
-table tbody tr:hover { background: #f1f1f1; }
+table { width: 100%; border-collapse: collapse; background: #fff; box-shadow: 0 2px 12px #e0bebe22; border-radius: 12px; table-layout: auto; font-size: 0.85em; }
+table th, table td { padding: 8px 6px; text-align: left; border-bottom: 1px solid #f3caca; white-space: nowrap; }
+table thead { background: #f9eaea; color: #800000; font-size: 0.9em; font-weight: 600; }
+table td { font-size: 0.95em; }
+table tbody tr:hover { background: #f3f7fa; }
 .page-link { display: inline-block; padding: 8px 14px; margin: 0 2px; border-radius: 6px; background: #f9eaea; color: #800000; font-weight: 600; text-decoration: none; }
 .page-link:hover { background: #800000; color: #fff; }
 .page-link.active { background: #800000; color: #fff; }
@@ -284,5 +286,6 @@ function toggleEditClient(id) {
     editEls.forEach(el => el.style.display = el.style.display === 'none' ? '' : 'none');
 }
 </script>
+<script src="../includes/responsive-tables.js"></script>
 </body>
 </html>

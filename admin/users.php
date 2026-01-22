@@ -149,7 +149,7 @@ $users = $pdo->query('SELECT * FROM users ORDER BY id DESC')->fetchAll();
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Marcellus&display=swap');
         html,body{font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif!important;}
-        .admin-container { max-width: 1100px; margin: 0 auto; padding: 24px 12px; }
+        .admin-container { max-width: 1400px; margin: 0 auto; padding: 24px 12px; }
         /* Summary cards now in responsive-cards.css */
         .form-box { margin-bottom: 20px; padding: 18px; border: 1px solid #ccc; border-radius: 12px; background: #fff; max-width: none; width: 100%; box-sizing: border-box; }
         .form-group { margin-bottom: 16px; }
@@ -158,6 +158,9 @@ $users = $pdo->query('SELECT * FROM users ORDER BY id DESC')->fetchAll();
         .form-group input:focus { border-color: #800000; outline: none; }
         .btn-main { padding: 8px 18px; background: #800000; color: #fff; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; }
         .btn-main:hover { background: #600000; }
+        @media (max-width: 1200px) {
+            .users-table { overflow-x: auto; display: block; }
+        }
         @media (max-width: 768px) {
             .admin-container { padding: 18px 10px; }
             h1 { font-size: 1.4em; margin-bottom: 14px; }
@@ -166,7 +169,7 @@ $users = $pdo->query('SELECT * FROM users ORDER BY id DESC')->fetchAll();
             .form-group label { font-size: 0.9em; margin-bottom: 4px; }
             .form-group input { padding: 8px 10px; font-size: 0.95em; }
             .btn-main { padding: 6px 14px; font-size: 0.9em; }
-            .users-table { font-size: 0.9em; }
+            .users-table { font-size: 0.85em; }
             .users-table th, .users-table td { padding: 8px 6px; }
             .action-btn { padding: 4px 8px; font-size: 0.85em; margin-right: 2px; }
         }
@@ -190,9 +193,10 @@ $users = $pdo->query('SELECT * FROM users ORDER BY id DESC')->fetchAll();
             .users-table { font-size: 0.75em; }
             .users-table th, .users-table td { padding: 4px 3px; }
         }
-        .users-table { width: 100%; border-collapse: collapse; background: #fff; box-shadow: 0 2px 12px #e0bebe22; border-radius: 12px; overflow: hidden; }
-        .users-table th, .users-table td { padding: 12px 10px; border-bottom: 1px solid #f3caca; text-align: left; }
-        .users-table th { background: #f9eaea; color: #800000; }
+        .users-table { width: 100%; border-collapse: collapse; background: #fff; box-shadow: 0 2px 12px #e0bebe22; border-radius: 12px; overflow: hidden; table-layout: auto; font-size: 0.85em; }
+        .users-table th, .users-table td { padding: 8px 6px; border-bottom: 1px solid #f3caca; text-align: left; }
+        .users-table th { background: #f9eaea; color: #800000; font-weight: 700; font-size: 0.9em; }
+        .users-table td { font-size: 0.95em; }
         .users-table tbody tr:hover { background: #f3f7fa; }
         .action-btn { padding: 6px 14px; background: #007bff; color: #fff; border-radius: 6px; text-decoration: none; font-weight: 600; border: none; cursor: pointer; margin-right: 6px; }
         .action-btn.edit { background: #ffc107; color: #333; }

@@ -96,15 +96,19 @@ $queryStr = http_build_query(array_diff_key($_GET, ['page' => '']));
 	<title>Service Request Payments</title>
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<link rel="stylesheet" href="../../assets/css/style.css">
+	<link rel="stylesheet" href="../includes/responsive-tables.css">
 	<style>
-		body { margin: 0; background: #f7f7fa; }
-		.payments-container { background:#fff; border-radius:12px; box-shadow:0 2px 12px rgba(128,0,0,0.07); padding:32px 24px; max-width:1100px; margin:32px auto; }
+		body { margin: 0; background: #f7f7fa; font-family: 'Segoe UI', Arial, sans-serif; }
+		.payments-container { background:#fff; border-radius:12px; box-shadow:0 2px 12px rgba(128,0,0,0.07); padding:32px 24px; max-width:1400px; margin:32px auto; }
+		h1 { color:#800000; margin-bottom:18px; font-size:1.5em; }
 		.filter-bar { display:flex; gap:18px; flex-wrap:wrap; align-items:center; margin-bottom:22px; }
 		.filter-bar input, .filter-bar select { padding:8px 10px; border:1px solid #ccc; border-radius:4px; }
-		table { width:100%; border-collapse:collapse; margin-top:10px; }
-		th, td { padding:12px 10px; border-bottom:1px solid #eee; text-align:left; }
-		th { background:#faf6f6; color:#800000; font-weight:700; }
+		table { width:100%; border-collapse:collapse; margin-top:10px; table-layout: auto; font-size: 0.85em; }
+		th, td { padding:8px 6px; border-bottom:1px solid #eee; text-align:left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+		th { background:#faf6f6; color:#800000; font-weight:600; font-size: 0.9em; }
+		td { font-size: 0.95em; }
 		tr:last-child td { border-bottom:none; }
+		tr:hover { background: #f9f9f9; }
 		.pagination { margin-top:22px; text-align:right; }
 		.pagination a { display:inline-block; padding:7px 14px; margin:0 2px; border-radius:4px; background:#f4f4f4; color:#800000; text-decoration:none; font-weight:600; }
 		.pagination a.active, .pagination a:hover { background:#800000; color:#fff; }
@@ -125,6 +129,21 @@ $queryStr = http_build_query(array_diff_key($_GET, ['page' => '']));
 		}
 		.filter-btn:hover {
 			background: #a00000;
+		}
+		table th:nth-child(1), table td:nth-child(1) { width: 8%; }
+		table th:nth-child(2), table td:nth-child(2) { width: 10%; }
+		table th:nth-child(3), table td:nth-child(3) { width: 8%; }
+		table th:nth-child(4), table td:nth-child(4) { width: 8%; }
+		table th:nth-child(5), table td:nth-child(5) { width: 7%; }
+		table th:nth-child(6), table td:nth-child(6) { width: 6%; }
+		table th:nth-child(7), table td:nth-child(7) { width: 8%; }
+		table th:nth-child(8), table td:nth-child(8) { width: 8%; }
+		table th:nth-child(9), table td:nth-child(9) { width: 10%; max-width: 120px; }
+		table th:nth-child(10), table td:nth-child(10) { width: 10%; max-width: 120px; }
+		table th:nth-child(11), table td:nth-child(11) { width: 17%; }
+		table td:nth-child(9), table td:nth-child(10), table td:nth-child(11) { white-space: normal; word-wrap: break-word; }
+		@media (max-width: 1200px) {
+			table { overflow-x: auto; display: block; }
 		}
 	</style>
 </head>
@@ -175,16 +194,15 @@ $queryStr = http_build_query(array_diff_key($_GET, ['page' => '']));
 				<td>₹<?= number_format($row['total_bill'],2) ?></td>
 				<td>₹<?= number_format($row['discount'],2) ?></td>
 				<td style="color:#1a8917;font-weight:600;">₹<?= number_format($row['paid_amount'],2) ?></td>
-				   <td><?= htmlspecialchars($row['method'] ?? '') ?></td>
-				   <td><?= htmlspecialchars($row['note'] ?? '') ?></td>
-				   <td><?= htmlspecialchars($row['payment_date'] ?? '') ?></td>
-				   <td><?php
-					   $td = $row['transaction_details'] ?? '';
-					   // Remove date if present (e.g., if transaction_details contains a date string)
-					   // This regex removes YYYY-MM-DD or DD-MM-YYYY or similar date patterns
-					   $td = preg_replace('/\b\d{4}-\d{2}-\d{2}\b|\b\d{2}-\d{2}-\d{4}\b/', '', $td);
-					   echo htmlspecialchars(trim($td));
-				   ?></td>
+				<td><?= htmlspecialchars($row['method'] ?? '') ?></td>
+				<td><?= htmlspecialchars($row['note'] ?? '') ?></td>
+				<td><?php
+					$td = $row['transaction_details'] ?? '';
+					// Remove date if present (e.g., if transaction_details contains a date string)
+					// This regex removes YYYY-MM-DD or DD-MM-YYYY or similar date patterns
+					$td = preg_replace('/\b\d{4}-\d{2}-\d{2}\b|\b\d{2}-\d{2}-\d{4}\b/', '', $td);
+					echo htmlspecialchars(trim($td));
+				?></td>
 				<td>
 					<?php if ($row['source'] === 'Service Request' && !empty($row['products_json'])): ?>
 						<?php 
@@ -212,4 +230,5 @@ $queryStr = http_build_query(array_diff_key($_GET, ['page' => '']));
 	<?php endif; ?>
 </div>
 </body>
+<script src="../includes/responsive-tables.js"></script>
 </html>
