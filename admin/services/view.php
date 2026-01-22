@@ -343,7 +343,16 @@ $adminNotes = $stmt->fetchAll(PDO::FETCH_ASSOC);
     <table class="details-table">
         <tr><th>Tracking ID</th><td><?php echo htmlspecialchars($request['tracking_id']); ?></td></tr>
         <tr><th>Customer Name</th><td><?php echo htmlspecialchars($request['customer_name']); ?></td></tr>
-        <tr><th>Mobile</th><td><?php echo htmlspecialchars($request['mobile']); ?></td></tr>
+        <tr><th>Mobile</th><td><?php 
+            // Display country code with mobile number
+            $countryCode = '';
+            if (!empty($formData['country_code'])) {
+                $countryCode = $formData['country_code'] === 'other' && !empty($formData['custom_country_code']) 
+                    ? htmlspecialchars($formData['custom_country_code']) 
+                    : htmlspecialchars($formData['country_code']);
+            }
+            echo $countryCode ? $countryCode . ' ' . htmlspecialchars($request['mobile']) : htmlspecialchars($request['mobile']); 
+        ?></td></tr>
         <tr><th>Email</th><td><?php echo htmlspecialchars($request['email']); ?></td></tr>
         <tr><th>Category</th><td><?php
             $categoryTitles = [
@@ -390,7 +399,7 @@ $adminNotes = $stmt->fetchAll(PDO::FETCH_ASSOC);
             'country' => ['label' => 'Country', 'icon' => '🌏'],
             'notes' => ['label' => 'Notes', 'icon' => '🗒️'],
         ];
-        $skipFields = ['product_ids', 'qty', 'mobile', 'email', 'category', 'category_slug', 'full_name', 'name', 'city'];
+        $skipFields = ['product_ids', 'qty', 'mobile', 'email', 'category', 'category_slug', 'full_name', 'name', 'city', 'country_code', 'custom_country_code'];
         $shownLabels = [];
         ?>
         <table class="details-table" style="margin-bottom:18px;">
