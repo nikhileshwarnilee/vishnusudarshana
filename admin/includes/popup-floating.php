@@ -15,7 +15,7 @@
     <div class="popup-container">
         <button class="close-btn" onclick="window.close()">Close</button>
         <h2>Floating Popup</h2>
-        <div style="color:#444; font-size:1.1em;">This is a new popup window opened from the floating icon.<br><br>You can customize this page as needed.</div>
+        <div style="color:#444; font-size:1.1em;">This is a new popup window opened from the floating icon.<br></div>
     </div>
 </body>
 </html>

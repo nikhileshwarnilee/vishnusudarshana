@@ -150,7 +150,7 @@
     addBtn.addEventListener('click', createSection);
     printBtn.addEventListener('click', () => {
         const sections = Array.from(sectionsContainer.querySelectorAll('.rt-section'));
-        const headerImg = window.location.origin + '/vishnusudarshana/vishnusudarshana/admin/includes/compbanner.jpg';
+        const headerImg = window.location.origin + '/admin/includes/compbanner.jpg';
         let html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Print</title><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Kalam:wght@400&display=swap" rel="stylesheet"><style>@page{margin:0;}html,body{margin:0;padding:0;background:#fffbf0;font-family:Arial,sans-serif;}body{display:flex;flex-direction:column;min-height:100vh;} .page-body{flex:1;display:flex;flex-direction:column;} .content{padding:20px;padding-bottom:30px;margin:30px 50px;flex:1;} .welcome-note{text-align:center;padding:20px;font-size:18px;font-weight:600;color:#800000;} .section-title{font-family:\'Kalam\',cursive;font-weight:400;font-size:24px;color:#800000;} .section-content{font-family:\'Kalam\',cursive;font-weight:400;font-size:18px;} .footer{position:relative;width:100%;padding:20px 50px;border-top:2px solid #ddd;font-size:14px;line-height:1.6;background:#fffbf0;box-sizing:border-box;page-break-inside:avoid;margin-top:auto;}</style></head><body>';
         html += '<div class="page-body">';
         html += `<img src="${headerImg}" alt="Header" style="width:100%;display:block;margin:0;padding:0;">`;
@@ -199,7 +199,7 @@
     downloadBtn.addEventListener('click', () => {
         ensureKalamFontLoaded().then(() => {
             const sections = Array.from(sectionsContainer.querySelectorAll('.rt-section'));
-            const headerImg = window.location.origin + '/vishnusudarshana/vishnusudarshana/admin/includes/compbanner.jpg';
+            const headerImg = window.location.origin + '/admin/includes/compbanner.jpg';
             
             // Create proper DOM elements for PDF
             const pdfContainer = document.createElement('div');
