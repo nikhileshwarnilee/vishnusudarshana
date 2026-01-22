@@ -3,6 +3,9 @@
 // Reusable PDO database connection for Vishnusudarshana
 // Switches between local dev and production credentials automatically
 
+// Set timezone to India Standard Time (IST)
+date_default_timezone_set('Asia/Kolkata');
+
 // Detect Codespaces or localhost for development
 $isLocal = false;
 if (
