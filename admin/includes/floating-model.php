@@ -7,10 +7,9 @@
     </div>
 </div>
 <!-- Floating Writing Icon Button -->
-<button id="floatingWriteBtn" onclick="openFloatingPopup()" style="position:fixed; bottom:32px; right:32px; z-index:99998; background:#fff; border:none; box-shadow:0 2px 12px #80000033; border-radius:50%; width:64px; height:64px; display:flex; align-items:center; justify-content:center; cursor:pointer; transition:box-shadow 0.2s;">
-    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" style="display:block;" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="12" cy="12" r="12" fill="#800000"/>
-        <path d="M7 17.25V19h1.75l7.06-7.06a1.25 1.25 0 0 0 0-1.77l-2.98-2.98a1.25 1.25 0 0 0-1.77 0L7 15.23v2.02zm8.71-8.71a2.25 2.25 0 0 1 0 3.18l-1.06 1.06-3.18-3.18 1.06-1.06a2.25 2.25 0 0 1 3.18 0z" fill="#fff"/>
+<button id="floatingWriteBtn" onclick="openFloatingPopup()" style="position:fixed; bottom:32px; right:32px; z-index:99998; background:#800000; border:none; box-shadow:0 2px 12px #80000033; border-radius:50%; width:64px; height:64px; display:flex; align-items:center; justify-content:center; cursor:pointer; transition:all 0.2s;">
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" style="display:block;" xmlns="http://www.w3.org/2000/svg">
+        <path d="M20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z" fill="#fff"/>
     </svg>
 </button>
 <script>
