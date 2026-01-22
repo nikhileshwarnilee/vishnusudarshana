@@ -17,8 +17,11 @@
 </head>
 <body>
     <div class="popup-container">
-        <button class="close-btn" onclick="window.close()">Close</button>
-        <h2>Floating Popup</h2>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">
+            <h2 style="margin:0;">Floating Popup</h2>
+            <button id="settingsBtn" style="background:#666;color:#fff;border:none;border-radius:8px;padding:8px 12px;cursor:pointer;font-size:1.2em;width:40px;height:40px;display:flex;align-items:center;justify-content:center;" title="Settings">⚙️</button>
+            <button class="close-btn" onclick="window.close()" style="margin:0;">Close</button>
+        </div>
 
         <?php
         require_once __DIR__ . '/../config/db.php';
@@ -322,6 +325,216 @@
     });
     // Initialize first section
     createSection();
+
+    // Settings functionality
+    let settingsMode = false;
+    const settingsBtn = document.getElementById('settingsBtn');
+    const popupContainer = document.querySelector('.popup-container');
+
+    settingsBtn.addEventListener('click', () => {
+        settingsMode = !settingsMode;
+        if (settingsMode) {
+            showSettings();
+        } else {
+            hideSettings();
+        }
+    });
+
+    function showSettings() {
+        const mainContent = popupContainer.innerHTML;
+        popupContainer.dataset.mainContent = mainContent;
+        
+        popupContainer.innerHTML = `
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">
+                <h2 style="margin:0;">Manage Titles</h2>
+                <button id="closeSettingsBtn" style="background:#666;color:#fff;border:none;border-radius:8px;padding:8px 12px;cursor:pointer;font-size:1.2em;width:40px;height:40px;display:flex;align-items:center;justify-content:center;" title="Close Settings">✕</button>
+            </div>
+
+            <div style="margin-bottom:20px;">
+                <label style="font-weight:600;color:#800000;display:block;margin-bottom:8px;">Add New Title:</label>
+                <div style="display:flex;gap:8px;">
+                    <input type="text" id="newTitleInput" placeholder="Enter title" style="flex:1;padding:8px 12px;border:1px solid #ddd;border-radius:6px;font-size:1em;">
+                    <button id="saveTitleBtn" style="background:#25D366;color:#fff;padding:8px 18px;border:none;border-radius:6px;font-weight:600;cursor:pointer;">Save</button>
+                </div>
+                <div id="statusMsg" style="margin-top:8px;font-size:0.95em;"></div>
+            </div>
+
+            <div>
+                <label style="font-weight:600;color:#800000;display:block;margin-bottom:8px;">Existing Titles:</label>
+                <div id="titlesList" style="border:1px solid #ddd;border-radius:6px;max-height:300px;overflow-y:auto;"></div>
+            </div>
+        `;
+
+        loadTitles();
+
+        document.getElementById('closeSettingsBtn').addEventListener('click', () => {
+            hideSettings();
+        });
+
+        document.getElementById('saveTitleBtn').addEventListener('click', saveTitle);
+        document.getElementById('newTitleInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') saveTitle();
+        });
+    }
+
+    function hideSettings() {
+        if (popupContainer.dataset.mainContent) {
+            popupContainer.innerHTML = popupContainer.dataset.mainContent;
+            delete popupContainer.dataset.mainContent;
+            // Reinitialize event listeners
+            settingsBtn.id = 'settingsBtn';
+            document.getElementById('settingsBtn').addEventListener('click', () => {
+                settingsMode = !settingsMode;
+                if (settingsMode) {
+                    showSettings();
+                } else {
+                    hideSettings();
+                }
+            });
+        }
+    }
+
+    function loadTitles() {
+        const titlesList = document.getElementById('titlesList');
+        titlesList.innerHTML = '<p style="padding:12px;color:#666;">Loading...</p>';
+
+        fetch('./popup_titles_handler.php?action=list')
+            .then(r => r.json())
+            .then(data => {
+                if (!data.success) {
+                    titlesList.innerHTML = '<p style="padding:12px;color:#d00;">Error loading titles</p>';
+                    return;
+                }
+
+                if (data.titles.length === 0) {
+                    titlesList.innerHTML = '<p style="padding:12px;color:#666;">No titles yet. Add one above!</p>';
+                    return;
+                }
+
+                let html = '';
+                data.titles.forEach(title => {
+                    html += `
+                        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border-bottom:1px solid #eee;">
+                            <span style="flex:1;">${escapeHtml(title.title)}</span>
+                            <button class="edit-title-btn" data-id="${title.id}" style="background:#007bff;color:#fff;padding:4px 10px;border:none;border-radius:4px;cursor:pointer;margin-right:6px;font-size:0.85em;">Edit</button>
+                            <button class="delete-title-btn" data-id="${title.id}" style="background:#dc3545;color:#fff;padding:4px 10px;border:none;border-radius:4px;cursor:pointer;font-size:0.85em;">Delete</button>
+                        </div>
+                    `;
+                });
+                titlesList.innerHTML = html;
+
+                document.querySelectorAll('.edit-title-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => editTitle(e.target.dataset.id));
+                });
+
+                document.querySelectorAll('.delete-title-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => deleteTitle(e.target.dataset.id));
+                });
+            })
+            .catch(err => {
+                console.error(err);
+                titlesList.innerHTML = '<p style="padding:12px;color:#d00;">Error loading titles</p>';
+            });
+    }
+
+    function saveTitle() {
+        const input = document.getElementById('newTitleInput');
+        const title = input.value.trim();
+        const statusMsg = document.getElementById('statusMsg');
+
+        if (!title) {
+            statusMsg.textContent = 'Please enter a title';
+            statusMsg.style.color = '#d00';
+            return;
+        }
+
+        statusMsg.textContent = 'Saving...';
+        statusMsg.style.color = '#666';
+
+        fetch('./popup_titles_handler.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: 'action=add&title=' + encodeURIComponent(title)
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                statusMsg.textContent = 'Title saved successfully!';
+                statusMsg.style.color = '#28a745';
+                input.value = '';
+                setTimeout(() => {
+                    statusMsg.textContent = '';
+                    loadTitles();
+                }, 1000);
+                // Update main dropdown
+                optionsHtml = data.optionsHtml;
+            } else {
+                statusMsg.textContent = 'Error: ' + data.message;
+                statusMsg.style.color = '#d00';
+            }
+        })
+        .catch(err => {
+            statusMsg.textContent = 'Error saving title';
+            statusMsg.style.color = '#d00';
+        });
+    }
+
+    function editTitle(id) {
+        const titlesList = document.getElementById('titlesList');
+        const item = titlesList.querySelector(`[data-id="${id}"]`)?.closest('div');
+        if (!item) return;
+
+        const titleText = item.querySelector('span').textContent;
+        const newTitle = prompt('Edit title:', titleText);
+        
+        if (newTitle === null) return;
+        if (newTitle.trim() === '') {
+            alert('Title cannot be empty');
+            return;
+        }
+
+        fetch('./popup_titles_handler.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: 'action=edit&id=' + encodeURIComponent(id) + '&title=' + encodeURIComponent(newTitle)
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                loadTitles();
+                optionsHtml = data.optionsHtml;
+            } else {
+                alert('Error: ' + data.message);
+            }
+        })
+        .catch(err => alert('Error updating title'));
+    }
+
+    function deleteTitle(id) {
+        if (!confirm('Are you sure you want to delete this title?')) return;
+
+        fetch('./popup_titles_handler.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: 'action=delete&id=' + encodeURIComponent(id)
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                loadTitles();
+                optionsHtml = data.optionsHtml;
+            } else {
+                alert('Error: ' + data.message);
+            }
+        })
+        .catch(err => alert('Error deleting title'));
+    }
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
     </script>
 </body>
 </html>
