@@ -178,7 +178,7 @@ if (!empty($acceptedDates)) {
 $appointments = [];
 if ($selectedDate !== null) {
         $sql = "
-                SELECT id, tracking_id, customer_name, mobile, form_data, created_at
+                SELECT id, tracking_id, customer_name, mobile, form_data, selected_products, created_at
                 FROM service_requests
                 WHERE $whereAcceptedFuture
                     AND JSON_UNQUOTE(JSON_EXTRACT(form_data,'$.assigned_date')) = ?
@@ -267,6 +267,7 @@ h1 { color: #800000; margin-bottom: 18px; }
                         <th><input type="checkbox" id="selectAll"></th>
                         <th>View</th>
                         <th>Tracking ID</th>
+                        <th>Products</th>
                         <th>Customer Name</th>
                         <th>Mobile</th>
                         <th>Preferred Date</th>
@@ -278,7 +279,7 @@ h1 { color: #800000; margin-bottom: 18px; }
                 </thead>
                 <tbody>
                 <?php if (empty($appointments)): ?>
-                    <tr><td colspan="10" class="no-data">No appointment bookings found.</td></tr>
+                    <tr><td colspan="11" class="no-data">No appointment bookings found.</td></tr>
                 <?php else: ?>
                     <?php foreach ($appointments as $a):
                         $fd = json_decode($a['form_data'], true) ?? [];
@@ -298,6 +299,25 @@ h1 { color: #800000; margin-bottom: 18px; }
                                 <a href="view.php?id=<?= (int)$a['id'] ?>" class="view-btn" style="padding:6px 14px;background:#007bff;color:#fff;border-radius:6px;text-decoration:none;font-weight:600;display:inline-block;">View</a>
                             </td>
                             <td><?= htmlspecialchars($a['tracking_id']) ?></td>
+                            <td>
+                                <?php
+                                $products = '-';
+                                $decoded = json_decode($a['selected_products'], true);
+                                if (is_array($decoded) && count($decoded)) {
+                                    $productDetails = [];
+                                    foreach ($decoded as $prod) {
+                                        if (isset($prod['name'])) {
+                                            $qty = isset($prod['qty']) ? (int)$prod['qty'] : 1;
+                                            $productDetails[] = htmlspecialchars($prod['name']) . ' x' . $qty;
+                                        }
+                                    }
+                                    if ($productDetails) {
+                                        $products = implode(', ', $productDetails);
+                                    }
+                                }
+                                echo $products;
+                                ?>
+                            </td>
                             <td><?= htmlspecialchars($a['customer_name']) ?></td>
                             <td><?= htmlspecialchars($a['mobile']) ?></td>
                             <td style="font-weight:600;color:#800000;">

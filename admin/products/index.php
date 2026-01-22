@@ -75,6 +75,7 @@
                 <th>Category</th>
                 <th>Price</th>
                 <th>Status</th>
+                <th>Sequence</th>
                 <th>Actions</th>
             </tr>
         </thead>
@@ -171,6 +172,34 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initial load
     loadTable(1);
 });
+
+// Handle sequence input changes with debounce
+document.addEventListener('change', function(e) {
+    if (e.target.classList.contains('seq-input')) {
+        const id = e.target.getAttribute('data-id');
+        const order = e.target.value;
+        
+        fetch('update_sequence.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: 'id=' + encodeURIComponent(id) + '&order=' + encodeURIComponent(order)
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                e.target.style.borderColor = '#28a745';
+                setTimeout(() => {
+                    e.target.style.borderColor = '#ddd';
+                }, 1500);
+            } else {
+                alert('Error: ' + (data.error || 'Failed to update sequence'));
+            }
+        })
+        .catch(err => console.error('Error:', err));
+    }
+}, true);
 </script>
 </body>
 </html>

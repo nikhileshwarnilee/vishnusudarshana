@@ -15,7 +15,7 @@ if ($category === 'appointment') {
         $form_data = $_SESSION['book_appointment'];
     }
     // Fetch products for 'appointment'
-    $stmt = $pdo->prepare('SELECT * FROM products WHERE category_slug = ? AND is_active = 1 ORDER BY price ASC');
+    $stmt = $pdo->prepare('SELECT * FROM products WHERE category_slug = ? AND is_active = 1 ORDER BY display_order ASC, price ASC');
     $stmt->execute(['appointment']);
     $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
     // Backend validation
@@ -81,7 +81,7 @@ if ($category === 'appointment') {
         echo '<a href="services.php">&larr; Back to Services</a>';
         exit;
     }
-    $stmt = $pdo->prepare('SELECT * FROM products WHERE category_slug = ? AND is_active = 1 ORDER BY price ASC');
+    $stmt = $pdo->prepare('SELECT * FROM products WHERE category_slug = ? AND is_active = 1 ORDER BY display_order ASC, price ASC');
     $stmt->execute([$category]);
     $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
 }

@@ -31,7 +31,6 @@ $commonFields = [
 $categoryFields = [
     'appointment' => [
         ['label' => 'Preferred Date', 'name' => 'preferred_date', 'type' => 'date', 'required' => true],
-        ['label' => 'Preferred Time Slot', 'name' => 'preferred_time', 'type' => 'text', 'required' => true],
         ['label' => 'Consultation Type', 'name' => 'consultation_type', 'type' => 'select', 'options' => ['Online', 'In-person'], 'required' => true],
         ['label' => 'Topic', 'name' => 'topic', 'type' => 'select', 'options' => ['Astrology', 'Vastu', 'Rituals', 'General Guidance', 'Other'], 'required' => true],
     ],
@@ -115,10 +114,6 @@ unset($fields);
             <div class="form-group">
                 <label>Preferred Date <span class="req">*</span></label>
                 <input type="date" name="preferred_date" id="preferred_date_input" required autocomplete="off">
-            </div>
-            <div class="form-group">
-                <label>Preferred Time Window</label>
-                <input type="text" name="preferred_time">
             </div>
             <div class="form-group">
                 <label>Notes</label>

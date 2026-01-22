@@ -5,7 +5,7 @@ $category = $_GET['category'] ?? '';
 $categories = [
     'appointment' => [
         'title' => 'Appointment Booking',
-        'description' => 'Book your appointment online at your convenience without calls or visits. Choose a suitable time and get guided support from anywhere.',
+        'description' => 'Book your appointment online at your convenience without calls or visits. Choose a suitable time and receive guided support from anywhere. Each appointment is limited to one topic only. Additional questions can be added before checkout at ₹50 per question. We respect your preferred appointment date; however, the final schedule will be confirmed after the appointment is accepted.',
         'services' => [
             'Online Appointment',
                 

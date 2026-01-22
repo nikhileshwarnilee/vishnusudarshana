@@ -21,7 +21,7 @@ $totalCompleted = (int)$stmt->fetchColumn();
 // --- FETCH ALL COMPLETED APPOINTMENTS ---
 $appointments = [];
 $sql = "
-    SELECT id, tracking_id, customer_name, mobile, email, payment_status, service_status, form_data, created_at
+    SELECT id, tracking_id, customer_name, mobile, email, payment_status, service_status, form_data, selected_products, created_at
     FROM service_requests
     WHERE category_slug = 'appointment' AND payment_status = 'Paid' AND service_status = 'Completed'
     ORDER BY created_at DESC
@@ -87,6 +87,7 @@ h1 { color: #800000; margin-bottom: 18px; }
                 <tr>
                     <th>View</th>
                     <th>Tracking ID</th>
+                    <th>Products</th>
                     <th>Customer Name</th>
                     <th>Mobile</th>
                     <th>Preferred Date</th>
@@ -114,6 +115,25 @@ h1 { color: #800000; margin-bottom: 18px; }
                         <a href="view.php?id=<?= (int)$a['id'] ?>" class="view-btn" style="padding:6px 14px;background:#007bff;color:#fff;border-radius:6px;text-decoration:none;font-weight:600;display:inline-block;">View</a>
                     </td>
                     <td><?= htmlspecialchars($a['tracking_id']) ?></td>
+                    <td>
+                        <?php
+                        $products = '-';
+                        $decoded = json_decode($a['selected_products'], true);
+                        if (is_array($decoded) && count($decoded)) {
+                            $productDetails = [];
+                            foreach ($decoded as $prod) {
+                                if (isset($prod['name'])) {
+                                    $qty = isset($prod['qty']) ? (int)$prod['qty'] : 1;
+                                    $productDetails[] = htmlspecialchars($prod['name']) . ' x' . $qty;
+                                }
+                            }
+                            if ($productDetails) {
+                                $products = implode(', ', $productDetails);
+                            }
+                        }
+                        echo $products;
+                        ?>
+                    </td>
                     <td><?= htmlspecialchars($a['customer_name']) ?></td>
                     <td><?= htmlspecialchars($a['mobile']) ?></td>
                     <td style="font-weight:600;color:#800000;">

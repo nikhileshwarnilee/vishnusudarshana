@@ -10,7 +10,7 @@ $total_products = (int)$countStmt->fetchColumn();
 $total_pages = max(1, ceil($total_products / $perPage));
 $page = min($page, $total_pages);
 $offset = ($page - 1) * $perPage;
-$stmt = $pdo->prepare("SELECT * FROM products ORDER BY id DESC LIMIT $perPage OFFSET $offset");
+$stmt = $pdo->prepare("SELECT * FROM products ORDER BY display_order ASC, id DESC LIMIT $perPage OFFSET $offset");
 $stmt->execute();
 $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
@@ -32,6 +32,9 @@ if (!$products) {
         echo '<td>' . ($categoryNames[$product['category_slug']] ?? $product['category_slug']) . '</td>';
         echo '<td>₹' . number_format($product['price'], 2) . '</td>';
         echo '<td><span class="status-badge ' . ($product['is_active'] ? 'status-completed' : 'status-cancelled') . '">' . ($product['is_active'] ? 'Active' : 'Inactive') . '</span></td>';
+        echo '<td>';
+        echo '<input type="number" class="seq-input" data-id="' . $product['id'] . '" value="' . ($product['display_order'] ?? 0) . '" style="width:70px;padding:4px;border:1px solid #ddd;border-radius:4px;" placeholder="Order">';
+        echo '</td>';
         echo '<td>';
         echo '<a href="edit.php?id=' . $product['id'] . '" class="action-btn">Edit</a> ';
         echo '<a href="delete.php?id=' . $product['id'] . '" class="action-btn delete" onclick="return confirm(\'Delete this product?\');">Delete</a>';
