@@ -4,6 +4,26 @@ session_start();
 require_once 'header.php';
 require_once __DIR__ . '/config/db.php';
 
+// Load Razorpay keys from environment
+$razorpayKeyId = 'rzp_test_a3iYwPnLkGMlDM';
+$razorpayKeySecret = '';
+
+if (file_exists(__DIR__ . '/.env')) {
+    $envContent = file_get_contents(__DIR__ . '/.env');
+    $lines = explode("\n", $envContent);
+    foreach ($lines as $line) {
+        $line = trim($line);
+        if (empty($line) || strpos($line, '#') === 0) continue;
+        $parts = explode('=', $line, 2);
+        if (count($parts) === 2) {
+            $key = trim($parts[0]);
+            $value = trim($parts[1]);
+            if ($key === 'RAZORPAY_KEY_ID') $razorpayKeyId = $value;
+            if ($key === 'RAZORPAY_KEY_SECRET') $razorpayKeySecret = $value;
+        }
+    }
+}
+
 // Detect source: appointment or service
 $source = $_GET['source'] ?? '';
 $appointmentId = $_GET['appointment_id'] ?? null;
@@ -446,7 +466,7 @@ $description = ($paymentSource === 'appointment') ? 'Appointment Booking Fee' : 
 ?>
 
 const options = {
-    key: "rzp_test_a3iYwPnLkGMlDM",
+    key: "<?php echo htmlspecialchars($razorpayKeyId); ?>",
     amount: <?php echo $amount_in_paise; ?>,
     currency: "INR",
     name: "Vishnusudarshana Dharmik Sanskar Kendra",
