@@ -295,6 +295,70 @@ if ($source === 'appointment') {
 .pay-btn:disabled { background: #ccc; color: #fff; cursor: not-allowed; }
 .review-back-link { display:block;text-align:center;margin-top:18px;color:#1a8917;font-size:0.98em;text-decoration:none; }
 @media (max-width: 700px) { .main-content { padding: 8px 2px 16px 2px; border-radius: 0; } }
+
+/* Payment Processing Loader Overlay */
+.payment-loader-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.98);
+    z-index: 9999;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+}
+.payment-loader-overlay.active {
+    display: flex;
+}
+.loader-content {
+    text-align: center;
+    padding: 20px;
+}
+.loader-spinner {
+    width: 60px;
+    height: 60px;
+    margin: 0 auto 20px;
+    border: 4px solid #f3caca;
+    border-top: 4px solid #800000;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+.loader-checkmark {
+    display: none;
+    width: 60px;
+    height: 60px;
+    margin: 0 auto 20px;
+    border-radius: 50%;
+    background: #1a8917;
+    position: relative;
+}
+.loader-checkmark::after {
+    content: '✓';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: white;
+    font-size: 36px;
+    font-weight: bold;
+}
+.loader-text {
+    font-size: 1.2em;
+    color: #800000;
+    font-weight: 600;
+    margin-bottom: 10px;
+}
+.loader-subtext {
+    font-size: 0.95em;
+    color: #666;
+}
 </style>
 <main class="main-content" style="background-color:var(--cream-bg);">
     <h1 class="review-title">Payment Summary</h1>
@@ -406,6 +470,16 @@ if ($source === 'appointment') {
     <?php endif; ?>
 </main>
 
+<!-- Payment Processing Loader Overlay -->
+<div class="payment-loader-overlay" id="paymentLoader">
+    <div class="loader-content">
+        <div class="loader-spinner" id="loaderSpinner"></div>
+        <div class="loader-checkmark" id="loaderCheckmark"></div>
+        <div class="loader-text" id="loaderText">Processing Payment...</div>
+        <div class="loader-subtext" id="loaderSubtext">Please wait while we confirm your payment</div>
+    </div>
+</div>
+
 <?php
 // ========== STORE PENDING PAYMENT DATA BEFORE RAZORPAY REDIRECT ==========
 // This MUST execute before user clicks the payment button
@@ -480,6 +554,17 @@ const options = {
         color: "#800000"
     },
     handler: function (response) {
+        // Show payment processing loader
+        var loader = document.getElementById('paymentLoader');
+        var spinner = document.getElementById('loaderSpinner');
+        var checkmark = document.getElementById('loaderCheckmark');
+        var loaderText = document.getElementById('loaderText');
+        var loaderSubtext = document.getElementById('loaderSubtext');
+        
+        loader.classList.add('active');
+        loaderText.textContent = 'Payment Successful!';
+        loaderSubtext.textContent = 'Verifying payment details...';
+        
         // Razorpay payment successful - update database and redirect
         var actualPaymentId = response.razorpay_payment_id;
         var orderId = "<?php echo $orderId; ?>";
@@ -490,10 +575,21 @@ const options = {
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: 'order_id=' + encodeURIComponent(orderId) + '&payment_id=' + encodeURIComponent(actualPaymentId)
         }).then(function() {
-            window.location.href = "payment-success.php?payment_id=" + encodeURIComponent(actualPaymentId);
+            // Show success checkmark briefly before redirect
+            spinner.style.display = 'none';
+            checkmark.style.display = 'block';
+            loaderText.textContent = 'Payment Verified!';
+            loaderSubtext.textContent = 'Redirecting to confirmation page...';
+            
+            setTimeout(function() {
+                window.location.href = "payment-success.php?payment_id=" + encodeURIComponent(actualPaymentId);
+            }, 800);
         }).catch(function() {
             // Even if DB update fails, proceed - data is safe with orderId in database
-            window.location.href = "payment-success.php?payment_id=" + encodeURIComponent(actualPaymentId);
+            loaderSubtext.textContent = 'Completing transaction...';
+            setTimeout(function() {
+                window.location.href = "payment-success.php?payment_id=" + encodeURIComponent(actualPaymentId);
+            }, 500);
         });
     },
     modal: {
