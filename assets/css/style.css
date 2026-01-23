@@ -813,7 +813,7 @@ button, input[type="submit"], .btn-white-gold {
     background: #fff;
     color: var(--maroon);
     border: 2px solid var(--button-border);
-    padding: 14px 36px;
+    padding: 1px 5px;
     font-size: 1.1rem;
     font-weight: 700;
     border-radius: 10px;
@@ -823,6 +823,21 @@ button, input[type="submit"], .btn-white-gold {
     outline: none;
     margin-bottom: 8px;
 }
+
+.qty-input {
+    width: 50px;
+    height: 28px;
+    text-align: center;
+    border: 1.5px solid #e0bebe;
+    border-radius: 10px;
+    padding: 2px 0;
+    font-size: 1em;
+    background: #fff;
+    color: #800000;
+    font-weight: 600;
+    box-shadow: 0 1px 4px #e0bebe22;
+}
+
 button:hover, button:focus,
 input[type="submit"]:hover, input[type="submit"]:focus,
 .btn-white-gold:hover, .btn-white-gold:focus {
@@ -1990,17 +2005,6 @@ section p {
     min-height: 120px;
     height: 100%;
 }
-    border-radius: 14px; {
-    border: 1px solid rgba(139,21,56,0.08);
-    padding: 18px;
-    box-shadow: 0 6px 18px rgba(139,21,56,0.06);
-    flex: 1 1 0;
-    min-width: 0;
-    max-width: 100%;
-    position: relative;
-    overflow: hidden;
-    transition: box-shadow 0.3s;
-}
 
 .summary-card.panchang-bg {
     background-image: linear-gradient(rgba(255,255,255,0.85), rgba(255,255,255,0.85)), url('assets/images/religious-bg/panchang.png');
@@ -2636,10 +2640,6 @@ body {
     letter-spacing: 0.01em;
 }
 
-.main-content {
-    
-}
-
 section {
     margin-bottom: 36px;
 }
@@ -2953,10 +2953,6 @@ p, .detail-description, .form-subtitle {
     --spiritual-bg: linear-gradient(135deg, #fffbe6 0%, #f9f3e9 100%);
 }
 
-body, .main-content, .form-container, .status-card, .panchang-card, .detail-section, .service-card, .action-card {
-    /* background: var(--spiritual-bg); */
-}
-
 /* Polished accessibility and UI refinements for content pages */
 .panchang-page .panchang-details,
 .din-vishesh-content,
@@ -3162,7 +3158,6 @@ body, .main-content, .form-container, .status-card, .panchang-card, .detail-sect
 
 /* Responsive adjustments for design-12 */
 /* Removed conflicting max-width 1024px rule - now handled in combined mobile rule */
-}
 
 /* Spiritual Cards Wrapper */
 .spiritual-cards-wrapper {

@@ -136,7 +136,7 @@ if ($category === 'appointment') {
                 <div class="product-info">
                     <div style="display:flex;align-items:center;gap:14px;">
                         <input type="checkbox" class="product-checkbox" name="product_ids[]" value="<?php echo $product['id']; ?>" data-price="<?php echo $product['price']; ?>"
-                        <?php if (!empty($product['is_mandatory'])): ?> checked disabled style="width:28px;height:28px;accent-color:#800000;cursor:not-allowed;"<?php else: ?>style="width:28px;height:28px;accent-color:#800000;cursor:pointer;"<?php endif; ?>>
+                        <?php if (!empty($product['is_mandatory'])): ?> checked style="width:28px;height:28px;accent-color:#800000;cursor:not-allowed;pointer-events:none;"<?php else: ?>style="width:28px;height:28px;accent-color:#800000;cursor:pointer;"<?php endif; ?> >
                         <div>
                             <div class="product-name"><?php echo htmlspecialchars($product['product_name']); ?></div>
                             <div class="product-desc"><?php echo htmlspecialchars($product['short_description']); ?></div>
@@ -145,9 +145,9 @@ if ($category === 'appointment') {
                     <div class="product-price">₹<?php echo number_format($product['price'], 2); ?></div>
                 </div>
                 <div class="qty-controls">
-                    <button type="button" class="qty-btn" onclick="changeQty(this, -1)" disabled>−</button>
+                    <button type="button" class="qty-btn" onclick="changeQty(this, -1)">−</button>
                     <input type="number" class="qty-input" name="qty[<?php echo $product['id']; ?>]" value="1" min="1" max="99" readonly>
-                    <button type="button" class="qty-btn" onclick="changeQty(this, 1)" disabled>+</button>
+                    <button type="button" class="qty-btn" onclick="changeQty(this, 1)">+</button>
                 </div>
                 <div class="line-total" id="line-total-<?php echo $product['id']; ?>">₹<?php echo number_format($product['price'], 2); ?></div>
             </li>
@@ -194,6 +194,10 @@ function changeQty(btn, delta) {
 }
 document.querySelectorAll('input[type=checkbox][name="product_ids[]"]').forEach(cb => {
     cb.addEventListener('change', updateTotals);
+    // Ensure mandatory products are always selected in form submission
+    if (cb.disabled && cb.checked) {
+        cb.setAttribute('checked', 'checked');
+    }
 });
 document.querySelectorAll('.qty-btn').forEach(btn => {
     btn.addEventListener('click', function() { updateTotals(); });
@@ -218,6 +222,12 @@ if (form) {
             form.action = 'payment-success.php?free=1';
             form.submit();
         }
+        // Ensure all mandatory products are included in submission
+        document.querySelectorAll('input[type=checkbox][name="product_ids[]"]').forEach(cb => {
+            if (cb.disabled && cb.checked) {
+                cb.setAttribute('checked', 'checked');
+            }
+        });
     });
 }
 </script>
@@ -240,24 +250,6 @@ html,body{font-family:'Marcellus',serif!important;}
 .product-name { font-weight: 600; color: #800000; font-size: 1.08em; }
 .product-desc { font-size: 0.97em; color: #555; margin: 2px 0 2px 0; }
 .product-price { color: #1a8917; font-weight: 600; font-size: 1.08em; margin-top: 6px; }
- qty-controls { display: flex; align-items: center; gap: 4px; }
- qty-btn {
-    background: #f5faff;
-    border: 1px solid #e0bebe;
-    color: #800000;
-    border-radius: 50%;
-    width: 32px;
-    height: 32px;
-    font-size: 1.18em;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0;
-    line-height: 1;
-    box-sizing: border-box;
-}
- qty-input { width: 32px; text-align: center; border: 1px solid #e0bebe; border-radius: 6px; padding: 2px 0; font-size: 1em; }
 .line-total { font-size: 0.98em; color: #800000; font-weight: 600; min-width: 60px; text-align: right; }
 .sticky-total { position: sticky; bottom: 0; background: #fff; padding: 14px 0 0 0; text-align: right; font-size: 1.13em; border-top: 1px solid #e0bebe; box-shadow: 0 -2px 8px #e0bebe22; z-index: 10; }
 .pay-btn { width: 100%; background: #800000; color: #fff; border: none; border-radius: 8px; padding: 14px 0; font-size: 1.08em; font-weight: 600; margin-top: 10px; cursor: pointer; box-shadow: 0 2px 8px #80000022; transition: background 0.15s; }
