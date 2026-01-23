@@ -135,7 +135,8 @@ if ($category === 'appointment') {
             <li class="product-item">
                 <div class="product-info">
                     <div style="display:flex;align-items:center;gap:14px;">
-                        <input type="checkbox" class="product-checkbox" name="product_ids[]" value="<?php echo $product['id']; ?>" data-price="<?php echo $product['price']; ?>" style="width:28px;height:28px;accent-color:#800000;cursor:pointer;">
+                        <input type="checkbox" class="product-checkbox" name="product_ids[]" value="<?php echo $product['id']; ?>" data-price="<?php echo $product['price']; ?>"
+                        <?php if (!empty($product['is_mandatory'])): ?> checked disabled style="width:28px;height:28px;accent-color:#800000;cursor:not-allowed;"<?php else: ?>style="width:28px;height:28px;accent-color:#800000;cursor:pointer;"<?php endif; ?>>
                         <div>
                             <div class="product-name"><?php echo htmlspecialchars($product['product_name']); ?></div>
                             <div class="product-desc"><?php echo htmlspecialchars($product['short_description']); ?></div>
@@ -239,8 +240,8 @@ html,body{font-family:'Marcellus',serif!important;}
 .product-name { font-weight: 600; color: #800000; font-size: 1.08em; }
 .product-desc { font-size: 0.97em; color: #555; margin: 2px 0 2px 0; }
 .product-price { color: #1a8917; font-weight: 600; font-size: 1.08em; margin-top: 6px; }
-.qty-controls { display: flex; align-items: center; gap: 4px; }
-.qty-btn {
+ qty-controls { display: flex; align-items: center; gap: 4px; }
+ qty-btn {
     background: #f5faff;
     border: 1px solid #e0bebe;
     color: #800000;
@@ -256,7 +257,7 @@ html,body{font-family:'Marcellus',serif!important;}
     line-height: 1;
     box-sizing: border-box;
 }
-.qty-input { width: 32px; text-align: center; border: 1px solid #e0bebe; border-radius: 6px; padding: 2px 0; font-size: 1em; }
+ qty-input { width: 32px; text-align: center; border: 1px solid #e0bebe; border-radius: 6px; padding: 2px 0; font-size: 1em; }
 .line-total { font-size: 0.98em; color: #800000; font-weight: 600; min-width: 60px; text-align: right; }
 .sticky-total { position: sticky; bottom: 0; background: #fff; padding: 14px 0 0 0; text-align: right; font-size: 1.13em; border-top: 1px solid #e0bebe; box-shadow: 0 -2px 8px #e0bebe22; z-index: 10; }
 .pay-btn { width: 100%; background: #800000; color: #fff; border: none; border-radius: 8px; padding: 14px 0; font-size: 1.08em; font-weight: 600; margin-top: 10px; cursor: pointer; box-shadow: 0 2px 8px #80000022; transition: background 0.15s; }

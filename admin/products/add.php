@@ -129,8 +129,12 @@ function generateSlug($str) {
             dataType: 'json',
             success: function(res) {
                 if (res.success) {
-                    $('#form-messages').html('<div class="success-msg">Product added successfully!</div>');
+                    $('#form-messages').html('<div class="success-msg">Product added successfully! Redirecting...</div>');
                     $('#addProductForm')[0].reset();
+                    // Redirect to product list after 1.5 seconds
+                    setTimeout(function() {
+                        window.location.href = 'index.php';
+                    }, 1500);
                 } else if (res.errors) {
                     var html = '<ul class="error-list">';
                     res.errors.forEach(function(e) { html += '<li>' + e + '</li>'; });
