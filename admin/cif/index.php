@@ -4,9 +4,21 @@ if (isset($_GET['ajax_search_client']) && isset($_GET['name'])) {
     require_once __DIR__ . '/../../config/db.php';
     $name = trim($_GET['name']);
     $out = [];
-    if (strlen($name) >= 3) {
-        $stmt = $pdo->prepare('SELECT id, name, mobile FROM cif_clients WHERE name LIKE ? ORDER BY name ASC LIMIT 10');
-        $stmt->execute(['%' . $name . '%']);
+    if (strlen($name) >= 2) {
+        $words = preg_split('/\s+/', $name);
+        $where = [];
+        $params = [];
+        foreach ($words as $w) {
+            $where[] = 'name LIKE ?';
+            $params[] = '%' . $w . '%';
+        }
+        $sql = 'SELECT id, name, mobile FROM cif_clients';
+        if ($where) {
+            $sql .= ' WHERE ' . implode(' AND ', $where);
+        }
+        $sql .= ' ORDER BY name ASC LIMIT 10';
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
         $out = $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
     header('Content-Type: application/json');
