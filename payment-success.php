@@ -56,8 +56,8 @@ if (isset($_GET['free']) && $_GET['free'] == 1) {
     }
     // Generate tracking ID
     $tracking_id = 'VDSK-' . date('Ymd') . '-' . strtoupper(bin2hex(random_bytes(3)));
-    // Insert into service_requests
-    $stmt = $pdo->prepare("INSERT INTO service_requests (tracking_id, category_slug, customer_name, mobile, email, city, form_data, selected_products, total_amount, payment_id, payment_status, service_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, '', 'Free', 'Received')");
+    $createdAt = date('Y-m-d H:i:s');
+    $stmt = $pdo->prepare("INSERT INTO service_requests (tracking_id, category_slug, customer_name, mobile, email, city, form_data, selected_products, total_amount, payment_id, payment_status, service_status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, '', 'Free', 'Received', ?)");
     $stmt->execute([
         $tracking_id,
         $category,
@@ -67,7 +67,8 @@ if (isset($_GET['free']) && $_GET['free'] == 1) {
         $city ?: '',
         json_encode($form_data),
         json_encode($selected_products),
-        $totalAmount
+        $totalAmount,
+        $createdAt
     ]);
     // Show success page
     require_once 'header.php';
@@ -183,7 +184,7 @@ $pdo->exec("CREATE TABLE IF NOT EXISTS service_requests (
     payment_id VARCHAR(100),
     payment_status VARCHAR(20),
     service_status VARCHAR(50),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at DATETIME NOT NULL
 );");
 
 // Use pending data from database as source of truth (session not required)
@@ -215,14 +216,13 @@ $totalAmount  = $pending['total_amount'] ?? 0;
 
 // Insert service request (log errors but continue - data is still in pending_payments table)
 try {
-    $stmt = $pdo->prepare("
-        INSERT INTO service_requests (
-            tracking_id, category_slug, customer_name, mobile, email, city,
-            form_data, selected_products, total_amount, payment_id, payment_status, service_status
-        ) VALUES (
-            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Paid', 'Received'
-        )
-    ");
+    $createdAt = date('Y-m-d H:i:s');
+    $stmt = $pdo->prepare("INSERT INTO service_requests (
+        tracking_id, category_slug, customer_name, mobile, email, city,
+        form_data, selected_products, total_amount, payment_id, payment_status, service_status, created_at
+    ) VALUES (
+        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Paid', 'Received', ?
+    )");
     $stmt->execute([
         $tracking_id,
         $category,
@@ -233,7 +233,8 @@ try {
         json_encode($formData),
         json_encode($products),
         $totalAmount,
-        $payment_id
+        $payment_id,
+        $createdAt
     ]);
 
     // Format products list for WhatsApp message
