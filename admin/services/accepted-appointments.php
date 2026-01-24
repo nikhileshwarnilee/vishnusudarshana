@@ -17,7 +17,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $sql = "
                 UPDATE service_requests
                 SET service_status = 'Completed',
-                    updated_at = NOW()
+                    updated_at = :updated_at
+                    // Use PHP datetime for updated_at
+                    $updatedAt = date('Y-m-d H:i:s');
                 WHERE id IN ($placeholders)
                   AND category_slug = 'appointment'
                   AND payment_status = 'Paid'
@@ -72,7 +74,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $sql = "
                 UPDATE service_requests
                 SET service_status = 'Received',
-                    updated_at = NOW()
+                    updated_at = :updated_at
+                    // Use PHP datetime for updated_at
+                    $updatedAt = date('Y-m-d H:i:s');
                 WHERE id IN ($placeholders)
                   AND category_slug = 'appointment'
                   AND payment_status = 'Paid'

@@ -77,7 +77,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['category_slug'])) {
     // Generate unique tracking ID (e.g., SR20251224XXXX)
     $tracking_id = 'SR' . date('Ymd') . strtoupper(substr(uniqid(), -4));
     // Insert into service_requests
-    $stmt = $pdo->prepare("INSERT INTO service_requests (category_slug, customer_name, mobile, email, form_data, payment_status, selected_products, total_amount, tracking_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
+    $createdAt = date('Y-m-d H:i:s');
+    $stmt = $pdo->prepare("INSERT INTO service_requests (category_slug, customer_name, mobile, email, form_data, payment_status, selected_products, total_amount, tracking_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
     $stmt->execute([
         $category,
         $data['full_name'] ?? '',
@@ -87,7 +88,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['category_slug'])) {
         'Unpaid',
         $selected_products,
         $total_amount,
-        $tracking_id
+        $tracking_id,
+        $createdAt
     ]);
     $successMsg = 'Service request added successfully! Tracking ID: ' . $tracking_id;
     

@@ -54,6 +54,7 @@ switch ($action) {
         $visit_type = $_POST['visit_type'] ?? 'inoffice';
         $priority = $_POST['priority'] ?? 'normal';
         $in_time = date('Y-m-d H:i:s');
+        // $in_time is already set using PHP date in IST
         if ($name === '') {
             echo json_encode(['success' => false, 'error' => 'Visitor name is required']);
             exit;

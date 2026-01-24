@@ -24,8 +24,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['name'])) {
             header('Location: clients.php');
             exit;
         } else {
-            $stmt = $pdo->prepare('INSERT INTO cif_clients (name, mobile, address, dob, birth_time, birth_place) VALUES (?, ?, ?, ?, ?, ?)');
-            $stmt->execute([$name, $mobile, $address, $dob, $birth_time, $birth_place]);
+            $createdAt = date('Y-m-d H:i:s');
+            $stmt = $pdo->prepare('INSERT INTO cif_clients (name, mobile, address, dob, birth_time, birth_place, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)');
+            $stmt->execute([$name, $mobile, $address, $dob, $birth_time, $birth_place, $createdAt]);
             $msg = 'Client added!';
         }
     } else {

@@ -35,12 +35,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_client_and_enquir
     $category_id = (int)$_POST['category_id'];
     $enquiry_date = $_POST['enquiry_date'] ?? date('Y-m-d');
     $notes = trim($_POST['notes'] ?? '');
+    $createdAt = date('Y-m-d H:i:s');
     if ($name !== '' && $category_id > 0 && $enquiry_date) {
-        $stmt = $pdo->prepare('INSERT INTO cif_clients (name, mobile, address, dob, birth_time, birth_place) VALUES (?, ?, ?, ?, ?, ?)');
-        $stmt->execute([$name, $mobile, $address, $dob, $birth_time, $birth_place]); // mobile and address can be blank
+        $stmt = $pdo->prepare('INSERT INTO cif_clients (name, mobile, address, dob, birth_time, birth_place, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)');
+        $stmt->execute([$name, $mobile, $address, $dob, $birth_time, $birth_place, $createdAt]); // mobile and address can be blank
         $client_id = $pdo->lastInsertId();
-        $stmt = $pdo->prepare('INSERT INTO cif_enquiries (client_id, category_id, enquiry_date, notes) VALUES (?, ?, ?, ?)');
-        $stmt->execute([$client_id, $category_id, $enquiry_date, $notes]);
+        $stmt = $pdo->prepare('INSERT INTO cif_enquiries (client_id, category_id, enquiry_date, notes, created_at) VALUES (?, ?, ?, ?, ?)');
+        $stmt->execute([$client_id, $category_id, $enquiry_date, $notes, $createdAt]);
         $msg = 'Client and enquiry added!';
         header('Location: index.php?client_id=' . $client_id);
         exit;

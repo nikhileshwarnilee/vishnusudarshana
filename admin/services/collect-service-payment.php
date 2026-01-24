@@ -52,7 +52,8 @@ try {
 		->execute(['Paid', $pay_method, $note, $pay_date, $transaction_details, $discount, $service_request_id]);
 
 	// Insert payment record into service_payments table (with all details)
-	$stmt = $pdo->prepare('INSERT INTO service_payments (service_request_id, amount, discount, created_at, pay_method, note, pay_date, transaction_details, collected_by) VALUES (?, ?, ?, NOW(), ?, ?, ?, ?, ?)');
+	$createdAt = date('Y-m-d H:i:s');
+	$stmt = $pdo->prepare('INSERT INTO service_payments (service_request_id, amount, discount, created_at, pay_method, note, pay_date, transaction_details, collected_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)');
 	$stmt->execute([
 		$service_request_id,
 		$amount,

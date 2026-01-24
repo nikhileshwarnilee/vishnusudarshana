@@ -60,10 +60,10 @@ if ($action === 'send_otp') {
         'otp' => $otp,
         'tracking_id' => $trackingId,
         'mobile' => $mobile,
-        'generated_at' => time(),
+        'generated_at' => date('Y-m-d H:i:s'),
         'attempts' => 0,
         'max_attempts' => 5,
-        'expiry' => time() + (10 * 60) // 10 minutes
+        'expiry' => date('Y-m-d H:i:s', strtotime('+10 minutes')),
     ];
 
     // Send OTP via WhatsApp
@@ -118,7 +118,7 @@ if ($action === 'verify_otp') {
     }
 
     // Check expiry
-    if (time() > $otpSession['expiry']) {
+    if (strtotime('now') > strtotime($otpSession['expiry'])) {
         unset($_SESSION['download_otp']);
         respond(false, 'OTP has expired. Please request a new OTP.');
     }
@@ -142,8 +142,8 @@ if ($action === 'verify_otp') {
         'tracking_id' => $trackingId,
         'mobile' => $mobile,
         'file' => $_POST['file'] ?? null,
-        'created_at' => time(),
-        'expiry' => time() + (5 * 60) // 5-minute validity for download
+        'created_at' => date('Y-m-d H:i:s'),
+        'expiry' => date('Y-m-d H:i:s', strtotime('+5 minutes')),
     ];
 
     // Clear OTP session

@@ -24,8 +24,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['category_name'], $_PO
             exit;
         } else {
             // Insert
-            $stmt = $pdo->prepare('INSERT INTO cif_categories (name, color) VALUES (?, ?)');
-            $stmt->execute([$name, $color]);
+            $createdAt = date('Y-m-d H:i:s');
+            $stmt = $pdo->prepare('INSERT INTO cif_categories (name, color, created_at) VALUES (?, ?, ?)');
+            $stmt->execute([$name, $color, $createdAt]);
             $msg = 'Category added!';
         }
     } else {

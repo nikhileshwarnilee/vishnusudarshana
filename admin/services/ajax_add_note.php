@@ -23,10 +23,10 @@ if ($noteText === '') {
 }
 
 try {
-    $stmt = $pdo->prepare('INSERT INTO admin_notes (service_request_id, note_text, created_at) VALUES (?, ?, NOW())');
-    $stmt->execute([$serviceRequestId, $noteText]);
-    
-    echo json_encode(['success' => true]);
+    $createdAt = date('Y-m-d H:i:s');
+    $stmt = $pdo->prepare('INSERT INTO admin_notes (service_request_id, note_text, created_at) VALUES (?, ?, ?)');
+    $stmt->execute([$serviceRequestId, $noteText, $createdAt]);
+    echo json_encode(['success' => true, 'created_at' => $createdAt]);
 } catch (Exception $e) {
     error_log('Failed to save admin note: ' . $e->getMessage());
     echo json_encode(['success' => false, 'message' => 'Failed to save note']);

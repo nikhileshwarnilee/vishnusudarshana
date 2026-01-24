@@ -36,8 +36,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax'])) {
     }
 
     if (!$errors) {
-        $stmt = $pdo->prepare("INSERT INTO products (category_slug, product_name, product_slug, short_description, price, is_active) VALUES (?, ?, ?, ?, ?, ?)");
-        $stmt->execute([$category_slug, $product_name, $product_slug, $short_description, $price, $is_active]);
+        $createdAt = date('Y-m-d H:i:s');
+        $stmt = $pdo->prepare("INSERT INTO products (category_slug, product_name, product_slug, short_description, price, is_active, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)");
+        $stmt->execute([$category_slug, $product_name, $product_slug, $short_description, $price, $is_active, $createdAt]);
         echo json_encode(['success' => true]);
         exit;
     } else {

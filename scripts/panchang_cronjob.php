@@ -44,13 +44,16 @@ foreach ($languages as $lang) {
     if ($httpcode == 200 && $response) {
         try {
             $stmt = $pdo->prepare("INSERT INTO panchang (city, lat, lon, tz, lang, panchang_json) VALUES (?, ?, ?, ?, ?, ?)");
+            $createdAt = date('Y-m-d H:i:s');
+            $stmt = $pdo->prepare("INSERT INTO panchang (city, lat, lon, tz, lang, panchang_json, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)");
             $stmt->execute([
                 $city,
                 $lat,
                 $lon,
                 $tz,
                 $lang,
-                $response
+                $response,
+                $createdAt
             ]);
             $successCount++;
             $msg = "Successfully inserted panchang data for language: $lang";

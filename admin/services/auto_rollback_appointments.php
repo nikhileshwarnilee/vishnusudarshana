@@ -16,7 +16,7 @@ try {
                 '$.assigned_from_time', NULL,
                 '$.assigned_to_time', NULL
             ),
-            updated_at = NOW()
+            updated_at = :updated_at
         WHERE category_slug = 'appointment'
           AND payment_status = 'Paid'
           AND service_status = 'Accepted'
@@ -31,6 +31,8 @@ try {
     // WhatsApp: Appointment Missed (for each reverted appointment)
     if ($count > 0) {
         $select = $pdo->prepare("SELECT id, customer_name, mobile, tracking_id FROM service_requests WHERE category_slug = 'appointment' AND payment_status = 'Paid' AND service_status = 'Received' AND COALESCE(JSON_UNQUOTE(JSON_EXTRACT(form_data,'$.assigned_date')), '') IS NULL AND updated_at >= DATE_SUB(NOW(), INTERVAL 1 MINUTE)");
+            $updatedAt = date('Y-m-d H:i:s');
+            // Use $updatedAt in update queries
         $select->execute();
         $rows = $select->fetchAll(PDO::FETCH_ASSOC);
         require_once __DIR__ . '/../../helpers/send_whatsapp.php';

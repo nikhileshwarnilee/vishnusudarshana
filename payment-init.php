@@ -492,7 +492,7 @@ $paymentSource = $pending['source'] ?? 'service';
 
 // Generate unique order_id for database storage
 // This will be mapped to actual Razorpay payment_id in payment-success.php
-$orderId = 'ORD-' . time() . '-' . bin2hex(random_bytes(8));
+$orderId = 'ORD-' . date('YmdHis') . '-' . bin2hex(random_bytes(8));
 
 // Store ALL pending payment data to database for session loss recovery
 try {

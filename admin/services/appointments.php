@@ -34,7 +34,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         '$.assigned_from_time', ?,
                         '$.assigned_to_time', ?
                     ),
-                    updated_at = NOW()
+                    updated_at = :updated_at
+                // Use PHP datetime for updated_at
+                $updatedAt = date('Y-m-d H:i:s');
                 WHERE id IN ($placeholders)
                   AND category_slug = 'appointment'
                   AND payment_status = 'Paid'

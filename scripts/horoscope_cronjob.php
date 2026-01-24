@@ -48,6 +48,8 @@ $messages = [];
 // Delete all previous data before inserting new
 try {
     $pdo->exec("TRUNCATE TABLE daily_horoscope");
+    $createdAt = date('Y-m-d H:i:s');
+    // Use $createdAt for all inserts
     $msg = "Cleared previous horoscope data";
     $messages[] = ['type' => 'success', 'text' => $msg];
     if (!$isWebRequest) echo $msg . "\n";

@@ -47,8 +47,9 @@ try {
     }
 
     // Insert invoice
-    $stmt = $pdo->prepare("INSERT INTO invoices (customer_id, invoice_date, notes, total_qty, total_amount, created_at) VALUES (?, ?, ?, ?, ?, NOW())");
-    $stmt->execute([$customer_id, $invoice_date, $note, $total_qty, $total_amount]);
+    $createdAt = date('Y-m-d H:i:s');
+    $stmt = $pdo->prepare("INSERT INTO invoices (customer_id, invoice_date, notes, total_qty, total_amount, created_at) VALUES (?, ?, ?, ?, ?, ?)");
+    $stmt->execute([$customer_id, $invoice_date, $note, $total_qty, $total_amount, $createdAt]);
     $invoice_id = $pdo->lastInsertId();
 
     // Insert invoice items

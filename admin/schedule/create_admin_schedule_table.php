@@ -10,7 +10,7 @@ $sql = "CREATE TABLE IF NOT EXISTS admin_schedule (
     status ENUM('tentative','confirmed','blocked') NOT NULL DEFAULT 'tentative',
     assigned_user_id INT NOT NULL,
     created_by INT NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_at DATETIME,
     FOREIGN KEY (assigned_user_id) REFERENCES users(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;";
 $pdo->exec($sql);

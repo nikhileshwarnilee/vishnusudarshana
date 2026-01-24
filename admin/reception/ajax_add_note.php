@@ -7,6 +7,7 @@ if ($visitor_id <= 0 || $note === '') {
     echo json_encode(['success' => false]);
     exit;
 }
-$stmt = $pdo->prepare("INSERT INTO visitors_notes (visitor_id, note_text, created_at) VALUES (?, ?, NOW())");
-$ok = $stmt->execute([$visitor_id, $note]);
+$createdAt = date('Y-m-d H:i:s');
+$stmt = $pdo->prepare("INSERT INTO visitors_notes (visitor_id, note_text, created_at) VALUES (?, ?, ?)");
+$ok = $stmt->execute([$visitor_id, $note, $createdAt]);
 echo json_encode(['success' => $ok]);

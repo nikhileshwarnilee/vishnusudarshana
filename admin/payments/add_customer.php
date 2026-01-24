@@ -20,7 +20,8 @@ if ($stmt->fetch()) {
     exit;
 }
 
-$stmt = $pdo->prepare('INSERT INTO customers (name, mobile, address) VALUES (?, ?, ?)');
+$createdAt = date('Y-m-d H:i:s');
+$stmt = $pdo->prepare('INSERT INTO customers (name, mobile, address, created_at) VALUES (?, ?, ?, ?)');
 if ($stmt->execute([$name, $mobile, $address])) {
     $id = $pdo->lastInsertId();
     echo json_encode(['success' => true, 'customer' => ['id' => $id, 'name' => $name, 'mobile' => $mobile, 'address' => $address]]);

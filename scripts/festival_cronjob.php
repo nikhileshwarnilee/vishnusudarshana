@@ -33,10 +33,12 @@ try {
         lang VARCHAR(10),
         festival_json TEXT,
         request_date DATE,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        created_at DATETIME,
         INDEX idx_lang (lang),
         INDEX idx_request_date (request_date)
     )");
+    $createdAt = date('Y-m-d H:i:s');
+    // Use $createdAt for all inserts
 } catch (Exception $e) {
     $msg = "Error creating festivals table: " . $e->getMessage();
     $messages[] = ['type' => 'error', 'text' => $msg];
