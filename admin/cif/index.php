@@ -199,14 +199,9 @@ h1 {
         <?php if ($show_add_client): ?>
             <form method="post" id="addClientForm" autocomplete="off" style="position:relative;display:flex;gap:18px;align-items:center;flex-wrap:wrap;margin-bottom:24px;background:#f9eaea;padding:18px;border-radius:10px;">
                 <div style="position:relative;">
-                    <input type="text" name="name" id="clientNameInput" placeholder="Name" required style="padding:8px 12px;border-radius:6px;border:1px solid #ccc;font-size:1em;" value="<?= htmlspecialchars($_POST['name'] ?? '') ?>">
+                    <input type="text" name="name" id="clientNameInput" placeholder="Name" required style="padding:8px 12px;border-radius:6px;border:1px solid #ccc;font-size:1em;" value="<?= htmlspecialchars($_GET['new_name'] ?? ($_POST['name'] ?? '')) ?>">
                     <div id="clientSearchResults" style="display:none;position:absolute;top:110%;left:0;z-index:10;background:#fff;border:1px solid #ccc;border-radius:8px;box-shadow:0 2px 8px #e0bebe22;min-width:220px;max-height:220px;overflow-y:auto;"></div>
                 </div>
-                <input type="text" name="mobile" placeholder="Mobile No" style="padding:8px 12px;border-radius:6px;border:1px solid #ccc;font-size:1em;" value="<?= htmlspecialchars($_POST['mobile'] ?? '') ?>">
-                <input type="text" name="address" placeholder="Address" style="padding:8px 12px;border-radius:6px;border:1px solid #ccc;font-size:1em;min-width:180px;" value="<?= htmlspecialchars($_POST['address'] ?? '') ?>">
-                <input type="date" name="dob" placeholder="DOB" style="padding:8px 12px;border-radius:6px;border:1px solid #ccc;font-size:1em;" value="<?= htmlspecialchars($_POST['dob'] ?? '') ?>">
-                <input type="time" name="birth_time" placeholder="Birth Time" style="padding:8px 12px;border-radius:6px;border:1px solid #ccc;font-size:1em;" value="<?= htmlspecialchars($_POST['birth_time'] ?? '') ?>">
-                <input type="text" name="birth_place" placeholder="Birth Place" style="padding:8px 12px;border-radius:6px;border:1px solid #ccc;font-size:1em;" value="<?= htmlspecialchars($_POST['birth_place'] ?? '') ?>">
                 <select name="category_id" required style="padding:8px 12px;border-radius:6px;border:1px solid #ccc;font-size:1em;">
                     <option value="">-- Select Category --</option>
                     <?php $categories = $pdo->query('SELECT * FROM cif_categories ORDER BY name ASC')->fetchAll();
@@ -214,8 +209,13 @@ h1 {
                         <option value="<?= (int)$cat['id'] ?>" <?= (isset($_POST['category_id']) && $_POST['category_id'] == $cat['id']) ? 'selected' : '' ?>><?= htmlspecialchars($cat['name']) ?></option>
                     <?php endforeach; ?>
                 </select>
-                <input type="date" name="enquiry_date" value="<?= htmlspecialchars($_POST['enquiry_date'] ?? date('Y-m-d')) ?>" required style="padding:8px 12px;border-radius:6px;border:1px solid #ccc;font-size:1em;">
                 <textarea name="notes" placeholder="Notes" style="padding:8px 12px;border-radius:6px;border:1px solid #ccc;font-size:1em;min-width:360px;min-height:80px;"><?= htmlspecialchars($_POST['notes'] ?? '') ?></textarea>
+                <input type="text" name="mobile" placeholder="Mobile No" style="padding:8px 12px;border-radius:6px;border:1px solid #ccc;font-size:1em;" value="<?= htmlspecialchars($_POST['mobile'] ?? '') ?>">
+                <input type="text" name="address" placeholder="Address" style="padding:8px 12px;border-radius:6px;border:1px solid #ccc;font-size:1em;min-width:180px;" value="<?= htmlspecialchars($_POST['address'] ?? '') ?>">
+                <input type="date" name="dob" placeholder="DOB" style="padding:8px 12px;border-radius:6px;border:1px solid #ccc;font-size:1em;" value="<?= htmlspecialchars($_POST['dob'] ?? '') ?>">
+                <input type="time" name="birth_time" placeholder="Birth Time" style="padding:8px 12px;border-radius:6px;border:1px solid #ccc;font-size:1em;" value="<?= htmlspecialchars($_POST['birth_time'] ?? '') ?>">
+                <input type="text" name="birth_place" placeholder="Birth Place" style="padding:8px 12px;border-radius:6px;border:1px solid #ccc;font-size:1em;" value="<?= htmlspecialchars($_POST['birth_place'] ?? '') ?>">
+                <input type="date" name="enquiry_date" value="<?= htmlspecialchars($_POST['enquiry_date'] ?? date('Y-m-d')) ?>" required style="padding:8px 12px;border-radius:6px;border:1px solid #ccc;font-size:1em;">
                 <input type="hidden" name="add_client_and_enquiry" value="1">
                 <button type="submit" style="padding:10px 22px;background:#800000;color:#fff;border:none;border-radius:6px;font-weight:600;">Add Client & Enquiry</button>
                 <a href="index.php" style="padding:10px 22px;background:#6c757d;color:#fff;border:none;border-radius:6px;font-weight:600;text-decoration:none;">Cancel</a>
@@ -271,6 +271,12 @@ h1 {
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script>
 $(function() {
+    function formatNoMatches(params) {
+        if (params.term && params.term.length > 1) {
+            return '<div style="cursor:pointer;color:#800000;font-weight:600;" id="addNewCustomerOption">+ Add new customer: <span style="color:#333;">' + $('<div>').text(params.term).html() + '</span></div>';
+        }
+        return 'No matches found';
+    }
     $('#clientSelect').select2({
         placeholder: '-- Select Client --',
         allowClear: true,
@@ -284,22 +290,40 @@ $(function() {
                     name: params.term || ''
                 };
             },
-            processResults: function(data) {
-                return {
-                    results: data.map(function(c) {
-                        return {
-                            id: c.id,
-                            text: c.name + (c.mobile ? ' - ' + c.mobile : '')
-                        };
-                    })
-                };
+            processResults: function(data, params) {
+                var results = data.map(function(c) {
+                    return {
+                        id: c.id,
+                        text: c.name + (c.mobile ? ' - ' + c.mobile : '')
+                    };
+                });
+                // If no results and search term present, add a fake option
+                if (results.length === 0 && params.term && params.term.length > 1) {
+                    results.push({
+                        id: '__add_new__',
+                        text: '+ Add new customer: ' + params.term,
+                        newName: params.term
+                    });
+                }
+                return { results: results };
             },
             cache: true
         },
-        minimumInputLength: 2
+        minimumInputLength: 2,
+        escapeMarkup: function(m) { return m; },
+        language: { noResults: formatNoMatches }
     });
-    $('#clientSelect').on('change', function() {
-        this.form.submit();
+    $('#clientSelect').on('select2:select', function(e) {
+        var data = e.params.data;
+        if (data.id === '__add_new__') {
+            // Show add client form, pre-fill name
+            var url = new URL(window.location.href);
+            url.searchParams.set('add_client', '1');
+            url.searchParams.set('new_name', data.newName || data.text.replace(/^\+ Add new customer: /, ''));
+            window.location.href = url.toString();
+        } else {
+            this.form.submit();
+        }
     });
 });
 </script>
