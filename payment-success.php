@@ -1,4 +1,5 @@
 <?php
+date_default_timezone_set('Asia/Kolkata');
 $pageTitle = 'Payment Success | Vishnusudarshana';
 /**
  * payment-success.php

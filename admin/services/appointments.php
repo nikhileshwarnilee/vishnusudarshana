@@ -92,54 +92,54 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 // Total appointments
 $stmt = $pdo->prepare("
-    SELECT COUNT(*)
-    FROM service_requests
-    WHERE category_slug = 'appointment'
-      AND payment_status = 'Paid'
+        SELECT COUNT(*)
+        FROM service_requests
+        WHERE category_slug = 'appointment'
+            AND payment_status IN ('Paid', 'Free')
 ");
 $stmt->execute();
 $totalAppointments = (int)$stmt->fetchColumn();
 
 // Today's appointments
 $stmt = $pdo->prepare("
-    SELECT COUNT(*)
-    FROM service_requests
-    WHERE category_slug = 'appointment'
-      AND payment_status = 'Paid'
-      AND DATE(created_at) = CURDATE()
+        SELECT COUNT(*)
+        FROM service_requests
+        WHERE category_slug = 'appointment'
+            AND payment_status IN ('Paid', 'Free')
+            AND DATE(created_at) = CURDATE()
 ");
 $stmt->execute();
 $todayAppointments = (int)$stmt->fetchColumn();
 
 // Pending (Received)
 $stmt = $pdo->prepare("
-    SELECT COUNT(*)
-    FROM service_requests
-    WHERE category_slug = 'appointment'
-      AND payment_status = 'Paid'
-      AND service_status = 'Received'
+        SELECT COUNT(*)
+        FROM service_requests
+        WHERE category_slug = 'appointment'
+            AND payment_status IN ('Paid', 'Free')
+            AND service_status = 'Received'
 ");
 $stmt->execute();
 $pendingAppointments = (int)$stmt->fetchColumn();
 
 // Accepted
 $stmt = $pdo->prepare("
-    SELECT COUNT(*)
-    FROM service_requests
-    WHERE category_slug = 'appointment'
-      AND payment_status = 'Paid'
-      AND service_status = 'Accepted'
+        SELECT COUNT(*)
+        FROM service_requests
+        WHERE category_slug = 'appointment'
+            AND payment_status IN ('Paid', 'Free')
+            AND service_status = 'Accepted'
 ");
 $stmt->execute();
 $acceptedAppointments = (int)$stmt->fetchColumn();
 
 // Completed
 $stmt = $pdo->prepare("
-    SELECT COUNT(*)
-    FROM service_requests
-    WHERE category_slug = 'appointment'
-      AND payment_status = 'Paid'
-      AND service_status = 'Completed'
+        SELECT COUNT(*)
+        FROM service_requests
+        WHERE category_slug = 'appointment'
+            AND payment_status IN ('Paid', 'Free')
+            AND service_status = 'Completed'
 ");
 $stmt->execute();
 $completedAppointments = (int)$stmt->fetchColumn();
@@ -152,7 +152,7 @@ $pendingDates = [];
 
 $whereUnaccepted = "
     category_slug = 'appointment'
-    AND payment_status = 'Paid'
+    AND payment_status IN ('Paid', 'Free')
     AND (
         service_status IN ('Received','Pending')
         OR (
@@ -192,12 +192,12 @@ $appointments = [];
 
 if ($selectedDate !== null) {
     $sqlList = "
-        SELECT id, tracking_id, customer_name, mobile, email, payment_status, service_status, form_data, selected_products, created_at
-        FROM service_requests
-        WHERE $whereUnaccepted
-          AND DATE(created_at) = ?
-        ORDER BY created_at ASC
-    ";
+                SELECT id, tracking_id, customer_name, mobile, email, payment_status, service_status, form_data, selected_products, created_at
+                FROM service_requests
+                WHERE $whereUnaccepted
+                    AND DATE(created_at) = ?
+                ORDER BY created_at ASC
+        ";
     $stmt = $pdo->prepare($sqlList);
     $stmt->execute([$selectedDate]);
     $appointments = $stmt->fetchAll(PDO::FETCH_ASSOC);
