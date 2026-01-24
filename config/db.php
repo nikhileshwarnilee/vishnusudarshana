@@ -40,6 +40,8 @@ try {
             PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
         ]
     );
+    // Set MySQL timezone per session (safe for shared hosting)
+    $pdo->exec("SET time_zone = '+05:30'");
 } catch (PDOException $e) {
     die('Database connection failed. Please try again later.');
 }
