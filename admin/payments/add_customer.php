@@ -22,9 +22,16 @@ if ($stmt->fetch()) {
 
 $createdAt = date('Y-m-d H:i:s');
 $stmt = $pdo->prepare('INSERT INTO customers (name, mobile, address, created_at) VALUES (?, ?, ?, ?)');
-if ($stmt->execute([$name, $mobile, $address])) {
-    $id = $pdo->lastInsertId();
-    echo json_encode(['success' => true, 'customer' => ['id' => $id, 'name' => $name, 'mobile' => $mobile, 'address' => $address]]);
-} else {
-    echo json_encode(['success' => false, 'error' => 'Database error.']);
+try {
+    if ($stmt->execute([$name, $mobile, $address, $createdAt])) {
+        $id = $pdo->lastInsertId();
+        echo json_encode(['success' => true, 'customer' => ['id' => $id, 'name' => $name, 'mobile' => $mobile, 'address' => $address]]);
+    } else {
+        $errorInfo = $stmt->errorInfo();
+        error_log('Add customer DB error: ' . print_r($errorInfo, true));
+        echo json_encode(['success' => false, 'error' => 'Database error: ' . $errorInfo[2]]);
+    }
+} catch (Throwable $e) {
+    error_log('Add customer exception: ' . $e->getMessage());
+    echo json_encode(['success' => false, 'error' => 'Exception: ' . $e->getMessage()]);
 }
