@@ -156,7 +156,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 // Build date dropdown: only today/future assigned dates with Accepted status
 $whereAcceptedFuture = "
-    category_slug = 'appointment' AND payment_status = 'Paid' AND service_status = 'Accepted' AND
+    category_slug = 'appointment' AND payment_status IN ('Paid', 'Free') AND service_status = 'Accepted' AND
     COALESCE(JSON_UNQUOTE(JSON_EXTRACT(form_data,'$.assigned_date')), '') <> '' AND
     JSON_UNQUOTE(JSON_EXTRACT(form_data,'$.assigned_date')) >= CURDATE()
 ";

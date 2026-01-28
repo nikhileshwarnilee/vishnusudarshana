@@ -25,6 +25,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Validation: required fields, time ordering, date not in past
         if (!empty($appointmentIds) && $assignedDate && $timeFrom && $timeTo && $timeFrom < $timeTo && $assignedDate >= date('Y-m-d')) {
             $placeholders = implode(',', array_fill(0, count($appointmentIds), '?'));
+            $updatedAt = date('Y-m-d H:i:s');
             $sql = "
                 UPDATE service_requests
                 SET service_status = 'Accepted',
@@ -34,15 +35,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         '$.assigned_from_time', ?,
                         '$.assigned_to_time', ?
                     ),
-                    updated_at = :updated_at
-                // Use PHP datetime for updated_at
-                $updatedAt = date('Y-m-d H:i:s');
+                    updated_at = ?
                 WHERE id IN ($placeholders)
                   AND category_slug = 'appointment'
-                  AND payment_status = 'Paid'
+                  AND payment_status IN ('Paid', 'Free')
             ";
+            $params = array_merge([$assignedDate, $timeFrom, $timeTo, $updatedAt], $appointmentIds);
             $stmt = $pdo->prepare($sql);
-            $params = array_merge([$assignedDate, $timeFrom, $timeTo], $appointmentIds);
             $stmt->execute($params);
 
             // WhatsApp: Appointment Scheduled (admin accepted with date/time)
@@ -150,19 +149,12 @@ $completedAppointments = (int)$stmt->fetchColumn();
 
 $pendingDates = [];
 
+// Only show unaccepted appointments in the pending list
 $whereUnaccepted = "
     category_slug = 'appointment'
     AND payment_status IN ('Paid', 'Free')
-    AND (
-        service_status IN ('Received','Pending')
-        OR (
-            service_status = 'Accepted'
-            AND COALESCE(JSON_UNQUOTE(JSON_EXTRACT(form_data,'$.assigned_date')), '') <> ''
-            AND JSON_UNQUOTE(JSON_EXTRACT(form_data,'$.assigned_date')) < CURDATE()
-        )
-    )
+    AND service_status IN ('Received','Pending')
 ";
-
 
 // Fetch all unaccepted appointments with their preferred dates
 $stmt = $pdo->prepare("SELECT form_data, created_at FROM service_requests WHERE $whereUnaccepted");
@@ -714,14 +706,18 @@ function validateAcceptForm() {
     }
     // Find which date's action bar is open
     let selectedDate = null;
+    let count = 0;
     for (const date in selectedAppointmentsByDate) {
         if (selectedAppointmentsByDate[date] && selectedAppointmentsByDate[date].length > 0) {
             selectedDate = date;
+            count = selectedAppointmentsByDate[date].length;
             break;
         }
     }
     if (!selectedDate) return false;
-    if (!confirm(`Accept ${selectedAppointmentsByDate[selectedDate].length} appointment(s)?`)) {
+    // Use the actual checked checkboxes count for confirmation
+    const checked = document.querySelectorAll('.rowCheckbox[data-date="' + selectedDate + '"]:checked').length;
+    if (!confirm(`Accept ${checked} appointment(s)?`)) {
         return false;
     }
     // Convert single hidden input to multiple
