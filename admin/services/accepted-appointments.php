@@ -154,27 +154,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// Build date dropdown: only today/future assigned dates with Accepted status
-$whereAcceptedFuture = "
-    category_slug = 'appointment' AND payment_status IN ('Paid', 'Free') AND service_status = 'Accepted' AND
-    COALESCE(JSON_UNQUOTE(JSON_EXTRACT(form_data,'$.assigned_date')), '') <> '' AND
-    JSON_UNQUOTE(JSON_EXTRACT(form_data,'$.assigned_date')) >= CURDATE()
+// Group all accepted appointments by assigned date
+$appointmentsByDate = [];
+$sql = "
+    SELECT id, tracking_id, customer_name, mobile, form_data, selected_products, created_at
+    FROM service_requests
+    WHERE category_slug = 'appointment'
+      AND payment_status IN ('Paid', 'Free')
+      AND service_status = 'Accepted'
+      AND COALESCE(JSON_UNQUOTE(JSON_EXTRACT(form_data,'$.assigned_date')), '') <> ''
+      AND JSON_UNQUOTE(JSON_EXTRACT(form_data,'$.assigned_date')) >= CURDATE()
+    ORDER BY created_at ASC
 ";
-
-$acceptedDates = [];
-$stmt = $pdo->prepare("SELECT JSON_UNQUOTE(JSON_EXTRACT(form_data,'$.assigned_date')) AS ad, COUNT(*) AS c FROM service_requests WHERE $whereAcceptedFuture GROUP BY ad ORDER BY ad ASC");
+$stmt = $pdo->prepare($sql);
 $stmt->execute();
-foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
-    $acceptedDates[$row['ad']] = (int)$row['c'];
+$allAppointments = $stmt->fetchAll(PDO::FETCH_ASSOC);
+foreach ($allAppointments as $row) {
+    $fd = json_decode($row['form_data'], true);
+    $assigned = $fd['assigned_date'] ?? null;
+    if ($assigned) {
+        $appointmentsByDate[$assigned][] = $row;
+    }
 }
+ksort($appointmentsByDate);
 
 // Default selected date: earliest available (today or future)
 $selectedDate = null;
-if (!empty($acceptedDates)) {
-    if (isset($_GET['date']) && isset($acceptedDates[$_GET['date']])) {
+if (!empty($appointmentsByDate)) {
+    if (isset($_GET['date']) && isset($appointmentsByDate[$_GET['date']])) {
         $selectedDate = $_GET['date'];
     } else {
-        $selectedDate = array_key_first($acceptedDates);
+        $selectedDate = array_key_first($appointmentsByDate);
     }
 }
 
@@ -184,8 +194,7 @@ if ($selectedDate !== null) {
         $sql = "
                 SELECT id, tracking_id, customer_name, mobile, form_data, selected_products, created_at
                 FROM service_requests
-                WHERE $whereAcceptedFuture
-                    AND JSON_UNQUOTE(JSON_EXTRACT(form_data,'$.assigned_date')) = ?
+                WHERE JSON_UNQUOTE(JSON_EXTRACT(form_data,'$.assigned_date')) = ?
                 ORDER BY created_at ASC
         ";
     $stmt = $pdo->prepare($sql);
@@ -244,47 +253,39 @@ h1 { color: #800000; margin-bottom: 18px; }
 <div class="admin-container">
     <h1>Accepted Appointments</h1>
 
-    <?php if (empty($acceptedDates)): ?>
+    <?php if (empty($appointmentsByDate)): ?>
         <div class="no-data" style="font-size:1.1em;color:#800000;font-weight:600;">No accepted appointments for today or future.</div>
     <?php else: ?>
-        <div class="filter-bar">
-            <label for="dateSelect">Select Date</label>
-            <select id="dateSelect" onchange="window.location.href='?date=' + this.value;">
-                <?php foreach ($acceptedDates as $date => $count): $dobj = DateTime::createFromFormat('Y-m-d', $date); $disp = $dobj ? $dobj->format('d-M-Y') : $date; $selected = ($date === $selectedDate) ? 'selected' : ''; ?>
-                    <option value="<?= htmlspecialchars($date) ?>" <?= $selected ?>><?= htmlspecialchars($disp) ?> — <?= (int)$count ?> Accepted</option>
-                <?php endforeach; ?>
-            </select>
-        </div>
-
-        <div class="action-bar" id="actionBar">
-            <span id="selectedCount">0</span> selected
-            <button class="action-btn btn-complete" onclick="submitComplete()">Mark Completed</button>
-            <button class="action-btn btn-cancel" onclick="submitCancel()">Cancel Appointments</button>
-            <button class="action-btn btn-message" onclick="openMessageModal()">Send Message</button>
-        </div>
-
-        <form id="completeForm" method="POST">
-            <input type="hidden" name="action" value="complete">
-            <table class="service-table">
-                <thead>
-                    <tr>
-                        <th><input type="checkbox" id="selectAll"></th>
-                        <th>View</th>
-                        <th>Tracking ID</th>
-                        <th>Products</th>
-                        <th>Customer Name</th>
-                        <th>Mobile</th>
-                        <th>Preferred Date</th>
-                        <th>Scheduled Time</th>
-                        <th>Payment Status</th>
-                        <th>Service Status</th>
-                        <th>Created Date</th>
-                    </tr>
-                </thead>
-                <tbody>
-                <?php if (empty($appointments)): ?>
-                    <tr><td colspan="11" class="no-data">No appointment bookings found.</td></tr>
-                <?php else: ?>
+        <?php foreach ($appointmentsByDate as $date => $appointments): ?>
+            <?php $dobj = DateTime::createFromFormat('Y-m-d', $date); $disp = $dobj ? $dobj->format('d-M-Y') : $date; ?>
+            <h2 style="margin-top:32px;color:#800000;font-size:1.3em;">
+                <?= htmlspecialchars($disp) ?> — <?= count($appointments) ?> Accepted
+            </h2>
+            <div class="action-bar" id="actionBar-<?= htmlspecialchars($date) ?>">
+                <span id="selectedCount-<?= htmlspecialchars($date) ?>">0</span> selected
+                <button class="action-btn btn-complete" onclick="submitComplete('<?= htmlspecialchars($date) ?>')">Mark Completed</button>
+                <button class="action-btn btn-cancel" onclick="submitCancel('<?= htmlspecialchars($date) ?>')">Cancel Appointments</button>
+                <button class="action-btn btn-message" onclick="openMessageModal('<?= htmlspecialchars($date) ?>')">Send Message</button>
+            </div>
+            <form id="completeForm-<?= htmlspecialchars($date) ?>" method="POST">
+                <input type="hidden" name="action" value="complete">
+                <table class="service-table">
+                    <thead>
+                        <tr>
+                            <th><input type="checkbox" class="selectAll" data-date="<?= htmlspecialchars($date) ?>"></th>
+                            <th>View</th>
+                            <th>Tracking ID</th>
+                            <th>Products</th>
+                            <th>Customer Name</th>
+                            <th>Mobile</th>
+                            <th>Preferred Date</th>
+                            <th>Scheduled Time</th>
+                            <th>Payment Status</th>
+                            <th>Service Status</th>
+                            <th>Created Date</th>
+                        </tr>
+                    </thead>
+                    <tbody>
                     <?php foreach ($appointments as $a):
                         $fd = json_decode($a['form_data'], true) ?? [];
                         $preferredDate = $fd['preferred_date'] ?? '';
@@ -298,10 +299,8 @@ h1 { color: #800000; margin-bottom: 18px; }
                         $toTime = $fd['assigned_to_time'] ?? ($fd['time_to'] ?? '');
                     ?>
                         <tr>
-                            <td><input type="checkbox" class="rowCheckbox" value="<?= (int)$a['id'] ?>"></td>
-                            <td>
-                                <a href="view.php?id=<?= (int)$a['id'] ?>" class="view-btn" style="padding:6px 14px;background:#007bff;color:#fff;border-radius:6px;text-decoration:none;font-weight:600;display:inline-block;">View</a>
-                            </td>
+                            <td><input type="checkbox" class="rowCheckbox" value="<?= (int)$a['id'] ?>" data-date="<?= htmlspecialchars($date) ?>"></td>
+                            <td><a href="view.php?id=<?= (int)$a['id'] ?>" class="view-btn" style="padding:6px 14px;background:#007bff;color:#fff;border-radius:6px;text-decoration:none;font-weight:600;">View</a></td>
                             <td><?= htmlspecialchars($a['tracking_id']) ?></td>
                             <td>
                                 <?php
@@ -342,26 +341,16 @@ h1 { color: #800000; margin-bottom: 18px; }
                             <td style="font-weight:600;color:#800000;">
                                 <?= htmlspecialchars($preferredDisplay) ?>
                             </td>
-                            <td style="font-weight:600; color:#0056b3;">
-                                <?php
-                                if ($fromTime && $toTime) {
-                                    $fromFmt = date('h:i A', strtotime($fromTime));
-                                    $toFmt = date('h:i A', strtotime($toTime));
-                                    echo htmlspecialchars($fromFmt . ' – ' . $toFmt);
-                                } else {
-                                    echo 'Time not set';
-                                }
-                                ?>
-                            </td>
-                            <td><span class="status-badge payment-paid">Paid</span></td>
+                            <td><?= htmlspecialchars($fromTime) ?> - <?= htmlspecialchars($toTime) ?></td>
+                            <td><span class="status-badge status-accepted">Accepted</span></td>
                             <td><span class="status-badge status-accepted">Accepted</span></td>
                             <td><?= htmlspecialchars($createdDisplay) ?></td>
                         </tr>
                     <?php endforeach; ?>
-                <?php endif; ?>
-                </tbody>
-            </table>
-        </form>
+                    </tbody>
+                </table>
+            </form>
+        <?php endforeach; ?>
     <?php endif; ?>
 </div>
 <script>
