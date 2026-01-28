@@ -62,7 +62,7 @@ $categoryFields = [
     'pooja-vastu-enquiry' => [
         ['label' => 'Service Topic', 'name' => 'service_topic', 'type' => 'select', 'options' => ['Pooja & Ritual', 'Shanti & Dosh Nivaran', 'Yagya & Havan', 'Vastu Consultation', 'Other'], 'required' => true],
         ['label' => 'Problem Description', 'name' => 'problem_desc', 'type' => 'textarea', 'required' => false],
-        ['label' => 'City', 'name' => 'enquiry_city', 'type' => 'text', 'required' => false],
+        // City field removed as requested
     ],
 ];
 
