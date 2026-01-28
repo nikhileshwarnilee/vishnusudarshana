@@ -222,6 +222,29 @@ if ($selectedDate !== null) {
         return isset($formData['preferred_date']) && $formData['preferred_date'] === $selectedDate;
     });
 }
+// Group all unaccepted appointments by preferred date (for all dates, not just selected)
+$appointmentsByDate = [];
+$sqlList = "
+    SELECT id, tracking_id, customer_name, mobile, email, payment_status, service_status, form_data, selected_products, created_at
+    FROM service_requests
+    WHERE $whereUnaccepted
+    ORDER BY created_at DESC
+";
+$stmt = $pdo->prepare($sqlList);
+$stmt->execute();
+$allAppointments = $stmt->fetchAll(PDO::FETCH_ASSOC);
+foreach ($allAppointments as $row) {
+    $formData = json_decode($row['form_data'], true);
+    $preferred = $formData['preferred_date'] ?? null;
+    if ($preferred) {
+        $appointmentsByDate[$preferred][] = $row;
+    }
+}
+ksort($appointmentsByDate);
+// Ensure $appointmentsByDate is always defined
+if (!isset($appointmentsByDate) || !is_array($appointmentsByDate)) {
+    $appointmentsByDate = [];
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -516,142 +539,100 @@ h1 {
         No pending appointments.
     </div>
 <?php else: ?>
-
-
-<?php
-// PHASE 3 – Determine default selection (today or oldest pending date)
-$defaultDate = null;
-$todayDate = date('Y-m-d');
-if (isset($pendingDates[$todayDate])) {
-    $defaultDate = $todayDate;
-} elseif (!empty($pendingDates)) {
-    $defaultDate = array_key_first($pendingDates);
-}
-?>
-
-<?php if (!empty($pendingDates)): ?>
-<div class="filter-bar" style="align-items: center;">
-    <label for="appointmentDateSelect">Select Appointment Date</label>
-    <select id="appointmentDateSelect" name="date" onchange="window.location.href='?date=' + this.value;">
-        <?php foreach ($pendingDates as $date => $count): ?>
-            <?php
-                $dateObj = DateTime::createFromFormat('Y-m-d', $date);
-                $formattedDate = $dateObj->format('d-M-Y');
-                $isToday = ($date === $todayDate) ? 'today' : '';
-                $selected = ($date === $selectedDate) ? 'selected' : '';
-            ?>
-            <option value="<?= htmlspecialchars($date) ?>" <?= $selected ?> data-date="<?= $date ?>" class="<?= $isToday ?>">
-                <?= htmlspecialchars($formattedDate) ?> – <?= (int)$count ?> Appointment<?= $count !== 1 ? 's' : '' ?>
-            </option>
-        <?php endforeach; ?>
-    </select>
-</div>
-
-<div style="margin-bottom:18px;font-weight:600;color:#800000;">
-    Total appointments on this date: <?= $pendingDates[$selectedDate] ?? 0 ?>
-</div>
-
-<!-- PHASE 2 – ACTION BAR -->
-<div class="action-bar" id="actionBar">
-    <span class="action-bar-label"><span id="selectedCount">0</span> appointment(s) selected</span>
-    <button class="action-btn btn-accept" onclick="openAcceptModal()">Accept Selected</button>
-</div>
-
-<?php else: ?>
-<div class="no-data" style="font-size:1.2em;color:#800000;font-weight:600;">
-    No pending appointments available
-</div>
-<?php endif; ?>
-
-<table class="service-table">
-    <thead>
-        <tr>
-            <th><input type="checkbox" id="selectAll"></th>
-            <th>View</th>
-            <th>Tracking ID</th>
-            <th>Products</th>
-            <th>Customer Name</th>
-            <th>Mobile</th>
-            <th>Preferred Date</th>
-            <th>Payment Status</th>
-            <th>Service Status</th>
-            <th>Created Date</th>
-        </tr>
-    </thead>
-    <tbody>
-        <?php if (empty($appointments)): ?>
-            <tr>
-                <td colspan="10" class="no-data">No appointment bookings found.</td>
-            </tr>
-        <?php else: ?>
-            <?php foreach ($appointments as $a): ?>
-                <?php
-                    $formData = json_decode($a['form_data'], true) ?? [];
-                    $preferredDate = $formData['preferred_date'] ?? '';
-                    $preferredDisplay = $preferredDate ? (DateTime::createFromFormat('Y-m-d', $preferredDate)?->format('d-M-Y') ?: $preferredDate) : '—';
-                    $createdDisplay = '';
-                    if (!empty($a['created_at'])) {
-                        $co = new DateTime($a['created_at']);
-                        $createdDisplay = $co->format('d-M-Y');
-                    }
-                ?>
+    <?php foreach ($appointmentsByDate as $date => $appointments): ?>
+        <?php
+            $dateObj = DateTime::createFromFormat('Y-m-d', $date);
+            $formattedDate = $dateObj ? $dateObj->format('d-M-Y') : htmlspecialchars($date);
+        ?>
+        <h2 style="margin-top:32px;color:#800000;font-size:1.3em;">
+            <?= $formattedDate ?> – <?= count($appointments) ?> Appointment<?= count($appointments) !== 1 ? 's' : '' ?>
+        </h2>
+        <div class="action-bar" id="actionBar-<?= htmlspecialchars($date) ?>">
+            <span class="action-bar-label"><span id="selectedCount-<?= htmlspecialchars($date) ?>">0</span> appointment(s) selected</span>
+            <button class="action-btn btn-accept" onclick="openAcceptModal('<?= htmlspecialchars($date) ?>')">Accept Selected</button>
+        </div>
+        <table class="service-table">
+            <thead>
                 <tr>
-                    <td>
-                        <input type="checkbox" class="rowCheckbox" value="<?= (int)$a['id'] ?>" data-date="<?= htmlspecialchars($selectedDate) ?>">
-                    </td>
-                    <td>
-                        <a href="view.php?id=<?= (int)$a['id'] ?>" class="view-btn" style="padding:6px 14px;background:#007bff;color:#fff;border-radius:6px;text-decoration:none;font-weight:600;">View</a>
-                    </td>
-                    <td><?= htmlspecialchars($a['tracking_id']) ?></td>
-                    <td>
-                        <?php
-                        $products = '-';
-                        $decoded = json_decode($a['selected_products'], true);
-                        if (is_array($decoded) && count($decoded)) {
-                            $productDetails = [];
-                            foreach ($decoded as $prod) {
-                                $qty = isset($prod['qty']) ? (int)$prod['qty'] : 1;
-                                $name = isset($prod['name']) ? htmlspecialchars($prod['name']) : '';
-                                $price = isset($prod['price']) ? $prod['price'] : '';
-                                // If name missing, fetch from products table using id
-                                if ($name === '' && isset($prod['id'])) {
-                                    $pid = (int)$prod['id'];
-                                    $stmtP = $pdo->prepare('SELECT product_name FROM products WHERE id = ? LIMIT 1');
-                                    $stmtP->execute([$pid]);
-                                    $rowP = $stmtP->fetch(PDO::FETCH_ASSOC);
-                                    if ($rowP && isset($rowP['product_name'])) {
-                                        $name = htmlspecialchars($rowP['product_name']);
-                                    }
-                                }
-                                if ($name !== '') {
-                                    $label = $name . ' x' . $qty;
-                                    if ($price !== '') {
-                                        $label .= ' (₹' . number_format((float)$price, 2) . ')';
-                                    }
-                                    $productDetails[] = $label;
-                                }
-                            }
-                            if ($productDetails) {
-                                $products = implode(', ', $productDetails);
-                            }
-                        }
-                        echo $products;
-                        ?>
-                    </td>
-                    <td><?= htmlspecialchars($a['customer_name']) ?></td>
-                    <td><?= htmlspecialchars($a['mobile']) ?></td>
-                    <td style="font-weight:600;color:#800000;">
-                        <?= htmlspecialchars($preferredDisplay) ?>
-                    </td>
-                    <td><span class="status-badge payment-paid">Paid</span></td>
-                    <td><span class="status-badge status-received">Unaccepted</span></td>
-                    <td><?= htmlspecialchars($createdDisplay) ?></td>
+                    <th><input type="checkbox" class="selectAll" data-date="<?= htmlspecialchars($date) ?>"></th>
+                    <th>View</th>
+                    <th>Tracking ID</th>
+                    <th>Products</th>
+                    <th>Customer Name</th>
+                    <th>Mobile</th>
+                    <th>Preferred Date</th>
+                    <th>Payment Status</th>
+                    <th>Service Status</th>
+                    <th>Created Date</th>
                 </tr>
-            <?php endforeach; ?>
-        <?php endif; ?>
-    </tbody>
-</table>
-
+            </thead>
+            <tbody>
+                <?php foreach ($appointments as $a): ?>
+                    <?php
+                        $formData = json_decode($a['form_data'], true) ?? [];
+                        $preferredDate = $formData['preferred_date'] ?? '';
+                        $preferredDisplay = $preferredDate ? (DateTime::createFromFormat('Y-m-d', $preferredDate)?->format('d-M-Y') ?: $preferredDate) : '—';
+                        $createdDisplay = '';
+                        if (!empty($a['created_at'])) {
+                            $co = new DateTime($a['created_at']);
+                            $createdDisplay = $co->format('d-M-Y');
+                        }
+                    ?>
+                    <tr>
+                        <td>
+                            <input type="checkbox" class="rowCheckbox" value="<?= (int)$a['id'] ?>" data-date="<?= htmlspecialchars($date) ?>">
+                        </td>
+                        <td>
+                            <a href="view.php?id=<?= (int)$a['id'] ?>" class="view-btn" style="padding:6px 14px;background:#007bff;color:#fff;border-radius:6px;text-decoration:none;font-weight:600;">View</a>
+                        </td>
+                        <td><?= htmlspecialchars($a['tracking_id']) ?></td>
+                        <td>
+                            <?php
+                            $products = '-';
+                            $decoded = json_decode($a['selected_products'], true);
+                            if (is_array($decoded) && count($decoded)) {
+                                $productDetails = [];
+                                foreach ($decoded as $prod) {
+                                    $qty = isset($prod['qty']) ? (int)$prod['qty'] : 1;
+                                    $name = isset($prod['name']) ? htmlspecialchars($prod['name']) : '';
+                                    $price = isset($prod['price']) ? $prod['price'] : '';
+                                    if ($name === '' && isset($prod['id'])) {
+                                        $pid = (int)$prod['id'];
+                                        $stmtP = $pdo->prepare('SELECT product_name FROM products WHERE id = ? LIMIT 1');
+                                        $stmtP->execute([$pid]);
+                                        $rowP = $stmtP->fetch(PDO::FETCH_ASSOC);
+                                        if ($rowP && isset($rowP['product_name'])) {
+                                            $name = htmlspecialchars($rowP['product_name']);
+                                        }
+                                    }
+                                    if ($name !== '') {
+                                        $label = $name . ' x' . $qty;
+                                        if ($price !== '') {
+                                            $label .= ' (₹' . number_format((float)$price, 2) . ')';
+                                        }
+                                        $productDetails[] = $label;
+                                    }
+                                }
+                                if ($productDetails) {
+                                    $products = implode(', ', $productDetails);
+                                }
+                            }
+                            echo $products;
+                            ?>
+                        </td>
+                        <td><?= htmlspecialchars($a['customer_name']) ?></td>
+                        <td><?= htmlspecialchars($a['mobile']) ?></td>
+                        <td style="font-weight:600;color:#800000;">
+                            <?= htmlspecialchars($preferredDisplay) ?>
+                        </td>
+                        <td><span class="status-badge payment-paid">Paid</span></td>
+                        <td><span class="status-badge status-received">Unaccepted</span></td>
+                        <td><?= htmlspecialchars($createdDisplay) ?></td>
+                    </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+    <?php endforeach; ?>
 <?php endif; ?>
 
 </div>
@@ -693,33 +674,30 @@ if (isset($pendingDates[$todayDate])) {
 <!-- Reschedule removed in simplified flow -->
 
 <script>
-// Track selected appointments
-let selectedAppointments = [];
+// Track selected appointments per date
+let selectedAppointmentsByDate = {};
 
-// Update action bar visibility and selection counter
-function updateActionBar() {
-    const checkboxes = document.querySelectorAll('.rowCheckbox:checked');
-    selectedAppointments = Array.from(checkboxes).map(cb => ({
+function updateActionBar(date) {
+    const checkboxes = document.querySelectorAll('.rowCheckbox[data-date="' + date + '"]:checked');
+    selectedAppointmentsByDate[date] = Array.from(checkboxes).map(cb => ({
         id: cb.value,
         date: cb.getAttribute('data-date')
     }));
-    
-    const count = selectedAppointments.length;
-    document.getElementById('selectedCount').textContent = count;
-    document.getElementById('actionBar').classList.toggle('show', count > 0);
+    const count = selectedAppointmentsByDate[date].length;
+    document.getElementById('selectedCount-' + date).textContent = count;
+    document.getElementById('actionBar-' + date).classList.toggle('show', count > 0);
 }
 
-// Accept Appointment Functions (Simplified)
-function openAcceptModal() {
-    if (selectedAppointments.length === 0) return;
-    
+function openAcceptModal(date) {
+    if (!selectedAppointmentsByDate[date] || selectedAppointmentsByDate[date].length === 0) return;
     // Set appointment IDs
-    const ids = selectedAppointments.map(a => a.id);
+    const ids = selectedAppointmentsByDate[date].map(a => a.id);
     document.getElementById('acceptAppointmentIds').value = ids.join(',');
-    
-    // Default to today
-    document.getElementById('assignedDate').value = '<?= date('Y-m-d') ?>';
-    
+    // Set assigned date to preferred date
+    document.getElementById('assignedDate').value = date;
+    // Set default time from 09:00 and to 21:00
+    document.getElementById('timeFrom').value = '09:00';
+    document.getElementById('timeTo').value = '21:00';
     document.getElementById('acceptModal').classList.add('show');
 }
 
@@ -730,47 +708,54 @@ function closeAcceptModal() {
 function validateAcceptForm() {
     const timeFrom = document.getElementById('timeFrom').value;
     const timeTo = document.getElementById('timeTo').value;
-    
     if (timeFrom >= timeTo) {
         alert('Time From must be before Time To');
         return false;
     }
-    
-    if (!confirm(`Accept ${selectedAppointments.length} appointment(s)?`)) {
+    // Find which date's action bar is open
+    let selectedDate = null;
+    for (const date in selectedAppointmentsByDate) {
+        if (selectedAppointmentsByDate[date] && selectedAppointmentsByDate[date].length > 0) {
+            selectedDate = date;
+            break;
+        }
+    }
+    if (!selectedDate) return false;
+    if (!confirm(`Accept ${selectedAppointmentsByDate[selectedDate].length} appointment(s)?`)) {
         return false;
     }
-    
     // Convert single hidden input to multiple
     const form = event.target;
     form.querySelector('#acceptAppointmentIds').remove();
-    selectedAppointments.forEach(a => {
+    selectedAppointmentsByDate[selectedDate].forEach(a => {
         const input = document.createElement('input');
         input.type = 'hidden';
         input.name = 'appointment_ids[]';
         input.value = a.id;
         form.appendChild(input);
     });
-    
     return true;
 }
 
-// Reschedule flow removed
-
-// Select/Deselect all checkboxes
-const selectAll = document.getElementById('selectAll');
-if (selectAll) {
-    selectAll.addEventListener('change', function () {
-        document.querySelectorAll('.rowCheckbox').forEach(cb => {
-            cb.checked = selectAll.checked;
+// Select/Deselect all checkboxes per table
+setTimeout(function() {
+    document.querySelectorAll('.selectAll').forEach(selectAll => {
+        const date = selectAll.getAttribute('data-date');
+        selectAll.addEventListener('change', function () {
+            document.querySelectorAll('.rowCheckbox[data-date="' + date + '"]').forEach(cb => {
+                cb.checked = selectAll.checked;
+            });
+            updateActionBar(date);
         });
-        updateActionBar();
     });
-}
-
-// Listen to individual checkbox changes
-document.querySelectorAll('.rowCheckbox').forEach(checkbox => {
-    checkbox.addEventListener('change', updateActionBar);
-});
+    // Listen to individual checkbox changes per table
+    document.querySelectorAll('.rowCheckbox').forEach(checkbox => {
+        const date = checkbox.getAttribute('data-date');
+        checkbox.addEventListener('change', function() {
+            updateActionBar(date);
+        });
+    });
+}, 100);
 </script>
 
 </body>
