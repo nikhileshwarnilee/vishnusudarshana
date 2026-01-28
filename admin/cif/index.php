@@ -4,7 +4,7 @@ if (isset($_GET['ajax_search_client']) && isset($_GET['name'])) {
     require_once __DIR__ . '/../../config/db.php';
     $name = trim($_GET['name']);
     $out = [];
-    if (strlen($name) >= 2) {
+        if (strlen($name) >= 2) {
         $words = preg_split('/\s+/', $name);
         $where = [];
         $params = [];
@@ -12,11 +12,12 @@ if (isset($_GET['ajax_search_client']) && isset($_GET['name'])) {
             $where[] = 'name LIKE ?';
             $params[] = '%' . $w . '%';
         }
-        $sql = 'SELECT id, name, mobile FROM cif_clients';
+            // Join with cif_enquiries to count enquiries per client
+            $sql = 'SELECT c.id, c.name, c.mobile, COUNT(e.id) as enquiry_count FROM cif_clients c LEFT JOIN cif_enquiries e ON c.id = e.client_id';
         if ($where) {
             $sql .= ' WHERE ' . implode(' AND ', $where);
         }
-        $sql .= ' ORDER BY name ASC LIMIT 10';
+            $sql .= ' GROUP BY c.id, c.name, c.mobile ORDER BY c.name ASC LIMIT 10';
         $stmt = $pdo->prepare($sql);
         $stmt->execute($params);
         $out = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -273,8 +274,22 @@ h1 {
         <form method="get" style="margin-bottom:24px;display:flex;gap:18px;align-items:center;">
             <select id="clientSelect" name="client_id" style="padding:8px 12px;border-radius:6px;border:1px solid #ccc;font-size:1em;min-width:220px;width:320px;">
                 <option value="">-- Select Client --</option>
-                <?php foreach ($clients as $c): ?>
-                    <option value="<?= (int)$c['id'] ?>" <?= $selected_client_id == $c['id'] ? 'selected' : '' ?>><?= htmlspecialchars($c['name']) ?><?= $c['mobile'] ? ' - ' . htmlspecialchars($c['mobile']) : '' ?></option>
+                <?php
+                // Fetch enquiry counts for all clients in one query
+                $client_ids = array_column($clients, 'id');
+                $enquiry_counts = [];
+                if ($client_ids) {
+                    $in = str_repeat('?,', count($client_ids) - 1) . '?';
+                    $stmt = $pdo->prepare('SELECT client_id, COUNT(*) as cnt FROM cif_enquiries WHERE client_id IN (' . $in . ') GROUP BY client_id');
+                    $stmt->execute($client_ids);
+                    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+                        $enquiry_counts[$row['client_id']] = $row['cnt'];
+                    }
+                }
+                foreach ($clients as $c):
+                    $count = isset($enquiry_counts[$c['id']]) ? $enquiry_counts[$c['id']] : 0;
+                ?>
+                    <option value="<?= (int)$c['id'] ?>" <?= $selected_client_id == $c['id'] ? 'selected' : '' ?>><?= htmlspecialchars($c['name']) ?> - <?= $count ?><?= $c['mobile'] ? ' - ' . htmlspecialchars($c['mobile']) : '' ?></option>
                 <?php endforeach; ?>
             </select>
         </form>
@@ -304,9 +319,16 @@ $(function() {
             },
             processResults: function(data, params) {
                 var results = data.map(function(c) {
+                    var text = c.name;
+                    if (typeof c.enquiry_count !== 'undefined') {
+                        text += ' - ' + c.enquiry_count;
+                    }
+                    if (c.mobile) {
+                        text += ' - ' + c.mobile;
+                    }
                     return {
                         id: c.id,
-                        text: c.name + (c.mobile ? ' - ' + c.mobile : '')
+                        text: text
                     };
                 });
                 // If no results and search term present, add a fake option
