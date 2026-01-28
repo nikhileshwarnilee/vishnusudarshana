@@ -180,7 +180,6 @@ h1 { color: #800000; margin-bottom: 18px; }
 </div>
 </body>
 <script>
-// Global search filter for all tables
 document.addEventListener('DOMContentLoaded', function() {
     const searchInput = document.getElementById('globalSearch');
     if (!searchInput) return;
@@ -192,4 +191,5 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 });
+</script>
 </html>

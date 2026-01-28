@@ -55,3 +55,4 @@
 [2026-01-29 00:33:56] TO: 919595744266 | TEMPLATE: Appointment Completed | STATUS: API_ERROR | DETAILS: {"name":"ERR402","errorCode":402,"errorMessage":"Insufficient WhatsApp Conversation Credits (WCC)!"}
 [2026-01-29 00:37:38] TO: 919595744266 | TEMPLATE: Website Service Request Confirmation | STATUS: API_ERROR | DETAILS: {"name":"ERR402","errorCode":402,"errorMessage":"Insufficient WhatsApp Conversation Credits (WCC)!"}
 [2026-01-29 00:38:14] TO: 919595744266 | TEMPLATE: Appointment Scheduled | STATUS: API_ERROR | DETAILS: {"name":"ERR402","errorCode":402,"errorMessage":"Insufficient WhatsApp Conversation Credits (WCC)!"}
+[2026-01-29 00:46:23] TO: 919595744266 | TEMPLATE: Appointment Cancelled | STATUS: API_ERROR | DETAILS: {"name":"ERR402","errorCode":402,"errorMessage":"Insufficient WhatsApp Conversation Credits (WCC)!"}
