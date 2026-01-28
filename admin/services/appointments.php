@@ -163,12 +163,27 @@ $whereUnaccepted = "
     )
 ";
 
-$stmt = $pdo->prepare("SELECT DATE(created_at) AS d, COUNT(*) AS c FROM service_requests WHERE $whereUnaccepted GROUP BY DATE(created_at) ORDER BY DATE(created_at) ASC");
+
+// Fetch all unaccepted appointments with their preferred dates
+$stmt = $pdo->prepare("SELECT form_data, created_at FROM service_requests WHERE $whereUnaccepted");
 $stmt->execute();
 $dateRows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+$preferredDateCounts = [];
 foreach ($dateRows as $r) {
-    $pendingDates[$r['d']] = (int)$r['c'];
+    $formData = json_decode($r['form_data'], true);
+    $preferred = $formData['preferred_date'] ?? null;
+    if ($preferred) {
+        if (!isset($preferredDateCounts[$preferred])) {
+            $preferredDateCounts[$preferred] = 0;
+        }
+        $preferredDateCounts[$preferred]++;
+    }
 }
+// Sort by preferred date ASC
+uksort($preferredDateCounts, function($a, $b) {
+    return strtotime($a) <=> strtotime($b);
+});
+$pendingDates = $preferredDateCounts;
 
 /* ============================================================
     AUTO-SELECT OLDEST PENDING DATE
@@ -191,16 +206,21 @@ if (!empty($pendingDates)) {
 $appointments = [];
 
 if ($selectedDate !== null) {
+    // Fetch all unaccepted appointments
     $sqlList = "
                 SELECT id, tracking_id, customer_name, mobile, email, payment_status, service_status, form_data, selected_products, created_at
                 FROM service_requests
                 WHERE $whereUnaccepted
-                    AND DATE(created_at) = ?
-                ORDER BY created_at ASC
+                ORDER BY created_at DESC
         ";
     $stmt = $pdo->prepare($sqlList);
-    $stmt->execute([$selectedDate]);
-    $appointments = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $stmt->execute();
+    $allAppointments = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    // Filter by preferred_date
+    $appointments = array_filter($allAppointments, function($row) use ($selectedDate) {
+        $formData = json_decode($row['form_data'], true);
+        return isset($formData['preferred_date']) && $formData['preferred_date'] === $selectedDate;
+    });
 }
 ?>
 <!DOCTYPE html>
@@ -590,9 +610,25 @@ if (isset($pendingDates[$todayDate])) {
                         if (is_array($decoded) && count($decoded)) {
                             $productDetails = [];
                             foreach ($decoded as $prod) {
-                                if (isset($prod['name'])) {
-                                    $qty = isset($prod['qty']) ? (int)$prod['qty'] : 1;
-                                    $productDetails[] = htmlspecialchars($prod['name']) . ' x' . $qty;
+                                $qty = isset($prod['qty']) ? (int)$prod['qty'] : 1;
+                                $name = isset($prod['name']) ? htmlspecialchars($prod['name']) : '';
+                                $price = isset($prod['price']) ? $prod['price'] : '';
+                                // If name missing, fetch from products table using id
+                                if ($name === '' && isset($prod['id'])) {
+                                    $pid = (int)$prod['id'];
+                                    $stmtP = $pdo->prepare('SELECT product_name FROM products WHERE id = ? LIMIT 1');
+                                    $stmtP->execute([$pid]);
+                                    $rowP = $stmtP->fetch(PDO::FETCH_ASSOC);
+                                    if ($rowP && isset($rowP['product_name'])) {
+                                        $name = htmlspecialchars($rowP['product_name']);
+                                    }
+                                }
+                                if ($name !== '') {
+                                    $label = $name . ' x' . $qty;
+                                    if ($price !== '') {
+                                        $label .= ' (₹' . number_format((float)$price, 2) . ')';
+                                    }
+                                    $productDetails[] = $label;
                                 }
                             }
                             if ($productDetails) {
