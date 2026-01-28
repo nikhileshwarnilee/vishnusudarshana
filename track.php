@@ -877,10 +877,25 @@ elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     }
                                     if ($files && count($files) > 0): ?>
                                         <ul style="list-style:none;padding:0;margin:0;">
-                                        <?php foreach ($files as $file): ?>
+                                        <?php
+                                        $now = new DateTime();
+                                        foreach ($files as $file):
+                                            $fileDate = isset($file['date']) ? DateTime::createFromFormat('Y-m-d H:i:s', $file['date']) : null;
+                                            $showDownload = false;
+                                            if ($fileDate) {
+                                                $interval = $now->diff($fileDate);
+                                                $days = (int)$interval->format('%r%a');
+                                                // Only show if file is not older than 30 days
+                                                $showDownload = ($days >= 0 && $days <= 30);
+                                            }
+                                        ?>
                                             <li style="margin-bottom:6px;">
                                                 <span style="font-size:0.98em;"><?php echo htmlspecialchars($file['name']); ?></span>
-                                                <button type="button" class="download-btn" onclick="requestDownloadOTP('<?php echo htmlspecialchars($row['tracking_id']); ?>', '<?php echo htmlspecialchars($row['mobile']); ?>', '<?php echo htmlspecialchars($file['file']); ?>')" style="margin-left:8px;">Download</button>
+                                                <?php if ($showDownload): ?>
+                                                    <button type="button" class="download-btn" onclick="requestDownloadOTP('<?php echo htmlspecialchars($row['tracking_id']); ?>', '<?php echo htmlspecialchars($row['mobile']); ?>', '<?php echo htmlspecialchars($file['file']); ?>')" style="margin-left:8px;">Download</button>
+                                                <?php else: ?>
+                                                    <span style="color:#b00;font-size:0.95em;margin-left:8px;">(Download expired)</span>
+                                                <?php endif; ?>
                                             </li>
                                         <?php endforeach; ?>
                                         </ul>
