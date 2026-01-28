@@ -51,6 +51,7 @@ $menu = [
             'Pending Appointments'   => $baseUrl . '/admin/services/appointments.php',
             'Accepted Appointments'  => $baseUrl . '/admin/services/accepted-appointments.php',
             'Completed Appointments' => $baseUrl . '/admin/services/completed-appointments.php',
+            'Booking Slots'          => $baseUrl . '/admin/services/booking-slots.php',
         ]
     ],
 

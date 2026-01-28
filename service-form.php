@@ -1,6 +1,7 @@
 <?php
 
 $pageTitle = 'Service Form | Vishnusudarshana';
+require_once __DIR__ . '/config/db.php';
 require_once 'header.php';
 $category = $_GET['category'] ?? '';
 
@@ -122,35 +123,72 @@ unset($fields);
         </section>
         <button type="submit" class="form-submit-btn">Continue</button>
     </form>
+    <?php
+    // Fetch blocked dates from DB for appointment category
+    $blockedDates = [];
+    $blockedMsgs = [];
+    try {
+        $stmtBlocked = $pdo->query("SELECT start_date, msg FROM blocked_appointment_slots");
+        while ($row = $stmtBlocked->fetch(PDO::FETCH_ASSOC)) {
+            $blockedDates[] = $row['start_date'];
+            $blockedMsgs[$row['start_date']] = $row['msg'] ? $row['msg'] : 'This date is not available for booking.';
+        }
+    } catch (Throwable $e) {}
+    ?>
     <script>
-    // Set min date to today in IST and prevent past date selection
+    // Set min date to today in IST, but after 11:30 AM IST, only allow future dates for Preferred Date
     document.addEventListener('DOMContentLoaded', function() {
         var dateInput = document.getElementById('preferred_date_input');
+        var blockedDates = <?php echo json_encode($blockedDates); ?>;
+        var blockedMsgs = <?php echo json_encode($blockedMsgs); ?>;
         if (dateInput) {
-            function getISTToday() {
+            function getISTNow() {
                 var now = new Date();
                 var utc = now.getTime() + (now.getTimezoneOffset() * 60000);
                 var istOffset = 5.5 * 60 * 60 * 1000;
-                var istNow = new Date(utc + istOffset);
-                var yyyy = istNow.getFullYear();
-                var mm = String(istNow.getMonth() + 1).padStart(2, '0');
-                var dd = String(istNow.getDate()).padStart(2, '0');
+                return new Date(utc + istOffset);
+            }
+            function getDateStr(dateObj) {
+                var yyyy = dateObj.getFullYear();
+                var mm = String(dateObj.getMonth() + 1).padStart(2, '0');
+                var dd = String(dateObj.getDate()).padStart(2, '0');
                 return yyyy + '-' + mm + '-' + dd;
             }
-            var todayStr = getISTToday();
-            dateInput.setAttribute('min', todayStr);
+            var istNow = getISTNow();
+            var todayStr = getDateStr(istNow);
+            var minDateStr = todayStr;
+            // If after 11:30 AM IST, set min date to tomorrow
+            if (istNow.getHours() > 11 || (istNow.getHours() === 11 && istNow.getMinutes() >= 30)) {
+                var tomorrow = new Date(istNow.getTime() + 24 * 60 * 60 * 1000);
+                minDateStr = getDateStr(tomorrow);
+            }
+            dateInput.setAttribute('min', minDateStr);
+            // Disable blocked dates on input/select
             dateInput.addEventListener('input', function() {
-                if (dateInput.value < todayStr) {
-                    dateInput.value = todayStr;
+                if (dateInput.value < minDateStr) {
+                    dateInput.value = minDateStr;
+                }
+                if (blockedDates.includes(dateInput.value)) {
+                    var msg = blockedMsgs[dateInput.value] || 'This date is not available for booking.';
+                    alert(msg);
+                    dateInput.value = '';
                 }
             });
             // Prevent manual bypass on submit
             var form = document.getElementById('appointmentForm');
             if (form) {
                 form.addEventListener('submit', function(e) {
-                    if (dateInput.value < todayStr) {
-                        alert('Please select today or a future date.');
-                        dateInput.value = todayStr;
+                    if (dateInput.value < minDateStr) {
+                        alert('Please select a valid date.');
+                        dateInput.value = minDateStr;
+                        dateInput.focus();
+                        e.preventDefault();
+                        return false;
+                    }
+                    if (blockedDates.includes(dateInput.value)) {
+                        var msg = blockedMsgs[dateInput.value] || 'This date is not available for booking.';
+                        alert(msg);
+                        dateInput.value = '';
                         dateInput.focus();
                         e.preventDefault();
                         return false;
