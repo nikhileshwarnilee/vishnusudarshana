@@ -310,9 +310,24 @@ h1 { color: #800000; margin-bottom: 18px; }
                                 if (is_array($decoded) && count($decoded)) {
                                     $productDetails = [];
                                     foreach ($decoded as $prod) {
-                                        if (isset($prod['name'])) {
-                                            $qty = isset($prod['qty']) ? (int)$prod['qty'] : 1;
-                                            $productDetails[] = htmlspecialchars($prod['name']) . ' x' . $qty;
+                                        $qty = isset($prod['qty']) ? (int)$prod['qty'] : 1;
+                                        $name = isset($prod['name']) ? htmlspecialchars($prod['name']) : '';
+                                        $price = isset($prod['price']) ? $prod['price'] : '';
+                                        if ($name === '' && isset($prod['id'])) {
+                                            $pid = (int)$prod['id'];
+                                            $stmtP = $pdo->prepare('SELECT product_name FROM products WHERE id = ? LIMIT 1');
+                                            $stmtP->execute([$pid]);
+                                            $rowP = $stmtP->fetch(PDO::FETCH_ASSOC);
+                                            if ($rowP && isset($rowP['product_name'])) {
+                                                $name = htmlspecialchars($rowP['product_name']);
+                                            }
+                                        }
+                                        if ($name !== '') {
+                                            $label = $name . ' x' . $qty;
+                                            if ($price !== '') {
+                                                $label .= ' (₹' . number_format((float)$price, 2) . ')';
+                                            }
+                                            $productDetails[] = $label;
                                         }
                                     }
                                     if ($productDetails) {
