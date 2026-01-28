@@ -35,12 +35,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         '$.assigned_from_time', ?,
                         '$.assigned_to_time', ?
                     ),
-                    updated_at = ?
+                    updated_at = NOW()
                 WHERE id IN ($placeholders)
                   AND category_slug = 'appointment'
                   AND payment_status IN ('Paid', 'Free')
             ";
-            $params = array_merge([$assignedDate, $timeFrom, $timeTo, $updatedAt], $appointmentIds);
+            $params = array_merge([$assignedDate, $timeFrom, $timeTo], $appointmentIds);
             $stmt = $pdo->prepare($sql);
             $stmt->execute($params);
 

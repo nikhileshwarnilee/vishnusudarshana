@@ -14,17 +14,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $appointmentIds = $_POST['appointment_ids'] ?? [];
         if (!empty($appointmentIds)) {
             $placeholders = implode(',', array_fill(0, count($appointmentIds), '?'));
-            $updatedAt = date('Y-m-d H:i:s');
             $sql = "
                 UPDATE service_requests
                 SET service_status = 'Completed',
-                    updated_at = ?
+                    updated_at = NOW()
                 WHERE id IN ($placeholders)
                   AND category_slug = 'appointment'
                   AND payment_status IN ('Paid', 'Free')
                   AND service_status = 'Accepted'
             ";
-            $params = array_merge([$updatedAt], $appointmentIds);
+            $params = $appointmentIds;
             $stmt = $pdo->prepare($sql);
             $stmt->execute($params);
 
@@ -71,17 +70,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $appointmentIds = $_POST['appointment_ids'] ?? [];
         if (!empty($appointmentIds)) {
             $placeholders = implode(',', array_fill(0, count($appointmentIds), '?'));
-            $updatedAt = date('Y-m-d H:i:s');
             $sql = "
                 UPDATE service_requests
                 SET service_status = 'Received',
-                    updated_at = ?
+                    updated_at = NOW()
                 WHERE id IN ($placeholders)
                   AND category_slug = 'appointment'
                   AND payment_status IN ('Paid', 'Free')
                   AND service_status = 'Accepted'
             ";
-            $params = array_merge([$updatedAt], $appointmentIds);
+            $params = $appointmentIds;
             $stmt = $pdo->prepare($sql);
             $stmt->execute($params);
 
@@ -157,7 +155,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 // Group all accepted appointments by assigned date
 $appointmentsByDate = [];
 $sql = "
-    SELECT id, tracking_id, customer_name, mobile, form_data, selected_products, created_at
+    SELECT id, tracking_id, customer_name, mobile, form_data, selected_products, created_at, updated_at
     FROM service_requests
     WHERE category_slug = 'appointment'
       AND payment_status IN ('Paid', 'Free')
@@ -192,7 +190,7 @@ if (!empty($appointmentsByDate)) {
 $appointments = [];
 if ($selectedDate !== null) {
         $sql = "
-                SELECT id, tracking_id, customer_name, mobile, form_data, selected_products, created_at
+                SELECT id, tracking_id, customer_name, mobile, form_data, selected_products, created_at, updated_at
                 FROM service_requests
                 WHERE JSON_UNQUOTE(JSON_EXTRACT(form_data,'$.assigned_date')) = ?
                 ORDER BY created_at ASC
@@ -282,7 +280,7 @@ h1 { color: #800000; margin-bottom: 18px; }
                             <th>Scheduled Time</th>
                             <th>Payment Status</th>
                             <th>Service Status</th>
-                            <th>Created Date</th>
+                            <th>Updated At</th>
                             <th>Notes</th>
                         </tr>
                     </thead>
@@ -292,10 +290,10 @@ h1 { color: #800000; margin-bottom: 18px; }
                         $notes = isset($fd['notes']) ? htmlspecialchars($fd['notes']) : '';
                         $preferredDate = $fd['preferred_date'] ?? '';
                         $preferredDisplay = $preferredDate ? (DateTime::createFromFormat('Y-m-d', $preferredDate)?->format('d-M-Y') ?: $preferredDate) : '—';
-                        $createdDisplay = '';
-                        if (!empty($a['created_at'])) {
-                            $co = new DateTime($a['created_at']);
-                            $createdDisplay = $co->format('d-M-Y');
+                        $updatedDisplay = '';
+                        if (!empty($a['updated_at'])) {
+                            $uo = new DateTime($a['updated_at']);
+                            $updatedDisplay = $uo->format('d-M-Y h:i A');
                         }
                         $fromTime = $fd['assigned_from_time'] ?? ($fd['time_from'] ?? '');
                         $toTime = $fd['assigned_to_time'] ?? ($fd['time_to'] ?? '');
@@ -346,7 +344,7 @@ h1 { color: #800000; margin-bottom: 18px; }
                             <td><?= htmlspecialchars($fromTime) ?> - <?= htmlspecialchars($toTime) ?></td>
                             <td><span class="status-badge payment-paid">Paid</span></td>
                             <td><span class="status-badge status-accepted">Accepted</span></td>
-                            <td><?= htmlspecialchars($createdDisplay) ?></td>
+                            <td><?= htmlspecialchars($updatedDisplay) ?></td>
                             <td><?= $notes ?></td>
                         </tr>
                     <?php endforeach; ?>

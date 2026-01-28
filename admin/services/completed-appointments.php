@@ -21,7 +21,7 @@ $totalCompleted = (int)$stmt->fetchColumn();
 // --- FETCH ALL COMPLETED APPOINTMENTS ---
 $appointments = [];
 $sql = "
-    SELECT id, tracking_id, customer_name, mobile, email, payment_status, service_status, form_data, selected_products, created_at
+    SELECT id, tracking_id, customer_name, mobile, email, payment_status, service_status, form_data, selected_products, created_at, updated_at
     FROM service_requests
     WHERE category_slug = 'appointment' AND payment_status IN ('Paid', 'Free') AND service_status = 'Completed'
     ORDER BY created_at DESC
@@ -94,7 +94,7 @@ h1 { color: #800000; margin-bottom: 18px; }
                     <th>Scheduled Time</th>
                     <th>Payment Status</th>
                     <th>Service Status</th>
-                    <th>Created Date</th>
+                    <th>Updated At</th>
                 </tr>
             </thead>
             <tbody>
@@ -104,10 +104,10 @@ h1 { color: #800000; margin-bottom: 18px; }
                 $preferredDisplay = $preferredDate ? (DateTime::createFromFormat('Y-m-d', $preferredDate)?->format('d-M-Y') ?: $preferredDate) : '—';
                 $fromTime = $formData['assigned_from_time'] ?? ($formData['time_from'] ?? '');
                 $toTime = $formData['assigned_to_time'] ?? ($formData['time_to'] ?? '');
-                $createdDisplay = '';
-                if (!empty($a['created_at'])) {
-                    $co = new DateTime($a['created_at']);
-                    $createdDisplay = $co->format('d-M-Y');
+                $updatedDisplay = '';
+                if (!empty($a['updated_at'])) {
+                    $uo = new DateTime($a['updated_at']);
+                    $updatedDisplay = $uo->format('d-M-Y h:i A');
                 }
             ?>
                 <tr>
@@ -167,7 +167,7 @@ h1 { color: #800000; margin-bottom: 18px; }
                     </td>
                     <td><span class="status-badge payment-paid">Paid</span></td>
                     <td><span class="status-badge status-completed">Completed</span></td>
-                    <td><?= htmlspecialchars($createdDisplay) ?></td>
+                    <td><?= htmlspecialchars($updatedDisplay) ?></td>
                 </tr>
             <?php endforeach; ?>
             </tbody>
