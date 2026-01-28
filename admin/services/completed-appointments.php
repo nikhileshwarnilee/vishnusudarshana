@@ -23,7 +23,7 @@ $appointments = [];
 $sql = "
     SELECT id, tracking_id, customer_name, mobile, email, payment_status, service_status, form_data, selected_products, created_at
     FROM service_requests
-    WHERE category_slug = 'appointment' AND payment_status = 'Paid' AND service_status = 'Completed'
+    WHERE category_slug = 'appointment' AND payment_status IN ('Paid', 'Free') AND service_status = 'Completed'
     ORDER BY created_at DESC
 ";
 $stmt = $pdo->prepare($sql);
@@ -122,9 +122,24 @@ h1 { color: #800000; margin-bottom: 18px; }
                         if (is_array($decoded) && count($decoded)) {
                             $productDetails = [];
                             foreach ($decoded as $prod) {
-                                if (isset($prod['name'])) {
-                                    $qty = isset($prod['qty']) ? (int)$prod['qty'] : 1;
-                                    $productDetails[] = htmlspecialchars($prod['name']) . ' x' . $qty;
+                                $qty = isset($prod['qty']) ? (int)$prod['qty'] : 1;
+                                $name = isset($prod['name']) ? htmlspecialchars($prod['name']) : '';
+                                $price = isset($prod['price']) ? $prod['price'] : '';
+                                if ($name === '' && isset($prod['id'])) {
+                                    $pid = (int)$prod['id'];
+                                    $stmtP = $pdo->prepare('SELECT product_name FROM products WHERE id = ? LIMIT 1');
+                                    $stmtP->execute([$pid]);
+                                    $rowP = $stmtP->fetch(PDO::FETCH_ASSOC);
+                                    if ($rowP && isset($rowP['product_name'])) {
+                                        $name = htmlspecialchars($rowP['product_name']);
+                                    }
+                                }
+                                if ($name !== '') {
+                                    $label = $name . ' x' . $qty;
+                                    if ($price !== '') {
+                                        $label .= ' (₹' . number_format((float)$price, 2) . ')';
+                                    }
+                                    $productDetails[] = $label;
                                 }
                             }
                             if ($productDetails) {

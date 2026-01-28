@@ -14,19 +14,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $appointmentIds = $_POST['appointment_ids'] ?? [];
         if (!empty($appointmentIds)) {
             $placeholders = implode(',', array_fill(0, count($appointmentIds), '?'));
+            $updatedAt = date('Y-m-d H:i:s');
             $sql = "
                 UPDATE service_requests
                 SET service_status = 'Completed',
-                    updated_at = :updated_at
-                    // Use PHP datetime for updated_at
-                    $updatedAt = date('Y-m-d H:i:s');
+                    updated_at = ?
                 WHERE id IN ($placeholders)
                   AND category_slug = 'appointment'
-                  AND payment_status = 'Paid'
+                  AND payment_status IN ('Paid', 'Free')
                   AND service_status = 'Accepted'
             ";
+            $params = array_merge([$updatedAt], $appointmentIds);
             $stmt = $pdo->prepare($sql);
-            $stmt->execute($appointmentIds);
+            $stmt->execute($params);
 
             // WhatsApp: Appointment Completed (for each appointment)
             require_once __DIR__ . '/../../helpers/send_whatsapp.php';
@@ -71,19 +71,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $appointmentIds = $_POST['appointment_ids'] ?? [];
         if (!empty($appointmentIds)) {
             $placeholders = implode(',', array_fill(0, count($appointmentIds), '?'));
+            $updatedAt = date('Y-m-d H:i:s');
             $sql = "
                 UPDATE service_requests
                 SET service_status = 'Received',
-                    updated_at = :updated_at
-                    // Use PHP datetime for updated_at
-                    $updatedAt = date('Y-m-d H:i:s');
+                    updated_at = ?
                 WHERE id IN ($placeholders)
                   AND category_slug = 'appointment'
-                  AND payment_status = 'Paid'
+                  AND payment_status IN ('Paid', 'Free')
                   AND service_status = 'Accepted'
             ";
+            $params = array_merge([$updatedAt], $appointmentIds);
             $stmt = $pdo->prepare($sql);
-            $stmt->execute($appointmentIds);
+            $stmt->execute($params);
 
             // WhatsApp: Appointment Cancelled (for each appointment)
             require_once __DIR__ . '/../../helpers/send_whatsapp.php';
@@ -344,7 +344,7 @@ h1 { color: #800000; margin-bottom: 18px; }
                                 <?= htmlspecialchars($preferredDisplay) ?>
                             </td>
                             <td><?= htmlspecialchars($fromTime) ?> - <?= htmlspecialchars($toTime) ?></td>
-                            <td><span class="status-badge status-accepted">Accepted</span></td>
+                            <td><span class="status-badge payment-paid">Paid</span></td>
                             <td><span class="status-badge status-accepted">Accepted</span></td>
                             <td><?= htmlspecialchars($createdDisplay) ?></td>
                             <td><?= $notes ?></td>
@@ -357,29 +357,44 @@ h1 { color: #800000; margin-bottom: 18px; }
     <?php endif; ?>
 </div>
 <script>
-let selectedIds = [];
-function updateBar() {
-    selectedIds = Array.from(document.querySelectorAll('.rowCheckbox:checked')).map(cb => cb.value);
-    document.getElementById('selectedCount').textContent = selectedIds.length;
-    document.getElementById('actionBar').classList.toggle('show', selectedIds.length > 0);
+// Track selected appointments per date
+let selectedAppointmentsByDate = {};
+
+function updateActionBar(date) {
+    const checkboxes = document.querySelectorAll('.rowCheckbox[data-date="' + date + '"]:checked');
+    selectedAppointmentsByDate[date] = Array.from(checkboxes).map(cb => cb.value);
+    const count = selectedAppointmentsByDate[date].length;
+    document.getElementById('selectedCount-' + date).textContent = count;
+    document.getElementById('actionBar-' + date).classList.toggle('show', count > 0);
 }
 
-document.querySelectorAll('.rowCheckbox').forEach(cb => cb.addEventListener('change', updateBar));
-const selectAll = document.getElementById('selectAll');
-if (selectAll) {
-    selectAll.addEventListener('change', () => {
-        document.querySelectorAll('.rowCheckbox').forEach(cb => cb.checked = selectAll.checked);
-        updateBar();
+// Select/Deselect all checkboxes per table
+setTimeout(function() {
+    document.querySelectorAll('.selectAll').forEach(selectAll => {
+        const date = selectAll.getAttribute('data-date');
+        selectAll.addEventListener('change', function () {
+            document.querySelectorAll('.rowCheckbox[data-date="' + date + '"]').forEach(cb => {
+                cb.checked = selectAll.checked;
+            });
+            updateActionBar(date);
+        });
     });
-}
+    // Listen to individual checkbox changes per table
+    document.querySelectorAll('.rowCheckbox').forEach(checkbox => {
+        const date = checkbox.getAttribute('data-date');
+        checkbox.addEventListener('change', function() {
+            updateActionBar(date);
+        });
+    });
+}, 100);
 
-function submitComplete() {
-    if (selectedIds.length === 0) return;
-    if (!confirm(`Mark ${selectedIds.length} appointment(s) as Completed?`)) return;
-    const form = document.getElementById('completeForm');
-    // remove existing hidden inputs
+function submitComplete(date) {
+    const ids = selectedAppointmentsByDate[date] || [];
+    if (ids.length === 0) return;
+    if (!confirm(`Mark ${ids.length} appointment(s) as Completed?`)) return;
+    const form = document.getElementById('completeForm-' + date);
     Array.from(form.querySelectorAll('input[name="appointment_ids[]"]')).forEach(el => el.remove());
-    selectedIds.forEach(id => {
+    ids.forEach(id => {
         const input = document.createElement('input');
         input.type = 'hidden';
         input.name = 'appointment_ids[]';
@@ -390,13 +405,13 @@ function submitComplete() {
     form.submit();
 }
 
-function submitCancel() {
-    if (selectedIds.length === 0) return;
-    if (!confirm(`Cancel ${selectedIds.length} appointment(s)? Customers will be notified.`)) return;
-    const form = document.getElementById('completeForm');
-    // remove existing hidden inputs
+function submitCancel(date) {
+    const ids = selectedAppointmentsByDate[date] || [];
+    if (ids.length === 0) return;
+    if (!confirm(`Cancel ${ids.length} appointment(s)? Customers will be notified.`)) return;
+    const form = document.getElementById('completeForm-' + date);
     Array.from(form.querySelectorAll('input[name="appointment_ids[]"]')).forEach(el => el.remove());
-    selectedIds.forEach(id => {
+    ids.forEach(id => {
         const input = document.createElement('input');
         input.type = 'hidden';
         input.name = 'appointment_ids[]';
@@ -404,16 +419,18 @@ function submitCancel() {
         form.appendChild(input);
     });
     form.action = location.href;
-    document.querySelector('input[name="action"]').value = 'cancel';
+    form.querySelector('input[name="action"]').value = 'cancel';
     form.submit();
 }
 
-function openMessageModal() {
-    if (selectedIds.length === 0) {
+function openMessageModal(date) {
+    const ids = selectedAppointmentsByDate[date] || [];
+    if (ids.length === 0) {
         alert('Please select at least one appointment');
         return;
     }
     document.getElementById('messageModal').classList.add('show');
+    document.getElementById('messageModal').setAttribute('data-date', date);
 }
 
 function closeMessageModal() {
@@ -422,31 +439,30 @@ function closeMessageModal() {
 }
 
 function submitMessage() {
+    const date = document.getElementById('messageModal').getAttribute('data-date');
+    const ids = selectedAppointmentsByDate[date] || [];
     const message = document.getElementById('customMessage').value.trim();
     if (!message) {
         alert('Please write a message');
         return;
     }
-    if (!confirm(`Send message to ${selectedIds.length} customer(s)?`)) return;
-    
-    const form = document.getElementById('completeForm');
+    if (!confirm(`Send message to ${ids.length} customer(s)?`)) return;
+    const form = document.getElementById('completeForm-' + date);
     Array.from(form.querySelectorAll('input[name="appointment_ids[]"]')).forEach(el => el.remove());
-    selectedIds.forEach(id => {
+    ids.forEach(id => {
         const input = document.createElement('input');
         input.type = 'hidden';
         input.name = 'appointment_ids[]';
         input.value = id;
         form.appendChild(input);
     });
-    
     const msgInput = document.createElement('input');
     msgInput.type = 'hidden';
     msgInput.name = 'custom_message';
     msgInput.value = message;
     form.appendChild(msgInput);
-    
     form.action = location.href;
-    document.querySelector('input[name="action"]').value = 'send_message';
+    form.querySelector('input[name="action"]').value = 'send_message';
     form.submit();
     closeMessageModal();
 }
