@@ -66,6 +66,10 @@ h1 { color: #800000; margin-bottom: 18px; }
 </style>
 </head>
 <body>
+    
+<div style="max-width:600px;margin:18px auto 0 auto;text-align:center;">
+    <input type="text" id="globalSearch" placeholder="Search appointments..." style="width:100%;padding:10px 14px;font-size:1.1em;border-radius:8px;border:1px solid #ccc;">
+</div>
 <?php include __DIR__ . '/../includes/top-menu.php'; ?>
 <div class="admin-container">
     <h1>Completed Appointments</h1>
@@ -175,9 +179,6 @@ h1 { color: #800000; margin-bottom: 18px; }
     <?php endif; ?>
 </div>
 </body>
-<div style="max-width:600px;margin:18px auto 0 auto;text-align:center;">
-    <input type="text" id="globalSearch" placeholder="Search appointments..." style="width:100%;padding:10px 14px;font-size:1.1em;border-radius:8px;border:1px solid #ccc;">
-</div>
 <script>
 // Global search filter for all tables
 document.addEventListener('DOMContentLoaded', function() {
