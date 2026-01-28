@@ -13,7 +13,7 @@ if ($action === 'fetch') {
     $end = $_POST['end'] ?? date('Y-m-d');
     $events = [];
     if ($all_users) {
-        $sql = "SELECT a.*, u.name as assigned_user_name FROM admin_schedule a JOIN users u ON a.assigned_user_id = u.id WHERE (a.schedule_date <= ? AND (a.end_date IS NULL OR a.end_date >= ?))";
+        $sql = "SELECT a.*, u.name as assigned_user_name FROM admin_schedule a JOIN users u ON a.assigned_user_id = u.id WHERE (a.schedule_date <= ? AND (a.end_date IS NULL OR a.end_date >= ?)) AND (a.source_page IS NULL OR a.source_page = '')";
         $stmt = $pdo->prepare($sql);
         $stmt->execute([$end, $start]);
         while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
@@ -43,7 +43,7 @@ if ($action === 'fetch') {
         }
     } else {
         $assigned_user_id = (int)($_POST['assigned_user_id'] ?? 0);
-        $sql = "SELECT * FROM admin_schedule WHERE assigned_user_id = ? AND (schedule_date <= ? AND (end_date IS NULL OR end_date >= ?))";
+        $sql = "SELECT * FROM admin_schedule WHERE assigned_user_id = ? AND (schedule_date <= ? AND (end_date IS NULL OR end_date >= ?)) AND (source_page IS NULL OR source_page = '')";
         $stmt = $pdo->prepare($sql);
         $stmt->execute([$assigned_user_id, $end, $start]);
         while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
