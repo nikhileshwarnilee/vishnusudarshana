@@ -283,11 +283,13 @@ h1 { color: #800000; margin-bottom: 18px; }
                             <th>Payment Status</th>
                             <th>Service Status</th>
                             <th>Created Date</th>
+                            <th>Notes</th>
                         </tr>
                     </thead>
                     <tbody>
                     <?php foreach ($appointments as $a):
                         $fd = json_decode($a['form_data'], true) ?? [];
+                        $notes = isset($fd['notes']) ? htmlspecialchars($fd['notes']) : '';
                         $preferredDate = $fd['preferred_date'] ?? '';
                         $preferredDisplay = $preferredDate ? (DateTime::createFromFormat('Y-m-d', $preferredDate)?->format('d-M-Y') ?: $preferredDate) : '—';
                         $createdDisplay = '';
@@ -345,6 +347,7 @@ h1 { color: #800000; margin-bottom: 18px; }
                             <td><span class="status-badge status-accepted">Accepted</span></td>
                             <td><span class="status-badge status-accepted">Accepted</span></td>
                             <td><?= htmlspecialchars($createdDisplay) ?></td>
+                            <td><?= $notes ?></td>
                         </tr>
                     <?php endforeach; ?>
                     </tbody>

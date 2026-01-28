@@ -556,12 +556,14 @@ h1 {
                     <th>Payment Status</th>
                     <th>Service Status</th>
                     <th>Created Date</th>
+                    <th>Notes</th>
                 </tr>
             </thead>
             <tbody>
                 <?php foreach ($appointments as $a): ?>
                     <?php
                         $formData = json_decode($a['form_data'], true) ?? [];
+                        $notes = isset($formData['notes']) ? htmlspecialchars($formData['notes']) : '';
                         $preferredDate = $formData['preferred_date'] ?? '';
                         $preferredDisplay = $preferredDate ? (DateTime::createFromFormat('Y-m-d', $preferredDate)?->format('d-M-Y') ?: $preferredDate) : '—';
                         $createdDisplay = '';
@@ -620,6 +622,7 @@ h1 {
                         <td><span class="status-badge payment-paid">Paid</span></td>
                         <td><span class="status-badge status-received">Unaccepted</span></td>
                         <td><?= htmlspecialchars($createdDisplay) ?></td>
+                        <td><?= $notes ?></td>
                     </tr>
                 <?php endforeach; ?>
             </tbody>
