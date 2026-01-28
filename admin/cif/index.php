@@ -373,7 +373,7 @@ $(function() {
             }
             ?>
             <?php if (!empty($enquiries)): ?>
-                <h2 style="color:#800000;">Enquiries</h2>
+                <h2 style="color:#800000;">Enquiries - <?= count($enquiries) ?></h2>
                 <div style="display:flex;align-items:center;gap:18px;margin-bottom:18px;">
                     <form method="get" action="" style="margin:0;">
                         <input type="hidden" name="client_id" value="<?= (int)$selected_client['id'] ?>">
