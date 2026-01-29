@@ -43,10 +43,13 @@ if ($source === 'appointment') {
 // ...existing code...
 $pending = $_SESSION['pending_payment'] ?? [];
 $customer = $pending['customer_details'] ?? [];
+
 $total_amount = $pending['total_amount'] ?? 0;
 $paymentSource = $pending['source'] ?? 'service';
 
-// Prevent Razorpay order creation for zero or too-low amounts
+// ...existing code for appointment/service product/amount calculation...
+
+// After all product/amount calculations, check minimum order amount
 if ($total_amount < 1) {
     die('Invalid order amount. The minimum allowed is ₹1.00.');
 }
