@@ -1,4 +1,5 @@
 <?php
+session_start();
 $debug = isset($_GET['debug']) ? true : false;
 if ($debug) {
     echo '<pre style="background:#fffbe6;border:2px solid #e0bebe;padding:12px;margin:12px 0;">';
@@ -9,7 +10,6 @@ if ($debug) {
 }
 // ...existing code...
 $pageTitle = 'Payment | Vishnusudarshana';
-session_start();
 require_once 'header.php';
 require_once __DIR__ . '/config/db.php';
 
