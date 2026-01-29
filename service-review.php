@@ -1,4 +1,3 @@
-
 <?php
 // --- Handle Make Payment POST ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['make_payment'])) {
