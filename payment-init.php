@@ -46,6 +46,11 @@ $customer = $pending['customer_details'] ?? [];
 $total_amount = $pending['total_amount'] ?? 0;
 $paymentSource = $pending['source'] ?? 'service';
 
+// Prevent Razorpay order creation for zero or too-low amounts
+if ($total_amount < 1) {
+    die('Invalid order amount. The minimum allowed is ₹1.00.');
+}
+
 // Create Razorpay order and get real order_id (after $total_amount is set)
 require_once __DIR__ . '/vendor/autoload.php';
 use Razorpay\Api\Api;
@@ -313,7 +318,7 @@ if ($source === 'appointment') {
 .product-info { flex: 1; }
 .product-name { font-weight: 600; color: #800000; font-size: 1em; }
 .product-desc { font-size: 0.95em; color: #555; margin: 2px 0 2px 0; }
-.qty-controls { display: flex; align-items: center; gap: 4px; }
+ qty-controls { display: flex; align-items: center; gap: 4px; }
 .line-total { font-size: 0.98em; color: #800000; font-weight: 600; min-width: 60px; text-align: right; }
 .sticky-total { position: sticky; bottom: 0; background: #fff; padding: 14px 0 0 0; text-align: right; font-size: 1.13em; border-top: 1px solid #e0bebe; box-shadow: 0 -2px 8px #e0bebe22; z-index: 10; }
 .pay-btn { width: 100%; background: #800000; color: #fff; border: none; border-radius: 8px; padding: 14px 0; font-size: 1.08em; font-weight: 600; margin-top: 10px; cursor: pointer; box-shadow: 0 2px 8px #80000022; transition: background 0.15s; }
