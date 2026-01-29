@@ -1,4 +1,54 @@
+
 <?php
+// --- Handle Make Payment POST ---
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['make_payment'])) {
+    require_once __DIR__ . '/config/db.php';
+    $category = $_POST['category'] ?? '';
+    $customer_details = $_POST;
+    unset($customer_details['product_ids'], $customer_details['qty'], $customer_details['make_payment']);
+    $product_ids = $_POST['product_ids'] ?? [];
+    $quantities = $_POST['qty'] ?? [];
+    $selected_products = [];
+    $total_amount = 0;
+    if (!empty($product_ids)) {
+        $placeholders = implode(',', array_fill(0, count($product_ids), '?'));
+        $stmt = $pdo->prepare("SELECT * FROM products WHERE id IN ($placeholders)");
+        $stmt->execute($product_ids);
+        $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        foreach ($products as $product) {
+            $pid = $product['id'];
+            $qty = isset($quantities[$pid]) ? max(1, intval($quantities[$pid])) : 1;
+            $line_total = $product['price'] * $qty;
+            $selected_products[] = [
+                'id' => $pid,
+                'name' => $product['product_name'],
+                'desc' => $product['short_description'],
+                'price' => $product['price'],
+                'qty' => $qty,
+                'line_total' => $line_total
+            ];
+            $total_amount += $line_total;
+        }
+    }
+    $payment_id = 'ORD-' . date('YmdHis') . '-' . bin2hex(random_bytes(8));
+    $insertStmt = $pdo->prepare("
+        INSERT INTO pending_payments (
+            payment_id, source, customer_details, form_data, selected_products, category, total_amount
+        ) VALUES (?, ?, ?, ?, ?, ?, ?)
+    ");
+    $insertStmt->execute([
+        $payment_id,
+        'service',
+        json_encode($customer_details),
+        json_encode($_POST),
+        json_encode($selected_products),
+        $category,
+        $total_amount
+    ]);
+    header('Location: payment-init.php?payment_id=' . urlencode($payment_id));
+    exit;
+}
+
 $pageTitle = 'Review & Select Services | Vishnusudarshana';
 require_once 'header.php';
 require_once __DIR__ . '/config/db.php';
@@ -161,58 +211,6 @@ if ($category === 'appointment') {
     </form>
     <?php endif; ?>
     <a href="services.php" class="review-back-link">&larr; Back to Services</a>
-</main>
-<?php
-require_once 'footer.php';
-
-// --- Handle Make Payment POST ---
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['make_payment'])) {
-    // Collect form data
-    $category = $_POST['category'] ?? '';
-    $customer_details = $_POST;
-    unset($customer_details['product_ids'], $customer_details['qty'], $customer_details['make_payment']);
-    $product_ids = $_POST['product_ids'] ?? [];
-    $quantities = $_POST['qty'] ?? [];
-    $selected_products = [];
-    $total_amount = 0;
-    if (!empty($product_ids)) {
-        $placeholders = implode(',', array_fill(0, count($product_ids), '?'));
-        $stmt = $pdo->prepare("SELECT * FROM products WHERE id IN ($placeholders)");
-        $stmt->execute($product_ids);
-        $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        foreach ($products as $product) {
-            $pid = $product['id'];
-            $qty = isset($quantities[$pid]) ? max(1, intval($quantities[$pid])) : 1;
-            $line_total = $product['price'] * $qty;
-            $selected_products[] = [
-                'id' => $pid,
-                'name' => $product['product_name'],
-                'desc' => $product['short_description'],
-                'price' => $product['price'],
-                'qty' => $qty,
-                'line_total' => $line_total
-            ];
-            $total_amount += $line_total;
-        }
-    }
-    $payment_id = 'ORD-' . date('YmdHis') . '-' . bin2hex(random_bytes(8));
-    $insertStmt = $pdo->prepare("
-        INSERT INTO pending_payments (
-            payment_id, source, customer_details, form_data, selected_products, category, total_amount
-        ) VALUES (?, ?, ?, ?, ?, ?, ?)
-    ");
-    $insertStmt->execute([
-        $payment_id,
-        'service',
-        json_encode($customer_details),
-        json_encode($_POST),
-        json_encode($selected_products),
-        $category,
-        $total_amount
-    ]);
-    header('Location: payment-init.php?payment_id=' . urlencode($payment_id));
-    exit;
-}
 <script>
 function updateTotals() {
     let total = 0;

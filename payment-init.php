@@ -1,12 +1,10 @@
 <?php
-session_start();
-// ...existing code...
+// payment-init.php -- Unified for both service and appointment payments (DB-based)
 $pageTitle = 'Payment | Vishnusudarshana';
 require_once 'header.php';
 require_once __DIR__ . '/config/db.php';
 
-// Load Razorpay keys from environment
-// Load Razorpay keys from .env or config
+// Load Razorpay keys
 $razorpayKeyId = getenv('RAZORPAY_KEY_ID');
 $razorpayKeySecret = getenv('RAZORPAY_KEY_SECRET');
 if (!$razorpayKeyId || !$razorpayKeySecret) {
@@ -30,70 +28,237 @@ if (!$razorpayKeyId || !$razorpayKeySecret) {
     die('Razorpay API key/secret not set. Please set RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET in your .env file.');
 }
 
-// Detect source: appointment or service
-$source = $_GET['source'] ?? '';
-$appointmentId = $_GET['appointment_id'] ?? null;
-
-// Always set payment context in session and pass as GET param to payment gateway/callback
-if ($source === 'appointment') {
-    $_SESSION['pending_payment_source'] = 'appointment';
-} else {
-    $_SESSION['pending_payment_source'] = 'service';
-}
-
-
-// --- DB-based payment flow for service ---
 $payment_id = $_GET['payment_id'] ?? null;
-$pending = [];
-$customer = [];
-$total_amount = 0;
-$paymentSource = 'service';
-if ($payment_id) {
-    $stmt = $pdo->prepare("SELECT * FROM pending_payments WHERE payment_id = ? LIMIT 1");
-    $stmt->execute([$payment_id]);
-    $pending = $stmt->fetch(PDO::FETCH_ASSOC);
-    if ($pending) {
-        $customer = json_decode($pending['customer_details'] ?? '{}', true);
-        $total_amount = $pending['total_amount'] ?? 0;
-        $paymentSource = $pending['source'] ?? 'service';
-    } else {
-        echo '<main class="main-content" style="background-color:var(--cream-bg);"><h2>Payment not found</h2>';
-        echo '<p>Could not find payment details. Please try again.</p>';
-        echo '<a href="service-review.php" class="review-back-link">&larr; Back to Review</a></main>';
-        require_once 'footer.php';
-        exit;
-    }
-} else {
-    // fallback for appointment or legacy session flow
-    $pending = $_SESSION['pending_payment'] ?? [];
-    $customer = $pending['customer_details'] ?? [];
-    $total_amount = $pending['total_amount'] ?? 0;
-    $paymentSource = $pending['source'] ?? 'service';
+if (!$payment_id) {
+    echo '<main class="main-content" style="background-color:var(--cream-bg);"><h2>Invalid payment request</h2>';
+    echo '<p>Payment ID missing. Please start your booking again.</p>';
+    echo '<a href="services.php" class="review-back-link">&larr; Back to Services</a></main>';
+    require_once 'footer.php';
+    exit;
 }
 
-// Create Razorpay order and get real order_id (after $total_amount is set)
+$stmt = $pdo->prepare("SELECT * FROM pending_payments WHERE payment_id = ? LIMIT 1");
+$stmt->execute([$payment_id]);
+$pending = $stmt->fetch(PDO::FETCH_ASSOC);
+if (!$pending) {
+    echo '<main class="main-content" style="background-color:var(--cream-bg);"><h2>Payment not found</h2>';
+    echo '<p>Could not find payment details. Please try again.</p>';
+    echo '<a href="services.php" class="review-back-link">&larr; Back to Services</a></main>';
+    require_once 'footer.php';
+    exit;
+}
+
+$customer = json_decode($pending['customer_details'] ?? '{}', true);
+$selected_products = json_decode($pending['selected_products'] ?? '[]', true);
+if (!is_array($selected_products)) $selected_products = [];
+$total_amount = $pending['total_amount'] ?? 0;
+$paymentSource = $pending['source'] ?? 'service';
+$category = $pending['category'] ?? '';
+$razorpay_order_id = $pending['razorpay_order_id'] ?? null;
+
+// Razorpay order creation (if not already created)
 require_once __DIR__ . '/vendor/autoload.php';
 use Razorpay\Api\Api;
 $api = new Api($razorpayKeyId, $razorpayKeySecret);
 
-// Razorpay expects amount in paise (e.g., ₹250.00 = 25000 paise)
-$amount_in_paise = (int)round($total_amount * 100);
-if ($total_amount < 1) {
-    echo '<main class="main-content" style="background-color:var(--cream-bg);"><h2>Invalid total amount</h2>';
-    echo '<p>Total amount must be at least ₹1.00 to proceed with payment.</p>';
-    echo '<a href="javascript:history.back()" class="review-back-link">&larr; Back</a></main>';
-    require_once 'footer.php';
-    exit;
+if (!$razorpay_order_id) {
+    $amount_in_paise = (int)round($total_amount * 100);
+    if ($total_amount < 1) {
+        echo '<main class="main-content" style="background-color:var(--cream-bg);"><h2>Invalid total amount</h2>';
+        echo '<p>Total amount must be at least ₹1.00 to proceed with payment.</p>';
+        echo '<a href="services.php" class="review-back-link">&larr; Back to Services</a></main>';
+        require_once 'footer.php';
+        exit;
+    }
+    $orderData = [
+        'receipt'         => $payment_id,
+        'amount'          => $amount_in_paise,
+        'currency'        => 'INR',
+        'payment_capture' => 1
+    ];
+    $razorpayOrder = $api->order->create($orderData);
+    $razorpay_order_id = $razorpayOrder['id'];
+    // Update DB with razorpay_order_id
+    $updateStmt = $pdo->prepare("UPDATE pending_payments SET razorpay_order_id = ? WHERE payment_id = ?");
+    $updateStmt->execute([$razorpay_order_id, $payment_id]);
 }
-$orderData = [
-    'receipt'         => 'ORD-' . date('YmdHis') . '-' . bin2hex(random_bytes(4)),
-    'amount'          => $amount_in_paise,
-    'currency'        => 'INR',
-    'payment_capture' => 1
-];
-$razorpayOrder = $api->order->create($orderData);
-$razorpay_order_id = $razorpayOrder['id'];
-$orderId = $razorpay_order_id; // Use real Razorpay order_id as canonical orderId
+
+$orderId = $razorpay_order_id;
+
+// UI
+?>
+<style>@import url('https://fonts.googleapis.com/css2?family=Marcellus&display=swap');html,body{font-family:'Marcellus',serif!important;}</style>
+<style>
+/* ...existing styles... */
+/* (reuse your previous CSS here for layout, cards, etc.) */
+</style>
+<main class="main-content" style="background-color:var(--cream-bg);">
+    <h1 class="review-title">Payment Summary</h1>
+    <div class="review-card">
+        <h2 class="section-title">Customer Details</h2>
+        <div class="details-list">
+            <div class="details-row">
+                <span class="details-label">Name:</span>
+                <span class="details-value"><?php echo htmlspecialchars($customer['full_name'] ?? ''); ?></span>
+            </div>
+            <div class="details-row">
+                <span class="details-label">Mobile:</span>
+                <span class="details-value"><?php
+                    $cc = $customer['country_code'] ?? '+91';
+                    if ($cc === 'other') {
+                        $cc = $customer['custom_country_code'] ?? '';
+                    }
+                    echo htmlspecialchars(trim($cc . ' ' . ($customer['mobile'] ?? '')));
+                ?></span>
+            </div>
+            <div class="details-row">
+                <span class="details-label">Email:</span>
+                <span class="details-value"><?php echo htmlspecialchars($customer['email'] ?? ''); ?></span>
+            </div>
+        </div>
+    </div>
+    <?php if ($paymentSource === 'appointment'): ?>
+    <div class="review-card">
+        <h2 class="section-title">Appointment Details</h2>
+        <div class="details-list">
+            <?php 
+            $appointmentForm = json_decode($pending['appointment_form'] ?? '{}', true);
+            $appointmentType = $appointmentForm['appointment_type'] ?? 'online';
+            $preferredDate = $appointmentForm['preferred_date'] ?? '';
+            $preferredTime = $appointmentForm['preferred_time'] ?? '';
+            ?>
+            <div class="details-row">
+                <span class="details-label">Appointment Type:</span>
+                <span class="details-value"><?php echo htmlspecialchars(ucfirst($appointmentType)); ?></span>
+            </div>
+            <div class="details-row">
+                <span class="details-label">Preferred Date:</span>
+                <span class="details-value"><?php echo htmlspecialchars($preferredDate); ?></span>
+            </div>
+            <div class="details-row">
+                <span class="details-label">Preferred Time:</span>
+                <span class="details-value"><?php echo htmlspecialchars($preferredTime); ?></span>
+            </div>
+        </div>
+    </div>
+    <?php endif; ?>
+    <div class="review-card">
+        <h2 class="section-title">Selected Services</h2>
+        <?php if (!empty($selected_products)): ?>
+        <ul class="product-list">
+            <?php foreach ($selected_products as $prod): ?>
+            <li class="product-item">
+                <div class="product-info">
+                    <div class="product-name"><?php echo htmlspecialchars($prod['name']); ?></div>
+                    <div class="product-desc"><?php echo htmlspecialchars($prod['desc']); ?></div>
+                </div>
+                <div class="qty-controls">
+                    <span class="details-label">Qty:</span>
+                    <span class="details-value"><?php echo $prod['qty']; ?></span>
+                </div>
+                <div class="line-total">₹<?php echo number_format($prod['line_total'], 2); ?></div>
+            </li>
+            <?php endforeach; ?>
+        </ul>
+        <div class="sticky-total">
+            Total: <span id="totalPrice">₹<?php echo number_format($total_amount, 2); ?></span>
+        </div>
+        <?php else: ?>
+        <div class="details-list">
+            <div class="details-row">
+                <span class="details-label">No services found for this payment.</span>
+            </div>
+        </div>
+        <?php endif; ?>
+    </div>
+    <button class="pay-btn" id="rzpPayBtn" style="margin-top:18px;">Proceed to Secure Payment</button>
+    <a href="services.php" class="review-back-link">&larr; Back to Services</a>
+</main>
+
+<!-- Payment Processing Loader Overlay -->
+<div class="payment-loader-overlay" id="paymentLoader">
+    <div class="loader-content">
+        <div class="loader-spinner" id="loaderSpinner"></div>
+        <div class="loader-checkmark" id="loaderCheckmark"></div>
+        <div class="loader-text" id="loaderText">Processing Payment...</div>
+        <div class="loader-subtext" id="loaderSubtext">Please wait while we confirm your payment</div>
+    </div>
+</div>
+
+<?php
+$amount_in_paise = (int)round($total_amount * 100);
+$name = isset($customer['full_name']) ? addslashes($customer['full_name']) : '';
+$email = isset($customer['email']) ? addslashes($customer['email']) : '';
+$cc = isset($customer['country_code']) ? $customer['country_code'] : '+91';
+if ($cc === 'other') {
+    $cc = isset($customer['custom_country_code']) ? $customer['custom_country_code'] : '';
+}
+$mobile = isset($customer['mobile']) ? addslashes(trim($cc . $customer['mobile'])) : '';
+$description = ($paymentSource === 'appointment') ? 'Appointment Booking Fee' : 'Service Payment';
+?>
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<script>
+const options = {
+    key: "<?php echo htmlspecialchars($razorpayKeyId); ?>",
+    amount: <?php echo $amount_in_paise; ?>,
+    currency: "INR",
+    name: "Vishnusudarshana Dharmik Sanskar Kendra",
+    description: "<?php echo $description; ?>",
+    order_id: "<?php echo $razorpay_order_id; ?>",
+    prefill: {
+        name: "<?php echo $name; ?>",
+        email: "<?php echo $email; ?>",
+        contact: "<?php echo $mobile; ?>"
+    },
+    theme: {
+        color: "#800000"
+    },
+    handler: function (response) {
+        // Show payment processing loader
+        var loader = document.getElementById('paymentLoader');
+        var spinner = document.getElementById('loaderSpinner');
+        var checkmark = document.getElementById('loaderCheckmark');
+        var loaderText = document.getElementById('loaderText');
+        var loaderSubtext = document.getElementById('loaderSubtext');
+        loader.classList.add('active');
+        loaderText.textContent = 'Payment Successful!';
+        loaderSubtext.textContent = 'Verifying payment details...';
+        // Razorpay payment successful - update database and redirect
+        var actualPaymentId = response.razorpay_payment_id;
+        var orderId = "<?php echo $orderId; ?>";
+        // Update database to link orderId with actual Razorpay payment_id
+        fetch('payment-update.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: 'order_id=' + encodeURIComponent(orderId) + '&payment_id=' + encodeURIComponent(actualPaymentId)
+        }).then(function() {
+            spinner.style.display = 'none';
+            checkmark.style.display = 'block';
+            loaderText.textContent = 'Payment Verified!';
+            loaderSubtext.textContent = 'Redirecting to confirmation page...';
+            setTimeout(function() {
+                window.location.href = "payment-success.php?payment_id=" + encodeURIComponent(actualPaymentId);
+            }, 800);
+        }).catch(function() {
+            loaderSubtext.textContent = 'Completing transaction...';
+            setTimeout(function() {
+                window.location.href = "payment-success.php?payment_id=" + encodeURIComponent(actualPaymentId);
+            }, 500);
+        });
+    },
+    modal: {
+        ondismiss: function() {
+            window.location.href = "payment-failed.php";
+        }
+    }
+};
+document.getElementById('rzpPayBtn').onclick = function(e){
+    e.preventDefault();
+    var rzp = new Razorpay(options);
+    rzp.open();
+};
+</script>
+<?php require_once 'footer.php'; ?>
 if ($source === 'appointment') {
     // Appointment payment flow: prefer session data; fallback to existing record when id given
     $pending = $_SESSION['pending_payment'] ?? [];
@@ -501,6 +666,7 @@ if ($source === 'appointment') {
     <?php else: ?>
     <div class="review-card">
         <h2 class="section-title">Selected Services</h2>
+        <?php if (!empty($selected_products)): ?>
         <ul class="product-list">
             <?php foreach ($selected_products as $prod): ?>
             <li class="product-item">
@@ -519,6 +685,13 @@ if ($source === 'appointment') {
         <div class="sticky-total">
             Total: <span id="totalPrice">₹<?php echo number_format($total_amount, 2); ?></span>
         </div>
+        <?php else: ?>
+        <div class="details-list">
+            <div class="details-row">
+                <span class="details-label">No services found for this payment.</span>
+            </div>
+        </div>
+        <?php endif; ?>
     </div>
     <?php endif; ?>
     <button class="pay-btn" id="rzpPayBtn" style="margin-top:18px;">Proceed to Secure Payment</button>
@@ -540,48 +713,8 @@ if ($source === 'appointment') {
 </div>
 
 <?php
-// ========== STORE PENDING PAYMENT DATA BEFORE RAZORPAY REDIRECT ==========
-// This MUST execute before user clicks the payment button
-// Data survives session loss, page refresh, and browser close
 
-$pending = $_SESSION['pending_payment'] ?? [];
-$customer = $pending['customer_details'] ?? [];
-$total_amount = $pending['total_amount'] ?? 0;
-$paymentSource = $pending['source'] ?? 'service';
-
-// Generate unique order_id for database storage
-// This will be mapped to actual Razorpay payment_id in payment-success.php
-$orderId = 'ORD-' . date('YmdHis') . '-' . bin2hex(random_bytes(8));
-
-// Store ALL pending payment data to database for session loss recovery
-try {
-    $insertStmt = $pdo->prepare("
-        INSERT INTO pending_payments (
-            payment_id, 
-            source, 
-            customer_details, 
-            appointment_form, 
-            form_data, 
-            selected_products, 
-            category, 
-            total_amount
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    ");
-    $insertStmt->execute([
-        $razorpay_order_id,
-        $paymentSource,
-        json_encode($pending['customer_details'] ?? []),
-        json_encode($pending['appointment_form'] ?? []),
-        json_encode($pending['form_data'] ?? []),
-        json_encode($pending['products'] ?? []),
-        $pending['category'] ?? '',
-        $total_amount
-    ]);
-    // Success - data is persisted in database
-} catch (Throwable $e) {
-    error_log('Failed to store pending payment to database: ' . $e->getMessage());
-    // Log error but continue - payment flow should not be blocked
-}
+// No need to store pending payment in session or DB here; already done in service-review.php
 ?>
 
 <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
