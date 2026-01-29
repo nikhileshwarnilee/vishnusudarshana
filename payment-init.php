@@ -43,45 +43,23 @@ if ($source === 'appointment') {
 // ...existing code...
 $pending = $_SESSION['pending_payment'] ?? [];
 $customer = $pending['customer_details'] ?? [];
-
 $total_amount = $pending['total_amount'] ?? 0;
 $paymentSource = $pending['source'] ?? 'service';
-
-// ...existing code for appointment/service product/amount calculation...
-
-// After all product/amount calculations, check minimum order amount
-if ($total_amount < 1) {
-    die('Invalid order amount. The minimum allowed is ₹1.00.');
-}
 
 // Create Razorpay order and get real order_id (after $total_amount is set)
 require_once __DIR__ . '/vendor/autoload.php';
 use Razorpay\Api\Api;
 $api = new Api($razorpayKeyId, $razorpayKeySecret);
 $amount_in_paise = (int)round($total_amount * 100);
-// Log key ID and amount for debugging
-error_log('Razorpay Key ID: ' . $razorpayKeyId);
-error_log('Order amount in paise: ' . $amount_in_paise);
 $orderData = [
     'receipt'         => 'ORD-' . date('YmdHis') . '-' . bin2hex(random_bytes(4)),
     'amount'          => $amount_in_paise,
     'currency'        => 'INR',
     'payment_capture' => 1
 ];
-try {
-    $razorpayOrder = $api->order->create($orderData);
-    $razorpay_order_id = $razorpayOrder['id'];
-    $orderId = $razorpay_order_id; // Use real Razorpay order_id as canonical orderId
-} catch (Throwable $e) {
-    error_log('Razorpay order creation failed: ' . $e->getMessage());
-    echo '<main class="main-content" style="background-color:var(--cream-bg);"><h2>Payment Error</h2>';
-    echo '<p>Unable to create payment order. Reason: ' . htmlspecialchars($e->getMessage()) . '</p>';
-    echo '<p>Order amount: ' . htmlspecialchars($total_amount) . ' (paise: ' . htmlspecialchars($amount_in_paise) . ')</p>';
-    echo '<p>Razorpay Key ID: ' . htmlspecialchars($razorpayKeyId) . '</p>';
-    echo '<a href="services.php" class="review-back-link">&larr; Back to Services</a></main>';
-    require_once 'footer.php';
-    exit;
-}
+$razorpayOrder = $api->order->create($orderData);
+$razorpay_order_id = $razorpayOrder['id'];
+$orderId = $razorpay_order_id; // Use real Razorpay order_id as canonical orderId
 if ($source === 'appointment') {
     // Appointment payment flow: prefer session data; fallback to existing record when id given
     $pending = $_SESSION['pending_payment'] ?? [];
@@ -335,7 +313,7 @@ if ($source === 'appointment') {
 .product-info { flex: 1; }
 .product-name { font-weight: 600; color: #800000; font-size: 1em; }
 .product-desc { font-size: 0.95em; color: #555; margin: 2px 0 2px 0; }
- qty-controls { display: flex; align-items: center; gap: 4px; }
+.qty-controls { display: flex; align-items: center; gap: 4px; }
 .line-total { font-size: 0.98em; color: #800000; font-weight: 600; min-width: 60px; text-align: right; }
 .sticky-total { position: sticky; bottom: 0; background: #fff; padding: 14px 0 0 0; text-align: right; font-size: 1.13em; border-top: 1px solid #e0bebe; box-shadow: 0 -2px 8px #e0bebe22; z-index: 10; }
 .pay-btn { width: 100%; background: #800000; color: #fff; border: none; border-radius: 8px; padding: 14px 0; font-size: 1.08em; font-weight: 600; margin-top: 10px; cursor: pointer; box-shadow: 0 2px 8px #80000022; transition: background 0.15s; }
