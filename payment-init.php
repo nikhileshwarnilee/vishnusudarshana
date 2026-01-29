@@ -611,7 +611,7 @@ if ($source === 'appointment') {
             </div>
         </div>
     </div>
-    <?php if ($source === 'appointment'): ?>
+    <?php if ($paymentSource === 'appointment'): ?>
     <div class="review-card">
         <h2 class="section-title">Appointment Details</h2>
         <div class="details-list">
@@ -695,7 +695,7 @@ if ($source === 'appointment') {
     </div>
     <?php endif; ?>
     <button class="pay-btn" id="rzpPayBtn" style="margin-top:18px;">Proceed to Secure Payment</button>
-    <?php if ($source === 'appointment'): ?>
+    <?php if ($paymentSource === 'appointment'): ?>
     <a href="service-detail.php?service=appointment" class="review-back-link">&larr; Back to Appointment</a>
     <?php else: ?>
     <a href="service-review.php?category=<?php echo htmlspecialchars($category ?? ''); ?>" class="review-back-link">&larr; Back to Review</a>

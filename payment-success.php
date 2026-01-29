@@ -221,11 +221,12 @@ $totalAmount  = $pending['total_amount'] ?? 0;
 // Insert service request (log errors but continue - data is still in pending_payments table)
 try {
     $createdAt = date('Y-m-d H:i:s');
+    $razorpay_payment_id = isset($_GET['razorpay_payment_id']) ? $_GET['razorpay_payment_id'] : (isset($dbRecord['razorpay_payment_id']) ? $dbRecord['razorpay_payment_id'] : '');
     $stmt = $pdo->prepare("INSERT INTO service_requests (
         tracking_id, category_slug, customer_name, mobile, email, city,
-        form_data, selected_products, total_amount, payment_id, razorpay_order_id, payment_status, service_status, created_at
+        form_data, selected_products, total_amount, payment_id, razorpay_order_id, razorpay_payment_id, payment_status, service_status, created_at
     ) VALUES (
-        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 'Received', ?
+        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Paid', 'Received', ?
     )");
     $stmt->execute([
         $tracking_id,
@@ -239,6 +240,7 @@ try {
         $totalAmount,
         $payment_id,
         $razorpay_order_id,
+        $razorpay_payment_id,
         $createdAt
     ]);
 
@@ -345,7 +347,11 @@ try {
     */
 } catch (Throwable $e) {
     error_log('Service request insert failed: ' . $e->getMessage() . ' (payment_id=' . $payment_id . ', tracking_id=' . $tracking_id . ')');
-    // Continue - data is safe in pending_payments table for manual recovery
+    echo '<main class="main-content" style="background-color:var(--cream-bg);"><h2>Payment Received</h2>';
+    echo '<p>There was an error saving your request. Please contact support with your payment ID: '.htmlspecialchars($payment_id).'</p>';
+    echo '<a href="services.php" class="pay-btn">Back to Services</a></main>';
+    require_once 'footer.php';
+    exit;
 }
 
 /* ======================
