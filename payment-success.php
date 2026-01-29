@@ -165,6 +165,9 @@ if ($payment_id !== '' && empty($pending)) {
     exit;
 }
 
+// Extract Razorpay order ID from pending_payments if available
+$razorpay_order_id = $dbRecord['razorpay_order_id'] ?? null;
+
 /* ======================
    UNIFIED SERVICE FLOW
    All services (including appointments) follow this single path
@@ -220,9 +223,9 @@ try {
     $createdAt = date('Y-m-d H:i:s');
     $stmt = $pdo->prepare("INSERT INTO service_requests (
         tracking_id, category_slug, customer_name, mobile, email, city,
-        form_data, selected_products, total_amount, payment_id, payment_status, service_status, created_at
+        form_data, selected_products, total_amount, payment_id, razorpay_order_id, payment_status, service_status, created_at
     ) VALUES (
-        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Paid', 'Received', ?
+        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 'Received', ?
     )");
     $stmt->execute([
         $tracking_id,
@@ -235,6 +238,7 @@ try {
         json_encode($products),
         $totalAmount,
         $payment_id,
+        $razorpay_order_id,
         $createdAt
     ]);
 
@@ -349,26 +353,49 @@ try {
    ====================== */
 require_once 'header.php';
 ?>
+
 <main class="main-content">
     <h1 class="review-title">Thank You for Your Payment!</h1>
-
     <div class="review-card">
         <h2 class="section-title">Your Tracking ID</h2>
-
         <div class="tracking-id">
             <?= htmlspecialchars($tracking_id) ?>
         </div>
-
-        <p class="success-text">
-            Our team will contact you shortly.<br>
-            Keep your tracking ID for reference.
+        <p id="payment-status-msg" class="success-text">
+            Payment received. Verifying appointment...
         </p>
-
         <a href="track.php?id=<?= urlencode($tracking_id) ?>" class="pay-btn">
             Track Your Service
         </a>
     </div>
 </main>
+<script>
+// Poll backend every 3 seconds for payment status
+const paymentId = <?= json_encode($payment_id) ?>;
+const statusMsg = document.getElementById('payment-status-msg');
+let pollInterval = null;
+
+function checkPaymentStatus() {
+    fetch('ajax/check_payment_status.php?payment_id=' + encodeURIComponent(paymentId))
+        .then(res => res.json())
+        .then(data => {
+            if (data.success && data.payment_status === 'paid') {
+                statusMsg.textContent = 'Payment verified. Your booking will be confirmed soon.';
+                if (pollInterval) clearInterval(pollInterval);
+            } else if (data.success && data.payment_status) {
+                // Still pending, keep polling
+            } else {
+                statusMsg.textContent = 'Payment received. Verifying appointment...';
+            }
+        })
+        .catch(() => {
+            statusMsg.textContent = 'Payment received. Verifying appointment...';
+        });
+}
+
+pollInterval = setInterval(checkPaymentStatus, 3000);
+window.addEventListener('DOMContentLoaded', checkPaymentStatus);
+</script>
 
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Marcellus&display=swap');
