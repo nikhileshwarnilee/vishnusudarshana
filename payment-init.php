@@ -59,15 +59,29 @@ require_once __DIR__ . '/vendor/autoload.php';
 use Razorpay\Api\Api;
 $api = new Api($razorpayKeyId, $razorpayKeySecret);
 $amount_in_paise = (int)round($total_amount * 100);
+// Log key ID and amount for debugging
+error_log('Razorpay Key ID: ' . $razorpayKeyId);
+error_log('Order amount in paise: ' . $amount_in_paise);
 $orderData = [
     'receipt'         => 'ORD-' . date('YmdHis') . '-' . bin2hex(random_bytes(4)),
     'amount'          => $amount_in_paise,
     'currency'        => 'INR',
     'payment_capture' => 1
 ];
-$razorpayOrder = $api->order->create($orderData);
-$razorpay_order_id = $razorpayOrder['id'];
-$orderId = $razorpay_order_id; // Use real Razorpay order_id as canonical orderId
+try {
+    $razorpayOrder = $api->order->create($orderData);
+    $razorpay_order_id = $razorpayOrder['id'];
+    $orderId = $razorpay_order_id; // Use real Razorpay order_id as canonical orderId
+} catch (Throwable $e) {
+    error_log('Razorpay order creation failed: ' . $e->getMessage());
+    echo '<main class="main-content" style="background-color:var(--cream-bg);"><h2>Payment Error</h2>';
+    echo '<p>Unable to create payment order. Reason: ' . htmlspecialchars($e->getMessage()) . '</p>';
+    echo '<p>Order amount: ' . htmlspecialchars($total_amount) . ' (paise: ' . htmlspecialchars($amount_in_paise) . ')</p>';
+    echo '<p>Razorpay Key ID: ' . htmlspecialchars($razorpayKeyId) . '</p>';
+    echo '<a href="services.php" class="review-back-link">&larr; Back to Services</a></main>';
+    require_once 'footer.php';
+    exit;
+}
 if ($source === 'appointment') {
     // Appointment payment flow: prefer session data; fallback to existing record when id given
     $pending = $_SESSION['pending_payment'] ?? [];
