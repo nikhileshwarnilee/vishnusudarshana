@@ -1,13 +1,5 @@
 <?php
 session_start();
-$debug = isset($_GET['debug']) ? true : false;
-if ($debug) {
-    echo '<pre style="background:#fffbe6;border:2px solid #e0bebe;padding:12px;margin:12px 0;">';
-    echo '<b>DEBUG MODE ENABLED</b>\n';
-    echo '$_SESSION[\'pending_payment\']:'; var_dump($_SESSION['pending_payment'] ?? null);
-    echo '\n$total_amount: '; var_dump($total_amount ?? null);
-    echo '</pre>';
-}
 // ...existing code...
 $pageTitle = 'Payment | Vishnusudarshana';
 require_once 'header.php';
@@ -49,11 +41,35 @@ if ($source === 'appointment') {
     $_SESSION['pending_payment_source'] = 'service';
 }
 
-// ...existing code...
-$pending = $_SESSION['pending_payment'] ?? [];
-$customer = $pending['customer_details'] ?? [];
-$total_amount = $pending['total_amount'] ?? 0;
-$paymentSource = $pending['source'] ?? 'service';
+
+// --- DB-based payment flow for service ---
+$payment_id = $_GET['payment_id'] ?? null;
+$pending = [];
+$customer = [];
+$total_amount = 0;
+$paymentSource = 'service';
+if ($payment_id) {
+    $stmt = $pdo->prepare("SELECT * FROM pending_payments WHERE payment_id = ? LIMIT 1");
+    $stmt->execute([$payment_id]);
+    $pending = $stmt->fetch(PDO::FETCH_ASSOC);
+    if ($pending) {
+        $customer = json_decode($pending['customer_details'] ?? '{}', true);
+        $total_amount = $pending['total_amount'] ?? 0;
+        $paymentSource = $pending['source'] ?? 'service';
+    } else {
+        echo '<main class="main-content" style="background-color:var(--cream-bg);"><h2>Payment not found</h2>';
+        echo '<p>Could not find payment details. Please try again.</p>';
+        echo '<a href="service-review.php" class="review-back-link">&larr; Back to Review</a></main>';
+        require_once 'footer.php';
+        exit;
+    }
+} else {
+    // fallback for appointment or legacy session flow
+    $pending = $_SESSION['pending_payment'] ?? [];
+    $customer = $pending['customer_details'] ?? [];
+    $total_amount = $pending['total_amount'] ?? 0;
+    $paymentSource = $pending['source'] ?? 'service';
+}
 
 // Create Razorpay order and get real order_id (after $total_amount is set)
 require_once __DIR__ . '/vendor/autoload.php';
