@@ -50,7 +50,16 @@ $paymentSource = $pending['source'] ?? 'service';
 require_once __DIR__ . '/vendor/autoload.php';
 use Razorpay\Api\Api;
 $api = new Api($razorpayKeyId, $razorpayKeySecret);
+
+// Razorpay expects amount in paise (e.g., ₹250.00 = 25000 paise)
 $amount_in_paise = (int)round($total_amount * 100);
+if ($total_amount < 1) {
+    echo '<main class="main-content" style="background-color:var(--cream-bg);"><h2>Invalid total amount</h2>';
+    echo '<p>Total amount must be at least ₹1.00 to proceed with payment.</p>';
+    echo '<a href="javascript:history.back()" class="review-back-link">&larr; Back</a></main>';
+    require_once 'footer.php';
+    exit;
+}
 $orderData = [
     'receipt'         => 'ORD-' . date('YmdHis') . '-' . bin2hex(random_bytes(4)),
     'amount'          => $amount_in_paise,
