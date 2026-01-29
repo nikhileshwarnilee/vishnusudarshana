@@ -1,4 +1,13 @@
 <?php
+$debug = isset($_GET['debug']) ? true : false;
+if ($debug) {
+    echo '<pre style="background:#fffbe6;border:2px solid #e0bebe;padding:12px;margin:12px 0;">';
+    echo '<b>DEBUG MODE ENABLED</b>\n';
+    echo '$_SESSION[\'pending_payment\']:'; var_dump($_SESSION['pending_payment'] ?? null);
+    echo '\n$total_amount: '; var_dump($total_amount ?? null);
+    echo '</pre>';
+}
+// ...existing code...
 $pageTitle = 'Payment | Vishnusudarshana';
 session_start();
 require_once 'header.php';
