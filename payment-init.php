@@ -5,23 +5,28 @@ require_once 'header.php';
 require_once __DIR__ . '/config/db.php';
 
 // Load Razorpay keys from environment
-$razorpayKeyId = 'rzp_test_a3iYwPnLkGMlDM';
-$razorpayKeySecret = '';
-
-if (file_exists(__DIR__ . '/.env')) {
-    $envContent = file_get_contents(__DIR__ . '/.env');
-    $lines = explode("\n", $envContent);
-    foreach ($lines as $line) {
-        $line = trim($line);
-        if (empty($line) || strpos($line, '#') === 0) continue;
-        $parts = explode('=', $line, 2);
-        if (count($parts) === 2) {
-            $key = trim($parts[0]);
-            $value = trim($parts[1]);
-            if ($key === 'RAZORPAY_KEY_ID') $razorpayKeyId = $value;
-            if ($key === 'RAZORPAY_KEY_SECRET') $razorpayKeySecret = $value;
+// Load Razorpay keys from .env or config
+$razorpayKeyId = getenv('RAZORPAY_KEY_ID');
+$razorpayKeySecret = getenv('RAZORPAY_KEY_SECRET');
+if (!$razorpayKeyId || !$razorpayKeySecret) {
+    if (file_exists(__DIR__ . '/.env')) {
+        $envContent = file_get_contents(__DIR__ . '/.env');
+        $lines = explode("\n", $envContent);
+        foreach ($lines as $line) {
+            $line = trim($line);
+            if (empty($line) || strpos($line, '#') === 0) continue;
+            $parts = explode('=', $line, 2);
+            if (count($parts) === 2) {
+                $key = trim($parts[0]);
+                $value = trim($parts[1]);
+                if ($key === 'RAZORPAY_KEY_ID') $razorpayKeyId = $value;
+                if ($key === 'RAZORPAY_KEY_SECRET') $razorpayKeySecret = $value;
+            }
         }
     }
+}
+if (!$razorpayKeyId || !$razorpayKeySecret) {
+    die('Razorpay API key/secret not set. Please set RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET in your .env file.');
 }
 
 // Detect source: appointment or service
@@ -35,6 +40,26 @@ if ($source === 'appointment') {
     $_SESSION['pending_payment_source'] = 'service';
 }
 
+// ...existing code...
+$pending = $_SESSION['pending_payment'] ?? [];
+$customer = $pending['customer_details'] ?? [];
+$total_amount = $pending['total_amount'] ?? 0;
+$paymentSource = $pending['source'] ?? 'service';
+
+// Create Razorpay order and get real order_id (after $total_amount is set)
+require_once __DIR__ . '/vendor/autoload.php';
+use Razorpay\Api\Api;
+$api = new Api($razorpayKeyId, $razorpayKeySecret);
+$amount_in_paise = (int)round($total_amount * 100);
+$orderData = [
+    'receipt'         => 'ORD-' . date('YmdHis') . '-' . bin2hex(random_bytes(4)),
+    'amount'          => $amount_in_paise,
+    'currency'        => 'INR',
+    'payment_capture' => 1
+];
+$razorpayOrder = $api->order->create($orderData);
+$razorpay_order_id = $razorpayOrder['id'];
+$orderId = $razorpay_order_id; // Use real Razorpay order_id as canonical orderId
 if ($source === 'appointment') {
     // Appointment payment flow: prefer session data; fallback to existing record when id given
     $pending = $_SESSION['pending_payment'] ?? [];
@@ -509,7 +534,7 @@ try {
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     ");
     $insertStmt->execute([
-        $orderId,
+        $razorpay_order_id,
         $paymentSource,
         json_encode($pending['customer_details'] ?? []),
         json_encode($pending['appointment_form'] ?? []),
@@ -545,6 +570,7 @@ const options = {
     currency: "INR",
     name: "Vishnusudarshana Dharmik Sanskar Kendra",
     description: "<?php echo $description; ?>",
+    order_id: "<?php echo $razorpay_order_id; ?>",
     prefill: {
         name: "<?php echo $name; ?>",
         email: "<?php echo $email; ?>",
