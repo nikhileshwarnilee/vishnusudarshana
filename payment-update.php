@@ -16,7 +16,7 @@ if ($order_id && $payment_id) {
         $stmt = $pdo->prepare("
             UPDATE pending_payments 
             SET payment_id = ? 
-            WHERE payment_id = ?
+            WHERE razorpay_order_id = ?
         ");
         $stmt->execute([$payment_id, $order_id]);
     } catch (Throwable $e) {
