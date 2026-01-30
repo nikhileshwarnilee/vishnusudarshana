@@ -41,14 +41,31 @@ $statWhereSql = $statWhere ? 'WHERE ' . implode(' AND ', $statWhere) : '';
 $stat = $pdo->prepare("SELECT COALESCE(SUM(total_amount),0) as total_invoiced FROM invoices $statWhereSql");
 $stat->execute($statParams);
 $total_invoiced = $stat->fetchColumn();
-// Total paid
-$stat = $pdo->prepare("SELECT COALESCE(SUM(paid_amount),0) as total_paid FROM invoices $statWhereSql");
-$stat->execute($statParams);
-$total_paid = $stat->fetchColumn();
-// Total unpaid
-$stat = $pdo->prepare("SELECT COALESCE(SUM(total_amount - paid_amount),0) as total_unpaid FROM invoices $statWhereSql");
-$stat->execute($statParams);
-$total_unpaid = $stat->fetchColumn();
+
+// Total paid (from payments table, filter by invoice_date if date filter applied)
+if ($statWhereSql) {
+	// Get invoice IDs in date range
+	$invSql = "SELECT id FROM invoices $statWhereSql";
+	$invStmt = $pdo->prepare($invSql);
+	$invStmt->execute($statParams);
+	$invIds = $invStmt->fetchAll(PDO::FETCH_COLUMN);
+	if ($invIds && count($invIds) > 0) {
+		$inQ = implode(',', array_fill(0, count($invIds), '?'));
+		$paySql = "SELECT COALESCE(SUM(paid_amount),0) FROM payments WHERE invoice_id IN ($inQ)";
+		$payStmt = $pdo->prepare($paySql);
+		$payStmt->execute($invIds);
+		$total_paid = $payStmt->fetchColumn();
+	} else {
+		$total_paid = 0;
+	}
+} else {
+	$paySql = "SELECT COALESCE(SUM(paid_amount),0) FROM payments";
+	$payStmt = $pdo->query($paySql);
+	$total_paid = $payStmt->fetchColumn();
+}
+
+// Total unpaid = total_invoiced - total_paid
+$total_unpaid = $total_invoiced - $total_paid;
 // Today's collection
 $today = date('Y-m-d');
 $todayWhere = [];
@@ -68,16 +85,25 @@ $perPage = 10;
 $offset = ($page - 1) * $perPage;
 
 // Get customers with invoice/dues summary
+// Get total paid from payments table for each customer
 $sql = "SELECT c.id, c.name, c.mobile, c.address,
 	COUNT(i.id) as total_invoices,
 	COALESCE(SUM(i.total_amount),0) as total_invoiced,
-	COALESCE(SUM(i.paid_amount),0) as paid_till_date,
-	COALESCE(SUM(i.total_amount),0) - COALESCE(SUM(i.paid_amount),0) as unpaid_dues
+	(
+		SELECT COALESCE(SUM(paid_amount),0) FROM payments p WHERE p.customer_id = c.id
+	) as paid_till_date,
+	COALESCE(SUM(i.total_amount),0) - (
+		SELECT COALESCE(SUM(paid_amount),0) FROM payments p WHERE p.customer_id = c.id
+	) as unpaid_dues
 FROM customers c
 LEFT JOIN invoices i ON i.customer_id = c.id
 $whereSql
 GROUP BY c.id
-ORDER BY ((COALESCE(SUM(i.total_amount),0) - COALESCE(SUM(i.paid_amount),0)) > 0) DESC, (COALESCE(SUM(i.total_amount),0) - COALESCE(SUM(i.paid_amount),0)) DESC, c.name ASC
+ORDER BY ((COALESCE(SUM(i.total_amount),0) - (
+		SELECT COALESCE(SUM(paid_amount),0) FROM payments p WHERE p.customer_id = c.id
+	)) > 0) DESC, (COALESCE(SUM(i.total_amount),0) - (
+		SELECT COALESCE(SUM(paid_amount),0) FROM payments p WHERE p.customer_id = c.id
+	)) DESC, c.name ASC
 LIMIT $perPage OFFSET $offset";
 $stmt = $pdo->prepare($sql);
 $stmt->execute($params);

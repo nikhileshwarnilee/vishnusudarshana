@@ -177,45 +177,62 @@ $queryStr = http_build_query(array_diff_key($_GET, ['page' => '']));
 		</button>
 	</form>
 	<table>
+		</tr>
 		<tr>
-			<th>Source</th>
-			<th>Customer Name</th>
-			<th>Mobile</th>
-			<th>Paid Date</th>
-			<th>Paid Amount</th>
-			<th>Method</th>
-			<th>Note</th>
-			<th>Transaction Details</th>
-			<th>Products</th>
+		<th>Source</th>
+		<th>Customer Name</th>
+		<th>Mobile</th>
+		<th>Paid Date</th>
+		<th>Paid Amount</th>
+		<th>Method</th>
+		<th>Note</th>
+		<th>Transaction Details</th>
+		<th>Delete</th>
+		</tr>
 		</tr>
 		<?php if (empty($rows)): ?>
 			<tr><td colspan="9" style="text-align:center; color:#888;">No payments found.</td></tr>
 		<?php else: foreach ($rows as $row): ?>
 			<tr>
-				<td><?= htmlspecialchars($row['source']) ?></td>
-				<td><?= htmlspecialchars($row['customer_name']) ?></td>
-				<td><?= htmlspecialchars($row['mobile']) ?></td>
-				<td><?= htmlspecialchars($row['paid_date']) ?></td>
-				<td>₹<?= number_format($row['paid_amount'],2) ?></td>
-				<td><?= htmlspecialchars($row['method']) ?></td>
-				<td><?= htmlspecialchars($row['note']) ?></td>
-				<td><?= htmlspecialchars($row['transaction_details']) ?></td>
-				<td>
-					<?php if ($row['source'] === 'Service Request' && !empty($row['products_json'])): ?>
-						<?php 
-						$products = json_decode($row['products_json'], true);
-						if ($products && is_array($products)) {
-							foreach ($products as $prod) {
-								$pname = isset($prod['name']) ? $prod['name'] : (isset($prod['product_name']) ? $prod['product_name'] : '');
-								$qty = isset($prod['qty']) ? $prod['qty'] : 1;
-								$price = isset($prod['price']) ? $prod['price'] : 0;
-								echo htmlspecialchars($pname) . ' x' . $qty . ' (₹' . number_format($price,2) . ')<br>';
-							}
-						}
-						?>
-					<?php endif; ?>
-				</td>
+			<td><?= htmlspecialchars($row['source']) ?></td>
+			<td><?= htmlspecialchars($row['customer_name']) ?></td>
+			<td><?= htmlspecialchars($row['mobile']) ?></td>
+			<td><?= htmlspecialchars($row['paid_date']) ?></td>
+			<td>₹<?= number_format($row['paid_amount'],2) ?></td>
+			<td><?= htmlspecialchars($row['method']) ?></td>
+			<td><?= htmlspecialchars($row['note']) ?></td>
+			<td><?= htmlspecialchars($row['transaction_details']) ?></td>
+			<td>
+				<?php if ($row['source'] === 'Invoice'): ?>
+					<form method="post" onsubmit="return confirm('Delete this payment?');" style="display:inline;">
+						<input type="hidden" name="delete_payment_id" value="<?= (int)$row['id'] ?>">
+						<button type="submit" style="background:#c00;color:#fff;border:none;padding:6px 14px;border-radius:5px;cursor:pointer;">Delete</button>
+					</form>
+				<?php elseif ($row['source'] === 'Service Request'): ?>
+					<form method="post" onsubmit="return confirm('Delete this service request payment?');" style="display:inline;">
+						<input type="hidden" name="delete_sr_id" value="<?= (int)$row['id'] ?>">
+						<button type="submit" style="background:#c00;color:#fff;border:none;padding:6px 14px;border-radius:5px;cursor:pointer;">Delete</button>
+					</form>
+				<?php endif; ?>
+			</td>
 			</tr>
+		<?php
+		// Handle delete actions
+		if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+			if (!empty($_POST['delete_payment_id'])) {
+				$delid = (int)$_POST['delete_payment_id'];
+				$pdo->prepare('DELETE FROM payments WHERE id = ?')->execute([$delid]);
+				echo "<script>location.href=location.href;</script>";
+				exit;
+			}
+			if (!empty($_POST['delete_sr_id'])) {
+				$delid = (int)$_POST['delete_sr_id'];
+				$pdo->prepare('DELETE FROM service_requests WHERE id = ?')->execute([$delid]);
+				echo "<script>location.href=location.href;</script>";
+				exit;
+			}
+		}
+		?>
 		<?php endforeach; endif; ?>
 	</table>
 	<?php if ($totalRows > $perPage): ?>
