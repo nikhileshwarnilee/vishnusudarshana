@@ -92,33 +92,37 @@ h1 { color: #800000; margin-bottom: 18px; }
 
     // Handle add/edit/delete
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-        // Add new message
-        if (isset($_POST['msg']) && !isset($_POST['edit_id'])) {
-            $msg = trim($_POST['msg']);
-            if ($msg) {
-                $stmt = $pdo->prepare("INSERT INTO letterpad_titles (title, source, created_at) VALUES (?, 'msgs', NOW())");
-                $stmt->execute([$msg]);
-                echo '<div style=\"color:green;font-weight:600;margin-bottom:16px;\">Message saved.</div>';
+        try {
+            // Add new message
+            if (isset($_POST['msg']) && !isset($_POST['edit_id'])) {
+                $msg = trim($_POST['msg']);
+                if ($msg) {
+                    $stmt = $pdo->prepare("INSERT INTO letterpad_titles (title, source, created_at) VALUES (?, 'msgs', NOW())");
+                    $stmt->execute([$msg]);
+                    echo '<div style="color:green;font-weight:600;margin-bottom:16px;">Message saved.</div>';
+                }
             }
-        }
-        // Edit message
-        if (isset($_POST['edit_id']) && isset($_POST['msg'])) {
-            $edit_id = (int)$_POST['edit_id'];
-            $msg = trim($_POST['msg']);
-            if ($edit_id && $msg) {
-                $stmt = $pdo->prepare("UPDATE letterpad_titles SET title=? WHERE id=? AND source='msgs'");
-                $stmt->execute([$msg, $edit_id]);
-                echo '<div style=\"color:green;font-weight:600;margin-bottom:16px;\">Message updated.</div>';
+            // Edit message
+            if (isset($_POST['edit_id']) && isset($_POST['msg'])) {
+                $edit_id = (int)$_POST['edit_id'];
+                $msg = trim($_POST['msg']);
+                if ($edit_id && $msg) {
+                    $stmt = $pdo->prepare("UPDATE letterpad_titles SET title=? WHERE id=? AND source='msgs'");
+                    $stmt->execute([$msg, $edit_id]);
+                    echo '<div style="color:green;font-weight:600;margin-bottom:16px;">Message updated.</div>';
+                }
             }
-        }
-        // Delete message
-        if (isset($_POST['delete_id'])) {
-            $delete_id = (int)$_POST['delete_id'];
-            if ($delete_id) {
-                $stmt = $pdo->prepare("DELETE FROM letterpad_titles WHERE id=? AND source='msgs'");
-                $stmt->execute([$delete_id]);
-                echo '<div style=\"color:green;font-weight:600;margin-bottom:16px;\">Message deleted.</div>';
+            // Delete message
+            if (isset($_POST['delete_id'])) {
+                $delete_id = (int)$_POST['delete_id'];
+                if ($delete_id) {
+                    $stmt = $pdo->prepare("DELETE FROM letterpad_titles WHERE id=? AND source='msgs'");
+                    $stmt->execute([$delete_id]);
+                    echo '<div style="color:green;font-weight:600;margin-bottom:16px;">Message deleted.</div>';
+                }
             }
+        } catch (PDOException $e) {
+            echo '<div style="color:red;font-weight:600;margin-bottom:16px;">DB ERROR: ' . htmlspecialchars($e->getMessage()) . '</div>';
         }
     }
     // Fetch all saved messages from letterpad_titles where source='msgs'
