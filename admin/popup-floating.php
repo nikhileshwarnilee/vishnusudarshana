@@ -25,7 +25,7 @@
 
         <?php
         require_once __DIR__ . '/../config/db.php';
-        $stmt = $pdo->query('SELECT id, title FROM letterpad_titles ORDER BY title ASC');
+        $stmt = $pdo->query("SELECT id, title FROM letterpad_titles WHERE source IS NULL OR source = '' ORDER BY title ASC");
         $optionsHtml = '<option value=""></option>';
         foreach ($stmt as $row) {
             $id = htmlspecialchars($row['id']);

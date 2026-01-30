@@ -36,6 +36,7 @@ h1 { color: #800000; margin-bottom: 18px; }
 <body>
 <div class="admin-container">
     <h1>Booking Slots</h1>
+    <a href="saved-msgs.php" target="_blank" style="background:#007bff;color:#fff;padding:8px 22px;border:none;border-radius:8px;font-weight:600;margin-bottom:18px;float:right;display:inline-block;text-decoration:none;">Saved Msgs</a>
     <form method="post" style="background:#fffbe7;padding:18px 20px;border-radius:12px;max-width:500px;margin-bottom:28px;box-shadow:0 2px 8px #e0bebe22;">
         <h2 style="color:#800000;font-size:1.2em;margin-bottom:12px;">Block Appointment Date</h2>
         <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center;">
