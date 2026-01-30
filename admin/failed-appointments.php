@@ -26,16 +26,14 @@ $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
         <table>
             <thead>
                 <tr>
-                    <th>ID</th>
                     <th>Name</th>
                     <th>Mobile</th>
-                    <th>Email</th>
                     <th>City</th>
                     <th>Products</th>
                     <th>Notes</th>
-                    <th>Amount</th>
-                    <th>Status</th>
-                    <th>Preferred Date</th>
+                    <th>Total Amount</th>
+                    <th>Date</th>
+                    <th>Time</th>
                 </tr>
             </thead>
             <tbody>
@@ -44,14 +42,34 @@ $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     $customer = json_decode($row['customer_details'] ?? '{}', true);
                     $products = json_decode($row['selected_products'] ?? '[]', true);
                     $formData = json_decode($row['form_data'] ?? '{}', true);
+                    // Name
+                    $name = $customer['full_name'] ?? $customer['name'] ?? $formData['name'] ?? '';
+                    // Mobile
+                    $mobile = $customer['mobile'] ?? $formData['mobile'] ?? '';
+                    // City
+                    $city = $customer['city'] ?? $formData['city'] ?? '';
+                    // Notes
                     $notes = $formData['notes'] ?? '';
+                    // Total Amount
+                    $amount = $row['total_amount'] ?? $row['amount'] ?? '';
+                    // Date & Time
+                    $date = '';
+                    $time = '';
+                    if (!empty($formData['date'])) {
+                        $date = $formData['date'];
+                    } elseif (!empty($row['created_at'])) {
+                        $date = date('Y-m-d', strtotime($row['created_at']));
+                    }
+                    if (!empty($formData['time'])) {
+                        $time = $formData['time'];
+                    } elseif (!empty($row['created_at'])) {
+                        $time = date('H:i', strtotime($row['created_at']));
+                    }
                 ?>
                 <tr>
-                    <td><?= htmlspecialchars($row['id']) ?></td>
-                    <td><?= htmlspecialchars($customer['full_name'] ?? $customer['name'] ?? '') ?></td>
-                    <td><?= htmlspecialchars($customer['mobile'] ?? '') ?></td>
-                    <td><?= htmlspecialchars($customer['email'] ?? '') ?></td>
-                    <td><?= htmlspecialchars($customer['city'] ?? '') ?></td>
+                    <td><?= htmlspecialchars($name) ?></td>
+                    <td><?= htmlspecialchars($mobile) ?></td>
+                    <td><?= htmlspecialchars($city) ?></td>
                     <td>
                         <?php if (!empty($products) && is_array($products)): ?>
                             <ul style="margin:0; padding-left:18px;">
@@ -62,13 +80,13 @@ $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
                         <?php endif; ?>
                     </td>
                     <td><?= htmlspecialchars($notes) ?></td>
-                    <td><?= htmlspecialchars($row['amount'] ?? '') ?></td>
-                    <td><?= htmlspecialchars($row['status'] ?? '') ?></td>
-                    <td><?= htmlspecialchars($row['created_at']) ?></td>
+                    <td><?= htmlspecialchars($amount) ?></td>
+                    <td><?= htmlspecialchars($date) ?></td>
+                    <td><?= htmlspecialchars($time) ?></td>
                 </tr>
             <?php endforeach; ?>
             <?php if (empty($rows)): ?>
-                <tr><td colspan="10">No failed appointments found.</td></tr>
+                <tr><td colspan="8">No failed appointments found.</td></tr>
             <?php endif; ?>
             </tbody>
         </table>
