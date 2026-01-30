@@ -252,7 +252,48 @@ require_once __DIR__ . '/../../config/db.php';
 	<!-- Collect Payment section removed. Payment will be handled after invoice creation. -->
     <button type="submit" id="submitInvoiceBtn">Submit Invoice</button>
     <span id="invoiceSubmitMsg" style="margin-left:18px; font-weight:600;"></span>
-</div>
+	</div>
+
+
+	<!-- Dynamic Tables Section -->
+	<div class="form-box" style="width:100%; max-width:1000px; margin-bottom:32px; box-shadow:0 2px 12px rgba(128,0,0,0.06);">
+		<h2 style="margin:0 0 18px 0; font-size:1.25em; color:#800000; font-weight:700; letter-spacing:0.5px;">Invoices</h2>
+		<div style="overflow-x:auto;">
+		<table id="customerInvoicesTable" style="width:100%; border-collapse:collapse; background:#fff; border-radius:8px; box-shadow:0 1px 4px #80000011;">
+			<thead style="background:#f6f6f6;">
+				<tr>
+					<th style="padding:10px 8px; border-bottom:2px solid #ececec; text-align:left; color:#800000;">Invoice #</th>
+					<th style="padding:10px 8px; border-bottom:2px solid #ececec; text-align:left; color:#800000;">Date</th>
+					<th style="padding:10px 8px; border-bottom:2px solid #ececec; text-align:right; color:#800000;">Amount (₹)</th>
+					<th style="padding:10px 8px; border-bottom:2px solid #ececec; text-align:right; color:#800000;">Status</th>
+				</tr>
+			</thead>
+			<tbody id="customerInvoicesBody">
+				<!-- Dynamic rows -->
+			</tbody>
+		</table>
+		</div>
+	</div>
+
+	<div class="form-box" style="width:100%; max-width:1000px; margin-bottom:32px; box-shadow:0 2px 12px rgba(128,0,0,0.06);">
+		<h2 style="margin:0 0 18px 0; font-size:1.25em; color:#800000; font-weight:700; letter-spacing:0.5px;">Payments</h2>
+		<div style="overflow-x:auto;">
+		<table id="customerPaymentsTable" style="width:100%; border-collapse:collapse; background:#fff; border-radius:8px; box-shadow:0 1px 4px #80000011;">
+			<thead style="background:#f6f6f6;">
+				<tr>
+					<th style="padding:10px 8px; border-bottom:2px solid #ececec; text-align:left; color:#800000;">Date</th>
+					<th style="padding:10px 8px; border-bottom:2px solid #ececec; text-align:right; color:#800000;">Amount (₹)</th>
+					<th style="padding:10px 8px; border-bottom:2px solid #ececec; text-align:left; color:#800000;">Method</th>
+					<th style="padding:10px 8px; border-bottom:2px solid #ececec; text-align:left; color:#800000;">Ref/Note</th>
+				</tr>
+			</thead>
+			<tbody id="customerPaymentsBody">
+				<!-- Dynamic rows -->
+			</tbody>
+		</table>
+		</div>
+	</div>
+
 		</form>
 	</div>
 
@@ -312,6 +353,72 @@ require_once __DIR__ . '/../../config/db.php';
 
 <script>
 // --- Dynamic Customer Search Dropdown ---
+
+// --- Dynamic Invoices & Payments Table Logic ---
+function clearCustomerTables() {
+	document.getElementById('customerInvoicesBody').innerHTML = '';
+	document.getElementById('customerPaymentsBody').innerHTML = '';
+}
+
+function renderInvoicesTable(invoices) {
+	const tbody = document.getElementById('customerInvoicesBody');
+	if (!Array.isArray(invoices) || invoices.length === 0) {
+		tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#888; padding:18px;">No invoices found.</td></tr>';
+		return;
+	}
+	tbody.innerHTML = invoices.map(inv => `
+		<tr>
+			<td style="padding:8px 8px; border-bottom:1px solid #f3e6e6;">${inv.invoice_no || inv.id}</td>
+			<td style="padding:8px 8px; border-bottom:1px solid #f3e6e6;">${inv.date}</td>
+			<td style="padding:8px 8px; border-bottom:1px solid #f3e6e6; text-align:right;">${parseFloat(inv.amount).toLocaleString('en-IN', {minimumFractionDigits:2})}</td>
+			<td style="padding:8px 8px; border-bottom:1px solid #f3e6e6; text-align:right; color:${inv.status === 'Paid' ? '#228B22' : '#b30000'}; font-weight:600;">${inv.status}</td>
+		</tr>
+	`).join('');
+}
+
+function renderPaymentsTable(payments) {
+	const tbody = document.getElementById('customerPaymentsBody');
+	if (!Array.isArray(payments) || payments.length === 0) {
+		tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#888; padding:18px;">No payments found.</td></tr>';
+		return;
+	}
+	tbody.innerHTML = payments.map(pay => `
+		<tr>
+			<td style="padding:8px 8px; border-bottom:1px solid #f3e6e6;">${pay.date}</td>
+			<td style="padding:8px 8px; border-bottom:1px solid #f3e6e6; text-align:right;">${parseFloat(pay.amount).toLocaleString('en-IN', {minimumFractionDigits:2})}</td>
+			<td style="padding:8px 8px; border-bottom:1px solid #f3e6e6;">${pay.method}</td>
+			<td style="padding:8px 8px; border-bottom:1px solid #f3e6e6;">${pay.ref || pay.note || ''}</td>
+		</tr>
+	`).join('');
+}
+
+function fetchAndShowCustomerTables(customerId) {
+	if (!customerId) {
+		clearCustomerTables();
+		return;
+	}
+	// Fetch invoices
+	fetch('fetch_customer_invoices.php?id=' + encodeURIComponent(customerId))
+		.then(res => res.json())
+		.then(data => {
+			renderInvoicesTable(Array.isArray(data) ? data : []);
+		})
+		.catch(() => {
+			renderInvoicesTable([]);
+		});
+	// Fetch payments
+	fetch('fetch_customer_payments.php?id=' + encodeURIComponent(customerId))
+		.then(res => res.json())
+		.then(data => {
+			renderPaymentsTable(Array.isArray(data) ? data : []);
+		})
+		.catch(() => {
+			renderPaymentsTable([]);
+		});
+}
+
+// On page load, keep tables blank
+clearCustomerTables();
 const searchInput = document.getElementById('customerSearch');
 const dropdown = document.getElementById('customerDropdown');
 const customerIdInput = document.getElementById('customer_id');
@@ -375,16 +482,18 @@ dropdown.addEventListener('mousedown', function(e) {
         const name = opt.querySelector('span').textContent;
         const mobile = opt.querySelectorAll('span')[1].textContent;
         customerIdInput.value = id;
-        // Show selected customer below
-        const selectedBox = document.getElementById('selectedCustomerBox');
+		// Show selected customer below
+		const selectedBox = document.getElementById('selectedCustomerBox');
 		selectedBox.innerHTML = `<b>Selected Customer:</b><br>Name: ${name}<br>Mobile: ${mobile}<br><span id='customerDuesInfo' style='color:#888;'>Loading dues...</span><div id='collectDueBtnBox'></div>`;
-        selectedBox.style.display = 'block';
-        // Clear search field
-        searchInput.value = '';
-        dropdown.style.display = 'none';
-        // Fetch and show dues
-        fetch('get_customer_dues.php?id=' + encodeURIComponent(id))
-            .then(res => res.json())
+		selectedBox.style.display = 'block';
+		// Show customer tables
+		fetchAndShowCustomerTables(id);
+		// Clear search field
+		searchInput.value = '';
+		dropdown.style.display = 'none';
+		// Fetch and show dues
+		fetch('get_customer_dues.php?id=' + encodeURIComponent(id))
+			.then(res => res.json())
 			.then(data => {
 				if (data && !data.error) {
 					document.getElementById('customerDuesInfo').innerHTML = `
@@ -413,9 +522,9 @@ dropdown.addEventListener('mousedown', function(e) {
 					document.getElementById('customerDuesInfo').textContent = 'Could not load dues.';
 				}
 			})
-            .catch(() => {
+			.catch(() => {
 				document.getElementById('customerDuesInfo').textContent = 'Could not load dues.';
-            });
+			});
     }
 });
 
@@ -427,6 +536,11 @@ document.addEventListener('click', function(e) {
 });
 
 // --- Add New Customer Modal Logic ---
+
+// When customer is cleared, blank the tables
+customerIdInput.addEventListener('change', function() {
+	if (!this.value) clearCustomerTables();
+});
 const addNewCustomerBtn = document.getElementById('addNewCustomerBtn');
 const addCustomerModalBg = document.getElementById('addCustomerModalBg');
 const addCustomerForm = document.getElementById('addCustomerForm');
@@ -471,6 +585,8 @@ addCustomerForm.addEventListener('submit', function(e) {
 				selectedBox.style.display = 'block';
 				searchInput.value = '';
 				dropdown.style.display = 'none';
+				// Show customer tables
+				fetchAndShowCustomerTables(data.customer.id);
 			}, 900);
 		} else {
 			addCustomerMsg.style.color = '#800000';
@@ -593,6 +709,7 @@ document.getElementById('invoiceForm').addEventListener('submit', function(e) {
 			msg.textContent = 'Invoice created successfully!';
 			form.reset();
 			document.getElementById('selectedCustomerBox').style.display = 'none';
+			clearCustomerTables();
 			// Remove all product rows except first
 			const productRows = document.getElementById('productRows');
 			while (productRows.children.length > 1) productRows.lastChild.remove();
