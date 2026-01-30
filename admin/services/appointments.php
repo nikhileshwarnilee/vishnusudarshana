@@ -572,7 +572,7 @@ h1 {
                         $createdDisplay = '';
                         if (!empty($a['created_at'])) {
                             $co = new DateTime($a['created_at']);
-                            $createdDisplay = $co->format('d-M-Y');
+                            $createdDisplay = $co->format('d-M-Y h:i A');
                         }
                     ?>
                     <tr>
