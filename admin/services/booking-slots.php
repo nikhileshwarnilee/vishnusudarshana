@@ -36,7 +36,7 @@ h1 { color: #800000; margin-bottom: 18px; }
 <body>
 <div class="admin-container">
     <h1>Booking Slots</h1>
-    <a href="saved-msgs.php" target="_blank" style="background:#007bff;color:#fff;padding:8px 22px;border:none;border-radius:8px;font-weight:600;margin-bottom:18px;float:right;display:inline-block;text-decoration:none;">Saved Msgs</a>
+    <a href="saved-msgs.php" style="background:#007bff;color:#fff;padding:8px 22px;border:none;border-radius:8px;font-weight:600;margin-bottom:18px;float:right;display:inline-block;text-decoration:none;">Saved Msgs</a>
     <?php
     // Fetch saved messages from letterpad_titles where source='msgs'
     $savedMsgs = $pdo->query("SELECT id, title FROM letterpad_titles WHERE source='msgs' ORDER BY created_at DESC")->fetchAll(PDO::FETCH_ASSOC);
