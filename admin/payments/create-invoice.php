@@ -259,6 +259,12 @@ require_once __DIR__ . '/../../config/db.php';
 
 <!-- Add Customer Modal (outside form, after main content) -->
 <div id="addCustomerModalBg">
+	<div id="invoiceLoading" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(255,255,255,0.7);z-index:9999;align-items:center;justify-content:center;font-size:1.3em;color:#800000;font-weight:600;">
+		Saving invoice, please wait...
+	</div>
+	<div id="addCustomerLoading" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(255,255,255,0.7);z-index:9999;align-items:center;justify-content:center;font-size:1.3em;color:#800000;font-weight:600;">
+		Saving customer, please wait...
+	</div>
 	<div id="addCustomerModal">
 		<h2 style="margin-top:0; color:#800000; font-size:1.2em;">Add New Customer</h2>
 		<form id="addCustomerForm" autocomplete="off">
@@ -336,6 +342,11 @@ searchInput.addEventListener('input', function() {
 							btn.onclick = function() {
 								addCustomerForm.reset();
 								addCustomerMsg.textContent = '';
+								// Autofill name field with last searched value
+								const lastSearch = searchInput.value.trim();
+								if (lastSearch) {
+									document.getElementById('newCustomerName').value = lastSearch;
+								}
 								addCustomerModalBg.style.display = 'flex';
 								dropdown.style.display = 'none';
 							};
@@ -344,7 +355,11 @@ searchInput.addEventListener('input', function() {
 					return;
 				}
 				dropdown.innerHTML = data.map(c =>
-					`<div class="customer-option" data-id="${c.id}" style="padding:10px 14px; cursor:pointer; border-bottom:1px solid #f3e6e6; display:flex; flex-direction:column;">\n                        <span style=\"font-weight:600; color:#333;\">${c.name}</span>\n                        <span style=\"font-size:0.97em; color:#888;\">${c.mobile}</span>\n                    </div>`
+					`<div class="customer-option" data-id="${c.id}" style="padding:10px 14px; cursor:pointer; border-bottom:1px solid #f3e6e6; display:flex; flex-direction:column;">
+						<span style=\"font-weight:600; color:#333;\">${c.name}</span>
+						<span style=\"font-size:0.97em; color:#888;\">${c.mobile}</span>
+						<span style=\"font-size:0.97em; color:${c.dues > 0 ? '#b30000' : '#228B22'}; font-weight:600;\">Dues: ₹${c.dues.toFixed(2)}</span>
+					</div>`
 				).join('');
 				dropdown.style.display = 'block';
 			});
@@ -415,6 +430,10 @@ cancelAddCustomer.addEventListener('click', function() {
 addCustomerForm.addEventListener('submit', function(e) {
 	e.preventDefault();
 	addCustomerMsg.textContent = '';
+	// Show loading overlay and disable save button
+	document.getElementById('addCustomerLoading').style.display = 'flex';
+	const saveBtn = addCustomerForm.querySelector('button[type="submit"]');
+	if (saveBtn) saveBtn.disabled = true;
 	const formData = new FormData(addCustomerForm);
 	fetch('add_customer.php', {
 		method: 'POST',
@@ -422,6 +441,8 @@ addCustomerForm.addEventListener('submit', function(e) {
 	})
 	.then(res => res.json())
 	.then(data => {
+		document.getElementById('addCustomerLoading').style.display = 'none';
+		if (saveBtn) saveBtn.disabled = false;
 		if (data.success) {
 			addCustomerMsg.style.color = '#28a745';
 			addCustomerMsg.textContent = 'Customer added successfully!';
@@ -441,6 +462,8 @@ addCustomerForm.addEventListener('submit', function(e) {
 		}
 	})
 	.catch(() => {
+		document.getElementById('addCustomerLoading').style.display = 'none';
+		if (saveBtn) saveBtn.disabled = false;
 		addCustomerMsg.style.color = '#800000';
 		addCustomerMsg.textContent = 'Failed to add customer.';
 	});
@@ -521,28 +544,34 @@ document.getElementById('productRows').addEventListener('click', function(e) {
 
 // --- Invoice Form Submission ---
 document.getElementById('invoiceForm').addEventListener('submit', function(e) {
-    e.preventDefault();
-    const msg = document.getElementById('invoiceSubmitMsg');
-    msg.textContent = '';
-    msg.style.color = '#333';
-    const form = e.target;
-    const formData = new FormData(form);
-    // Get values for validation
-    const customerId = document.getElementById('customer_id').value;
-    const totalAmount = parseFloat(document.getElementById('totalAmount').textContent) || 0;
-    const productNames = Array.from(form.querySelectorAll('input[name="product_name[]"]')).map(i => i.value.trim()).filter(Boolean);
+	e.preventDefault();
+	const msg = document.getElementById('invoiceSubmitMsg');
+	msg.textContent = '';
+	msg.style.color = '#333';
+	const form = e.target;
+	const formData = new FormData(form);
+	// Show loading overlay and disable submit button
+	document.getElementById('invoiceLoading').style.display = 'flex';
+	const submitBtn = document.getElementById('submitInvoiceBtn');
+	if (submitBtn) submitBtn.disabled = true;
+	// Get values for validation
+	const customerId = document.getElementById('customer_id').value;
+	const totalAmount = parseFloat(document.getElementById('totalAmount').textContent) || 0;
+	const productNames = Array.from(form.querySelectorAll('input[name="product_name[]"]')).map(i => i.value.trim()).filter(Boolean);
 	// Add total qty and total amount to formData
 	formData.append('total_qty', document.getElementById('totalQty').textContent);
 	formData.append('total_amount', document.getElementById('totalAmount').textContent);
-    fetch('save_invoice.php', {
-        method: 'POST',
-        body: formData
-    })
-    .then(res => res.json())
-    .then(data => {
-        if (data.post) {
-            alert('DEBUG POST DATA:\n' + JSON.stringify(data.post, null, 2));
-        }
+	fetch('save_invoice.php', {
+		method: 'POST',
+		body: formData
+	})
+	.then(res => res.json())
+	.then(data => {
+		document.getElementById('invoiceLoading').style.display = 'none';
+		if (submitBtn) submitBtn.disabled = false;
+		if (data.post) {
+			alert('DEBUG POST DATA:\n' + JSON.stringify(data.post, null, 2));
+		}
 		if (data.success) {
 			msg.style.color = '#28a745';
 			msg.textContent = 'Invoice created successfully!';
@@ -561,12 +590,14 @@ document.getElementById('invoiceForm').addEventListener('submit', function(e) {
 			msg.textContent = data.error || 'Failed to create invoice.';
 			alert('ERROR: ' + (data.error || 'Failed to create invoice.'));
 		}
-    })
-    .catch((err) => {
-        msg.style.color = '#800000';
-        msg.textContent = 'Failed to create invoice.';
-        alert('AJAX ERROR: ' + err);
-    });
+	})
+	.catch((err) => {
+		document.getElementById('invoiceLoading').style.display = 'none';
+		if (submitBtn) submitBtn.disabled = false;
+		msg.style.color = '#800000';
+		msg.textContent = 'Failed to create invoice.';
+		alert('AJAX ERROR: ' + err);
+	});
 });
 
 
