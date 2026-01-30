@@ -290,16 +290,15 @@ h1 {
     <table class="service-table">
         <thead>
             <tr>
-                <th>ID</th>
-                <th>View</th>
-                <th>Tracking ID</th>
-                <th>Products</th>
                 <th>Customer Name</th>
                 <th>Mobile</th>
                 <th>Preferred Date</th>
+                <th>Created Date</th>
+                <th>Products</th>
+                <th>ID</th>
+                <th>Tracking ID</th>
                 <th>Payment Status</th>
                 <th>Service Status</th>
-                <th>Created Date</th>
                 <th>Notes</th>
             </tr>
         </thead>
@@ -342,20 +341,17 @@ h1 {
                 $notes = $customerDetails['notes'] ?? ($formData['notes'] ?? '');
                 ?>
                 <tr>
-                    <td><?= (int)$a['id'] ?></td>
-                    <td>
-                        <a href="view.php?id=<?= (int)$a['id'] ?>" class="view-btn" style="padding:6px 14px;background:#007bff;color:#fff;border-radius:6px;text-decoration:none;font-weight:600;">View</a>
-                    </td>
-                    <td><?= htmlspecialchars($trackingId) ?></td>
-                    <td><?= $products ?></td>
                     <td><?= htmlspecialchars($customerName) ?></td>
                     <td><?= htmlspecialchars($mobile) ?></td>
                     <td style="font-weight:600;color:#800000;">
                         <?= htmlspecialchars($preferredDisplay) ?>
                     </td>
+                    <td><?= htmlspecialchars($createdDisplay) ?></td>
+                    <td><?= $products ?></td>
+                    <td><?= (int)$a['id'] ?></td>
+                    <td><?= htmlspecialchars($trackingId) ?></td>
                     <td><span class="status-badge payment-paid">Failed</span></td>
                     <td><span class="status-badge status-received">Unaccepted</span></td>
-                    <td><?= htmlspecialchars($createdDisplay) ?></td>
                     <td><?= htmlspecialchars($notes) ?></td>
                 </tr>
             <?php endforeach; ?>
