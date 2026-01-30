@@ -324,8 +324,23 @@ searchInput.addEventListener('input', function() {
 			.then(res => res.json())
 			.then(data => {
 				if (!Array.isArray(data) || data.length === 0) {
-					dropdown.innerHTML = '<div style="padding:10px; color:#888;">No customer found</div>';
+					dropdown.innerHTML = `
+						<div style="padding:10px; color:#888;">No customer found</div>
+						<button type="button" id="dropdownAddCustomerBtn" style="width:100%;padding:10px 0;background:#800000;color:#fff;border:none;border-radius:4px;margin-top:6px;cursor:pointer;">Add New Customer</button>
+					`;
 					dropdown.style.display = 'block';
+					// Attach event to open modal
+					setTimeout(() => {
+						const btn = document.getElementById('dropdownAddCustomerBtn');
+						if (btn) {
+							btn.onclick = function() {
+								addCustomerForm.reset();
+								addCustomerMsg.textContent = '';
+								addCustomerModalBg.style.display = 'flex';
+								dropdown.style.display = 'none';
+							};
+						}
+					}, 10);
 					return;
 				}
 				dropdown.innerHTML = data.map(c =>
