@@ -95,6 +95,7 @@ $menu = [
         'submenu' => [
             'Manage Schedule' => $baseUrl . '/admin/schedule/manage-schedule.php',
             'Setup Schedule'   => $baseUrl . '/admin/schedule/setup-schedule.php',
+            'Send Schedule'   => $baseUrl . '/admin/schedule/send-schedule.php',
         ]
     ],
 

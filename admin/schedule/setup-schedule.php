@@ -42,37 +42,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $status = $_POST['status'] ?? 'tentative';
         $assigned_user_ids = isset($_POST['assigned_user_id']) ? (array)$_POST['assigned_user_id'] : [$currentUserId];
         $edit_id = isset($_POST['edit_id']) ? (int)$_POST['edit_id'] : 0;
-        // Handle fix schedule
+        // Handle fix schedule (allow multiple assigned users)
         if (isset($_POST['fix_id'])) {
             $fix_id = (int)$_POST['fix_id'];
-            $row = $pdo->query("SELECT multi_assigned_user_id FROM admin_schedule WHERE id = " . $fix_id)->fetch(PDO::FETCH_ASSOC);
+            $row = $pdo->query("SELECT multi_assigned_user_id, title, description, schedule_date, end_date, start_time, end_time, status FROM admin_schedule WHERE id = " . $fix_id)->fetch(PDO::FETCH_ASSOC);
             $multi_ids = json_decode($row['multi_assigned_user_id'] ?? '[]', true);
-            if (is_array($multi_ids) && count($multi_ids) === 1) {
+            if (is_array($multi_ids) && count($multi_ids) > 0) {
                 $pdo->prepare("UPDATE admin_schedule SET source_page = NULL WHERE id = ?")->execute([$fix_id]);
-                // WhatsApp logic: send to the single user
                 require_once __DIR__ . '/../../helpers/send_whatsapp.php';
-                $userId = intval($multi_ids[0]);
-                $row2 = $pdo->prepare("SELECT u.name, u.mobile, a.title, a.description, a.schedule_date, a.end_date, a.start_time, a.end_time, a.status FROM admin_schedule a JOIN users u ON a.assigned_user_id = u.id WHERE a.id = ?");
-                $row2->execute([$fix_id]);
-                $ud = $row2->fetch(PDO::FETCH_ASSOC);
-                if ($ud && !empty($ud['mobile'])) {
-                    sendWhatsAppMessage(
-                        $ud['mobile'],
-                        'Schedule Manager Marathi',
-                        [
-                            'name' => $ud['name'],
-                            'date_range' => ($ud['schedule_date'] === $ud['end_date'] ? $ud['schedule_date'] : ($ud['schedule_date'] . ' to ' . $ud['end_date'])),
-                            'title' => $ud['title'],
-                            'time_range' => $ud['start_time'] . ' - ' . $ud['end_time'],
-                            'status' => ucfirst($ud['status']),
-                            'description' => $ud['description']
-                        ]
-                    );
+                // Fetch all assigned users' names and mobiles
+                $in = str_repeat('?,', count($multi_ids) - 1) . '?';
+                $userStmt = $pdo->prepare("SELECT name, mobile FROM users WHERE id IN ($in)");
+                $userStmt->execute($multi_ids);
+                $usersData = $userStmt->fetchAll(PDO::FETCH_ASSOC);
+                foreach ($usersData as $ud) {
+                    if (!empty($ud['mobile'])) {
+                        sendWhatsAppMessage(
+                            $ud['mobile'],
+                            'Schedule Manager Marathi',
+                            [
+                                'name' => $ud['name'],
+                                'date_range' => ($row['schedule_date'] === $row['end_date'] ? $row['schedule_date'] : ($row['schedule_date'] . ' to ' . $row['end_date'])),
+                                'title' => $row['title'],
+                                'time_range' => $row['start_time'] . ' - ' . $row['end_time'],
+                                'status' => ucfirst($row['status']),
+                                'description' => $row['description']
+                            ]
+                        );
+                    }
                 }
-                $msg = '<div style="color:green;font-weight:600;margin-bottom:16px;">Schedule fixed: now marked as normal schedule. WhatsApp message sent again.</div>';
+                $msg = '<div style="color:green;font-weight:600;margin-bottom:16px;">Schedule fixed: now marked as normal schedule. WhatsApp message sent to all assigned users.</div>';
             } else {
-                echo "<script>alert('Cannot fix: More than one user assigned. Please ensure only one user is selected before fixing.');window.location.href='" . $_SERVER['PHP_SELF'] . "';</script>";
-                exit;
+                $msg = '<div style="color:#b30000;font-weight:600;margin-bottom:16px;">No assigned users found for this schedule.</div>';
             }
         }
         if ($title && $start_date && $start_time && $end_time && count($assigned_user_ids) > 0) {
