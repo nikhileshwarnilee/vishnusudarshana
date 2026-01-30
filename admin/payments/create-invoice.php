@@ -358,6 +358,7 @@ searchInput.addEventListener('input', function() {
 					`<div class="customer-option" data-id="${c.id}" style="padding:10px 14px; cursor:pointer; border-bottom:1px solid #f3e6e6; display:flex; flex-direction:column;">
 						<span style=\"font-weight:600; color:#333;\">${c.name}</span>
 						<span style=\"font-size:0.97em; color:#888;\">${c.mobile}</span>
+						<span style=\"font-size:0.97em; color:#888;\">${c.address ? c.address : ''}</span>
 						<span style=\"font-size:0.97em; color:${c.dues > 0 ? '#b30000' : '#228B22'}; font-weight:600;\">Dues: ₹${c.dues.toFixed(2)}</span>
 					</div>`
 				).join('');
@@ -376,7 +377,7 @@ dropdown.addEventListener('mousedown', function(e) {
         customerIdInput.value = id;
         // Show selected customer below
         const selectedBox = document.getElementById('selectedCustomerBox');
-        selectedBox.innerHTML = `<b>Selected Customer:</b><br>Name: ${name}<br>Mobile: ${mobile}<br><span id='customerDuesInfo' style='color:#888;'>Loading dues...</span>`;
+		selectedBox.innerHTML = `<b>Selected Customer:</b><br>Name: ${name}<br>Mobile: ${mobile}<br><span id='customerDuesInfo' style='color:#888;'>Loading dues...</span><div id='collectDueBtnBox'></div>`;
         selectedBox.style.display = 'block';
         // Clear search field
         searchInput.value = '';
@@ -384,7 +385,7 @@ dropdown.addEventListener('mousedown', function(e) {
         // Fetch and show dues
         fetch('get_customer_dues.php?id=' + encodeURIComponent(id))
             .then(res => res.json())
-            .then(data => {
+			.then(data => {
 				if (data && !data.error) {
 					document.getElementById('customerDuesInfo').innerHTML = `
 						<div style='margin-top:6px;'>
@@ -393,10 +394,25 @@ dropdown.addEventListener('mousedown', function(e) {
 							<b>Total Dues:</b> <span style='color:${data.total_dues > 0 ? '#b30000' : '#228B22'};'>₹${data.total_dues.toFixed(2)}</span>
 						</div>
 					`;
+					// Add Collect button if dues > 0
+					const collectBox = document.getElementById('collectDueBtnBox');
+					if (collectBox) {
+						if (data.total_dues > 0) {
+							collectBox.innerHTML = `<button id='collectDueBtn' style='margin-top:10px;background:#1a8917;color:#fff;padding:7px 18px;border:none;border-radius:6px;font-weight:600;cursor:pointer;'>Collect</button>`;
+							document.getElementById('collectDueBtn').onclick = function(e) {
+								e.preventDefault();
+								e.stopPropagation();
+								// Open collect modal directly, skip all invoice/product validation
+								showCollectPaymentBox(customerIdInput.value);
+							};
+						} else {
+							collectBox.innerHTML = '';
+						}
+					}
 				} else {
 					document.getElementById('customerDuesInfo').textContent = 'Could not load dues.';
 				}
-            })
+			})
             .catch(() => {
 				document.getElementById('customerDuesInfo').textContent = 'Could not load dues.';
             });
@@ -690,16 +706,44 @@ document.getElementById('collectPaymentForm').onsubmit = function(e) {
 			msgBox.textContent = 'Payment collected!';
 			setTimeout(() => {
 				document.getElementById('collectPaymentModalBg').style.display = 'none';
+				// Refresh selected customer box and dues
+				const customerId = document.getElementById('collectCustomerId').value;
+				if (customerId) {
+					fetch('get_customer_dues.php?id=' + encodeURIComponent(customerId))
+						.then(res => res.json())
+						.then(data => {
+							if (data && !data.error) {
+								const selectedBox = document.getElementById('selectedCustomerBox');
+								selectedBox.innerHTML = `<b>Selected Customer:</b><br>Name: ${data.name}<br><span id='customerDuesInfo' style='color:#888;'></span><div id='collectDueBtnBox'></div>`;
+								// Update dues info
+								document.getElementById('customerDuesInfo').innerHTML = `
+									<div style='margin-top:6px;'>
+										<b>Total Invoiced:</b> ₹${data.total_invoiced.toFixed(2)}<br>
+										<b>Total Paid:</b> ₹${data.total_paid.toFixed(2)}<br>
+										<b>Total Dues:</b> <span style='color:${data.total_dues > 0 ? '#b30000' : '#228B22'};'>₹${data.total_dues.toFixed(2)}</span>
+									</div>
+								`;
+								// Add Collect button if dues > 0
+								const collectBox = document.getElementById('collectDueBtnBox');
+								if (collectBox) {
+									if (data.total_dues > 0) {
+										collectBox.innerHTML = `<button id='collectDueBtn' style='margin-top:10px;background:#1a8917;color:#fff;padding:7px 18px;border:none;border-radius:6px;font-weight:600;cursor:pointer;'>Collect</button>`;
+										document.getElementById('collectDueBtn').onclick = function(e) {
+											e.preventDefault();
+											e.stopPropagation();
+											showCollectPaymentBox(customerId);
+										};
+									} else {
+										collectBox.innerHTML = '';
+									}
+								}
+							}
+						});
+				}
 			}, 900);
 		} else {
 			msgBox.style.color = '#800000';
-		// Prevent submit if no product/service or all product amounts are zero
-		const productAmounts = Array.from(form.querySelectorAll('input[name="product_amount[]"]')).map(i => parseFloat(i.value)).filter(a => !isNaN(a));
-		if (productNames.length === 0 || productAmounts.length === 0 || productAmounts.every(a => a <= 0)) {
-			msg.style.color = '#800000';
-			msg.textContent = 'Add at least one product/service with a valid amount.';
-			return;
-		}
+		// Only validate products if invoice form is being submitted, not for collect modal
 			msgBox.textContent = data.error || 'Failed to collect payment.';
 		}
 	})

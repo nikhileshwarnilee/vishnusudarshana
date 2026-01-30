@@ -8,7 +8,8 @@ if ($q === '') {
     exit;
 }
 
-$stmt = $pdo->prepare("SELECT id, name, mobile FROM customers WHERE name LIKE :q OR mobile LIKE :q LIMIT 15");
+
+$stmt = $pdo->prepare("SELECT id, name, mobile, address FROM customers WHERE name LIKE :q OR mobile LIKE :q LIMIT 15");
 $stmt->execute(['q' => "%$q%"]);
 $results = $stmt->fetchAll();
 
