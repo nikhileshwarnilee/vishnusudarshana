@@ -41,16 +41,12 @@ h1 { color: #800000; margin-bottom: 18px; }
     // Fetch saved messages from letterpad_titles where source='msgs'
     $savedMsgs = $pdo->query("SELECT id, title FROM letterpad_titles WHERE source='msgs' ORDER BY created_at DESC")->fetchAll(PDO::FETCH_ASSOC);
     ?>
-    <form method="post" style="background:#fffbe7;padding:18px 20px;border-radius:12px;max-width:600px;margin-bottom:28px;box-shadow:0 2px 8px #e0bebe22;">
+    <form method="post" style="background:#fffbe7;padding:18px 20px;border-radius:12px;max-width:1100px;width:100%;margin-bottom:28px;box-shadow:0 2px 8px #e0bebe22;">
         <h2 style="color:#800000;font-size:1.2em;margin-bottom:12px;">Block Appointment Date</h2>
         <div style="margin-bottom:12px;">
-            <label for="savedMsgSelect" style="font-weight:600;color:#800000;">Insert Saved Message:</label><br>
-            <select id="savedMsgSelect" style="width:100%;padding:8px 10px;border-radius:6px;border:1px solid #ccc;font-size:1em;max-width:100%;margin-top:4px;">
-                <option value="">-- Select a saved message --</option>
-                <?php foreach ($savedMsgs as $msg): ?>
-                    <option value="<?= htmlspecialchars($msg['title']) ?>"><?= strip_tags($msg['title']) ?></option>
-                <?php endforeach; ?>
-            </select>
+            <label for="savedMsgSearch" style="font-weight:600;color:#800000;">Insert Saved Message:</label><br>
+            <input type="text" id="savedMsgSearch" placeholder="Search saved messages..." style="width:100%;padding:8px 10px;border-radius:6px;border:1px solid #ccc;font-size:1em;margin-top:4px;">
+            <div id="savedMsgDropdown" style="width:100%;max-height:220px;overflow-y:auto;border:1px solid #ccc;border-radius:6px;background:#fff;margin-top:4px;box-shadow:0 2px 8px #e0bebe22;display:none;position:absolute;z-index:1000;"></div>
         </div>
         <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center;">
             <div style="flex:1;min-width:140px;">
@@ -67,17 +63,60 @@ h1 { color: #800000; margin-bottom: 18px; }
         </div>
     </form>
     <script>
-    // When a saved message is selected, fill the textarea
+    // Custom searchable, scrollable dropdown for saved messages
     document.addEventListener('DOMContentLoaded', function() {
-        var select = document.getElementById('savedMsgSelect');
+        var savedMsgs = <?php echo json_encode($savedMsgs); ?>;
+        var searchInput = document.getElementById('savedMsgSearch');
+        var dropdown = document.getElementById('savedMsgDropdown');
         var msgBox = document.querySelector('textarea[name="msg"]');
-        if (select && msgBox) {
-            select.addEventListener('change', function() {
-                if (this.value) {
-                    msgBox.value = this.value.replace(/<[^>]+>/g, ''); // Remove HTML tags for plain text
-                }
+        var parent = searchInput.parentElement;
+        // Position dropdown below input
+        dropdown.style.position = 'absolute';
+        dropdown.style.left = searchInput.offsetLeft + 'px';
+        dropdown.style.top = (searchInput.offsetTop + searchInput.offsetHeight) + 'px';
+        dropdown.style.width = searchInput.offsetWidth + 'px';
+        function renderDropdown(filter) {
+            dropdown.innerHTML = '';
+            var filtered = savedMsgs.filter(function(m) {
+                return !filter || m.title.toLowerCase().includes(filter.toLowerCase());
             });
+            if (filtered.length === 0) {
+                dropdown.innerHTML = '<div style="padding:10px;color:#888;">No matches found.</div>';
+            } else {
+                filtered.forEach(function(m) {
+                    var div = document.createElement('div');
+                    div.style.padding = '10px 12px';
+                    div.style.cursor = 'pointer';
+                    div.style.whiteSpace = 'pre-wrap';
+                    div.style.borderBottom = '1px solid #f3caca';
+                    div.style.maxWidth = '420px';
+                    div.style.overflowWrap = 'break-word';
+                    // Strip HTML tags for display
+                    var temp = document.createElement('div');
+                    temp.innerHTML = m.title;
+                    var plain = temp.textContent || temp.innerText || '';
+                    div.innerText = plain;
+                    div.onclick = function() {
+                        msgBox.value = plain;
+                        dropdown.style.display = 'none';
+                    };
+                    dropdown.appendChild(div);
+                });
+            }
         }
+        searchInput.addEventListener('focus', function() {
+            renderDropdown(this.value);
+            dropdown.style.display = 'block';
+        });
+        searchInput.addEventListener('input', function() {
+            renderDropdown(this.value);
+            dropdown.style.display = 'block';
+        });
+        document.addEventListener('click', function(e) {
+            if (!dropdown.contains(e.target) && e.target !== searchInput) {
+                dropdown.style.display = 'none';
+            }
+        });
     });
     </script>
 

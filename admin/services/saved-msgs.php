@@ -90,7 +90,7 @@ try {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f7f7fa; margin: 0; }
-        .container { max-width: 600px; margin: 40px auto; background: #fff; border-radius: 10px; box-shadow: 0 2px 12px #e0bebe22; padding: 32px 24px; }
+        .container { max-width: 100%; margin: 40px auto; background: #fff; border-radius: 10px; box-shadow: 0 2px 12px #e0bebe22; padding: 32px 24px; }
         h1 { color: #800000; margin-bottom: 18px; }
         .btn-main { padding: 8px 22px; background: #800000; color: #fff; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; }
         .btn-main:hover { background: #600000; }
@@ -154,13 +154,23 @@ try {
     <?php if (empty($msgs)): ?>
         <div style="color:#777;">No saved messages found.</div>
     <?php else: ?>
-        <ul style="padding-left:18px;">
-        <?php foreach ($msgs as $row): ?>
-            <li style="margin-bottom:12px;">
-                <div style="background:#f7f7fa;padding:10px 14px;border-radius:8px;border:1px solid #eee;display:flex;align-items:center;justify-content:space-between;gap:10px;">
-                    <div style="flex:1;min-width:0;word-break:break-word;"> <?= $row['title'] ?>
-                        <div style="font-size:0.9em;color:#888;margin-top:4px;">Saved: <?= htmlspecialchars($row['created_at']) ?></div>
-                    </div>
+    <div style="overflow-x:auto;width:100%;margin:0;">
+    <table style="width:100%;border-collapse:collapse;background:#fff;box-shadow:0 2px 12px #e0bebe22;border-radius:12px;font-size:0.97em;min-width:700px;max-width:100vw;">
+        <thead>
+            <tr style="background:#f9eaea;color:#800000;">
+                <th style="padding:10px 8px;text-align:left;">#</th>
+                <th style="padding:10px 8px;text-align:left;">Message</th>
+                <th style="padding:10px 8px;text-align:left;">Saved At</th>
+                <th style="padding:10px 8px;text-align:left;">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+        <?php foreach ($msgs as $i => $row): ?>
+            <tr style="border-bottom:1px solid #f3caca;">
+                <td style="padding:10px 8px;vertical-align:top;"> <?= $i+1 ?> </td>
+                <td style="padding:10px 8px;vertical-align:top;word-break:break-word;max-width:700px;"> <?= strip_tags($row['title']) ?> </td>
+                <td style="padding:10px 8px;vertical-align:top;white-space:nowrap;"> <?= htmlspecialchars($row['created_at']) ?> </td>
+                <td style="padding:10px 8px;vertical-align:top;">
                     <form method="post" style="display:inline;margin:0;padding:0;">
                         <input type="hidden" name="start_edit_id" value="<?= $row['id'] ?>">
                         <button type="submit" class="btn-main" style="background:#007bff;padding:4px 12px;">Edit</button>
@@ -169,10 +179,12 @@ try {
                         <input type="hidden" name="delete_id" value="<?= $row['id'] ?>">
                         <button type="submit" class="btn-main" style="background:#b30000;padding:4px 12px;">Delete</button>
                     </form>
-                </div>
-            </li>
+                </td>
+            </tr>
         <?php endforeach; ?>
-        </ul>
+        </tbody>
+    </table>
+    </div>
     <?php endif; ?>
 </div>
 </body>
