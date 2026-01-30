@@ -1,4 +1,18 @@
 <?php
+
+// DEBUG: Show POST data and DB errors
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    echo '<div style="background:#ffe0e0;color:#b30000;padding:10px 16px;margin-bottom:10px;border-radius:8px;">';
+    echo '<b>DEBUG POST:</b> <pre>' . htmlspecialchars(print_r($_POST, true)) . '</pre>';
+    if (isset($pdo)) {
+        $err = $pdo->errorInfo();
+        if ($err && $err[0] !== '00000') {
+            echo '<b>PDO ERROR:</b> <pre>' . htmlspecialchars(print_r($err, true)) . '</pre>';
+        }
+    }
+    echo '</div>';
+}
+
 // admin/services/saved-msgs.php
 session_start();
 if (!isset($_SESSION['user_id'])) {
@@ -8,6 +22,8 @@ if (!isset($_SESSION['user_id'])) {
 require_once __DIR__ . '/../../config/db.php';
 $pageTitle = 'Saved Messages | Vishnusudarshana';
 ?>
+
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
