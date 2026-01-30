@@ -368,7 +368,8 @@ require_once 'header.php';
             <?= htmlspecialchars($tracking_id) ?>
         </div>
         <p id="payment-status-msg" class="success-text">
-            Payment received. Verifying appointment...
+            Our team will contact you shortly.<br>
+            Keep your tracking ID for reference.
         </p>
         <a href="track.php?id=<?= urlencode($tracking_id) ?>" class="pay-btn">
             Track Your Service

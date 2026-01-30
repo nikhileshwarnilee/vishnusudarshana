@@ -1,1 +1,4 @@
 [2026-01-29 20:11:22] TO: 918237877268 | TEMPLATE: Website Service Request Confirmation | STATUS: API_ERROR | DETAILS: {"name":"ERR402","errorCode":402,"errorMessage":"Insufficient WhatsApp Conversation Credits (WCC)!"}
+[2026-01-29 20:27:58] TO: 918237877268 | TEMPLATE: Website Service Request Confirmation | STATUS: API_ERROR | DETAILS: {"name":"ERR402","errorCode":402,"errorMessage":"Insufficient WhatsApp Conversation Credits (WCC)!"}
+[2026-01-29 20:29:37] TO: 919922550797 | TEMPLATE: Website Service Request Confirmation | STATUS: API_ERROR | DETAILS: {"name":"ERR402","errorCode":402,"errorMessage":"Insufficient WhatsApp Conversation Credits (WCC)!"}
+[2026-01-29 23:15:55] TO: 918237877268 | TEMPLATE: Appointment Scheduled | STATUS: API_ERROR | DETAILS: {"name":"ERR402","errorCode":402,"errorMessage":"Insufficient WhatsApp Conversation Credits (WCC)!"}

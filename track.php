@@ -785,11 +785,9 @@ elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 if (isset($row['selected_products'])) {
                                     $decoded = json_decode($row['selected_products'], true);
                                 }
-                                if ($row['category_slug'] === 'appointment') {
-                                    $products = 'Appointment';
-                                } elseif (is_array($decoded) && count($decoded)) {
+                                if (is_array($decoded) && count($decoded)) {
                                     $names = [];
-                                    // Use DB connection to fetch product names
+                                    // Use DB connection to fetch product names and show quantity
                                     foreach ($decoded as $prod) {
                                         if (isset($prod['id'])) {
                                             static $productNameCache = [];
@@ -800,7 +798,8 @@ elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                                 $prow = $pstmt->fetch();
                                                 $productNameCache[$pid] = $prow ? $prow['product_name'] : 'Product#'.$pid;
                                             }
-                                            $names[] = htmlspecialchars($productNameCache[$pid]);
+                                            $qty = isset($prod['qty']) ? (int)$prod['qty'] : (isset($prod['quantity']) ? (int)$prod['quantity'] : 1);
+                                            $names[] = htmlspecialchars($productNameCache[$pid]) . ' x ' . $qty;
                                         }
                                     }
                                     if ($names) {
@@ -839,7 +838,7 @@ elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                         $dateDisp = $dateFmt ? $dateFmt->format('d-M-Y') : htmlspecialchars($assignedDate);
                                         echo 'Assigned on ' . htmlspecialchars($dateDisp) . ' (Time pending)';
                                     } else {
-                                        echo 'Time not set';
+                                        echo 'Not Scheduled';
                                     }
                                 } else {
                                     echo '-';
