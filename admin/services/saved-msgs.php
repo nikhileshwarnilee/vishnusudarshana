@@ -19,7 +19,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_id'])) {
         try {
             $stmt = $pdo->prepare("DELETE FROM letterpad_titles WHERE id=? AND source='msgs'");
             $stmt->execute([$delete_id]);
-            $msgDeleted = true;
+            header('Location: saved-msgs.php?deleted=1');
+            exit;
         } catch (PDOException $e) {
             echo '<div style=\"color:red;font-weight:600;margin-bottom:16px;\">DB ERROR: ' . htmlspecialchars($e->getMessage()) . '</div>';
         }
@@ -33,7 +34,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_id']) && isset($
         try {
             $stmt = $pdo->prepare("UPDATE letterpad_titles SET title=? WHERE id=? AND source='msgs'");
             $stmt->execute([$msg, $edit_id]);
-            $msgUpdated = true;
+            header('Location: saved-msgs.php?updated=1');
+            exit;
         } catch (PDOException $e) {
             echo '<div style=\"color:red;font-weight:600;margin-bottom:16px;\">DB ERROR: ' . htmlspecialchars($e->getMessage()) . '</div>';
         }
@@ -46,7 +48,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['msg']) && empty($_POS
         try {
             $stmt = $pdo->prepare("INSERT INTO letterpad_titles (title, source, created_at) VALUES (?, 'msgs', NOW())");
             $stmt->execute([$msg]);
-            $msgSaved = true;
+            header('Location: saved-msgs.php?saved=1');
+            exit;
         } catch (PDOException $e) {
             echo '<div style=\"color:red;font-weight:600;margin-bottom:16px;\">DB ERROR: ' . htmlspecialchars($e->getMessage()) . '</div>';
         }
@@ -95,15 +98,17 @@ try {
     </style>
 </head>
 <body>
+<?php include __DIR__ . '/../includes/top-menu.php'; ?>
 <div class="container">
+    <a href="booking-slots.php" style="display:inline-block;margin-bottom:18px;padding:8px 22px;background:#007bff;color:#fff;border-radius:8px;font-weight:600;text-decoration:none;">&larr; Back to Booking Slots</a>
     <h1>Saved Messages</h1>
-    <?php if ($msgSaved): ?>
+    <?php if (isset($_GET['saved'])): ?>
         <div style="color:green;font-weight:600;margin-bottom:16px;">Message saved.</div>
     <?php endif; ?>
-    <?php if ($msgUpdated): ?>
+    <?php if (isset($_GET['updated'])): ?>
         <div style="color:green;font-weight:600;margin-bottom:16px;">Message updated.</div>
     <?php endif; ?>
-    <?php if ($msgDeleted): ?>
+    <?php if (isset($_GET['deleted'])): ?>
         <div style="color:green;font-weight:600;margin-bottom:16px;">Message deleted.</div>
     <?php endif; ?>
     <form method="post" onsubmit="return saveRichMsg();">
