@@ -37,8 +37,21 @@ h1 { color: #800000; margin-bottom: 18px; }
 <div class="admin-container">
     <h1>Booking Slots</h1>
     <a href="saved-msgs.php" target="_blank" style="background:#007bff;color:#fff;padding:8px 22px;border:none;border-radius:8px;font-weight:600;margin-bottom:18px;float:right;display:inline-block;text-decoration:none;">Saved Msgs</a>
-    <form method="post" style="background:#fffbe7;padding:18px 20px;border-radius:12px;max-width:500px;margin-bottom:28px;box-shadow:0 2px 8px #e0bebe22;">
+    <?php
+    // Fetch saved messages from letterpad_titles where source='msgs'
+    $savedMsgs = $pdo->query("SELECT id, title FROM letterpad_titles WHERE source='msgs' ORDER BY created_at DESC")->fetchAll(PDO::FETCH_ASSOC);
+    ?>
+    <form method="post" style="background:#fffbe7;padding:18px 20px;border-radius:12px;max-width:600px;margin-bottom:28px;box-shadow:0 2px 8px #e0bebe22;">
         <h2 style="color:#800000;font-size:1.2em;margin-bottom:12px;">Block Appointment Date</h2>
+        <div style="margin-bottom:12px;">
+            <label for="savedMsgSelect" style="font-weight:600;color:#800000;">Insert Saved Message:</label><br>
+            <select id="savedMsgSelect" style="width:100%;padding:8px 10px;border-radius:6px;border:1px solid #ccc;font-size:1em;max-width:100%;margin-top:4px;">
+                <option value="">-- Select a saved message --</option>
+                <?php foreach ($savedMsgs as $msg): ?>
+                    <option value="<?= htmlspecialchars($msg['title']) ?>"><?= strip_tags($msg['title']) ?></option>
+                <?php endforeach; ?>
+            </select>
+        </div>
         <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center;">
             <div style="flex:1;min-width:140px;">
                 <label>Block Date</label><br>
@@ -46,13 +59,27 @@ h1 { color: #800000; margin-bottom: 18px; }
             </div>
             <div style="flex:2;min-width:180px;">
                 <label>Message (optional)</label><br>
-                <input type="text" name="msg" maxlength="255" placeholder="Reason or message for this block" style="padding:6px 10px;width:100%;">
+                <textarea name="msg" maxlength="255" placeholder="Reason or message for this block" style="padding:10px 12px;width:100%;min-height:70px;max-height:200px;font-size:1.1em;border-radius:8px;"></textarea>
             </div>
             <div style="align-self:flex-end;">
                 <button type="submit" style="background:#800000;color:#fff;padding:8px 22px;border:none;border-radius:8px;font-weight:600;">Block Date</button>
             </div>
         </div>
     </form>
+    <script>
+    // When a saved message is selected, fill the textarea
+    document.addEventListener('DOMContentLoaded', function() {
+        var select = document.getElementById('savedMsgSelect');
+        var msgBox = document.querySelector('textarea[name="msg"]');
+        if (select && msgBox) {
+            select.addEventListener('change', function() {
+                if (this.value) {
+                    msgBox.value = this.value.replace(/<[^>]+>/g, ''); // Remove HTML tags for plain text
+                }
+            });
+        }
+    });
+    </script>
 
     <?php
     // Handle form submission
