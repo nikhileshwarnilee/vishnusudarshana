@@ -85,6 +85,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
+
 /* ============================================================
     DASHBOARD STATISTICS (Optional)
    ============================================================ */
@@ -142,6 +143,16 @@ $stmt = $pdo->prepare("
 ");
 $stmt->execute();
 $completedAppointments = (int)$stmt->fetchColumn();
+
+// Failed Appointments (from pending_payments, same logic as failed-appointments.php)
+$stmt = $pdo->prepare("SELECT id, customer_details, form_data FROM pending_payments WHERE category = 'appointment'");
+$stmt->execute();
+$failedRows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+$failedAppointmentsCount = 0;
+foreach ($failedRows as $row) {
+    // Optionally parse JSON fields if you want to filter further in the future
+    $failedAppointmentsCount++;
+}
 
 /* ============================================================
     FETCH UNACCEPTED APPOINTMENT DATES (DATE(created_at))
@@ -526,6 +537,10 @@ h1 {
     <div class="summary-card">
         <div class="summary-count"><?= $totalAppointments ?></div>
         <div class="summary-label">Total Appointments</div>
+    </div>
+    <div class="summary-card">
+        <div class="summary-count"><?= $failedAppointmentsCount ?></div>
+        <div class="summary-label">Failed</div>
     </div>
 </div>
 

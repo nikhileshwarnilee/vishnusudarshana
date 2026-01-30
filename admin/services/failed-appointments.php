@@ -2,6 +2,16 @@
 session_start();
 require_once __DIR__ . '/../../config/db.php';
 
+// Handle delete action
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_id'])) {
+    $deleteId = (int)$_POST['delete_id'];
+    $stmt = $pdo->prepare("DELETE FROM pending_payments WHERE id = ? LIMIT 1");
+    $stmt->execute([$deleteId]);
+    header('Location: failed-appointments.php?deleted=1');
+    exit;
+}
+
+
 // Fetch all failed appointments from pending_payments table
 
 $stmt = $pdo->prepare("SELECT * FROM pending_payments WHERE category = 'appointment' ORDER BY created_at DESC");
@@ -300,6 +310,7 @@ h1 {
                 <th>Payment Status</th>
                 <th>Service Status</th>
                 <th>Notes</th>
+                <th>Delete</th>
             </tr>
         </thead>
         <tbody>
@@ -353,6 +364,12 @@ h1 {
                     <td><span class="status-badge payment-paid">Failed</span></td>
                     <td><span class="status-badge status-received">Unaccepted</span></td>
                     <td><?= htmlspecialchars($notes) ?></td>
+                    <td>
+                        <form method="POST" onsubmit="return confirm('Are you sure you want to delete this failed appointment?');" style="display:inline;">
+                            <input type="hidden" name="delete_id" value="<?= (int)$a['id'] ?>">
+                            <button type="submit" class="action-btn btn-accept" style="background:#dc3545; color:#fff; border:none; padding:6px 14px; border-radius:6px; font-weight:600;">Delete</button>
+                        </form>
+                    </td>
                 </tr>
             <?php endforeach; ?>
         </tbody>
