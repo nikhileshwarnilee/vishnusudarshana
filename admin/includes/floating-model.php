@@ -18,7 +18,7 @@ function showFloatingModal(content) {
     document.getElementById('floatingModal').style.display = 'block';
 }
 function openFloatingPopup() {
-    window.open(window.location.origin + '/admin/popup-floating.php', 'FloatingPopup', 'width=600,height=600,scrollbars=yes,resizable=yes');
+    window.open(window.location.origin + '/vishnusudarshana/vishnusudarshana/admin/popup-floating.php', 'FloatingPopup', 'width=600,height=600,scrollbars=yes,resizable=yes');
 }
 </script>
 <!-- Usage: Call showFloatingModal('Your content here') from anywhere -->

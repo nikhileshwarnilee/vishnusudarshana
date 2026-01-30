@@ -7,7 +7,7 @@ $action = $_REQUEST['action'] ?? '';
 
 if ($action === 'list') {
     try {
-        $stmt = $pdo->query('SELECT id, title FROM letterpad_titles ORDER BY title ASC');
+        $stmt = $pdo->query("SELECT id, title FROM letterpad_titles WHERE source IS NULL OR source = '' ORDER BY title ASC");
         $titles = $stmt->fetchAll(PDO::FETCH_ASSOC);
         echo json_encode(['success' => true, 'titles' => $titles]);
     } catch (Exception $e) {
@@ -35,8 +35,8 @@ if ($action === 'add') {
         $stmt = $pdo->prepare('INSERT INTO letterpad_titles (title) VALUES (?)');
         $stmt->execute([$title]);
 
-        // Get updated options HTML
-        $optionsStmt = $pdo->query('SELECT id, title FROM letterpad_titles ORDER BY title ASC');
+        // Get updated options HTML (only titles with source NULL or empty)
+        $optionsStmt = $pdo->query("SELECT id, title FROM letterpad_titles WHERE source IS NULL OR source = '' ORDER BY title ASC");
         $optionsHtml = '<option value=""></option>';
         foreach ($optionsStmt as $row) {
             $id = htmlspecialchars($row['id']);
@@ -72,8 +72,8 @@ if ($action === 'edit') {
         $stmt = $pdo->prepare('UPDATE letterpad_titles SET title = ? WHERE id = ?');
         $stmt->execute([$title, $id]);
 
-        // Get updated options HTML
-        $optionsStmt = $pdo->query('SELECT id, title FROM letterpad_titles ORDER BY title ASC');
+        // Get updated options HTML (only titles with source NULL or empty)
+        $optionsStmt = $pdo->query("SELECT id, title FROM letterpad_titles WHERE source IS NULL OR source = '' ORDER BY title ASC");
         $optionsHtml = '<option value=""></option>';
         foreach ($optionsStmt as $row) {
             $rid = htmlspecialchars($row['id']);
@@ -99,8 +99,8 @@ if ($action === 'delete') {
         $stmt = $pdo->prepare('DELETE FROM letterpad_titles WHERE id = ?');
         $stmt->execute([$id]);
 
-        // Get updated options HTML
-        $optionsStmt = $pdo->query('SELECT id, title FROM letterpad_titles ORDER BY title ASC');
+        // Get updated options HTML (only titles with source NULL or empty)
+        $optionsStmt = $pdo->query("SELECT id, title FROM letterpad_titles WHERE source IS NULL OR source = '' ORDER BY title ASC");
         $optionsHtml = '<option value=""></option>';
         foreach ($optionsStmt as $row) {
             $rid = htmlspecialchars($row['id']);

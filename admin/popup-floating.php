@@ -25,7 +25,6 @@
 
         <?php
         require_once __DIR__ . '/../config/db.php';
-        // Dropdown: only blank source
         $stmt = $pdo->query("SELECT id, title FROM letterpad_titles WHERE source IS NULL OR source = '' ORDER BY title ASC");
         $optionsHtml = '<option value=""></option>';
         foreach ($stmt as $row) {
@@ -33,9 +32,6 @@
             $title = htmlspecialchars($row['title']);
             $optionsHtml .= "<option value=\"$id\">$title</option>";
         }
-
-        // Manage titles: only non-blank source
-        $manageTitles = $pdo->query("SELECT id, title, source FROM letterpad_titles WHERE source IS NOT NULL AND source != '' ORDER BY title ASC")->fetchAll(PDO::FETCH_ASSOC);
         ?>
 
         <div id="rtSections"></div>
@@ -47,30 +43,6 @@
         </div>
 
         <div style="color:#444; font-size:1.1em; margin-top:18px;">This is a new popup window opened from the floating icon.<br><br>You can customize this page as needed.</div>
-
-    <!-- Manage Titles (non-blank source) -->
-    <div style="margin-top:40px;">
-        <h3 style="color:#800000;">Manage Titles (Non-Blank Source)</h3>
-        <table style="width:100%;border-collapse:collapse;background:#fff;box-shadow:0 2px 12px #e0bebe22;border-radius:12px;font-size:1em;">
-            <thead>
-                <tr style="background:#f9eaea;color:#800000;">
-                    <th style="padding:8px 6px;">#</th>
-                    <th style="padding:8px 6px;">Title</th>
-                    <th style="padding:8px 6px;">Source</th>
-                </tr>
-            </thead>
-            <tbody>
-            <?php if (empty($manageTitles)): ?>
-                <tr><td colspan="3" style="text-align:center;color:#777;padding:18px;">No managed titles found.</td></tr>
-            <?php else: foreach ($manageTitles as $i => $row): ?>
-                <tr>
-                    <td><?= $i+1 ?></td>
-                    <td><?= htmlspecialchars($row['title']) ?></td>
-                    <td><?= htmlspecialchars($row['source']) ?></td>
-                </tr>
-            <?php endforeach; endif; ?>
-            </tbody>
-        </table>
     </div>
 
     <script>
@@ -434,13 +406,16 @@
                     return;
                 }
 
-                if (data.titles.length === 0) {
+                // Only show titles where source is null or empty
+                const filtered = data.titles.filter(t => !t.source || t.source === '' || t.source === null);
+
+                if (filtered.length === 0) {
                     titlesList.innerHTML = '<p style="padding:12px;color:#666;">No titles yet. Add one above!</p>';
                     return;
                 }
 
                 let html = '';
-                data.titles.forEach(title => {
+                filtered.forEach(title => {
                     html += `
                         <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border-bottom:1px solid #eee;">
                             <span style="flex:1;">${escapeHtml(title.title)}</span>
