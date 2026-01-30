@@ -17,19 +17,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_id'])) {
     header('Location: ' . $_SERVER['PHP_SELF']);
     exit;
 }
-require_once __DIR__ . '/../includes/top-menu.php';
+// --- POST HANDLING BLOCK (must be before any output) ---
+$msg = '';
 $currentUserId = $_SESSION['user_id'] ?? 1;
 $isAdmin = ($currentUserId == 1);
 $users = [];
-if ($isAdmin) {
-    $users = $pdo->query('SELECT id, name FROM users ORDER BY name ASC')->fetchAll();
-} else {
-    $stmt = $pdo->prepare('SELECT id, name FROM users WHERE id = ?');
-    $stmt->execute([$currentUserId]);
-    $users = $stmt->fetchAll();
-}
-
-$msg = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Only handle add/edit if not delete
     if (!isset($_POST['delete_id'])) {
@@ -42,20 +34,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $status = $_POST['status'] ?? 'tentative';
         $assigned_user_ids = isset($_POST['assigned_user_id']) ? (array)$_POST['assigned_user_id'] : [$currentUserId];
         $edit_id = isset($_POST['edit_id']) ? (int)$_POST['edit_id'] : 0;
-        // Handle fix schedule (allow multiple assigned users)
+        // Handle fix schedule (duplicate for each user, delete original, remove setup as source)
         if (isset($_POST['fix_id'])) {
             $fix_id = (int)$_POST['fix_id'];
-            $row = $pdo->query("SELECT multi_assigned_user_id, title, description, schedule_date, end_date, start_time, end_time, status FROM admin_schedule WHERE id = " . $fix_id)->fetch(PDO::FETCH_ASSOC);
+            $row = $pdo->query("SELECT * FROM admin_schedule WHERE id = " . $fix_id)->fetch(PDO::FETCH_ASSOC);
             $multi_ids = json_decode($row['multi_assigned_user_id'] ?? '[]', true);
             if (is_array($multi_ids) && count($multi_ids) > 0) {
-                $pdo->prepare("UPDATE admin_schedule SET source_page = NULL WHERE id = ?")->execute([$fix_id]);
                 require_once __DIR__ . '/../../helpers/send_whatsapp.php';
                 // Fetch all assigned users' names and mobiles
                 $in = str_repeat('?,', count($multi_ids) - 1) . '?';
-                $userStmt = $pdo->prepare("SELECT name, mobile FROM users WHERE id IN ($in)");
+                $userStmt = $pdo->prepare("SELECT id, name, mobile FROM users WHERE id IN ($in)");
                 $userStmt->execute($multi_ids);
                 $usersData = $userStmt->fetchAll(PDO::FETCH_ASSOC);
                 foreach ($usersData as $ud) {
+                    // Duplicate schedule for each user
+                    $stmt = $pdo->prepare("INSERT INTO admin_schedule (title, description, schedule_date, end_date, start_time, end_time, status, assigned_user_id, multi_assigned_user_id, created_by, created_at, source_page) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NULL)");
+                    $stmt->execute([
+                        $row['title'],
+                        $row['description'],
+                        $row['schedule_date'],
+                        $row['end_date'],
+                        $row['start_time'],
+                        $row['end_time'],
+                        $row['status'],
+                        $ud['id'],
+                        json_encode([$ud['id']]),
+                        $row['created_by']
+                    ]);
                     if (!empty($ud['mobile'])) {
                         sendWhatsAppMessage(
                             $ud['mobile'],
@@ -71,7 +76,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         );
                     }
                 }
-                $msg = '<div style="color:green;font-weight:600;margin-bottom:16px;">Schedule fixed: now marked as normal schedule. WhatsApp message sent to all assigned users.</div>';
+                // Delete the original schedule entry
+                $pdo->prepare("DELETE FROM admin_schedule WHERE id = ?")->execute([$fix_id]);
+                // Redirect to avoid resubmission on refresh
+                header('Location: ' . $_SERVER['PHP_SELF'] . '?fixed=1');
+                exit;
             } else {
                 $msg = '<div style="color:#b30000;font-weight:600;margin-bottom:16px;">No assigned users found for this schedule.</div>';
             }
@@ -82,42 +91,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($edit_id) {
                 $stmt = $pdo->prepare("UPDATE admin_schedule SET title=?, description=?, schedule_date=?, end_date=?, start_time=?, end_time=?, status=?, assigned_user_id=?, multi_assigned_user_id=?, source_page=? WHERE id=?");
                 $stmt->execute([$title, $description, $start_date, $end_date, $start_time, $end_time, $status, $assigned_user_id, $multi_assigned_user_id, 'setup', $edit_id]);
-                $msg = '<div style=\"color:green;font-weight:600;margin-bottom:16px;\">Schedule entry updated successfully.</div>';
+                // Redirect to avoid resubmission on refresh
+                header('Location: ' . $_SERVER['PHP_SELF'] . '?updated=1');
+                exit;
             } else {
                 $stmt = $pdo->prepare("INSERT INTO admin_schedule (title, description, schedule_date, end_date, start_time, end_time, status, assigned_user_id, multi_assigned_user_id, created_by, created_at, source_page) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?)");
                 $stmt->execute([$title, $description, $start_date, $end_date, $start_time, $end_time, $status, $assigned_user_id, $multi_assigned_user_id, $currentUserId, 'setup']);
-                $msg = '<div style=\"color:green;font-weight:600;margin-bottom:16px;\">Schedule entry added and WhatsApp message sent.</div>';
+                // Redirect to avoid resubmission on refresh
+                header('Location: ' . $_SERVER['PHP_SELF'] . '?added=1');
+                exit;
             }
-            // WhatsApp logic: send to all selected users
-            require_once __DIR__ . '/../../helpers/send_whatsapp.php';
-            $userIds = array_map('intval', $assigned_user_ids);
-            if (count($userIds) > 0) {
-                $in = str_repeat('?,', count($userIds) - 1) . '?';
-                $userStmt = $pdo->prepare("SELECT name, mobile FROM users WHERE id IN ($in)");
-                $userStmt->execute($userIds);
-                $usersData = $userStmt->fetchAll(PDO::FETCH_ASSOC);
-                foreach ($usersData as $ud) {
-                    if (!empty($ud['mobile'])) {
-                        sendWhatsAppMessage(
-                            $ud['mobile'],
-                            'Schedule Manager Marathi',
-                            [
-                                'name' => $ud['name'],
-                                'date_range' => ($start_date === $end_date ? $start_date : ($start_date . ' to ' . $end_date)),
-                                'title' => $title,
-                                'time_range' => $start_time . ' - ' . $end_time,
-                                'status' => ucfirst($status),
-                                'description' => $description
-                            ]
-                        );
-                    }
-                }
-            }
+            // WhatsApp logic removed: only send on fix schedule, not on creation or update
         } else {
-            $msg = '<div style=\"color:#b30000;font-weight:600;margin-bottom:16px;\">All fields except description/end date are required.</div>';
+            $msg = '<div style="color:#b30000;font-weight:600;margin-bottom:16px;">All fields except description/end date are required.</div>';
         }
     }
 }
+if ($isAdmin) {
+    $users = $pdo->query('SELECT id, name FROM users ORDER BY name ASC')->fetchAll();
+} else {
+    $stmt = $pdo->prepare('SELECT id, name FROM users WHERE id = ?');
+    $stmt->execute([$currentUserId]);
+    $users = $stmt->fetchAll();
+}
+require_once __DIR__ . '/../includes/top-menu.php';
 ?>
 <!DOCTYPE html>
 <html lang="en">
