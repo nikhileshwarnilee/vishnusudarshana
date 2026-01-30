@@ -25,6 +25,7 @@
 
         <?php
         require_once __DIR__ . '/../config/db.php';
+        // Dropdown: only blank source
         $stmt = $pdo->query("SELECT id, title FROM letterpad_titles WHERE source IS NULL OR source = '' ORDER BY title ASC");
         $optionsHtml = '<option value=""></option>';
         foreach ($stmt as $row) {
@@ -32,6 +33,9 @@
             $title = htmlspecialchars($row['title']);
             $optionsHtml .= "<option value=\"$id\">$title</option>";
         }
+
+        // Manage titles: only non-blank source
+        $manageTitles = $pdo->query("SELECT id, title, source FROM letterpad_titles WHERE source IS NOT NULL AND source != '' ORDER BY title ASC")->fetchAll(PDO::FETCH_ASSOC);
         ?>
 
         <div id="rtSections"></div>
