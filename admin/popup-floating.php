@@ -47,6 +47,30 @@
         </div>
 
         <div style="color:#444; font-size:1.1em; margin-top:18px;">This is a new popup window opened from the floating icon.<br><br>You can customize this page as needed.</div>
+
+    <!-- Manage Titles (non-blank source) -->
+    <div style="margin-top:40px;">
+        <h3 style="color:#800000;">Manage Titles (Non-Blank Source)</h3>
+        <table style="width:100%;border-collapse:collapse;background:#fff;box-shadow:0 2px 12px #e0bebe22;border-radius:12px;font-size:1em;">
+            <thead>
+                <tr style="background:#f9eaea;color:#800000;">
+                    <th style="padding:8px 6px;">#</th>
+                    <th style="padding:8px 6px;">Title</th>
+                    <th style="padding:8px 6px;">Source</th>
+                </tr>
+            </thead>
+            <tbody>
+            <?php if (empty($manageTitles)): ?>
+                <tr><td colspan="3" style="text-align:center;color:#777;padding:18px;">No managed titles found.</td></tr>
+            <?php else: foreach ($manageTitles as $i => $row): ?>
+                <tr>
+                    <td><?= $i+1 ?></td>
+                    <td><?= htmlspecialchars($row['title']) ?></td>
+                    <td><?= htmlspecialchars($row['source']) ?></td>
+                </tr>
+            <?php endforeach; endif; ?>
+            </tbody>
+        </table>
     </div>
 
     <script>
