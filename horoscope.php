@@ -855,7 +855,7 @@ try {
         const luckyColor = response.lucky_color || '';
         const luckyColorCode = response.lucky_color_code || '#c5a3ff';
         const luckyNumber = response.lucky_number || '';
-        const mainMessage = botResponse.status?.split_response || botResponse.overall?.split_response || botResponse.general?.split_response || 'Have a balanced day ahead.';
+        const mainMessage = botResponse.total_score?.split_response || 'Have a balanced day ahead.';
 
         // Build hero summary without score ring
         let html = `
@@ -866,7 +866,6 @@ try {
                     <div class="hero-badges">
                         <span class="pill"><span class="color-dot" style="background:${htmlspecialchars(luckyColorCode)}"></span><strong>${translations[lang].luckyColor}</strong> ${htmlspecialchars(luckyColor)}</span>
                         <span class="pill number-pill"><strong>${translations[lang].luckyNumbers}</strong> ${htmlspecialchars(Array.isArray(luckyNumber) ? luckyNumber.join(', ') : luckyNumber)}</span>
-                        <span class="pill number-pill"><strong>${translations[lang].totalScore}</strong> ${Math.round(totalScore)}/100</span>
                     </div>
                 </div>
             </div>
