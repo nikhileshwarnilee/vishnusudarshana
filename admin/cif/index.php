@@ -152,6 +152,11 @@ if ($selected_client_id > 0) {
 <title>CIF Panel</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
+<!-- Responsive Tables CSS -->
+<link rel="stylesheet" href="/admin/includes/responsive-tables.css">
+<!-- Responsive Tables JS -->
+<script src="/admin/includes/responsive-tables.js"></script>
+
 <!-- Admin panel styles (copied from appointments) -->
 <style>
 body {
@@ -433,19 +438,73 @@ $(function() {
                                         <input type="hidden" name="update_enquiry_notes" value="1">
                                         <input type="hidden" name="enquiry_id" value="<?= (int)$enq['id'] ?>">
                                         <input type="hidden" name="client_id" value="<?= (int)$selected_client['id'] ?>">
-                                        <div>
-                                            <button type="submit" style="padding:6px 18px;background:#28a745;color:#fff;border:none;border-radius:6px;font-weight:600;">Save</button>
-                                            <a href="index.php?client_id=<?= (int)$selected_client['id'] ?>" style="padding:6px 18px;background:#6c757d;color:#fff;border:none;border-radius:6px;font-weight:600;text-decoration:none;">Cancel</a>
+                                        <div class="enquiry-edit-actions-responsive">
+                                            <button type="submit" class="btn btn-save">Save</button>
+                                            <a href="index.php?client_id=<?= (int)$selected_client['id'] ?>" class="btn btn-cancel">Cancel</a>
                                         </div>
+                                    <style>
+                                    @media (max-width: 600px) {
+                                        .enquiry-edit-actions-responsive {
+                                            display: flex;
+                                            flex-direction: column;
+                                            gap: 8px;
+                                            align-items: stretch;
+                                        }
+                                        .enquiry-edit-actions-responsive .btn {
+                                            width: 100%;
+                                            box-sizing: border-box;
+                                            text-align: center;
+                                            padding: 12px 0;
+                                            font-size: 1.1em;
+                                        }
+                                    }
+                                    .enquiry-edit-actions-responsive .btn-save {
+                                        padding: 6px 18px;
+                                        background: #28a745;
+                                        color: #fff;
+                                        border: none;
+                                        border-radius: 6px;
+                                        font-weight: 600;
+                                        margin-bottom: 0;
+                                        text-decoration: none;
+                                    }
+                                    .enquiry-edit-actions-responsive .btn-cancel {
+                                        padding: 6px 18px;
+                                        background: #6c757d;
+                                        color: #fff;
+                                        border: none;
+                                        border-radius: 6px;
+                                        font-weight: 600;
+                                        text-decoration: none;
+                                        display: inline-block;
+                                    }
+                                    </style>
                                     </form>
                                 <?php else: ?>
                                     <?= nl2br(htmlspecialchars($enq['notes'])) ?>
                                 <?php endif; ?>
                             </td>
                             <td style="padding:10px;">
-                                <a href="index.php?client_id=<?= (int)$selected_client['id'] ?>&edit_enquiry=<?= (int)$enq['id'] ?>" style="padding:6px 14px;background:#007bff;color:#fff;border:none;border-radius:6px;font-weight:600;text-decoration:none;">Edit</a>
-                                <a href="index.php?client_id=<?= (int)$selected_client['id'] ?>&delete_enquiry=<?= (int)$enq['id'] ?>" onclick="return confirm('Delete this enquiry?');" style="padding:6px 14px;background:#dc3545;color:#fff;border:none;border-radius:6px;font-weight:600;text-decoration:none;">Delete</a>
+                                <div class="enquiry-actions-responsive">
+                                    <a href="index.php?client_id=<?= (int)$selected_client['id'] ?>&edit_enquiry=<?= (int)$enq['id'] ?>" class="btn btn-edit">Edit</a>
+                                    <a href="index.php?client_id=<?= (int)$selected_client['id'] ?>&delete_enquiry=<?= (int)$enq['id'] ?>" onclick="return confirm('Delete this enquiry?');" class="btn btn-delete">Delete</a>
+                                </div>
                             </td>
+                        <style>
+                        @media (max-width: 600px) {
+                            .enquiry-actions-responsive {
+                                display: flex;
+                                flex-direction: column;
+                                gap: 6px;
+                                align-items: stretch;
+                            }
+                            .enquiry-actions-responsive .btn {
+                                width: 100%;
+                                box-sizing: border-box;
+                                text-align: center;
+                            }
+                        }
+                        </style>
                         </tr>
                         <?php endforeach; ?>
                     </tbody>
@@ -468,32 +527,34 @@ $(function() {
             <?php else: ?>
                 <!-- Client Details View (read-only) -->
                 <div id="clientDetailsView" style="margin-bottom:18px;">
-                    <table style="width:100%;border-collapse:collapse;background:#fff;box-shadow:0 2px 8px #e0bebe22;border-radius:12px;overflow:hidden;">
+                    <div class="table-responsive-wrapper">
+                    <table style="table-layout:auto;">
                         <thead>
                             <tr style="background:#f9eaea;color:#800000;">
-                                <th style="padding:12px 10px;">Name</th>
-                                <th style="padding:12px 10px;">Mobile</th>
-                                <th style="padding:12px 10px;">Address</th>
-                                <th style="padding:12px 10px;">DOB</th>
-                                <th style="padding:12px 10px;">Birth Time</th>
-                                <th style="padding:12px 10px;">Birth Place</th>
-                                <th style="padding:12px 10px;">Actions</th>
+                                <th>Name</th>
+                                <th>Mobile</th>
+                                <th>Address</th>
+                                <th>DOB</th>
+                                <th>Birth Time</th>
+                                <th>Birth Place</th>
+                                <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr>
-                                <td style="padding:10px;"> <?= htmlspecialchars($selected_client['name']) ?> </td>
-                                <td style="padding:10px;"> <?= htmlspecialchars($selected_client['mobile']) ?> </td>
-                                <td style="padding:10px;"> <?= htmlspecialchars($selected_client['address']) ?> </td>
-                                <td style="padding:10px;"> <?= htmlspecialchars($selected_client['dob']) ?> </td>
-                                <td style="padding:10px;"> <?= htmlspecialchars($selected_client['birth_time']) ?> </td>
-                                <td style="padding:10px;"> <?= htmlspecialchars($selected_client['birth_place']) ?> </td>
-                                <td style="padding:10px;">
-                                    <button type="button" id="editClientBtn" style="padding:6px 14px;background:#007bff;color:#fff;border:none;border-radius:6px;font-weight:600;cursor:pointer;">Edit</button>
+                                <td><?= htmlspecialchars($selected_client['name']) ?></td>
+                                <td><?= htmlspecialchars($selected_client['mobile']) ?></td>
+                                <td><?= htmlspecialchars($selected_client['address']) ?></td>
+                                <td><?= htmlspecialchars($selected_client['dob']) ?></td>
+                                <td><?= htmlspecialchars($selected_client['birth_time']) ?></td>
+                                <td><?= htmlspecialchars($selected_client['birth_place']) ?></td>
+                                <td>
+                                    <button type="button" id="editClientBtn" class="btn btn-edit">Edit</button>
                                 </td>
                             </tr>
                         </tbody>
                     </table>
+                    </div>
                 </div>
                 <!-- Client Details Edit Form (hidden by default) -->
                 <div id="clientEditForm" style="display:none;margin-bottom:18px;">

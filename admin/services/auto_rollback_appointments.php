@@ -5,6 +5,7 @@
 
 require_once __DIR__ . '/../../config/db.php';
 
+
 try {
     $pdo->beginTransaction();
     // Find all appointments to be rolled back first
@@ -13,7 +14,6 @@ try {
     $toRollback = $find->fetchAll(PDO::FETCH_ASSOC);
 
     $updatedAt = date('Y-m-d H:i:s');
-    // Update only those found above
     if (!empty($toRollback)) {
         $ids = array_column($toRollback, 'id');
         $placeholders = implode(',', array_fill(0, count($ids), '?'));
@@ -26,22 +26,26 @@ try {
         require_once __DIR__ . '/../../helpers/send_whatsapp.php';
         foreach ($toRollback as $row) {
             try {
-                sendWhatsAppNotification('appointment_cancelled_admin', [
+                sendWhatsAppNotification('appointment_missed', [
                     'mobile' => $row['mobile'],
                     'customer_name' => $row['customer_name'],
+                    'category' => 'Appointment',
+                    'products_list' => '',
                     'tracking_id' => $row['tracking_id']
                 ]);
             } catch (Throwable $e) {
-                error_log('WhatsApp cancel failed: ' . $e->getMessage());
+                error_log('WhatsApp missed failed: ' . $e->getMessage());
             }
         }
-        error_log("Auto-rollback executed: $count records reverted");
+        $msg = "Auto-rollback executed: $count records reverted.";
     } else {
         $count = 0;
-        error_log("Auto-rollback executed: 0 records reverted");
+        $msg = "Auto-rollback executed: 0 records reverted.";
     }
     $pdo->commit();
+    echo $msg;
 } catch (Throwable $e) {
     $pdo->rollBack();
-    error_log('Auto-rollback failed: ' . $e->getMessage());
+    $msg = 'Auto-rollback failed: ' . $e->getMessage();
+    echo $msg;
 }

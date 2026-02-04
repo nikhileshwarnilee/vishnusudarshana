@@ -404,7 +404,7 @@ function sendWhatsAppNotification($eventType, $data) {
                 'APPOINTMENT_MISSED',
                 [
                     'name' => $data['customer_name'],
-                    'tracking_code' => $data['tracking_id']
+                    'tracking_id' => $data['tracking_id']
                 ]
             );
             case 'appointment_completed_admin':
@@ -418,6 +418,16 @@ function sendWhatsAppNotification($eventType, $data) {
                     ]
                 );
             
+        case 'appointment_missed':
+            return sendWhatsAppMessage(
+                $data['mobile'],
+                'APPOINTMENT_MISSED',
+                [
+                    'name' => $data['name'] ?? $data['customer_name'] ?? '',
+                    'tracking_id' => $data['tracking_id'] ?? ''
+                ]
+            );
+
         case 'appointment_cancelled_admin':
             return sendWhatsAppMessage(
                 $data['mobile'],
@@ -426,7 +436,8 @@ function sendWhatsAppNotification($eventType, $data) {
                     'name' => $data['name'] ?? $data['customer_name'] ?? '',
                     'tracking_id' => $data['tracking_id'] ?? ''
                 ]
-            );
+            );  
+            
         case 'admin_appointment_scheduled':
             return sendWhatsAppMessage(
                 $data['mobile'],

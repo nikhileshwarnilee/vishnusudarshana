@@ -40,7 +40,7 @@ define('WHATSAPP_TEMPLATES', [
     'APPOINTMENT_REMINDER' => 'Website Service Request Confirmation',
     'APPOINTMENT_COMPLETED' => 'Website Service Request Confirmation',
     'APPOINTMENT_CANCELLED' => 'Website Service Request Confirmation',
-    'APPOINTMENT_MISSED' => 'Website Service Request Confirmation',
+    'APPOINTMENT_MISSED' => 'Appointment Missed',
     
     // Admin Appointment Scheduled - New template for admin-triggered acceptance
     'APPOINTMENT_SCHEDULED' => 'Appointment Scheduled',
@@ -100,10 +100,9 @@ define('WHATSAPP_TEMPLATE_VARIABLES', [
     'APPOINTMENT_BOOKED_PAYMENT_SUCCESS' => ['name', 'category', 'products_list', 'tracking_url'],
     'APPOINTMENT_RECEIVED' => ['name', 'category', 'products_list', 'tracking_url'],
     'APPOINTMENT_ACCEPTED' => ['name', 'category', 'products_list', 'tracking_url'],
-    'APPOINTMENT_MISSED' => ['name', 'category', 'products_list', 'tracking_url'],
+    'APPOINTMENT_MISSED' => ['name', 'tracking_id'],
     'APPOINTMENT_REMINDER' => ['name', 'category', 'products_list', 'tracking_url'],
     'APPOINTMENT_COMPLETED' => ['name', 'category', 'products_list', 'tracking_url'],
-    'APPOINTMENT_CANCELLED' => ['name', 'category', 'products_list', 'tracking_url'],
     
     // Admin Appointment Scheduled - 6 parameters: name, tracking_id, date, from_time, to_time, tracking_url
     'APPOINTMENT_SCHEDULED' => ['name', 'tracking_id', 'appointment_date', 'from_time', 'to_time', 'tracking_url'],

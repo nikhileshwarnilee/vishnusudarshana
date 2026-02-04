@@ -83,8 +83,53 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit;
         }
     }
-}
+    if (isset($_POST['action']) && $_POST['action'] === 'mark_completed') {
+        $appointmentIds = $_POST['appointment_ids'] ?? [];
+        if (!empty($appointmentIds)) {
+            $placeholders = implode(',', array_fill(0, count($appointmentIds), '?'));
+            $sql = "
+                UPDATE service_requests
+                SET service_status = 'Completed',
+                    updated_at = NOW()
+                WHERE id IN ($placeholders)
+                  AND category_slug = 'appointment'
+                  AND payment_status IN ('Paid', 'Free')
+            ";
+            $params = $appointmentIds;
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute($params);
 
+            // WhatsApp: Appointment Completed (for each appointment)
+            require_once __DIR__ . '/../../helpers/send_whatsapp.php';
+            foreach ($appointmentIds as $id) {
+                $st = $pdo->prepare("SELECT customer_name, mobile, tracking_id, form_data FROM service_requests WHERE id = ?");
+                $st->execute([$id]);
+                $row = $st->fetch(PDO::FETCH_ASSOC);
+                if ($row && $row['mobile']) {
+                    try {
+                        // Use today's date as completion date
+                        $completionDate = date('d F Y');
+
+                        sendWhatsAppNotification(
+                            'appointment_completed_admin',
+                            [
+                                'mobile' => $row['mobile'],
+                                'name' => $row['customer_name'],
+                                'tracking_id' => $row['tracking_id'],
+                                'appointment_date' => $completionDate
+                            ]
+                        );
+                    } catch (Throwable $e) {
+                        error_log('WhatsApp completed failed: ' . $e->getMessage());
+                    }
+                }
+            }
+
+            header('Location: appointments.php?success=completed');
+            exit;
+        }
+    }
+}
 
 /* ============================================================
     DASHBOARD STATISTICS (Optional)
@@ -515,7 +560,34 @@ h1 {
 <?php include __DIR__ . '/../includes/top-menu.php'; ?>
 
 <div class="admin-container">
-<h1>Appointment Management</h1>
+<h1 style="display:flex;align-items:center;gap:12px;">Appointment Management
+    <button id="refreshRollbackBtn" title="Run Auto Rollback" style="background:none;border:none;cursor:pointer;padding:0;margin-left:8px;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none" viewBox="0 0 24 24"><path fill="#007bff" d="M12 6V3l-5 5 5 5V8c3.31 0 6 2.69 6 6 0 1.3-.42 2.5-1.13 3.47l1.46 1.46A7.938 7.938 0 0020 14c0-4.42-3.58-8-8-8zm-6.87 2.53L3.67 7.07A7.938 7.938 0 004 10c0 4.42 3.58 8 8 8v3l5-5-5-5v3c-3.31 0-6-2.69-6-6 0-1.3.42-2.5 1.13-3.47z"/></svg>
+        <span style="font-size:0.9em;color:#007bff;vertical-align:middle;">Refresh</span>
+    </button>
+</h1>
+<div id="rollbackMsg" style="margin-bottom:12px;font-weight:600;color:#007bff;"></div>
+</script>
+<script>
+document.getElementById('refreshRollbackBtn').onclick = function() {
+    var btn = this;
+    btn.disabled = true;
+    btn.style.opacity = 0.6;
+    document.getElementById('rollbackMsg').textContent = 'Running auto-rollback...';
+    fetch('auto_rollback_appointments.php')
+        .then(r => r.text())
+        .then(msg => {
+            document.getElementById('rollbackMsg').textContent = msg || 'Auto-rollback completed.';
+            btn.disabled = false;
+            btn.style.opacity = 1;
+        })
+        .catch(() => {
+            document.getElementById('rollbackMsg').textContent = 'Error running auto-rollback.';
+            btn.disabled = false;
+            btn.style.opacity = 1;
+        });
+};
+</script>
 
 <div class="summary-cards">
     <div class="summary-card">
@@ -560,6 +632,27 @@ h1 {
         <div class="action-bar" id="actionBar-<?= htmlspecialchars($date) ?>">
             <span class="action-bar-label"><span id="selectedCount-<?= htmlspecialchars($date) ?>">0</span> appointment(s) selected</span>
             <button class="action-btn btn-accept" onclick="openAcceptModal('<?= htmlspecialchars($date) ?>')">Accept Selected</button>
+            <button class="action-btn btn-completed" onclick="submitMarkCompleted('<?= htmlspecialchars($date) ?>')" style="background:#007bff;color:#fff;">Mark Completed</button>
+        <script>
+        function submitMarkCompleted(date) {
+            if (!selectedAppointmentsByDate[date] || selectedAppointmentsByDate[date].length === 0) return;
+            const ids = selectedAppointmentsByDate[date].map(a => a.id);
+            if (!confirm(`Mark ${ids.length} appointment(s) as completed?`)) return;
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '';
+            form.innerHTML = `<input type="hidden" name="action" value="mark_completed">`;
+            ids.forEach(id => {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'appointment_ids[]';
+                input.value = id;
+                form.appendChild(input);
+            });
+            document.body.appendChild(form);
+            form.submit();
+        }
+        </script>
         </div>
         <table class="service-table">
             <thead>
