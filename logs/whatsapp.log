@@ -1,0 +1,4 @@
+[2026-02-04 16:55:15] TO: 919922550797 | TEMPLATE: Appointment Scheduled | STATUS: SUCCESS | DETAILS: {"success":"true","submitted_message_id":"1ba82230-256c-45fc-aa56-97f739b6c1c0"}
+[2026-02-04 17:06:46] TO: 919922550797 | TEMPLATE: Appointment Cancelled | STATUS: SUCCESS | DETAILS: {"success":"true","submitted_message_id":"94e5a2fb-8a50-4e45-af99-7392fd2d07b5"}
+[2026-02-04 17:10:01] TO: 919922550797 | TEMPLATE: Appointment Scheduled | STATUS: SUCCESS | DETAILS: {"success":"true","submitted_message_id":"8f096767-2bb3-4d82-aabc-31e63a045027"}
+[2026-02-04 17:11:27] TO: 919922550797 | TEMPLATE: Appointment Cancelled | STATUS: SUCCESS | DETAILS: {"success":"true","submitted_message_id":"4179b9cd-06d6-4971-b6d7-351e5f4eaa8e"}

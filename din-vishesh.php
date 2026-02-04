@@ -462,7 +462,7 @@ try {
         const displayDiv = document.getElementById('festival-display');
         
         if (!festivalByLang[lang]) {
-            displayDiv.innerHTML = '<div class="no-data">No festival data available for ' + lang + '</div>';
+            displayDiv.innerHTML = '<div class="no-data">No festivals for today</div>';
             return;
         }
         

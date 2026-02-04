@@ -7,53 +7,40 @@ require_once __DIR__ . '/../../config/db.php';
 
 try {
     $pdo->beginTransaction();
-    $sql = "
-        UPDATE service_requests
-        SET service_status = 'Received',
-            form_data = JSON_SET(
-                form_data,
-                '$.assigned_date', NULL,
-                '$.assigned_from_time', NULL,
-                '$.assigned_to_time', NULL
-            ),
-            updated_at = :updated_at
-        WHERE category_slug = 'appointment'
-          AND payment_status = 'Paid'
-          AND service_status = 'Accepted'
-          AND COALESCE(JSON_UNQUOTE(JSON_EXTRACT(form_data,'$.assigned_date')), '') <> ''
-          AND JSON_UNQUOTE(JSON_EXTRACT(form_data,'$.assigned_date')) < CURDATE()
-          AND service_status != 'Completed'
-    ";
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute();
-    $count = $stmt->rowCount();
+    // Find all appointments to be rolled back first
+    $find = $pdo->prepare("SELECT id, customer_name, mobile, tracking_id FROM service_requests WHERE category_slug = 'appointment' AND payment_status = 'Paid' AND service_status = 'Accepted' AND COALESCE(JSON_UNQUOTE(JSON_EXTRACT(form_data,'$.assigned_date')), '') <> '' AND JSON_UNQUOTE(JSON_EXTRACT(form_data,'$.assigned_date')) < CURDATE() AND service_status != 'Completed'");
+    $find->execute();
+    $toRollback = $find->fetchAll(PDO::FETCH_ASSOC);
 
-    // WhatsApp: Appointment Missed (for each reverted appointment)
-    if ($count > 0) {
-        $select = $pdo->prepare("SELECT id, customer_name, mobile, tracking_id FROM service_requests WHERE category_slug = 'appointment' AND payment_status = 'Paid' AND service_status = 'Received' AND COALESCE(JSON_UNQUOTE(JSON_EXTRACT(form_data,'$.assigned_date')), '') IS NULL AND updated_at >= DATE_SUB(NOW(), INTERVAL 1 MINUTE)");
-            $updatedAt = date('Y-m-d H:i:s');
-            // Use $updatedAt in update queries
-        $select->execute();
-        $rows = $select->fetchAll(PDO::FETCH_ASSOC);
+    $updatedAt = date('Y-m-d H:i:s');
+    // Update only those found above
+    if (!empty($toRollback)) {
+        $ids = array_column($toRollback, 'id');
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        $sql = "UPDATE service_requests SET service_status = 'Received', form_data = JSON_SET(form_data, '$.assigned_date', NULL, '$.assigned_from_time', NULL, '$.assigned_to_time', NULL), updated_at = ? WHERE id IN ($placeholders)";
+        $params = array_merge([$updatedAt], $ids);
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
+        $count = $stmt->rowCount();
+
         require_once __DIR__ . '/../../helpers/send_whatsapp.php';
-        foreach ($rows as $row) {
+        foreach ($toRollback as $row) {
             try {
-                sendWhatsAppMessage(
-                    $row['mobile'],
-                    'appointment_missed',
-                    'en',
-                    [
-                        'name' => $row['customer_name'],
-                        'tracking_id' => $row['tracking_id']
-                    ]
-                );
+                sendWhatsAppNotification('appointment_cancelled_admin', [
+                    'mobile' => $row['mobile'],
+                    'customer_name' => $row['customer_name'],
+                    'tracking_id' => $row['tracking_id']
+                ]);
             } catch (Throwable $e) {
-                error_log('WhatsApp missed failed: ' . $e->getMessage());
+                error_log('WhatsApp cancel failed: ' . $e->getMessage());
             }
         }
+        error_log("Auto-rollback executed: $count records reverted");
+    } else {
+        $count = 0;
+        error_log("Auto-rollback executed: 0 records reverted");
     }
     $pdo->commit();
-    error_log("Auto-rollback executed: $count records reverted");
 } catch (Throwable $e) {
     $pdo->rollBack();
     error_log('Auto-rollback failed: ' . $e->getMessage());
