@@ -499,7 +499,9 @@ include 'header.php'; ?>
                         html += `<tr class="cat-row"><td colspan="2">${catTitle}</td></tr>`;
                         for (const key of section.keys) {
                             let val = (cleanedFlat && cleanedFlat[key] !== undefined && cleanedFlat[key] !== null) ? cleanedFlat[key] : "";
-                            if (Array.isArray(val)) val = JSON.stringify(val);
+                            if (Array.isArray(val)) val = val.join(', ');
+                            // Show blank if Masa Adhik Maasa is false (boolean or string)
+                            if (key === 'Masa Adhik Maasa' && (val === false || val === 'false')) val = '';
                             html += `<tr><td class="panchang-key">${t[key] || key}</td><td class="panchang-value">${val}</td></tr>`;
                         }
                     }

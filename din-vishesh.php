@@ -420,43 +420,39 @@ try {
         // Handle arrays
         if (Array.isArray(val)) {
             if (val.length === 0) return '';
-            // If array contains simple values, join with bullet points
-            if (val.every(item => typeof item !== 'object')) {
+            // If array contains only primitives, join with bullet points
+            if (val.every(item => typeof item !== 'object' || item === null)) {
                 return val.map(item => `• ${item}`).join('<br>');
             }
-            // If array contains objects, format each object
-            return val.map(item => {
-                if (typeof item === 'object') {
-                    return Object.entries(item)
-                        .map(([k, v]) => styleKey(k, v))
-                        .join('<br>');
-                }
-                return item;
-            }).join('<br><br>');
+            // If array contains objects, format each object recursively
+            return val.map(item => formatValue(item)).join('<br><br>');
         }
-        
-        // Handle objects
-        if (typeof val === 'object') {
+
+        // Handle objects (but not null)
+        if (typeof val === 'object' && val !== null) {
+            // If object is Date, format as string
+            if (val instanceof Date) return val.toLocaleString();
+            // If object has custom toString, use it
+            if (typeof val.toString === 'function' && val.toString !== Object.prototype.toString) {
+                return val.toString();
+            }
+            // Recursively format each key-value pair
             return Object.entries(val)
-                .map(([k, v]) => styleKey(k, v))
+                .map(([k, v]) => styleKey(k, formatValue(v)))
                 .join('<br>');
         }
-        
+
         // Handle strings that might be JSON
         if (typeof val === 'string') {
             try {
                 const parsed = JSON.parse(val);
-                if (Array.isArray(parsed)) {
-                    return formatValue(parsed);
-                }
-                if (typeof parsed === 'object') {
-                    return formatValue(parsed);
-                }
+                return formatValue(parsed);
             } catch (e) {
                 // Not JSON, return as is
             }
         }
-        
+
+        // Fallback: convert to string
         return String(val);
     }
     
