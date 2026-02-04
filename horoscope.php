@@ -852,7 +852,8 @@ try {
         const response = data.response || {};
         const botResponse = response.bot_response || {};
         const totalScore = response.total_score || 0;
-        const luckyColor = response.lucky_color || '#c5a3ff';
+        const luckyColor = response.lucky_color || '';
+        const luckyColorCode = response.lucky_color_code || '#c5a3ff';
         const luckyNumber = response.lucky_number || '';
         const mainMessage = botResponse.status?.split_response || botResponse.overall?.split_response || botResponse.general?.split_response || 'Have a balanced day ahead.';
 
@@ -863,7 +864,7 @@ try {
                     <h2>${translations[lang].todaysGuidance}</h2>
                     <p class="hero-message">${htmlspecialchars(mainMessage)}</p>
                     <div class="hero-badges">
-                        <span class="pill"><span class="color-dot" style="background:${htmlspecialchars(luckyColor)}"></span><strong>${translations[lang].luckyColor}</strong> ${htmlspecialchars(luckyColor)}</span>
+                        <span class="pill"><span class="color-dot" style="background:${htmlspecialchars(luckyColorCode)}"></span><strong>${translations[lang].luckyColor}</strong> ${htmlspecialchars(luckyColor)}</span>
                         <span class="pill number-pill"><strong>${translations[lang].luckyNumbers}</strong> ${htmlspecialchars(Array.isArray(luckyNumber) ? luckyNumber.join(', ') : luckyNumber)}</span>
                         <span class="pill number-pill"><strong>${translations[lang].totalScore}</strong> ${Math.round(totalScore)}/100</span>
                     </div>
