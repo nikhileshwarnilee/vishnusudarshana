@@ -9,7 +9,7 @@ require_once __DIR__ . '/../../config/db.php';
 try {
     $pdo->beginTransaction();
     // Find all appointments to be rolled back first
-    $find = $pdo->prepare("SELECT id, customer_name, mobile, tracking_id FROM service_requests WHERE category_slug = 'appointment' AND payment_status = 'Paid' AND service_status = 'Accepted' AND COALESCE(JSON_UNQUOTE(JSON_EXTRACT(form_data,'$.assigned_date')), '') <> '' AND JSON_UNQUOTE(JSON_EXTRACT(form_data,'$.assigned_date')) < CURDATE() AND service_status != 'Completed'");
+    $find = $pdo->prepare("SELECT id, customer_name, mobile, tracking_id FROM service_requests WHERE category_slug = 'appointment' AND payment_status IN ('Paid', 'Free') AND service_status = 'Accepted' AND COALESCE(JSON_UNQUOTE(JSON_EXTRACT(form_data,'$.assigned_date')), '') <> '' AND JSON_UNQUOTE(JSON_EXTRACT(form_data,'$.assigned_date')) < CURDATE() AND service_status != 'Completed'");
     $find->execute();
     $toRollback = $find->fetchAll(PDO::FETCH_ASSOC);
 

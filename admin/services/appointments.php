@@ -580,6 +580,9 @@ document.getElementById('refreshRollbackBtn').onclick = function() {
             document.getElementById('rollbackMsg').textContent = msg || 'Auto-rollback completed.';
             btn.disabled = false;
             btn.style.opacity = 1;
+            setTimeout(function() {
+                window.location.reload();
+            }, 2200);
         })
         .catch(() => {
             document.getElementById('rollbackMsg').textContent = 'Error running auto-rollback.';
