@@ -275,6 +275,9 @@ try {
     <div class="din-container">
         <div class="din-header">
             <h1 class="din-title">Today's Festivals and Its Significance</h1>
+            <div style="font-size:0.95em;color:#555;margin-top:2px;margin-bottom:10px;text-align:left;">
+                <?php echo date('l, d F Y'); ?>
+            </div>
             <div class="din-lang-select">
                 <select id="dinVisheshLang" onchange="displayFestival()">
                     <option value="en">English (English)</option>

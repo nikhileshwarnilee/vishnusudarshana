@@ -545,6 +545,9 @@ try {
         <!-- Header with Title and Language Selector -->
         <div class="horoscope-header">
             <h1 class="horoscope-title">Your Daily Horoscope</h1>
+            <div style="font-size:0.95em;color:#555;margin-top:2px;margin-bottom:10px;text-align:left;">
+                <?php echo date('l, d F Y'); ?>
+            </div>
             <div class="header-controls">
                 <div class="horoscope-lang-select">
                     <select id="horoscopeLang" onchange="displayHoroscope()">
