@@ -1,0 +1,12 @@
+# FCM Notification Log
+# This file will contain push notification send history
+# Format: [Timestamp] Status: Message
+
+[2026-02-05 19:44:52] [INFO] New notification request - Title: 'Test', Message: 'tes'
+[2026-02-05 19:44:52] [INFO] Generating OAuth 2.0 access token...
+[2026-02-05 19:44:53] [SUCCESS] Access token generated successfully
+[2026-02-05 19:44:53] [WARNING] No active FCM tokens found in database
+[2026-02-05 19:48:28] [INFO] New notification request - Title: 'Nikhil', Message: 'Nik'
+[2026-02-05 19:48:28] [INFO] Generating OAuth 2.0 access token...
+[2026-02-05 19:48:29] [SUCCESS] Access token generated successfully
+[2026-02-05 19:48:29] [WARNING] No active FCM tokens found in database

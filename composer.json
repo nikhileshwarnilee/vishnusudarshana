@@ -1,5 +1,6 @@
 {
     "require": {
-        "razorpay/razorpay": "^2.9"
+        "razorpay/razorpay": "^2.9",
+        "google/auth": "^1.50"
     }
 }
