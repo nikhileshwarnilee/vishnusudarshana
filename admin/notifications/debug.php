@@ -405,7 +405,7 @@ require_once __DIR__ . '/../../config/db.php';
             console.log('Sending test notification to device token...');
 
             try {
-                const response = await fetch('/admin/notifications/send.php', {
+                const response = await fetch('./send.php', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
