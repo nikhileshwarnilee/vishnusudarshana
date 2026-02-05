@@ -81,6 +81,7 @@ define('WHATSAPP_TEMPLATES', [
 
     // Schedule blocked notification (admin created blocks)
     'SCHEDULE_BLOCKED' => 'Schedule Manager Marathi'
+    , 'ADMIN_SERVICES_ALERT' => 'Admin Service Alert'
 ]);
 
 /**
@@ -143,6 +144,7 @@ define('WHATSAPP_TEMPLATE_VARIABLES', [
 
     // Schedule blocked notification - 6 params: name, date_range, title, time_range, status, description
     'SCHEDULE_BLOCKED' => ['name', 'date_range', 'title', 'time_range', 'status', 'description']
+    , 'ADMIN_SERVICES_ALERT' => ['customer_name', 'customer_mobile', 'category', 'products_list', 'tracking_id']
 ]);
 
 /**

@@ -331,6 +331,18 @@ function sendWhatsAppNotification($eventType, $data) {
     
     // Map event types to templates and extract variables
     switch ($eventType) {
+        case 'admin_services_alert':
+            return sendWhatsAppMessage(
+                $data['admin_mobile'],
+                'ADMIN_SERVICES_ALERT',
+                [
+                    'customer_name' => $data['customer_name'] ?? $data['name'] ?? '',
+                    'customer_mobile' => $data['customer_mobile'] ?? '',
+                    'category' => $data['category'] ?? '',
+                    'products_list' => $data['products_list'] ?? '',
+                    'tracking_id' => $data['tracking_id'] ?? $data['tracking_url'] ?? ''
+                ]
+            );
         case 'appointment_booked_payment_success':
             return sendWhatsAppMessage(
                 $data['mobile'],

@@ -296,6 +296,18 @@ try {
                 'products_list' => $productsList,
                 'tracking_url' => $tracking_id  // Ensure tracking_id is passed
             ]);
+                // Send WhatsApp alert to admin
+                // Use ADMIN_WHATSAPP from config/admin_config.php
+                require_once __DIR__ . '/config/admin_config.php';
+                $adminMobile = defined('ADMIN_WHATSAPP') ? ADMIN_WHATSAPP : (defined('WHATSAPP_BUSINESS_PHONE') ? WHATSAPP_BUSINESS_PHONE : '918975224444');
+                sendWhatsAppNotification('admin_services_alert', [
+                    'admin_mobile' => $adminMobile,
+                    'customer_name' => $customerName ?: 'Customer',
+                    'customer_mobile' => $mobile,
+                    'category' => 'Appointment',
+                    'products_list' => $productsList,
+                    'tracking_id' => $tracking_id
+                ]);
             
             if (!$whatsappResult['success']) {
                 error_log('WhatsApp notification failed for appointment ' . $tracking_id . ': ' . $whatsappResult['message']);
@@ -317,6 +329,17 @@ try {
                 'products_list' => $productsList,
                 'tracking_url' => $tracking_id  // Ensure tracking_id is passed
             ]);
+                // Send WhatsApp alert to admin
+                require_once __DIR__ . '/config/admin_config.php';
+                $adminMobile = defined('ADMIN_WHATSAPP') ? ADMIN_WHATSAPP : (defined('WHATSAPP_BUSINESS_PHONE') ? WHATSAPP_BUSINESS_PHONE : '918975224444');
+                sendWhatsAppNotification('admin_services_alert', [
+                    'admin_mobile' => $adminMobile,
+                    'customer_name' => $customerName ?: 'Customer',
+                    'customer_mobile' => $mobile,
+                    'category' => $serviceCategoryDisplay,
+                    'products_list' => $productsList,
+                    'tracking_id' => $tracking_id
+                ]);
             
             if (!$whatsappResult['success']) {
                 error_log('WhatsApp notification failed for service ' . $tracking_id . ': ' . $whatsappResult['message']);
