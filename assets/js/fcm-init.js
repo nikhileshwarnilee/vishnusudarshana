@@ -9,7 +9,13 @@
     return;
   }
 
-  // Firebase configuration (placeholders)
+  // Check if Firebase SDK is loaded
+  if (typeof firebase === 'undefined') {
+    console.error('[FCM] Firebase SDK not loaded. Make sure Firebase scripts are loaded before this script.');
+    return;
+  }
+
+  // Firebase configuration
   const firebaseConfig = {
     apiKey: 'AIzaSyAl8eZocTQsAVzXa9IOppZIovNerPi1txg',
     authDomain: 'vishnusudarshana-cfcf7.firebaseapp.com',
@@ -24,11 +30,23 @@
     firebase.initializeApp(firebaseConfig);
     console.log('[FCM] Firebase initialized successfully');
   } catch (e) {
-    // Ignore if already initialized
-    console.log('[FCM] Firebase already initialized:', e.message);
+    if (e.code === 'app/duplicate-app') {
+      console.log('[FCM] Firebase already initialized');
+    } else {
+      console.error('[FCM] Firebase initialization failed:', e.message);
+      return;
+    }
   }
 
-  const messaging = firebase.messaging();
+  // Get messaging instance
+  let messaging;
+  try {
+    messaging = firebase.messaging();
+    console.log('[FCM] Firebase Messaging instance created');
+  } catch (e) {
+    console.error('[FCM] Failed to create messaging instance:', e.message);
+    return;
+  }
 
   function sendTokenToServer(token) {
     console.log('[FCM] Sending token to server:', token.substring(0, 50) + '...');

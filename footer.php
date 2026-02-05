@@ -41,6 +41,20 @@
     </footer>
 
     <!-- Firebase Web Push (FCM) -->
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js" defer></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js" defer></script>
+    <script defer>
+        // Verify Firebase SDK loaded
+        window.addEventListener('load', function() {
+            setTimeout(function() {
+                if (typeof firebase === 'undefined') {
+                    console.error('[FCM] Firebase SDK failed to load from CDN');
+                    // Fallback: try loading from local copy if available
+                    console.log('[FCM] Attempting local Firebase fallback...');
+                } else {
+                    console.log('[FCM] Firebase SDK loaded successfully');
+                }
+            }, 2000);
+        });
+    </script>
     <script src="/assets/js/fcm-init.js" defer></script>

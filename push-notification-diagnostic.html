@@ -203,37 +203,92 @@
                 addResult('Notification Permission', 'WARNING', '⚠️ Notifications not asked yet. A prompt should appear when you allow/deny.');
             }
 
-            // Check 5: Firebase
+            // Check 5: Firebase SDK from CDN (with test load)
+            const firebaseAppUrl = 'https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js';
+            fetch(firebaseAppUrl, { method: 'HEAD' })
+                .then(response => {
+                    if (response.ok) {
+                        addResult('Firebase CDN (App)', 'PASS', '✓ Firebase App SDK accessible from CDN');
+                    } else {
+                        addResult('Firebase CDN (App)', 'WARNING', '⚠️ Firebase CDN returned: ' + response.status);
+                    }
+                })
+                .catch(err => {
+                    addResult('Firebase CDN (App)', 'FAIL', '❌ Cannot reach Firebase CDN: ' + err.message + '. Check network/firewall.');
+                });
+
+            // Check 6: Firebase Messaging SDK from CDN
+            const firebaseMessagingUrl = 'https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js';
+            fetch(firebaseMessagingUrl, { method: 'HEAD' })
+                .then(response => {
+                    if (response.ok) {
+                        addResult('Firebase CDN (Messaging)', 'PASS', '✓ Firebase Messaging SDK accessible from CDN');
+                    } else {
+                        addResult('Firebase CDN (Messaging)', 'WARNING', '⚠️ Firebase CDN returned: ' + response.status);
+                    }
+                })
+                .catch(err => {
+                    addResult('Firebase CDN (Messaging)', 'FAIL', '❌ Cannot reach Firebase CDN: ' + err.message);
+                });
+
+            // Check 7: Firebase SDK loaded in page
             if (typeof firebase !== 'undefined') {
-                addResult('Firebase SDK', 'PASS', '✓ Firebase SDK loaded');
+                addResult('Firebase SDK (Loaded)', 'PASS', '✓ Firebase SDK loaded in page');
                 
                 // Check Firebase Messaging
                 if (typeof firebase.messaging === 'function') {
-                    addResult('Firebase Messaging', 'PASS', '✓ Firebase Messaging available');
+                    addResult('Firebase Messaging (Available)', 'PASS', '✓ Firebase Messaging available');
                 } else {
-                    addResult('Firebase Messaging', 'FAIL', '❌ Firebase Messaging not available');
+                    addResult('Firebase Messaging (Available)', 'FAIL', '❌ Firebase Messaging not available. SDK may not be fully loaded.');
                 }
             } else {
-                addResult('Firebase SDK', 'FAIL', '❌ Firebase SDK not loaded. Check that scripts loaded correctly.');
+                addResult('Firebase SDK (Loaded)', 'FAIL', '❌ Firebase SDK not loaded in page. Check:' +
+                    '\n• Are the Firebase script tags in footer.php?' +
+                    '\n• Is there a network/firewall issue blocking gstatic.com?' +
+                    '\n• Check Network tab in F12 for failed script loads');
             }
 
-            // Check 6: Service Worker Registration
-            navigator.serviceWorker.getRegistrations().then(registrations => {
-                if (registrations.length > 0) {
-                    addResult('Service Worker Registration', 'PASS', `✓ ${registrations.length} Service Worker(s) registered`);
-                } else {
-                    addResult('Service Worker Registration', 'WARNING', '⚠️ No Service Workers registered yet. Reload page.');
-                }
-            });
+            // Check 8: Service Worker File
+            fetch('/firebase-messaging-sw.js', { method: 'HEAD' })
+                .then(response => {
+                    if (response.ok) {
+                        addResult('Service Worker File', 'PASS', '✓ firebase-messaging-sw.js file exists');
+                    } else {
+                        addResult('Service Worker File', 'FAIL', '❌ Service Worker file returned: ' + response.status);
+                    }
+                })
+                .catch(err => {
+                    addResult('Service Worker File', 'FAIL', '❌ Cannot find firebase-messaging-sw.js: ' + err.message);
+                });
 
-            // Check 7: localStorage
+            // Check 9: Service Worker Registration
+            setTimeout(() => {
+                navigator.serviceWorker.getRegistrations().then(registrations => {
+                    if (registrations.length > 0) {
+                        const swDetails = registrations.map(r => 'Scope: ' + r.scope).join(', ');
+                        addResult('Service Worker Registration', 'PASS', `✓ ${registrations.length} Service Worker(s) registered. ${swDetails}`);
+                    } else {
+                        addResult('Service Worker Registration', 'FAIL', '❌ No Service Workers registered! ' +
+                            'This means firebase-messaging-sw.js failed to register. ' +
+                            'Check Network tab in F12 for errors. ' +
+                            'Possible causes:' +
+                            '\n• Service worker file 404' +
+                            '\n• HTTPS required (check Protocol)' +
+                            '\n• Service worker has syntax errors');
+                    }
+                }).catch(err => {
+                    addResult('Service Worker Registration', 'FAIL', '❌ Error checking registrations: ' + err.message);
+                });
+            }, 2000);
+
+            // Check 10: localStorage
             if (typeof(Storage) !== 'undefined') {
                 addResult('Browser Storage (localStorage)', 'PASS', '✓ localStorage available');
             } else {
                 addResult('Browser Storage (localStorage)', 'FAIL', '❌ localStorage not available');
             }
 
-            // Check 8: Browser Info
+            // Check 11: Browser Info
             const userAgent = navigator.userAgent;
             let browser = 'Unknown';
             if (userAgent.indexOf('Chrome') > -1 && userAgent.indexOf('Chromium') === -1) browser = 'Chrome';
