@@ -112,6 +112,7 @@ $menu = [
         'submenu' => [
             'Blogs Management' => $baseUrl . '/admin/website/blogs-management.php',
             'Update Site Data' => $baseUrl . '/admin/website/update-site-data.php',
+            'Notifications' => $baseUrl . '/admin/notifications/index.php',
         ]
     ],
 

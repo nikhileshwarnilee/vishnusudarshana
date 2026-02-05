@@ -24,6 +24,16 @@
             font-family: 'Marcellus', serif !important;
         }
     </style>
+
+    <!-- Firebase Cloud Messaging Configuration -->
+    <script src="<?php echo (strpos($_SERVER['PHP_SELF'], '/forms/') === false ? 'config/firebase-config.js' : '../config/firebase-config.js'); ?>"></script>
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-messaging-compat.js"></script>
+    
+    <!-- Firebase Cloud Messaging Service -->
+    <script src="<?php echo (strpos($_SERVER['PHP_SELF'], '/forms/') === false ? 'assets/js/firebase-messaging.js' : '../assets/js/firebase-messaging.js'); ?>" defer></script>
 </head>
 <body class="body-homepage">
         <script>
