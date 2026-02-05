@@ -191,6 +191,16 @@ require_once __DIR__ . '/../../config/db.php';
             border-bottom: none;
         }
     </style>
+
+    <!-- Firebase Configuration -->
+    <script src="../../config/firebase-config.js"></script>
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-messaging-compat.js"></script>
+    
+    <!-- Firebase Cloud Messaging Service -->
+    <script src="../../assets/js/firebase-messaging.js"></script>
 </head>
 <body>
     <div class="container">
@@ -368,8 +378,16 @@ require_once __DIR__ . '/../../config/db.php';
             box.innerHTML = '<span class="loading"></span> Loading...';
 
             try {
-                const response = await fetch('<?php echo $_SERVER['PHP_SELF']; ?>?action=get_tokens');
-                const data = await response.json();
+                const response = await fetch('./debug.php?action=get_tokens');
+                const text = await response.text();
+                
+                // Try to parse as JSON
+                let data;
+                try {
+                    data = JSON.parse(text);
+                } catch (e) {
+                    throw new Error('Invalid JSON response. Response: ' + text.substring(0, 100));
+                }
 
                 if (data.success && data.tokens.length > 0) {
                     let html = `<p>Found <strong>${data.tokens.length}</strong> token(s):</p><div class="db-tokens">`;
@@ -418,7 +436,14 @@ require_once __DIR__ . '/../../config/db.php';
                     })
                 });
 
-                const data = await response.json();
+                const text = await response.text();
+                let data;
+                try {
+                    data = JSON.parse(text);
+                } catch (e) {
+                    throw new Error('Invalid JSON response: ' + text.substring(0, 100));
+                }
+
                 if (data.success) {
                     responseDiv.innerHTML = `<div class="status-success"><strong>✓ Notification sent!</strong><br>Check your notifications<br><pre style="font-size: 0.8em; margin-top: 10px; white-space: pre-wrap;">${JSON.stringify(data, null, 2)}</pre></div>`;
                     console.log('✓ Notification sent successfully');
