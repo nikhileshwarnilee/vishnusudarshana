@@ -39,3 +39,8 @@
             <p style="font-size:0.97em;color:#800000;margin-top:6px;">Designed and Developed by <a href="https://www.contysi.com" target="_blank" style="color:#800000;text-decoration:underline;">ContySi</a></p>
         </div>
     </footer>
+
+    <!-- Firebase Web Push (FCM) -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js"></script>
+    <script src="/assets/js/fcm-init.js" defer></script>
