@@ -231,6 +231,16 @@ require_once __DIR__ . '/../../config/db.php';
             <button onclick="requestPermission()">📢 Request Permission</button>
         </div>
 
+        <!-- System Diagnostics -->
+        <div class="card">
+            <h2>System Diagnostics</h2>
+            <p style="margin-bottom: 15px; color: #666; font-size: 0.9em;">
+                Check if database tables are created and properly configured
+            </p>
+            <div id="diagnostics-status">Loading diagnostics...</div>
+            <button onclick="checkDiagnostics()">🔍 Check System Status</button>
+        </div>
+
         <!-- Database Tokens -->
         <div class="card">
             <h2>Database Tokens (fcm_tokens table)</h2>
@@ -372,6 +382,63 @@ require_once __DIR__ . '/../../config/db.php';
             }
         }
 
+        // Check system diagnostics
+        async function checkDiagnostics() {
+            const box = document.getElementById('diagnostics-status');
+            box.innerHTML = '<span class="loading"></span> Checking...';
+            console.log('Checking system diagnostics...');
+
+            try {
+                const response = await fetch('./diagnostics.php');
+                const data = await response.json();
+
+                if (data.success) {
+                    const diag = data.diagnostics;
+                    let html = '<div class="status-box status-info">';
+                    
+                    // Database connection
+                    html += `<div><strong>Database Connected:</strong> ${diag.database_connected ? '✓ Yes' : '✗ No'}</div>`;
+                    
+                    // Tables status
+                    html += '<div style="margin-top: 10px;"><strong>Database Tables:</strong><ul style="list-style: none; margin-top: 5px; margin-left: 0;">';
+                    for (const [tableName, status] of Object.entries(diag.tables)) {
+                        if (!tableName.includes('_columns')) {
+                            const isOk = status.includes('EXISTS');
+                            html += `<li style="color: ${isOk ? '#155724' : '#721c24'}; margin-bottom: 5px;">${tableName}: ${status}</li>`;
+                        }
+                    }
+                    html += '</ul></div>';
+                    
+                    // Token count
+                    if (diag.token_count !== undefined) {
+                        html += `<div style="margin-top: 10px;"><strong>Stored Tokens:</strong> ${diag.token_count}</div>`;
+                    }
+                    
+                    // Service account
+                    html += `<div style="margin-top: 10px;"><strong>Service Account:</strong> ${diag.service_account_file}</div>`;
+                    
+                    // Recommendations
+                    if (diag.recommendations && diag.recommendations.length > 0) {
+                        html += '<div style="margin-top: 10px; background: #fff3cd; border: 1px solid #ffc107; padding: 10px; border-radius: 4px;"><strong style="color: #856404;">⚠️ Recommendations:</strong><ul style="margin: 5px 0 0 20px;">';
+                        diag.recommendations.forEach(rec => {
+                            html += `<li style="color: #856404;">${rec}</li>`;
+                        });
+                        html += '</ul></div>';
+                    }
+                    
+                    html += '</div>';
+                    box.innerHTML = html;
+                    console.log('✓ Diagnostics loaded');
+                } else {
+                    box.innerHTML = `<div class="status-error"><strong>Error:</strong> ${data.message}</div>`;
+                    console.log('✗ Error: ' + data.message);
+                }
+            } catch (error) {
+                box.innerHTML = `<div class="status-error"><strong>Error:</strong> ${error.message}</div>`;
+                console.log('✗ Error: ' + error.message);
+            }
+        }
+
         // Load tokens from database
         async function loadDatabaseTokens() {
             const box = document.getElementById('db-status');
@@ -461,6 +528,7 @@ require_once __DIR__ . '/../../config/db.php';
         document.addEventListener('DOMContentLoaded', () => {
             console.log('FCM Debug Console loaded');
             checkBrowserStatus();
+            checkDiagnostics();
             loadDatabaseTokens();
             setInterval(loadDatabaseTokens, 10000); // Refresh every 10 seconds
         });
