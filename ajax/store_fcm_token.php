@@ -51,7 +51,7 @@ try {
         $insertSQL = "INSERT INTO fcm_tokens (token, user_id, device_id, ip_address, user_agent) 
                       VALUES (?, ?, ?, ?, ?)";
         $insertStmt = mysqli_prepare($connection, $insertSQL);
-        mysqli_stmt_bind_param($insertStmt, 'sissss', $token, $user_id, $device_id, $ip_address, $user_agent);
+        mysqli_stmt_bind_param($insertStmt, 'sisss', $token, $user_id, $device_id, $ip_address, $user_agent);
         $success = mysqli_stmt_execute($insertStmt);
     }
 
