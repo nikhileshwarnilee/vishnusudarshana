@@ -27,17 +27,10 @@
 </head>
 <body class="body-homepage">
         <script>
-        // Register service worker (Firebase messaging + PWA cache)
+        // Register service worker
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', function() {
-                navigator.serviceWorker.register('/firebase-messaging-sw.js')
-                    .then(function(registration) {
-                        console.log('[SW] Service Worker registered successfully:', registration);
-                        window.swRegistration = registration;
-                    })
-                    .catch(function(error) {
-                        console.error('[SW] Service Worker registration failed:', error);
-                    });
+                navigator.serviceWorker.register('/service-worker.js');
             });
         }
         // Show PWA install prompt for new users

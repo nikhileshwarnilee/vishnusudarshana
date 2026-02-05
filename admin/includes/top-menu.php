@@ -121,8 +121,6 @@ $menu = [
             // 'Profile' removed
             'Change Password' => $baseUrl . '/admin/settings/password.php',
             'Users'           => $baseUrl . '/admin/users.php',
-            'Push Notifications' => $baseUrl . '/admin/push-notifications.php',
-            'FCM Monitoring' => $baseUrl . '/admin/fcm-monitoring.php',
         ]
     ],
 
