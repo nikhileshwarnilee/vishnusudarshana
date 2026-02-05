@@ -100,6 +100,8 @@ unset($fields);
                     </select>
                     <input type="text" name="custom_country_code" id="custom_country_code_input" placeholder="+__" style="width:60px;display:none;">
                     <input type="tel" name="mobile" required style="flex:1;">
+                    </div>
+                    <small style="color:#888;display:block;margin-top:4px;">Please enter your WhatsApp number to receive regular updates on your services.</small>
                 </div>
             </div>
             <div class="form-group">
@@ -215,6 +217,7 @@ unset($fields);
                             <input type="text" name="custom_country_code" class="custom_country_code_input" placeholder="+__" style="width:60px;display:none;">
                             <input type="tel" name="mobile" required style="flex:1;">
                         </div>
+                            <small style="color:#888;display:block;margin-top:4px;">Please enter your WhatsApp number to receive regular updates on your services.</small>
                     <?php else: ?>
                         <input type="<?php echo $field['type']; ?>" name="<?php echo $field['name']; ?>" <?php if ($field['required']): ?>required<?php endif; ?> >
                     <?php endif; ?>
@@ -248,6 +251,7 @@ unset($fields);
                             <input type="text" name="custom_country_code" class="custom_country_code_input" placeholder="+__" style="width:60px;display:none;" pattern="^\\+\\d{1,4}$">
                             <input type="tel" name="mobile" required style="flex:1;">
                         </div>
+                            <small style="color:#888;display:block;margin-top:4px;">Please enter your WhatsApp number to receive regular updates on your services.</small>
                     <?php else: ?>
                         <?php if ($field['name'] === 'mobile'): ?>
                             <div style="display:flex;gap:6px;align-items:center;">
@@ -258,6 +262,7 @@ unset($fields);
                                 <input type="text" name="custom_country_code" class="custom_country_code_input" placeholder="+__" style="width:60px;display:none;" pattern="^\\+\\d{1,4}$">
                                 <input type="tel" name="mobile" required style="flex:1;">
                             </div>
+                                <small style="color:#888;display:block;margin-top:4px;">Please enter your WhatsApp number to receive regular updates on your services.</small>
                         <?php else: ?>
                             <input type="<?php echo $field['type']; ?>" name="<?php echo $field['name']; ?>" <?php if (!empty($field['required'])): ?>required<?php endif; ?> >
                         <?php endif; ?>
