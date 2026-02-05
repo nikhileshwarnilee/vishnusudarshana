@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Push Notifications Diagnostic</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: 'Segoe UI', Tahoma, sans-serif; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+            padding: 40px;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 0.95em;
+        }
+        .check-item {
+            padding: 15px;
+            margin: 12px 0;
+            border-radius: 8px;
+            border-left: 4px solid #ddd;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+        }
+        .check-item.pass {
+            background: #d4edda;
+            border-left-color: #28a745;
+        }
+        .check-item.fail {
+            background: #f8d7da;
+            border-left-color: #dc3545;
+        }
+        .check-item.warning {
+            background: #fff3cd;
+            border-left-color: #ffc107;
+        }
+        .check-item.info {
+            background: #d1ecf1;
+            border-left-color: #17a2b8;
+        }
+        .icon {
+            font-size: 1.3em;
+            min-width: 24px;
+            text-align: center;
+        }
+        .check-content {
+            flex: 1;
+        }
+        .check-title {
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+        .check-detail {
+            font-size: 0.9em;
+            color: #666;
+            line-height: 1.5;
+        }
+        .check-item.pass .check-detail { color: #155724; }
+        .check-item.fail .check-detail { color: #721c24; }
+        .check-item.warning .check-detail { color: #856404; }
+        .check-item.info .check-detail { color: #0c5460; }
+        
+        .button-group {
+            margin-top: 30px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 1em;
+            transition: all 0.3s;
+        }
+        .btn-test {
+            background: #800000;
+            color: white;
+        }
+        .btn-test:hover {
+            background: #600000;
+        }
+        .btn-reset {
+            background: #17a2b8;
+            color: white;
+        }
+        .btn-reset:hover {
+            background: #138496;
+        }
+        .section {
+            margin-top: 30px;
+        }
+        .section-title {
+            font-size: 1.1em;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+        .code-block {
+            background: #f5f5f5;
+            padding: 12px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85em;
+            overflow-x: auto;
+            margin: 10px 0;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔔 Push Notifications Diagnostic</h1>
+        <p class="subtitle">This page checks if your browser supports push notifications and why they might not be showing.</p>
+        
+        <div id="results"></div>
+        
+        <div class="button-group">
+            <button class="btn-test" onclick="runDiagnostics()">🔍 Run Diagnostics</button>
+            <button class="btn-reset" onclick="resetPermissions()">🔄 Reset Permissions</button>
+        </div>
+    </div>
+
+    <script>
+        function addResult(title, status, details) {
+            const results = document.getElementById('results');
+            const className = status.toLowerCase();
+            const icons = {
+                pass: '✅',
+                fail: '❌',
+                warning: '⚠️',
+                info: 'ℹ️'
+            };
+            
+            const html = `
+                <div class="check-item ${className}">
+                    <div class="icon">${icons[status.toLowerCase()] || '•'}</div>
+                    <div class="check-content">
+                        <div class="check-title">${title}</div>
+                        <div class="check-detail">${details}</div>
+                    </div>
+                </div>
+            `;
+            results.innerHTML += html;
+        }
+
+        function runDiagnostics() {
+            document.getElementById('results').innerHTML = '';
+            
+            // Check 1: Protocol (HTTPS)
+            if (location.protocol === 'https:') {
+                addResult('Protocol', 'PASS', '✓ Running on HTTPS (required for push notifications)');
+            } else if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
+                addResult('Protocol', 'INFO', '✓ Running on localhost (exception allowed, but use HTTPS in production)');
+            } else {
+                addResult('Protocol', 'FAIL', '❌ Running on HTTP. Push notifications require HTTPS. Current: ' + location.protocol + '//' + location.host);
+            }
+
+            // Check 2: Service Worker Support
+            if ('serviceWorker' in navigator) {
+                addResult('Service Worker Support', 'PASS', '✓ Browser supports Service Workers');
+            } else {
+                addResult('Service Worker Support', 'FAIL', '❌ Browser does not support Service Workers');
+                return;
+            }
+
+            // Check 3: Notification API Support
+            if ('Notification' in window) {
+                addResult('Notification API', 'PASS', '✓ Browser supports Notification API');
+            } else {
+                addResult('Notification API', 'FAIL', '❌ Browser does not support Notification API');
+                return;
+            }
+
+            // Check 4: Notification Permission
+            const permission = Notification.permission;
+            if (permission === 'granted') {
+                addResult('Notification Permission', 'PASS', '✓ Notifications GRANTED. You should see notifications.');
+            } else if (permission === 'denied') {
+                addResult('Notification Permission', 'FAIL', '❌ Notifications DENIED. You need to reset permissions. Click "Reset Permissions" button.');
+            } else if (permission === 'default') {
+                addResult('Notification Permission', 'WARNING', '⚠️ Notifications not asked yet. A prompt should appear when you allow/deny.');
+            }
+
+            // Check 5: Firebase
+            if (typeof firebase !== 'undefined') {
+                addResult('Firebase SDK', 'PASS', '✓ Firebase SDK loaded');
+                
+                // Check Firebase Messaging
+                if (typeof firebase.messaging === 'function') {
+                    addResult('Firebase Messaging', 'PASS', '✓ Firebase Messaging available');
+                } else {
+                    addResult('Firebase Messaging', 'FAIL', '❌ Firebase Messaging not available');
+                }
+            } else {
+                addResult('Firebase SDK', 'FAIL', '❌ Firebase SDK not loaded. Check that scripts loaded correctly.');
+            }
+
+            // Check 6: Service Worker Registration
+            navigator.serviceWorker.getRegistrations().then(registrations => {
+                if (registrations.length > 0) {
+                    addResult('Service Worker Registration', 'PASS', `✓ ${registrations.length} Service Worker(s) registered`);
+                } else {
+                    addResult('Service Worker Registration', 'WARNING', '⚠️ No Service Workers registered yet. Reload page.');
+                }
+            });
+
+            // Check 7: localStorage
+            if (typeof(Storage) !== 'undefined') {
+                addResult('Browser Storage (localStorage)', 'PASS', '✓ localStorage available');
+            } else {
+                addResult('Browser Storage (localStorage)', 'FAIL', '❌ localStorage not available');
+            }
+
+            // Check 8: Browser Info
+            const userAgent = navigator.userAgent;
+            let browser = 'Unknown';
+            if (userAgent.indexOf('Chrome') > -1 && userAgent.indexOf('Chromium') === -1) browser = 'Chrome';
+            else if (userAgent.indexOf('Safari') > -1 && userAgent.indexOf('Chrome') === -1) browser = 'Safari';
+            else if (userAgent.indexOf('Firefox') > -1) browser = 'Firefox';
+            else if (userAgent.indexOf('MSIE') > -1 || userAgent.indexOf('Trident') > -1) browser = 'Internet Explorer';
+            else if (userAgent.indexOf('Edg') > -1) browser = 'Edge';
+            
+            addResult('Browser', 'INFO', `Detected: ${browser}`);
+        }
+
+        function resetPermissions() {
+            // Show instructions
+            alert(`To reset notification permissions:\n\n1. Click the lock icon 🔒 in your address bar\n2. Find "Notifications" or "Permissions"\n3. Click "Reset"\n4. Reload this page\n5. Click "Allow" when prompted`);
+        }
+
+        // Auto-run on page load
+        window.addEventListener('load', runDiagnostics);
+    </script>
+</body>
+</html>
