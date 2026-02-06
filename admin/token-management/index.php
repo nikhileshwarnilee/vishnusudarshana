@@ -46,7 +46,7 @@ include '../includes/top-menu.php';
     <h1 style="text-align:center;">Token Management</h1>
     <form id="tokenForm" method="post" class="token-form-card token-form-grid">
         <label class="form-label">Date:
-            <input type="date" name="token_date" class="form-input" required readonly>
+            <input type="date" name="token_date" class="form-input" required>
         </label>
         <label class="form-label">From Time:
             <input type="time" name="from_time" class="form-input" required>
@@ -58,7 +58,7 @@ include '../includes/top-menu.php';
             <input type="number" name="total_tokens" class="form-input" min="1" required>
         </label>
         <label class="form-label">Location:
-            <select name="location" class="form-select" required disabled>
+            <select name="location" class="form-select" required>
                 <option value="solapur" selected>Solapur</option>
                 <option value="hyderabad">Hyderabad</option>
             </select>
@@ -170,7 +170,7 @@ include '../includes/top-menu.php';
                     document.querySelector('input[name="to_time"]').value = token.to_time;
                     document.querySelector('input[name="total_tokens"]').value = token.total_tokens;
                     locationSelect.value = token.location;
-                    // Make date and location readonly/disabled
+                    // Only in edit mode: make date/location readonly/disabled
                     dateInput.readOnly = true;
                     locationSelect.disabled = true;
                     validateDateLocation(id);

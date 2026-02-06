@@ -1,6 +1,23 @@
 <?php
 require_once __DIR__ . '/../../config/db.php';
 header('Content-Type: application/json');
+
+function format_time_ampm($time) {
+    if ($time === null || $time === '') {
+        return '';
+    }
+    $dt = DateTime::createFromFormat('H:i:s', $time);
+    if (!$dt) {
+        $dt = DateTime::createFromFormat('H:i', $time);
+    }
+    if (!$dt) {
+        $dt = DateTime::createFromFormat('g:i A', $time);
+    }
+    if (!$dt) {
+        $dt = DateTime::createFromFormat('g:i a', $time);
+    }
+    return $dt ? $dt->format('g:i A') : $time;
+}
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $id = intval($_POST['id'] ?? 0);
     $date = $_POST['token_date'] ?? '';
@@ -32,7 +49,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // Update service_time in token_bookings for all bookings on the same date and location
         if ($from_time && $to_time && $date && $location) {
-            $service_time = $from_time . ' to ' . $to_time;
+            $service_time = format_time_ampm($from_time) . ' to ' . format_time_ampm($to_time);
             $updateBookings = $pdo->prepare("UPDATE token_bookings SET service_time = ? WHERE token_date = ? AND LOWER(TRIM(location)) = LOWER(TRIM(?))");
             $updateBookings->execute([$service_time, $date, $location]);
         }

@@ -14,8 +14,32 @@ if (!function_exists('minsToTime')) {
     }
 }
 
+if (!function_exists('formatTime12')) {
+    function formatTime12($time) {
+        if ($time === null || $time === '') {
+            return '';
+        }
+        $dt = DateTime::createFromFormat('H:i:s', $time);
+        if (!$dt) {
+            $dt = DateTime::createFromFormat('H:i', $time);
+        }
+        return $dt ? $dt->format('g:i A') : $time;
+    }
+}
+
 // Fetch all booked tokens
 $bookings = $pdo->query("SELECT * FROM token_bookings ORDER BY token_date DESC, token_no ASC")->fetchAll(PDO::FETCH_ASSOC);
+
+// Show only today/future dates; past dates only if not completed
+$today = date('Y-m-d');
+$bookings = array_values(array_filter($bookings, function($b) use ($today) {
+    $date = $b['token_date'] ?? '';
+    if ($date >= $today) {
+        return true;
+    }
+    $status = strtolower(trim((string)($b['status'] ?? '')));
+    return $status !== 'completed';
+}));
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -24,69 +48,177 @@ $bookings = $pdo->query("SELECT * FROM token_bookings ORDER BY token_date DESC, 
     <title>Booked Tokens</title>
     <style>
         body {
-            padding-top: 40px;
-            padding-bottom: 40px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f7f7fa;
+            margin: 0;
+            padding: 24px 0 32px 0;
+            color: #2b2b2b;
+        }
+        .admin-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 12px 24px 12px;
         }
         .page-header {
             display: flex;
             align-items: center;
-            justify-content: center;
-            gap: 24px;
-            margin-bottom: 24px;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+            background: #fff;
+            border-radius: 14px;
+            box-shadow: 0 2px 12px #e0bebe22;
+            padding: 16px 18px;
+            margin-bottom: 18px;
         }
         .page-header h2 {
             margin: 0;
-            font-size: 1.6em;
+            font-size: 1.4em;
+            color: #800000;
+            letter-spacing: 0.3px;
         }
-        .page-header label, .page-header select {
+        .filter-bar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .action-link {
+            display: inline-block;
+            padding: 8px 14px;
+            border-radius: 8px;
+            background: #800000;
+            color: #fff;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 0.95em;
+        }
+        .action-link:hover {
+            background: #600000;
+        }
+        .filter-bar label {
+            font-size: 1em;
+            color: #444;
+        }
+        #cityFilter {
+            padding: 8px 12px;
+            border-radius: 6px;
+            border: 1px solid #ddd;
+            min-width: 180px;
+            background: #fff;
             font-size: 1em;
         }
-        .bookedTokensTable {
-            border-collapse: collapse;
-            width: auto;
-            table-layout: auto;
-            margin: 0 auto 32px auto;
-        }
-        th, td {
-            border: 1px solid #ccc;
-            padding: 8px;
-            text-align: left;
-        }
-        th {
-            background: #f5f5f5;
-        }
         .booking-table-group {
-            margin-bottom: 40px;
+            margin-bottom: 18px;
+            background: #fff;
+            border-radius: 14px;
+            box-shadow: 0 2px 12px #e0bebe22;
+            padding: 14px;
         }
-        .booking-table-group h3 {
-            text-align: center;
-            margin-bottom: 8px;
+        .group-title {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 10px;
         }
-        .booking-table-group p {
-            text-align: center;
-            margin-bottom: 16px;
+        .group-title h3 {
+            margin: 0;
+            color: #800000;
+            font-size: 1.1em;
+        }
+        .group-meta {
+            color: #6b5b00;
+            font-weight: 600;
+            font-size: 0.95em;
+        }
+        .table-wrap {
+            overflow-x: auto;
+        }
+        .bookedTokensTable {
+            width: 100%;
+            border-collapse: collapse;
+            background: #fff;
+            border-radius: 12px;
+            overflow: hidden;
+            table-layout: auto;
+            font-size: 0.9em;
+        }
+        .bookedTokensTable th, .bookedTokensTable td {
+            padding: 8px 6px;
+            border-bottom: 1px solid #f3caca;
+            text-align: left;
+            white-space: nowrap;
+        }
+        .bookedTokensTable th {
+            background: #f9eaea;
+            color: #800000;
+            font-size: 0.92em;
+            font-weight: 600;
+        }
+        .bookedTokensTable tbody tr:nth-child(even) td {
+            background: #fcf7f7;
+        }
+        .bookedTokensTable tbody tr:hover td {
+            background: #fff0d6;
+        }
+        .bookedTokensTable td.token-no {
+            font-weight: 700;
+            color: #800000;
+        }
+        .complete-btn, .revert-btn, .delete-btn {
+            font-size: 0.95em;
+            padding: 6px 12px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-right: 6px;
+        }
+        .complete-btn { background: #1a8917; color: #fff; }
+        .revert-btn { background: #888; color: #fff; }
+        .delete-btn { background: #c00; color: #fff; }
+        @media (max-width: 800px) {
+            .bookedTokensTable { font-size: 0.88em; }
+            .page-header { padding: 14px; }
+        }
+        @media (max-width: 600px) {
+            .page-header { flex-direction: column; align-items: flex-start; }
+            #cityFilter { width: 100%; }
         }
     </style>
 </head>
 <body>
     <?php include __DIR__ . '/../includes/top-menu.php'; ?>
     
-    <div class="page-header">
-        <h2>All Booked Token Details</h2>
-        <label for="cityFilter">Filter by City:</label>
-        <select id="cityFilter">
-            <option value="solapur" selected>Solapur</option>
-            <option value="">All</option>
-            <?php
-            // Collect unique cities from bookings
-            $cities = array_unique(array_map(function($b) { return strtolower(trim($b['location'])); }, $bookings));
-            foreach ($cities as $city) {
-                if ($city !== 'solapur') {
-                    echo '<option value="' . htmlspecialchars($city) . '">' . htmlspecialchars(ucfirst($city)) . '</option>';
-                }
-            }
-            ?>
-        </select>
+    <div class="admin-container">
+        <div class="page-header">
+            <h2>All Booked Token Details</h2>
+            <div class="header-actions">
+                <a class="action-link" href="completed-tokens.php">Completed Tokens</a>
+                <div class="filter-bar">
+                    <label for="cityFilter">Filter by City:</label>
+                    <select id="cityFilter">
+                        <option value="solapur" selected>Solapur</option>
+                        <option value="">All</option>
+                        <?php
+                        // Collect unique cities from bookings
+                        $cities = array_unique(array_map(function($b) { return strtolower(trim($b['location'])); }, $bookings));
+                        foreach ($cities as $city) {
+                            if ($city !== 'solapur') {
+                                echo '<option value="' . htmlspecialchars($city) . '">' . htmlspecialchars(ucfirst($city)) . '</option>';
+                            }
+                        }
+                        ?>
+                    </select>
+                </div>
+            </div>
+        </div>
     </div>
 
     <?php
@@ -96,35 +228,9 @@ $bookings = $pdo->query("SELECT * FROM token_bookings ORDER BY token_date DESC, 
         $grouped[$b['token_date']][] = $b;
     }
 
-    // Sort dates: current date first, then tomorrow, then future, then past
-    $dates = array_keys($grouped);
-    $today = date('Y-m-d');
-    $tomorrow = date('Y-m-d', strtotime('+1 day'));
-    $future = [];
-    $past = [];
-    foreach ($dates as $date) {
-        if ($date == $today) {
-            $sortedDates['today'] = $date;
-        } elseif ($date == $tomorrow) {
-            $sortedDates['tomorrow'] = $date;
-        } elseif ($date > $tomorrow) {
-            $future[$date] = $date;
-        } else {
-            $past[$date] = $date;
-        }
-    }
-    // Merge sorted dates
-    $finalDates = [];
-    if (isset($sortedDates['today'])) $finalDates[] = $sortedDates['today'];
-    if (isset($sortedDates['tomorrow'])) $finalDates[] = $sortedDates['tomorrow'];
-    if (!empty($future)) {
-        ksort($future);
-        foreach ($future as $d) $finalDates[] = $d;
-    }
-    if (!empty($past)) {
-        krsort($past);
-        foreach ($past as $d) $finalDates[] = $d;
-    }
+    // Sort all dates ascending (oldest to newest)
+    $finalDates = array_keys($grouped);
+    sort($finalDates);
 
     // Fetch total tokens for each date/location
     $tokenTotals = [];
@@ -136,6 +242,17 @@ $bookings = $pdo->query("SELECT * FROM token_bookings ORDER BY token_date DESC, 
 
     foreach ($finalDates as $date):
         $bookingsForDate = $grouped[$date];
+        $dayName = date('l', strtotime($date));
+        $marathiDays = [
+            'Sunday' => 'रविवार',
+            'Monday' => 'सोमवार',
+            'Tuesday' => 'मंगळवार',
+            'Wednesday' => 'बुधवार',
+            'Thursday' => 'गुरुवार',
+            'Friday' => 'शुक्रवार',
+            'Saturday' => 'शनिवार'
+        ];
+        $marathiDay = $marathiDays[$dayName] ?? '';
         // Group by city for filter
         $cityGroups = [];
         foreach ($bookingsForDate as $b) {
@@ -148,8 +265,17 @@ $bookings = $pdo->query("SELECT * FROM token_bookings ORDER BY token_date DESC, 
             });
     ?>
     <div class="booking-table-group" data-city="<?= htmlspecialchars($city) ?>">
-        <h3><?= htmlspecialchars($date) ?> - <?= htmlspecialchars(ucfirst($city)) ?></h3>
-        <p>Total Tokens: <?= isset($tokenTotals[$date][$city]) ? $tokenTotals[$date][$city] : '-' ?> | Booked Tokens: <?= count($cityBookings) ?></p>
+        <div class="group-title">
+            <h3>
+                <?= htmlspecialchars($date) ?>
+                <?php if ($marathiDay !== ''): ?>
+                    (<?= htmlspecialchars($marathiDay) ?>)
+                <?php endif; ?>
+                - <?= htmlspecialchars(ucfirst($city)) ?>
+            </h3>
+            <div class="group-meta">Total Tokens: <?= isset($tokenTotals[$date][$city]) ? $tokenTotals[$date][$city] : '-' ?> | Booked Tokens: <?= count($cityBookings) ?></div>
+        </div>
+        <div class="table-wrap">
         <table class="bookedTokensTable">
             <thead>
                 <tr>
@@ -167,11 +293,11 @@ $bookings = $pdo->query("SELECT * FROM token_bookings ORDER BY token_date DESC, 
             <tbody>
                 <?php $rowIndex = 0; foreach ($cityBookings as $b): ?>
                 <tr>
-                    <td><?= htmlspecialchars($b['token_no']) ?></td>
+                    <td class="token-no"><?= htmlspecialchars($b['token_no']) ?></td>
                     <td><?= htmlspecialchars($b['location']) ?></td>
                     <td><?= htmlspecialchars($b['name']) ?></td>
                     <td><?= htmlspecialchars($b['mobile']) ?></td>
-                    <td><?= htmlspecialchars($b['service_time']) ?></td>
+                    <td><?= htmlspecialchars(formatTime12($b['service_time'])) ?></td>
                     <td>
                         <?php
                         // Calculate time slot window based on row index
@@ -270,8 +396,10 @@ $bookings = $pdo->query("SELECT * FROM token_bookings ORDER BY token_date DESC, 
                 <?php $rowIndex++; endforeach; ?>
             </tbody>
         </table>
+        </div>
     </div>
     <?php endforeach; endforeach; ?>
+    </div>
     <script>
     // City filter logic with Solapur as default
     function filterByCity(city) {
