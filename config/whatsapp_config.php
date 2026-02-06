@@ -25,6 +25,8 @@ define('WHATSAPP_BUSINESS_PHONE', '918975224444'); // Your business WhatsApp num
  * Campaign names must match exactly as created in AiSensy dashboard
  */
 define('WHATSAPP_TEMPLATES', [
+    // Token Booking Confirmation - AiSensy campaign: Token Booked
+    'token_booking_confirmation' => 'Token Booked',
     // Service Request Templates - All use "Website Service Request Confirmation" campaign
     'SERVICE_RECEIVED' => 'Website Service Request Confirmation',
     'SERVICE_ACCEPTED' => 'Website Service Request Confirmation',

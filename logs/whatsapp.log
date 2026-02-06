@@ -2,3 +2,9 @@
 [2026-02-04 22:29:53] TO: 919922550797 | TEMPLATE: Appointment Missed | STATUS: SUCCESS | DETAILS: {"success":"true","submitted_message_id":"ac9e099a-b3dd-4c79-8314-1c0bfe8a4998"}
 [2026-02-04 22:46:54] TO: 919922550797 | TEMPLATE: Appointment Missed | STATUS: SUCCESS | DETAILS: {"success":"true","submitted_message_id":"6ac33c6e-6b33-495d-931e-0be7dce663fd"}
 [2026-02-04 23:17:11] TO: 919922550797 | TEMPLATE: Appointment Missed | STATUS: SUCCESS | DETAILS: {"success":"true","submitted_message_id":"f307ba64-a769-4bff-a518-0eaea1ff5a7c"}
+[2026-02-06 18:35:47] TO: 917276209609 | TEMPLATE: Token Booked | STATUS: SUCCESS | DETAILS: {"success":"true","submitted_message_id":"ac736774-56dd-44d1-ae42-d4f787ffda41"}
+[2026-02-06 18:35:47] TO: 917276209609 | TEMPLATE: Token Booked | STATUS: SUCCESS | DETAILS: {"success":"true","submitted_message_id":"b9b56f0b-c87f-49bd-950c-1a4e3ecceaa8"}
+[2026-02-06 18:36:01] TO: 917276209609 | TEMPLATE: Token Booked | STATUS: SUCCESS | DETAILS: {"success":"true","submitted_message_id":"69d541a1-0d17-4ddf-92c6-c409b292c05f"}
+[2026-02-06 18:40:11] TO: 917276209609 | TEMPLATE: Token Booked | STATUS: SUCCESS | DETAILS: {"success":"true","submitted_message_id":"ff0c4138-7ea9-4299-a189-35ad1fb88090"}
+[2026-02-06 18:45:03] TO: 917276209609 | TEMPLATE: Token Booked | STATUS: SUCCESS | DETAILS: {"success":"true","submitted_message_id":"0cee0285-8b0e-4b6d-8c71-0b2ac072a482"}
+[2026-02-06 18:45:48] TO: 919922550797 | TEMPLATE: Token Booked | STATUS: SUCCESS | DETAILS: {"success":"true","submitted_message_id":"43a9dbf1-bbbd-4cc1-b3f6-8675859fd864"}
