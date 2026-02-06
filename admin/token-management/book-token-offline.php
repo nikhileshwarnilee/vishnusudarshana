@@ -169,8 +169,11 @@ form.addEventListener('submit', function(e) {
                 .then(data => {
                     loader.style.display = 'none';
                     if (data.success) {
-                        tokenInfo.textContent = 'Your token has been booked successfully!';
+                        tokenInfo.textContent = 'Your token has been booked successfully! Your Token Number is: ' + data.token_no;
                         form.reset();
+                        // Set date to today after reset
+                        dateInput.value = todayStr;
+                        updateTokenInfo();
                         serviceTimeInput.value = '';
                     } else {
                         tokenInfo.textContent = data.error || 'Failed to book token.';

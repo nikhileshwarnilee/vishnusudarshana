@@ -1,101 +1,156 @@
 <?php
-include '../includes/top-menu.php';
 require_once __DIR__ . '/../../config/db.php';
-// Fetch and group bookings by date
-// Fetch all bookings, group by date, and sort each group by token_no ascending
-$bookings = $pdo->query("SELECT * FROM token_bookings ORDER BY token_date DESC, token_no ASC")->fetchAll(PDO::FETCH_ASSOC);
-$grouped = [];
-foreach ($bookings as $b) {
-    $grouped[$b['token_date']][] = $b;
+include __DIR__ . '/../includes/top-menu.php';
+
+// Utility function for time formatting
+if (!function_exists('minsToTime')) {
+    function minsToTime($mins) {
+        $h = floor($mins / 60);
+        $m = $mins % 60;
+        $ampm = $h >= 12 ? 'PM' : 'AM';
+        $h12 = $h % 12;
+        if ($h12 == 0) $h12 = 12;
+        return sprintf('%02d:%02d %s', $h12, $m, $ampm);
+    }
 }
-// Sort dates ascending (oldest first)
-$dates = array_keys($grouped);
-usort($dates, function($a, $b) { return strcmp($a, $b); });
+
+// Fetch all booked tokens
+$bookings = $pdo->query("SELECT * FROM token_bookings ORDER BY token_date DESC, token_no ASC")->fetchAll(PDO::FETCH_ASSOC);
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <title>Booked Tokens</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="../includes/responsive-tables.css">
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f7f7fa; margin: 0; }
-        .admin-container { max-width: 1400px; margin: 0 auto; padding: 24px 12px; }
-        h1 { color: #800000; margin-bottom: 18px; }
-        .filter-bar { display: flex; gap: 12px; align-items: center; margin-bottom: 18px; flex-wrap: wrap; }
-        .filter-bar label { font-weight: 600; }
-        .filter-bar select { min-width: 180px; padding: 7px 12px; border-radius: 6px; font-size: 1em; border: 1px solid #ddd; }
-        table { width: 100%; border-collapse: collapse; background: #fff; box-shadow: 0 2px 12px #e0bebe22; border-radius: 12px; table-layout: auto; font-size: 0.85em; }
-        table th, table td { padding: 8px 6px; text-align: left; border-bottom: 1px solid #f3caca; white-space: nowrap; }
-        table thead { background: #f9eaea; color: #800000; font-size: 0.9em; font-weight: 600; }
-        table tbody tr:hover { background: #f3f7fa; }
-        .booking-table-group h2 { margin-top: 28px; }
-        .complete-btn, .delete-btn { font-size: 0.95em; }
-        .complete-btn { background: #1a8917; color: #fff; padding: 6px 12px; border: none; border-radius: 6px; cursor: pointer; margin-right: 6px; }
-        .delete-btn { background: #c00; color: #fff; padding: 6px 12px; border: none; border-radius: 6px; cursor: pointer; }
-        .complete-btn:hover { background: #157113; }
-        .delete-btn:hover { background: #a80000; }
-        @media (max-width: 900px) {
-            .admin-container { max-width: 100%; padding: 16px 10px; }
-            table { font-size: 0.83em; }
+        body {
+            padding-top: 40px;
+            padding-bottom: 40px;
         }
-        @media (max-width: 700px) {
-            .admin-container { padding: 12px 8px; }
-            .filter-bar { flex-direction: column; align-items: stretch; }
-            .filter-bar label { margin-bottom: 6px; }
-            .filter-bar select { width: 100%; }
-            table th, table td { padding: 6px 4px; }
-            .complete-btn, .delete-btn { width: 100%; margin: 4px 0 0 0; }
+        .page-header {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 24px;
+            margin-bottom: 24px;
         }
-        @media (max-width: 480px) {
-            h1 { font-size: 1.2em; }
-            h2 { font-size: 1.05em; }
-            table { font-size: 0.8em; }
-            table th, table td { padding: 5px 4px; }
+        .page-header h2 {
+            margin: 0;
+            font-size: 1.6em;
+        }
+        .page-header label, .page-header select {
+            font-size: 1em;
+        }
+        .bookedTokensTable {
+            border-collapse: collapse;
+            width: auto;
+            table-layout: auto;
+            margin: 0 auto 32px auto;
+        }
+        th, td {
+            border: 1px solid #ccc;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background: #f5f5f5;
+        }
+        .booking-table-group {
+            margin-bottom: 40px;
+        }
+        .booking-table-group h3 {
+            text-align: center;
+            margin-bottom: 8px;
+        }
+        .booking-table-group p {
+            text-align: center;
+            margin-bottom: 16px;
         }
     </style>
 </head>
 <body>
-<div class="admin-container">
-    <h1>Booked Tokens</h1>
-    <?php
-    // Get unique cities (locations) from bookings
-    $cities = [];
-    foreach ($bookings as $b) {
-        $loc = trim($b['location']);
-        if ($loc && !in_array($loc, $cities)) {
-            $cities[] = $loc;
-        }
-    }
-    sort($cities);
-    ?>
-    <div class="filter-bar">
+    <?php include __DIR__ . '/../includes/top-menu.php'; ?>
+    
+    <div class="page-header">
+        <h2>All Booked Token Details</h2>
         <label for="cityFilter">Filter by City:</label>
         <select id="cityFilter">
             <option value="solapur" selected>Solapur</option>
-            <option value="hyderabad">Hyderabad</option>
-            <option value="">All Cities</option>
+            <option value="">All</option>
+            <?php
+            // Collect unique cities from bookings
+            $cities = array_unique(array_map(function($b) { return strtolower(trim($b['location'])); }, $bookings));
+            foreach ($cities as $city) {
+                if ($city !== 'solapur') {
+                    echo '<option value="' . htmlspecialchars($city) . '">' . htmlspecialchars(ucfirst($city)) . '</option>';
+                }
+            }
+            ?>
         </select>
     </div>
-    <div id="bookingsTables">
-    <?php foreach ($dates as $date): ?>
-        <div class="booking-table-group" data-date="<?= htmlspecialchars($date) ?>">
-        <?php
-        // Calculate totals for this date
-        $bookedCount = count($grouped[$date]);
-        $totalTokens = 0;
-        // Find total tokens from token_management
-        $stmt = $pdo->prepare("SELECT total_tokens FROM token_management WHERE token_date = ? LIMIT 1");
-        $stmt->execute([$date]);
-        $row = $stmt->fetch(PDO::FETCH_ASSOC);
-        if ($row) $totalTokens = (int)$row['total_tokens'];
-        ?>
-        <h2 style="margin-top:32px;color:#800000;">Date: <?= htmlspecialchars($date) ?>
-            <span style="font-size:0.98em;color:#333;margin-left:18px;">Booked: <?= $bookedCount ?> / Total: <?= $totalTokens ?></span>
-        </h2>
-        <div class="table-responsive-wrapper">
-        <table>
+
+    <?php
+    // Group bookings by date
+    $grouped = [];
+    foreach ($bookings as $b) {
+        $grouped[$b['token_date']][] = $b;
+    }
+
+    // Sort dates: current date first, then tomorrow, then future, then past
+    $dates = array_keys($grouped);
+    $today = date('Y-m-d');
+    $tomorrow = date('Y-m-d', strtotime('+1 day'));
+    $future = [];
+    $past = [];
+    foreach ($dates as $date) {
+        if ($date == $today) {
+            $sortedDates['today'] = $date;
+        } elseif ($date == $tomorrow) {
+            $sortedDates['tomorrow'] = $date;
+        } elseif ($date > $tomorrow) {
+            $future[$date] = $date;
+        } else {
+            $past[$date] = $date;
+        }
+    }
+    // Merge sorted dates
+    $finalDates = [];
+    if (isset($sortedDates['today'])) $finalDates[] = $sortedDates['today'];
+    if (isset($sortedDates['tomorrow'])) $finalDates[] = $sortedDates['tomorrow'];
+    if (!empty($future)) {
+        ksort($future);
+        foreach ($future as $d) $finalDates[] = $d;
+    }
+    if (!empty($past)) {
+        krsort($past);
+        foreach ($past as $d) $finalDates[] = $d;
+    }
+
+    // Fetch total tokens for each date/location
+    $tokenTotals = [];
+    $stmt = $pdo->prepare("SELECT token_date, location, total_tokens FROM token_management");
+    $stmt->execute();
+    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+        $tokenTotals[$row['token_date']][strtolower(trim($row['location']))] = $row['total_tokens'];
+    }
+
+    foreach ($finalDates as $date):
+        $bookingsForDate = $grouped[$date];
+        // Group by city for filter
+        $cityGroups = [];
+        foreach ($bookingsForDate as $b) {
+            $cityGroups[strtolower(trim($b['location']))][] = $b;
+        }
+        foreach ($cityGroups as $city => $cityBookings):
+            // Sort bookings by token_no ascending
+            usort($cityBookings, function($a, $b) {
+                return $a['token_no'] - $b['token_no'];
+            });
+    ?>
+    <div class="booking-table-group" data-city="<?= htmlspecialchars($city) ?>">
+        <h3><?= htmlspecialchars($date) ?> - <?= htmlspecialchars(ucfirst($city)) ?></h3>
+        <p>Total Tokens: <?= isset($tokenTotals[$date][$city]) ? $tokenTotals[$date][$city] : '-' ?> | Booked Tokens: <?= count($cityBookings) ?></p>
+        <table class="bookedTokensTable">
             <thead>
                 <tr>
                     <th>Token No</th>
@@ -103,55 +158,29 @@ usort($dates, function($a, $b) { return strcmp($a, $b); });
                     <th>Name</th>
                     <th>Mobile</th>
                     <th>Service Time</th>
-                    <th>Booked At</th>
-                          <th>Required Time</th>
-                          <th>Time Slot</th>
-                          <th>Late By</th>
+                    <th>Time Slot</th>
+                    <th>Late By</th>
                     <th>Action</th>
+                    <th>Created At</th>
                 </tr>
             </thead>
             <tbody>
-            <?php foreach ($grouped[$date] as $b): ?>
-                <tr data-city="<?= htmlspecialchars($b['location']) ?>" data-id="<?= (int)$b['id'] ?>">
+                <?php $rowIndex = 0; foreach ($cityBookings as $b): ?>
+                <tr>
                     <td><?= htmlspecialchars($b['token_no']) ?></td>
                     <td><?= htmlspecialchars($b['location']) ?></td>
                     <td><?= htmlspecialchars($b['name']) ?></td>
                     <td><?= htmlspecialchars($b['mobile']) ?></td>
+                    <td><?= htmlspecialchars($b['service_time']) ?></td>
                     <td>
                         <?php
-                        // Convert service_time to 12-hour format
-                        $serviceTime = $b['service_time'];
-                        if (preg_match('/(\d{2}:\d{2})\s*to\s*(\d{2}:\d{2})/', $serviceTime, $matches)) {
-                            if (!function_exists('format12hr')) {
-                                function format12hr($t) {
-                                    $parts = explode(':', $t);
-                                    $h = intval($parts[0]);
-                                    $m = intval($parts[1]);
-                                    $ampm = $h >= 12 ? 'PM' : 'AM';
-                                    $h12 = $h % 12;
-                                    if ($h12 == 0) $h12 = 12;
-                                    return sprintf('%02d:%02d %s', $h12, $m, $ampm);
-                                }
-                            }
-                            echo format12hr($matches[1]) . ' - ' . format12hr($matches[2]);
-                        } else {
-                            echo htmlspecialchars($serviceTime);
-                        }
-                        ?>
-                    </td>
-                    <td>
-                        <?php
-                        $dt = strtotime($b['created_at']);
-                        echo $dt ? date('d-m-Y h:i A', $dt) : htmlspecialchars($b['created_at']);
-                        ?>
-                    </td>
-                    <td>
-                        <?php
-                        // Calculate per-appointment time for this slot (for the date/location)
-                        $apptTime = '-';
+                        // Calculate time slot window based on row index
+                        $slot = null;
                         $row = $pdo->prepare("SELECT from_time, to_time, total_tokens FROM token_management WHERE token_date = ? AND LOWER(TRIM(location)) = LOWER(TRIM(?)) LIMIT 1");
                         $row->execute([$b['token_date'], $b['location']]);
                         $slot = $row->fetch(PDO::FETCH_ASSOC);
+                        $slotText = '-';
+                        $highlight = false;
                         if ($slot && $slot['from_time'] && $slot['to_time'] && $slot['total_tokens'] > 0) {
                             $fromParts = explode(':', $slot['from_time']);
                             $toParts = explode(':', $slot['to_time']);
@@ -161,61 +190,26 @@ usort($dates, function($a, $b) { return strcmp($a, $b); });
                                 $diffMins = $toMins - $fromMins;
                                 if ($diffMins > 0) {
                                     $perMins = floor($diffMins / $slot['total_tokens']);
-                                    $perHrs = floor($perMins / 60);
-                                    $perRemMins = $perMins % 60;
-                                    $apptTime = ($perHrs ? $perHrs . 'h ' : '') . $perRemMins . 'm';
-                                } else if ($diffMins === 0) {
-                                    $apptTime = '0m';
-                                }
-                            }
-                        }
-                        echo htmlspecialchars($apptTime);
-                        ?>
-                    </td>
-                    <td>
-                        <?php
-                        // Show calculated time slot for this token and highlight if current time is within slot
-                        if (!function_exists('minsToTime')) {
-                            function minsToTime($mins) {
-                                $h = floor($mins / 60);
-                                $m = $mins % 60;
-                                $ampm = $h >= 12 ? 'PM' : 'AM';
-                                $h12 = $h % 12;
-                                if ($h12 == 0) $h12 = 12;
-                                return sprintf('%02d:%02d %s', $h12, $m, $ampm);
-                            }
-                        }
-                        $slotHtml = '-';
-                        $highlight = false;
-                        if ($slot && $slot['from_time'] && $slot['to_time'] && $slot['total_tokens'] > 0 && is_numeric($b['token_no'])) {
-                            $fromParts = explode(':', $slot['from_time']);
-                            $toParts = explode(':', $slot['to_time']);
-                            if (count($fromParts) >= 2 && count($toParts) >= 2) {
-                                $fromMins = intval($fromParts[0]) * 60 + intval($fromParts[1]);
-                                $toMins = intval($toParts[0]) * 60 + intval($toParts[1]);
-                                $diffMins = $toMins - $fromMins;
-                                if ($diffMins > 0) {
-                                    $perMins = floor($diffMins / $slot['total_tokens']);
-                                    $startMins = $fromMins + ($b['token_no'] - 1) * $perMins;
-                                    $endMins = $fromMins + ($b['token_no']) * $perMins;
-                                    $slotStartHour = floor($startMins / 60);
-                                    $slotStartMin = $startMins % 60;
-                                    $slotEndHour = floor($endMins / 60);
-                                    $slotEndMin = $endMins % 60;
-                                    $slotStartTimestamp = strtotime($b['token_date'] . sprintf(' %02d:%02d:00', $slotStartHour, $slotStartMin));
-                                    $slotEndTimestamp = strtotime($b['token_date'] . sprintf(' %02d:%02d:00', $slotEndHour, $slotEndMin));
-                                    $now = time();
-                                    if ($now >= $slotStartTimestamp && $now < $slotEndTimestamp) {
-                                        $highlight = true;
+                                    $startMins = $fromMins + ($rowIndex) * $perMins;
+                                    $endMins = $fromMins + ($rowIndex + 1) * $perMins;
+                                    $slotText = minsToTime($startMins) . ' - ' . minsToTime($endMins);
+                                    // Highlight if current time is within slot and date is today
+                                    $today = date('Y-m-d');
+                                    if ($b['token_date'] === $today) {
+                                        $now = time();
+                                        $slotStartTimestamp = strtotime($b['token_date'] . sprintf(' %02d:%02d:00', floor($startMins/60), $startMins%60));
+                                        $slotEndTimestamp = strtotime($b['token_date'] . sprintf(' %02d:%02d:00', floor($endMins/60), $endMins%60));
+                                        if ($now >= $slotStartTimestamp && $now < $slotEndTimestamp) {
+                                            $highlight = true;
+                                        }
                                     }
-                                    $slotHtml = htmlspecialchars(minsToTime($startMins) . ' - ' . minsToTime($endMins));
                                 }
                             }
                         }
                         if ($highlight) {
-                            echo '<span style="color:#1a8917;font-weight:bold;">' . $slotHtml . '</span>';
+                            echo '<span style="color:#fff;background:#1a8917;padding:2px 8px;border-radius:4px;">' . htmlspecialchars($slotText) . '</span>';
                         } else {
-                            echo $slotHtml;
+                            echo htmlspecialchars($slotText);
                         }
                         ?>
                     </td>
@@ -223,7 +217,7 @@ usort($dates, function($a, $b) { return strcmp($a, $b); });
                         <?php
                         // Calculate late by comparing current time to calculated time slot start time
                         $lateBy = '-';
-                        if ($slot && $slot['from_time'] && $slot['to_time'] && $slot['total_tokens'] > 0 && is_numeric($b['token_no'])) {
+                        if ($slot && $slot['from_time'] && $slot['to_time'] && $slot['total_tokens'] > 0) {
                             $fromParts = explode(':', $slot['from_time']);
                             $toParts = explode(':', $slot['to_time']);
                             if (count($fromParts) >= 2 && count($toParts) >= 2) {
@@ -232,8 +226,7 @@ usort($dates, function($a, $b) { return strcmp($a, $b); });
                                 $diffMins = $toMins - $fromMins;
                                 if ($diffMins > 0) {
                                     $perMins = floor($diffMins / $slot['total_tokens']);
-                                    $startMins = $fromMins + ($b['token_no'] - 1) * $perMins;
-                                    // Calculate slot start time as timestamp
+                                    $startMins = $fromMins + ($rowIndex) * $perMins;
                                     $slotStartHour = floor($startMins / 60);
                                     $slotStartMin = $startMins % 60;
                                     $slotStartTimestamp = strtotime($b['token_date'] . sprintf(' %02d:%02d:00', $slotStartHour, $slotStartMin));
@@ -257,7 +250,6 @@ usort($dates, function($a, $b) { return strcmp($a, $b); });
                                 }
                             }
                         }
-                        // Show late in red color
                         if (strpos($lateBy, 'late') !== false) {
                             echo '<span style="color:#c00;font-weight:bold;">' . htmlspecialchars($lateBy) . '</span>';
                         } else {
@@ -266,68 +258,104 @@ usort($dates, function($a, $b) { return strcmp($a, $b); });
                         ?>
                     </td>
                     <td>
-                        
-                        <button class="complete-btn" style="background:#1a8917;color:#fff;padding:4px 10px;border:none;border-radius:4px;cursor:pointer;margin-right:6px;">Completed</button>
-                        <button class="delete-btn" style="background:#c00;color:#fff;padding:4px 10px;border:none;border-radius:4px;cursor:pointer;">Delete</button>
+                        <?php if (isset($b['status']) && $b['status'] === 'completed'): ?>
+                            <button class="revert-btn" data-booking-id="<?= htmlspecialchars($b['id']) ?>" style="background:#888;color:#fff;padding:4px 10px;border:none;border-radius:4px;cursor:pointer;margin-right:6px;">Revert</button>
+                        <?php else: ?>
+                            <button class="complete-btn" style="background:#1a8917;color:#fff;padding:4px 10px;border:none;border-radius:4px;cursor:pointer;margin-right:6px;">Completed</button>
+                        <?php endif; ?>
+                        <button class="delete-btn" data-booking-id="<?= htmlspecialchars($b['id']) ?>" style="background:#c00;color:#fff;padding:4px 10px;border:none;border-radius:4px;cursor:pointer;">Delete</button>
                     </td>
+                    <td><?= htmlspecialchars($b['created_at']) ?></td>
                 </tr>
-            <?php endforeach; ?>
+                <?php $rowIndex++; endforeach; ?>
             </tbody>
         </table>
-        </div>
-        </div>
-    <?php endforeach; ?>
     </div>
-</div>
-<script>
-// City filter logic with Solapur as default
-function filterByCity(city) {
-    document.querySelectorAll('#bookingsTables tr[data-city]').forEach(function(row) {
-        if (!city || row.getAttribute('data-city') === city) {
-            row.style.display = '';
-        } else {
-            row.style.display = 'none';
-        }
-    });
-    // Hide date groups if all rows inside are hidden
-    document.querySelectorAll('.booking-table-group').forEach(function(group) {
-        var visibleRows = group.querySelectorAll('tr[data-city]:not([style*="display: none"])');
-        group.style.display = visibleRows.length ? '' : 'none';
-    });
-}
-var cityFilter = document.getElementById('cityFilter');
-cityFilter.addEventListener('change', function() {
-    filterByCity(this.value);
-});
-// Initial filter to Solapur
-filterByCity('solapur');
-// Handle Completed and Delete actions
-document.addEventListener('click', function(e) {
-    if (e.target.classList.contains('complete-btn') || e.target.classList.contains('delete-btn')) {
-        var row = e.target.closest('tr[data-id]');
-        var id = row ? row.getAttribute('data-id') : null;
-        if (!id) return;
-        var action = e.target.classList.contains('complete-btn') ? 'complete' : 'delete';
-        if (action === 'delete' && !confirm('Are you sure you want to delete this booking?')) return;
-        if (action === 'complete' && !confirm('Mark this booking as completed? This will remove it from the list.')) return;
-        fetch('manage-booking.php', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: 'id=' + encodeURIComponent(id) + '&action=' + encodeURIComponent(action)
-        })
-        .then(res => res.json())
-        .then(data => {
-            if (data.success) {
-                row.parentNode.removeChild(row);
-                // Optionally, re-filter to hide empty date groups
-                filterByCity(cityFilter.value);
+    <?php endforeach; endforeach; ?>
+    <script>
+    // City filter logic with Solapur as default
+    function filterByCity(city) {
+        document.querySelectorAll('.booking-table-group').forEach(function(group) {
+            if (!city || group.getAttribute('data-city') === city) {
+                group.style.display = '';
             } else {
-                alert('Operation failed.');
+                group.style.display = 'none';
             }
-        })
-        .catch(() => alert('Server error.'));
+        });
     }
-});
-</script>
+    document.getElementById('cityFilter').addEventListener('change', function() {
+        filterByCity(this.value);
+    });
+    // Initial filter
+    filterByCity('solapur');
+    </script>
+    <script>
+    // Delete booking functionality
+    document.querySelectorAll('.delete-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var bookingId = this.getAttribute('data-booking-id');
+            if (!bookingId) return;
+            if (!confirm('Are you sure you want to delete this booking?')) return;
+            fetch('delete-booking.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: 'id=' + encodeURIComponent(bookingId)
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert('Failed to delete booking.');
+                }
+            })
+            .catch(() => alert('Failed to delete booking.'));
+        });
+    });
+
+    // Completed booking functionality
+    document.querySelectorAll('.complete-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var bookingId = this.parentNode.querySelector('.delete-btn').getAttribute('data-booking-id');
+            if (!bookingId) return;
+            fetch('complete-booking.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: 'id=' + encodeURIComponent(bookingId)
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert('Failed to mark booking as completed.');
+                }
+            })
+            .catch(() => alert('Failed to mark booking as completed.'));
+        });
+    });
+
+    // Revert booking functionality
+    document.querySelectorAll('.revert-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var bookingId = this.getAttribute('data-booking-id');
+            if (!bookingId) return;
+            fetch('revert-booking.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: 'id=' + encodeURIComponent(bookingId)
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert('Failed to revert booking status.');
+                }
+            })
+            .catch(() => alert('Failed to revert booking status.'));
+        });
+    });
+    </script>
 </body>
 </html>

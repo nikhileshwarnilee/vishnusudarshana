@@ -46,7 +46,7 @@ include '../includes/top-menu.php';
     <h1 style="text-align:center;">Token Management</h1>
     <form id="tokenForm" method="post" class="token-form-card token-form-grid">
         <label class="form-label">Date:
-            <input type="date" name="token_date" class="form-input" required>
+            <input type="date" name="token_date" class="form-input" required readonly>
         </label>
         <label class="form-label">From Time:
             <input type="time" name="from_time" class="form-input" required>
@@ -58,7 +58,7 @@ include '../includes/top-menu.php';
             <input type="number" name="total_tokens" class="form-input" min="1" required>
         </label>
         <label class="form-label">Location:
-            <select name="location" class="form-select" required>
+            <select name="location" class="form-select" required disabled>
                 <option value="solapur" selected>Solapur</option>
                 <option value="hyderabad">Hyderabad</option>
             </select>
@@ -170,9 +170,18 @@ include '../includes/top-menu.php';
                     document.querySelector('input[name="to_time"]').value = token.to_time;
                     document.querySelector('input[name="total_tokens"]').value = token.total_tokens;
                     locationSelect.value = token.location;
+                    // Make date and location readonly/disabled
+                    dateInput.readOnly = true;
+                    locationSelect.disabled = true;
                     validateDateLocation(id);
                     document.querySelector('button[type="submit"]').textContent = 'Update';
                 });
+            });
+            // Restore date/location to editable on new entry
+            document.getElementById('tokenForm').addEventListener('reset', function() {
+                dateInput.readOnly = false;
+                locationSelect.disabled = false;
+                document.querySelector('button[type="submit"]').textContent = 'Save';
             });
             // Delete functionality
             document.querySelectorAll('.delete-btn').forEach(function(btn) {
