@@ -12,7 +12,7 @@ $commonFields = [
     ['label' => 'Full Name', 'name' => 'full_name', 'type' => 'text', 'required' => true],
     ['label' => 'Mobile Number', 'name' => 'mobile', 'type' => 'tel', 'required' => true],
     ['label' => 'Email', 'name' => 'email', 'type' => 'email', 'required' => false],
-    ['label' => 'City / Location', 'name' => 'city', 'type' => 'text', 'required' => true],
+    ['label' => 'City / Location', 'name' => 'city', 'type' => 'text', 'required' => false],
 ];
 $categoryFields = [
     'appointment' => [
