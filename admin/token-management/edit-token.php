@@ -29,6 +29,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         $stmt = $pdo->prepare("UPDATE token_management SET token_date = ?, from_time = ?, to_time = ?, total_tokens = ?, unbooked_tokens = ?, location = ? WHERE id = ?");
         $stmt->execute([$date, $from_time, $to_time, $total_tokens, $new_unbooked, $location, $id]);
+
+        // Update service_time in token_bookings for all bookings on the same date and location
+        if ($from_time && $to_time && $date && $location) {
+            $service_time = $from_time . ' to ' . $to_time;
+            $updateBookings = $pdo->prepare("UPDATE token_bookings SET service_time = ? WHERE token_date = ? AND LOWER(TRIM(location)) = LOWER(TRIM(?))");
+            $updateBookings->execute([$service_time, $date, $location]);
+        }
+
         echo json_encode(['success' => true]);
         exit;
     }

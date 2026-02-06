@@ -95,6 +95,7 @@ include '../includes/top-menu.php';
                 html += '<th>To Time</th>';
                 html += '<th>Tokens</th>';
                 html += '<th>Remaining Tokens</th>';
+                html += '<th>Appointment Time</th>';
                 html += '<th>Location</th>';
                 html += '<th>Created At</th>';
                 html += '<th>Actions</th>';
@@ -106,6 +107,28 @@ include '../includes/top-menu.php';
                     html += '<td>'+t.to_time+'</td>';
                     html += '<td>'+t.total_tokens+'</td>';
                     html += '<td>'+t.unbooked_tokens+'</td>';
+                    // Appointment Time column (calculated per token)
+                    // Parse times as HH:MM:SS or HH:MM
+                    function parseTimeToMinutes(str) {
+                        if (!str) return null;
+                        var parts = str.split(":");
+                        if (parts.length < 2) return null;
+                        var h = parseInt(parts[0], 10), m = parseInt(parts[1], 10);
+                        if (isNaN(h) || isNaN(m)) return null;
+                        return h * 60 + m;
+                    }
+                    var fromMins = parseTimeToMinutes(t.from_time);
+                    var toMins = parseTimeToMinutes(t.to_time);
+                    if (fromMins !== null && toMins !== null && t.total_tokens > 0 && toMins > fromMins) {
+                        var diffMins = toMins - fromMins;
+                        var perMins = Math.floor(diffMins / t.total_tokens);
+                        var perHrs = Math.floor(perMins / 60);
+                        var perRemMins = perMins % 60;
+                        var perStr = (perHrs ? perHrs + 'h ' : '') + perRemMins + 'm';
+                        html += '<td>' + perStr + '</td>';
+                    } else {
+                        html += '<td>-</td>';
+                    }
                     html += '<td>'+t.location+'</td>';
                     html += '<td>'+t.created_at+'</td>';
                     html += '<td>';

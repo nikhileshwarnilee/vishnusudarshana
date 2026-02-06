@@ -104,6 +104,9 @@ usort($dates, function($a, $b) { return strcmp($a, $b); });
                     <th>Mobile</th>
                     <th>Service Time</th>
                     <th>Booked At</th>
+                          <th>Required Time</th>
+                          <th>Time Slot</th>
+                          <th>Late By</th>
                     <th>Action</th>
                 </tr>
             </thead>
@@ -114,7 +117,28 @@ usort($dates, function($a, $b) { return strcmp($a, $b); });
                     <td><?= htmlspecialchars($b['location']) ?></td>
                     <td><?= htmlspecialchars($b['name']) ?></td>
                     <td><?= htmlspecialchars($b['mobile']) ?></td>
-                    <td><?= htmlspecialchars($b['service_time']) ?></td>
+                    <td>
+                        <?php
+                        // Convert service_time to 12-hour format
+                        $serviceTime = $b['service_time'];
+                        if (preg_match('/(\d{2}:\d{2})\s*to\s*(\d{2}:\d{2})/', $serviceTime, $matches)) {
+                            if (!function_exists('format12hr')) {
+                                function format12hr($t) {
+                                    $parts = explode(':', $t);
+                                    $h = intval($parts[0]);
+                                    $m = intval($parts[1]);
+                                    $ampm = $h >= 12 ? 'PM' : 'AM';
+                                    $h12 = $h % 12;
+                                    if ($h12 == 0) $h12 = 12;
+                                    return sprintf('%02d:%02d %s', $h12, $m, $ampm);
+                                }
+                            }
+                            echo format12hr($matches[1]) . ' - ' . format12hr($matches[2]);
+                        } else {
+                            echo htmlspecialchars($serviceTime);
+                        }
+                        ?>
+                    </td>
                     <td>
                         <?php
                         $dt = strtotime($b['created_at']);
@@ -122,6 +146,127 @@ usort($dates, function($a, $b) { return strcmp($a, $b); });
                         ?>
                     </td>
                     <td>
+                        <?php
+                        // Calculate per-appointment time for this slot (for the date/location)
+                        $apptTime = '-';
+                        $row = $pdo->prepare("SELECT from_time, to_time, total_tokens FROM token_management WHERE token_date = ? AND LOWER(TRIM(location)) = LOWER(TRIM(?)) LIMIT 1");
+                        $row->execute([$b['token_date'], $b['location']]);
+                        $slot = $row->fetch(PDO::FETCH_ASSOC);
+                        if ($slot && $slot['from_time'] && $slot['to_time'] && $slot['total_tokens'] > 0) {
+                            $fromParts = explode(':', $slot['from_time']);
+                            $toParts = explode(':', $slot['to_time']);
+                            if (count($fromParts) >= 2 && count($toParts) >= 2) {
+                                $fromMins = intval($fromParts[0]) * 60 + intval($fromParts[1]);
+                                $toMins = intval($toParts[0]) * 60 + intval($toParts[1]);
+                                $diffMins = $toMins - $fromMins;
+                                if ($diffMins > 0) {
+                                    $perMins = floor($diffMins / $slot['total_tokens']);
+                                    $perHrs = floor($perMins / 60);
+                                    $perRemMins = $perMins % 60;
+                                    $apptTime = ($perHrs ? $perHrs . 'h ' : '') . $perRemMins . 'm';
+                                } else if ($diffMins === 0) {
+                                    $apptTime = '0m';
+                                }
+                            }
+                        }
+                        echo htmlspecialchars($apptTime);
+                        ?>
+                    </td>
+                    <td>
+                        <?php
+                        // Show calculated time slot for this token and highlight if current time is within slot
+                        if (!function_exists('minsToTime')) {
+                            function minsToTime($mins) {
+                                $h = floor($mins / 60);
+                                $m = $mins % 60;
+                                $ampm = $h >= 12 ? 'PM' : 'AM';
+                                $h12 = $h % 12;
+                                if ($h12 == 0) $h12 = 12;
+                                return sprintf('%02d:%02d %s', $h12, $m, $ampm);
+                            }
+                        }
+                        $slotHtml = '-';
+                        $highlight = false;
+                        if ($slot && $slot['from_time'] && $slot['to_time'] && $slot['total_tokens'] > 0 && is_numeric($b['token_no'])) {
+                            $fromParts = explode(':', $slot['from_time']);
+                            $toParts = explode(':', $slot['to_time']);
+                            if (count($fromParts) >= 2 && count($toParts) >= 2) {
+                                $fromMins = intval($fromParts[0]) * 60 + intval($fromParts[1]);
+                                $toMins = intval($toParts[0]) * 60 + intval($toParts[1]);
+                                $diffMins = $toMins - $fromMins;
+                                if ($diffMins > 0) {
+                                    $perMins = floor($diffMins / $slot['total_tokens']);
+                                    $startMins = $fromMins + ($b['token_no'] - 1) * $perMins;
+                                    $endMins = $fromMins + ($b['token_no']) * $perMins;
+                                    $slotStartHour = floor($startMins / 60);
+                                    $slotStartMin = $startMins % 60;
+                                    $slotEndHour = floor($endMins / 60);
+                                    $slotEndMin = $endMins % 60;
+                                    $slotStartTimestamp = strtotime($b['token_date'] . sprintf(' %02d:%02d:00', $slotStartHour, $slotStartMin));
+                                    $slotEndTimestamp = strtotime($b['token_date'] . sprintf(' %02d:%02d:00', $slotEndHour, $slotEndMin));
+                                    $now = time();
+                                    if ($now >= $slotStartTimestamp && $now < $slotEndTimestamp) {
+                                        $highlight = true;
+                                    }
+                                    $slotHtml = htmlspecialchars(minsToTime($startMins) . ' - ' . minsToTime($endMins));
+                                }
+                            }
+                        }
+                        if ($highlight) {
+                            echo '<span style="color:#1a8917;font-weight:bold;">' . $slotHtml . '</span>';
+                        } else {
+                            echo $slotHtml;
+                        }
+                        ?>
+                    </td>
+                    <td>
+                        <?php
+                        // Calculate late by comparing current time to calculated time slot start time
+                        $lateBy = '-';
+                        if ($slot && $slot['from_time'] && $slot['to_time'] && $slot['total_tokens'] > 0 && is_numeric($b['token_no'])) {
+                            $fromParts = explode(':', $slot['from_time']);
+                            $toParts = explode(':', $slot['to_time']);
+                            if (count($fromParts) >= 2 && count($toParts) >= 2) {
+                                $fromMins = intval($fromParts[0]) * 60 + intval($fromParts[1]);
+                                $toMins = intval($toParts[0]) * 60 + intval($toParts[1]);
+                                $diffMins = $toMins - $fromMins;
+                                if ($diffMins > 0) {
+                                    $perMins = floor($diffMins / $slot['total_tokens']);
+                                    $startMins = $fromMins + ($b['token_no'] - 1) * $perMins;
+                                    // Calculate slot start time as timestamp
+                                    $slotStartHour = floor($startMins / 60);
+                                    $slotStartMin = $startMins % 60;
+                                    $slotStartTimestamp = strtotime($b['token_date'] . sprintf(' %02d:%02d:00', $slotStartHour, $slotStartMin));
+                                    $now = time();
+                                    $diff = $now - $slotStartTimestamp;
+                                    if ($diff > 60) {
+                                        $hours = floor($diff / 3600);
+                                        $mins = floor(($diff % 3600) / 60);
+                                        $lateBy = ($hours ? $hours . 'h ' : '') . $mins . 'm late';
+                                    } else if ($diff > 0) {
+                                        $lateBy = $diff . 's late';
+                                    } else if ($diff < -60) {
+                                        $hours = floor(abs($diff) / 3600);
+                                        $mins = floor((abs($diff) % 3600) / 60);
+                                        $lateBy = 'Early by ' . ($hours ? $hours . 'h ' : '') . $mins . 'm';
+                                    } else if ($diff < 0) {
+                                        $lateBy = 'Early by ' . abs($diff) . 's';
+                                    } else {
+                                        $lateBy = 'On time';
+                                    }
+                                }
+                            }
+                        }
+                        // Show late in red color
+                        if (strpos($lateBy, 'late') !== false) {
+                            echo '<span style="color:#c00;font-weight:bold;">' . htmlspecialchars($lateBy) . '</span>';
+                        } else {
+                            echo htmlspecialchars($lateBy);
+                        }
+                        ?>
+                    </td>
+                    <td>
+                        
                         <button class="complete-btn" style="background:#1a8917;color:#fff;padding:4px 10px;border:none;border-radius:4px;cursor:pointer;margin-right:6px;">Completed</button>
                         <button class="delete-btn" style="background:#c00;color:#fff;padding:4px 10px;border:none;border-radius:4px;cursor:pointer;">Delete</button>
                     </td>
