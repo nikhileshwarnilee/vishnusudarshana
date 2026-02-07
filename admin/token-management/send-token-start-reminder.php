@@ -23,6 +23,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
     
+    // Debug: log the location received
+    error_log('send-token-start-reminder: Date=' . $date . ', Location=' . $location . ' (trimmed: ' . strtolower(trim($location)) . ')');
+    
     // Only allow for today's date
     $today = date('Y-m-d');
     if ($date !== $today) {
@@ -64,7 +67,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $tokensStmt->execute([$date, $location]);
     $tokens = $tokensStmt->fetchAll(PDO::FETCH_ASSOC);
     
+    error_log('send-token-start-reminder: Found ' . count($tokens) . ' tokens for date ' . $date . ' and location ' . $location);
+    
     if (empty($tokens)) {
+        error_log('send-token-start-reminder: No tokens 1-5 found for date ' . $date . ' and location ' . $location);
         echo json_encode(['success' => false, 'message' => 'No tokens 1-5 found']);
         exit;
     }
@@ -81,6 +87,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     // Send messages to tokens 1-5
     $sentCount = 0;
+    $failedCount = 0;
+    $failedTokens = [];
     require_once __DIR__ . '/../../helpers/send_whatsapp.php';
     
     foreach ($tokens as $t) {
@@ -102,7 +110,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $template = 'token_update_telugu';
                 }
                 
-                sendWhatsAppMessage(
+                error_log('Token ' . $tokenNo . ': Sending via template=' . $template . ' to ' . $t['mobile']);
+                
+                $result = sendWhatsAppMessage(
                     $t['mobile'],
                     $template,
                     [
@@ -112,17 +122,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         'current_token' => $currentToken
                     ]
                 );
-                $sentCount++;
+                
+                if ($result['success']) {
+                    $sentCount++;
+                    error_log('Token ' . $tokenNo . ': SUCCESS');
+                } else {
+                    $failedCount++;
+                    $failedTokens[] = $tokenNo;
+                    error_log('Token ' . $tokenNo . ': FAILED - ' . $result['message']);
+                }
             } catch (Throwable $e) {
-                error_log('WhatsApp token start reminder failed for token ' . $tokenNo . ': ' . $e->getMessage());
+                $failedCount++;
+                $failedTokens[] = $tokenNo;
+                error_log('Token ' . $tokenNo . ': Exception - ' . $e->getMessage());
             }
         }
     }
     
     echo json_encode([
-        'success' => true,
-        'message' => 'Reminders sent to ' . $sentCount . ' token(s)',
-        'sent_count' => $sentCount
+        'success' => $sentCount > 0,
+        'message' => 'Reminders sent to ' . $sentCount . ' token(s)' . ($failedCount > 0 ? ', Failed: ' . $failedCount : ''),
+        'sent_count' => $sentCount,
+        'failed_count' => $failedCount,
+        'failed_tokens' => $failedTokens
     ]);
     exit;
 }

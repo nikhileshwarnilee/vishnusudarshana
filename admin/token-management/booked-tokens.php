@@ -453,7 +453,7 @@ $bookings = array_values(array_filter($bookings, function($b) use ($today) {
     <?php endforeach; endforeach; ?>
     </div>
     <script>
-    // City filter logic with Solapur as default
+    // City filter logic with persistent selection
     function filterByCity(city) {
         document.querySelectorAll('.booking-table-group').forEach(function(group) {
             if (!city || group.getAttribute('data-city') === city) {
@@ -463,11 +463,25 @@ $bookings = array_values(array_filter($bookings, function($b) use ($today) {
             }
         });
     }
-    document.getElementById('cityFilter').addEventListener('change', function() {
+    
+    // Persistence: save selected city to localStorage and restore on page load
+    var cityFilterDropdown = document.getElementById('cityFilter');
+    
+    // Check if a city was saved in localStorage
+    var savedCity = localStorage.getItem('bookedTokensCityFilter');
+    if (savedCity) {
+        cityFilterDropdown.value = savedCity;
+        filterByCity(savedCity);
+    } else {
+        // Default to Solapur
+        filterByCity('solapur');
+    }
+    
+    // Save to localStorage when changed
+    cityFilterDropdown.addEventListener('change', function() {
+        localStorage.setItem('bookedTokensCityFilter', this.value);
         filterByCity(this.value);
     });
-    // Initial filter
-    filterByCity('solapur');
     </script>
     <script>
     // Delete booking functionality

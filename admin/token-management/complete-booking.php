@@ -27,76 +27,83 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $updateStmt = $pdo->prepare("UPDATE token_bookings SET status = 'completed' WHERE id = ?");
             $updateStmt->execute([$id]);
             
-            // Send reminder to token +5 (only for Solapur)
-            if (strtolower(trim($currentBooking['location'])) === 'solapur') {
-                $nextTokenNo = (int)$currentBooking['token_no'] + 5;
+            // Send reminder to token +5 (for both Solapur in Marathi and Hyderabad in Telugu)
+            $nextTokenNo = (int)$currentBooking['token_no'] + 5;
+            
+            // Find the +5 token
+            $nextStmt = $pdo->prepare("SELECT id, token_no, name, mobile, token_date FROM token_bookings WHERE token_no = ? AND token_date = ? AND LOWER(TRIM(location)) = LOWER(TRIM(?))");
+            $nextStmt->execute([$nextTokenNo, $currentBooking['token_date'], $currentBooking['location']]);
+            $nextBooking = $nextStmt->fetch(PDO::FETCH_ASSOC);
+            
+            if ($nextBooking && $nextBooking['mobile']) {
+                // Get slot info for time calculation
+                $slotStmt = $pdo->prepare("SELECT from_time, to_time, total_tokens FROM token_management WHERE token_date = ? AND LOWER(TRIM(location)) = LOWER(TRIM(?))");
+                $slotStmt->execute([$currentBooking['token_date'], $currentBooking['location']]);
+                $slot = $slotStmt->fetch(PDO::FETCH_ASSOC);
                 
-                // Find the +5 token
-                $nextStmt = $pdo->prepare("SELECT id, token_no, name, mobile, token_date FROM token_bookings WHERE token_no = ? AND token_date = ? AND LOWER(TRIM(location)) = LOWER(TRIM(?))");
-                $nextStmt->execute([$nextTokenNo, $currentBooking['token_date'], $currentBooking['location']]);
-                $nextBooking = $nextStmt->fetch(PDO::FETCH_ASSOC);
-                
-                if ($nextBooking && $nextBooking['mobile']) {
-                    // Get slot info for time calculation
-                    $slotStmt = $pdo->prepare("SELECT from_time, to_time, total_tokens FROM token_management WHERE token_date = ? AND LOWER(TRIM(location)) = LOWER(TRIM(?))");
-                    $slotStmt->execute([$currentBooking['token_date'], $currentBooking['location']]);
-                    $slot = $slotStmt->fetch(PDO::FETCH_ASSOC);
-                    
-                    $revisedSlot = '-';
-                    if ($slot && $slot['from_time'] && $slot['to_time'] && (int)$slot['total_tokens'] > 0) {
-                        $fromParts = explode(':', $slot['from_time']);
-                        $toParts = explode(':', $slot['to_time']);
-                        if (count($fromParts) >= 2 && count($toParts) >= 2) {
-                            $fromMins = intval($fromParts[0]) * 60 + intval($fromParts[1]);
-                            $toMins = intval($toParts[0]) * 60 + intval($toParts[1]);
-                            $diffMins = $toMins - $fromMins;
-                            if ($diffMins > 0) {
-                                $perMinsCalc = floor($diffMins / (int)$slot['total_tokens']);
-                                if ($perMinsCalc > 0) {
-                                    // Calculate revised time from current time
-                                    $nowMins = ((int)date('G')) * 60 + (int)date('i');
-                                    $rowIndex = $nextTokenNo - 1;
-                                    $revStart = $nowMins + ($rowIndex * $perMinsCalc);
-                                    $revEnd = $nowMins + (($rowIndex + 1) * $perMinsCalc);
-                                    $revisedSlot = minsToTime($revStart) . ' - ' . minsToTime($revEnd);
-                                }
+                $revisedSlot = '-';
+                if ($slot && $slot['from_time'] && $slot['to_time'] && (int)$slot['total_tokens'] > 0) {
+                    $fromParts = explode(':', $slot['from_time']);
+                    $toParts = explode(':', $slot['to_time']);
+                    if (count($fromParts) >= 2 && count($toParts) >= 2) {
+                        $fromMins = intval($fromParts[0]) * 60 + intval($fromParts[1]);
+                        $toMins = intval($toParts[0]) * 60 + intval($toParts[1]);
+                        $diffMins = $toMins - $fromMins;
+                        if ($diffMins > 0) {
+                            $perMinsCalc = floor($diffMins / (int)$slot['total_tokens']);
+                            if ($perMinsCalc > 0) {
+                                // Calculate revised time from current time
+                                $nowMins = ((int)date('G')) * 60 + (int)date('i');
+                                $rowIndex = $nextTokenNo - 1;
+                                $revStart = $nowMins + ($rowIndex * $perMinsCalc);
+                                $revEnd = $nowMins + (($rowIndex + 1) * $perMinsCalc);
+                                $revisedSlot = minsToTime($revStart) . ' - ' . minsToTime($revEnd);
                             }
                         }
                     }
-                    
-                    // Get current token being served (last completed)
-                    $currentTokenStmt = $pdo->prepare("SELECT MAX(token_no) as current_token FROM token_bookings WHERE token_date = ? AND LOWER(TRIM(location)) = LOWER(TRIM(?)) AND status = 'completed'");
-                    $currentTokenStmt->execute([$currentBooking['token_date'], $currentBooking['location']]);
-                    $currentTokenResult = $currentTokenStmt->fetch(PDO::FETCH_ASSOC);
-                    $currentToken = $currentTokenResult['current_token'] ?? 0;
-                    
-                    // Format date
-                    $dateObj = DateTime::createFromFormat('Y-m-d', $currentBooking['token_date']);
-                    $formattedDate = $dateObj ? $dateObj->format('d-M-Y') : $currentBooking['token_date'];
-                    $dateTimeSlot = $formattedDate . ' | ' . $revisedSlot;
-                    
-                    // Send WhatsApp reminder using location-specific template
-                    require_once __DIR__ . '/../../helpers/send_whatsapp.php';
-                    try {
-                        // Use location-specific template
-                        $template = 'token_update_marathi'; // Default for Solapur
-                        if (strtolower(trim($currentBooking['location'])) === 'hyderabad') {
-                            $template = 'token_update_telugu';
-                        }
-                        
-                        sendWhatsAppMessage(
-                            $nextBooking['mobile'],
-                            $template,
-                            [
-                                'name' => $nextBooking['name'],
-                                'token_no' => $nextTokenNo,
-                                'revised_slot' => $dateTimeSlot,
-                                'current_token' => $currentToken
-                            ]
-                        );
-                    } catch (Throwable $e) {
-                        error_log('WhatsApp token reminder failed: ' . $e->getMessage());
+                }
+                
+                // Get current token being served (last completed)
+                $currentTokenStmt = $pdo->prepare("SELECT MAX(token_no) as current_token FROM token_bookings WHERE token_date = ? AND LOWER(TRIM(location)) = LOWER(TRIM(?)) AND status = 'completed'");
+                $currentTokenStmt->execute([$currentBooking['token_date'], $currentBooking['location']]);
+                $currentTokenResult = $currentTokenStmt->fetch(PDO::FETCH_ASSOC);
+                $currentToken = $currentTokenResult['current_token'] ?? 0;
+                
+                // Format date
+                $dateObj = DateTime::createFromFormat('Y-m-d', $currentBooking['token_date']);
+                $formattedDate = $dateObj ? $dateObj->format('d-M-Y') : $currentBooking['token_date'];
+                $dateTimeSlot = $formattedDate . ' | ' . $revisedSlot;
+                
+                // Send WhatsApp reminder using location-specific template
+                require_once __DIR__ . '/../../helpers/send_whatsapp.php';
+                try {
+                    // Use location-specific template
+                    $template = 'token_update_marathi'; // Default for Solapur
+                    $location = strtolower(trim($currentBooking['location']));
+                    if ($location === 'hyderabad') {
+                        $template = 'token_update_telugu';
                     }
+                    
+                    error_log('Token +5 Reminder: Location=' . $location . ', Template=' . $template . ', NextToken=' . $nextTokenNo . ' to ' . $nextBooking['mobile']);
+                    
+                    $result = sendWhatsAppMessage(
+                        $nextBooking['mobile'],
+                        $template,
+                        [
+                            'name' => $nextBooking['name'],
+                            'token_no' => $nextTokenNo,
+                            'revised_slot' => $dateTimeSlot,
+                            'current_token' => $currentToken
+                        ]
+                    );
+                    
+                    if ($result['success']) {
+                        error_log('Token +5 Reminder: SUCCESS for token ' . $nextTokenNo);
+                    } else {
+                        error_log('Token +5 Reminder: FAILED - ' . $result['message']);
+                    }
+                } catch (Throwable $e) {
+                    error_log('Token +5 Reminder: Exception - ' . $e->getMessage());
                 }
             }
             
