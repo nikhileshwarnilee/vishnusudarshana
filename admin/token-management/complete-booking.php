@@ -24,7 +24,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         if ($currentBooking) {
             // Mark as completed
-            $updateStmt = $pdo->prepare("UPDATE token_bookings SET status = 'completed' WHERE id = ?");
+            $updateStmt = $pdo->prepare("UPDATE token_bookings SET status = 'completed', updated_at = NOW() WHERE id = ?");
             $updateStmt->execute([$id]);
             
             // Send reminder to token +5 (for both Solapur in Marathi and Hyderabad in Telugu)

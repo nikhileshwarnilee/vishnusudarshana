@@ -285,7 +285,7 @@ include 'header.php';
 <script>
 
 const cards = document.querySelectorAll('.calendar-card');
-const apiUrl = 'api/live-tokens.php';
+const apiUrl = 'api/live-tokens-previous.php';
 const visibilityUrl = 'api/live-token-visibility.php';
 
 function formatDateLabel(dateStr) {
@@ -312,15 +312,8 @@ function updateFlip(card, value) {
 
 function renderCard(card, data, dateStr) {
 	card.querySelector('[data-date]').textContent = formatDateLabel(dateStr);
-	// Show previous token as the one before the last completed token
-	let prevToken = '-';
-	const curr = parseInt(data.current_token);
-	if (!isNaN(curr) && curr > 1) {
-		prevToken = curr - 1;
-	} else if (!isNaN(curr) && curr === 1) {
-		prevToken = '-';
-	}
-	card.querySelector('[data-last]').textContent = prevToken;
+	// Show previous token as the one with previous latest updated_at
+	card.querySelector('[data-last]').textContent = data.previous_token || '-';
 	card.querySelector('[data-current]').textContent = data.current_token || '--';
 	card.querySelector('[data-next]').textContent = data.next_token || '--';
 	updateFlip(card, data.current_token || '--');
