@@ -84,6 +84,7 @@ define('WHATSAPP_TEMPLATES', [
     // Schedule blocked notification (admin created blocks)
     'SCHEDULE_BLOCKED' => 'Schedule Manager Marathi'
     , 'ADMIN_SERVICES_ALERT' => 'Admin Service Alert'
+    , 'token_update_marathi' => 'Token Update Marathi'
 ]);
 
 /**
@@ -147,6 +148,7 @@ define('WHATSAPP_TEMPLATE_VARIABLES', [
     // Schedule blocked notification - 6 params: name, date_range, title, time_range, status, description
     'SCHEDULE_BLOCKED' => ['name', 'date_range', 'title', 'time_range', 'status', 'description']
     , 'ADMIN_SERVICES_ALERT' => ['customer_name', 'customer_mobile', 'category', 'products_list', 'tracking_id']
+    , 'token_update_marathi' => ['name', 'token_no', 'revised_slot', 'current_token']
 ]);
 
 /**
