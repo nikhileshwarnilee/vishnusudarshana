@@ -4,19 +4,20 @@ include 'header.php';
 ?>
 
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;700&family=Work+Sans:wght@400;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Mulish:wght@400;600;700&display=swap');
 
 :root {
-	--ink: #2a2a2a;
-	--sand: #f7f2e8;
-	--clay: #ead9c3;
-	--teal: #1f6f6d;
-	--sun: #f3b94e;
-	--shadow: 0 14px 30px rgba(0,0,0,0.12);
+	--ink: #4a2a2a;
+	--cream: #fff7d6;
+	--gold: #f2d98c;
+	--gold-deep: #d3a12c;
+	--maroon: #800000;
+	--maroon-dark: #5b0000;
+	--shadow: 0 14px 30px rgba(128,0,0,0.12);
 }
 
 .live-token-wrap {
-	background: radial-gradient(1200px 600px at 10% 10%, #fff8ea 0%, #f4ead6 45%, #efe1c8 100%);
+	background: radial-gradient(1200px 600px at 10% 10%, #fffdf1 0%, #fff3c9 45%, #f7e6b8 100%);
 	padding: 48px 16px 72px;
 	min-height: 70vh;
 }
@@ -27,33 +28,41 @@ include 'header.php';
 }
 
 .live-token-title {
-	font-family: 'Playfair Display', serif;
-	font-size: 2.2rem;
-	color: var(--ink);
+	font-family: 'Cinzel', serif;
+	font-size: 2.1rem;
+	color: var(--maroon);
 	text-align: center;
 	margin-bottom: 10px;
 }
 
 .live-token-subtitle {
-	font-family: 'Work Sans', sans-serif;
+	font-family: 'Mulish', sans-serif;
 	text-align: center;
-	color: #5b5b5b;
+	color: #6b0000;
 	margin-bottom: 28px;
 }
 
 .cards-row {
 	display: grid;
-	grid-template-columns: repeat(3, minmax(260px, 1fr));
+	grid-template-columns: minmax(260px, 360px);
 	gap: 22px;
+	justify-content: center;
+}
+
+.cards-row.two-cards {
+	grid-template-columns: repeat(2, minmax(260px, 360px));
 }
 
 .calendar-card {
-	background: white;
+	background: #fffef6;
 	border-radius: 18px;
 	box-shadow: var(--shadow);
 	overflow: hidden;
 	position: relative;
-	border: 1px solid #f0e2cc;
+	border: 1px solid var(--gold);
+	max-width: 360px;
+	width: 100%;
+	justify-self: center;
 }
 
 .calendar-card::before {
@@ -63,7 +72,7 @@ include 'header.php';
 	left: 0;
 	right: 0;
 	height: 8px;
-	background: linear-gradient(90deg, var(--teal), var(--sun));
+	background: linear-gradient(90deg, var(--maroon), var(--gold-deep));
 }
 
 .calendar-top {
@@ -74,15 +83,15 @@ include 'header.php';
 }
 
 .calendar-city {
-	font-family: 'Playfair Display', serif;
+	font-family: 'Cinzel', serif;
 	font-size: 1.2rem;
-	color: var(--ink);
+	color: var(--maroon);
 }
 
 .calendar-date {
-	font-family: 'Work Sans', sans-serif;
+	font-family: 'Mulish', sans-serif;
 	font-size: 0.85rem;
-	color: #7a7a7a;
+	color: #7a4d4d;
 }
 
 .flip-window {
@@ -113,11 +122,11 @@ include 'header.php';
 	display: grid;
 	place-items: center;
 	border-radius: 12px;
-	background: var(--sand);
-	border: 1px solid var(--clay);
-	font-family: 'Work Sans', sans-serif;
+	background: var(--cream);
+	border: 1px solid var(--gold);
+	font-family: 'Mulish', sans-serif;
 	font-weight: 700;
-	color: var(--teal);
+	color: var(--maroon);
 	font-size: 1.5rem;
 	letter-spacing: 1px;
 }
@@ -131,12 +140,12 @@ include 'header.php';
 	display: grid;
 	grid-template-columns: repeat(3, 1fr);
 	gap: 10px;
-	font-family: 'Work Sans', sans-serif;
+	font-family: 'Mulish', sans-serif;
 }
 
 .meta-box {
-	background: #fcf8f1;
-	border: 1px solid #f1e4cf;
+	background: #fff7e0;
+	border: 1px solid var(--gold);
 	border-radius: 10px;
 	padding: 10px;
 	text-align: center;
@@ -144,14 +153,14 @@ include 'header.php';
 
 .meta-label {
 	font-size: 0.75rem;
-	color: #8b7a62;
+	color: #7a4d4d;
 	text-transform: uppercase;
 	letter-spacing: 0.6px;
 }
 
 .meta-value {
 	font-size: 1.1rem;
-	color: var(--ink);
+	color: var(--maroon-dark);
 	font-weight: 700;
 }
 
@@ -235,15 +244,15 @@ include 'header.php';
 				</div>
 				<div class="token-meta">
 					<div class="meta-box">
-						<div class="meta-label">Previous Token</div>
+						<div class="meta-label">Previous Token | मागील टोकन | మునుపటి టోకెన్</div>
 						<div class="meta-value" data-last>--</div>
 					</div>
 					<div class="meta-box">
-						<div class="meta-label">Current Token</div>
+						<div class="meta-label">Current Token | चालू टोकन | ప్రస్తుత టోకెన్</div>
 						<div class="meta-value" data-current>--</div>
 					</div>
 					<div class="meta-box">
-						<div class="meta-label">Next Token</div>
+						<div class="meta-label">Next Token | पुढील टोकन | తదుపరి టోకెన్</div>
 						<div class="meta-value" data-next>--</div>
 					</div>
 				</div>
@@ -264,15 +273,15 @@ include 'header.php';
 				</div>
 				<div class="token-meta">
 					<div class="meta-box">
-						<div class="meta-label">Previous Token</div>
+						<div class="meta-label">Previous Token | मागील टोकन | మునుపటి టోకెన్</div>
 						<div class="meta-value" data-last>--</div>
 					</div>
 					<div class="meta-box">
-						<div class="meta-label">Current Token</div>
+						<div class="meta-label">Current Token | चालू टोकन | ప్రస్తుత టోకెన్</div>
 						<div class="meta-value" data-current>--</div>
 					</div>
 					<div class="meta-box">
-						<div class="meta-label">Next Token</div>
+						<div class="meta-label">Next Token | पुढील टोकन | తదుపరి టోకెన్</div>
 						<div class="meta-value" data-next>--</div>
 					</div>
 				</div>
@@ -285,6 +294,7 @@ include 'header.php';
 <script>
 
 const cards = document.querySelectorAll('.calendar-card');
+const cardsRow = document.querySelector('.cards-row');
 const apiUrl = 'api/live-tokens-previous.php';
 const visibilityUrl = 'api/live-token-visibility.php';
 
@@ -349,6 +359,9 @@ async function updateVisibility() {
 				card.style.display = 'none';
 			}
 		});
+		if (cardsRow) {
+			cardsRow.classList.toggle('two-cards', visible.length === 2);
+		}
 	} catch (err) {}
 }
 

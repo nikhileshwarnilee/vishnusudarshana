@@ -25,3 +25,11 @@
 [2026-02-07 23:48:26] TO: 919595744266 | TEMPLATE: Token Update Marathi | STATUS: SUCCESS | DETAILS: {"success":"true","submitted_message_id":"1fd88c3d-bc3a-44ac-a33a-0184a6c35c40"}
 [2026-02-07 23:48:43] TO: 911234567890 | TEMPLATE: Token Update Marathi | STATUS: SUCCESS | DETAILS: {"success":"true","submitted_message_id":"d21f1ea6-c9ea-48cc-b7a0-63f95bdd64cb"}
 [2026-02-07 23:49:12] TO: 911234567890 | TEMPLATE: Token Update Marathi | STATUS: SUCCESS | DETAILS: {"success":"true","submitted_message_id":"7a6ae1fd-1d63-4e0a-b7b7-31e72c9a3341"}
+[2026-02-07 23:52:12] TO: 911234567890 | TEMPLATE: Token Update Marathi | STATUS: SUCCESS | DETAILS: {"success":"true","submitted_message_id":"fed2ba09-f88c-4e01-adb6-386e14a8af55"}
+[2026-02-07 23:59:55] TO: 919595744266 | TEMPLATE: Token Update Telugu | STATUS: SUCCESS | DETAILS: {"success":"true","submitted_message_id":"0c73e3a5-e8b6-4fed-ad5c-0a0648575f11"}
+[2026-02-08 00:08:16] TO: 919595744266 | TEMPLATE: Token Booked | STATUS: SUCCESS | DETAILS: {"success":"true","submitted_message_id":"7ab50634-0a0d-4d1e-b4f4-319b0c0a549e"}
+[2026-02-08 00:08:19] TO: 919595744266 | TEMPLATE: Token Booked | STATUS: SUCCESS | DETAILS: {"success":"true","submitted_message_id":"1390df19-ad54-4c26-a8c5-259b9b5ae1be"}
+[2026-02-08 00:08:22] TO: 919595744266 | TEMPLATE: Token Booked | STATUS: SUCCESS | DETAILS: {"success":"true","submitted_message_id":"22ae649a-7435-401e-beac-5541fdd0ea31"}
+[2026-02-08 00:08:31] TO: 919595744266 | TEMPLATE: Token Booked | STATUS: SUCCESS | DETAILS: {"success":"true","submitted_message_id":"f70dbe7c-4a7e-46cc-adcc-27950835a347"}
+[2026-02-08 00:08:37] TO: 919595744266 | TEMPLATE: Token Booked | STATUS: SUCCESS | DETAILS: {"success":"true","submitted_message_id":"1eda4bf9-a19b-40a6-b8b8-2f8877e1ccff"}
+[2026-02-08 00:08:43] TO: 919595744266 | TEMPLATE: Token Booked | STATUS: SUCCESS | DETAILS: {"success":"true","submitted_message_id":"0cafc4ff-d33f-4673-b69e-4868a05348a0"}
