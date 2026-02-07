@@ -312,8 +312,15 @@ function updateFlip(card, value) {
 
 function renderCard(card, data, dateStr) {
 	card.querySelector('[data-date]').textContent = formatDateLabel(dateStr);
-	// Show previous token as last completed token number
-	card.querySelector('[data-last]').textContent = data.current_token || '--';
+	// Show previous token as the one before the last completed token
+	let prevToken = '-';
+	const curr = parseInt(data.current_token);
+	if (!isNaN(curr) && curr > 1) {
+		prevToken = curr - 1;
+	} else if (!isNaN(curr) && curr === 1) {
+		prevToken = '-';
+	}
+	card.querySelector('[data-last]').textContent = prevToken;
 	card.querySelector('[data-current]').textContent = data.current_token || '--';
 	card.querySelector('[data-next]').textContent = data.next_token || '--';
 	updateFlip(card, data.current_token || '--');
