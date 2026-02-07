@@ -188,7 +188,7 @@ body.fullscreen-mode .live-token-subtitle {
 }
 
 body.fullscreen-mode .calendar-card {
-	max-width: 720px;
+	max-width: 1020px;
 	transform: scale(1.1);
 	transform-origin: center;
 }
