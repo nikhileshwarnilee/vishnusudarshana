@@ -285,6 +285,7 @@ $bookings = array_values(array_filter($bookings, function($b) use ($today) {
                     <th>Mobile</th>
                     <th>Service Time</th>
                     <th>Time Slot</th>
+                    <th>Revised Time Slot</th>
                     <th>Late By</th>
                     <th>Action</th>
                     <th>Created At</th>
@@ -307,6 +308,7 @@ $bookings = array_values(array_filter($bookings, function($b) use ($today) {
                         $slot = $row->fetch(PDO::FETCH_ASSOC);
                         $slotText = '-';
                         $highlight = false;
+                        $perMinsCalc = 0;
                         if ($slot && $slot['from_time'] && $slot['to_time'] && $slot['total_tokens'] > 0) {
                             $fromParts = explode(':', $slot['from_time']);
                             $toParts = explode(':', $slot['to_time']);
@@ -315,9 +317,9 @@ $bookings = array_values(array_filter($bookings, function($b) use ($today) {
                                 $toMins = intval($toParts[0]) * 60 + intval($toParts[1]);
                                 $diffMins = $toMins - $fromMins;
                                 if ($diffMins > 0) {
-                                    $perMins = floor($diffMins / $slot['total_tokens']);
-                                    $startMins = $fromMins + ($rowIndex) * $perMins;
-                                    $endMins = $fromMins + ($rowIndex + 1) * $perMins;
+                                    $perMinsCalc = floor($diffMins / $slot['total_tokens']);
+                                    $startMins = $fromMins + ($rowIndex) * $perMinsCalc;
+                                    $endMins = $fromMins + ($rowIndex + 1) * $perMinsCalc;
                                     $slotText = minsToTime($startMins) . ' - ' . minsToTime($endMins);
                                     // Highlight if current time is within slot and date is today
                                     $today = date('Y-m-d');
@@ -337,6 +339,18 @@ $bookings = array_values(array_filter($bookings, function($b) use ($today) {
                         } else {
                             echo htmlspecialchars($slotText);
                         }
+                        ?>
+                    </td>
+                    <td>
+                        <?php
+                        $revisedText = '-';
+                        if ($perMinsCalc > 0) {
+                            $nowMins = ((int)date('G')) * 60 + (int)date('i');
+                            $revStart = $nowMins + ($rowIndex * $perMinsCalc);
+                            $revEnd = $nowMins + (($rowIndex + 1) * $perMinsCalc);
+                            $revisedText = minsToTime($revStart) . ' - ' . minsToTime($revEnd);
+                        }
+                        echo htmlspecialchars($revisedText);
                         ?>
                     </td>
                     <td>
