@@ -164,6 +164,35 @@ include 'header.php';
 	font-weight: 700;
 }
 
+body.fullscreen-mode header.header,
+body.fullscreen-mode .mobile-nav,
+body.fullscreen-mode .footer,
+body.fullscreen-mode .lang-popup,
+body.fullscreen-mode .lang-popup-overlay,
+body.fullscreen-mode .welcome-intro-overlay,
+body.fullscreen-mode .welcome-intro-popup {
+	display: none !important;
+}
+
+body.fullscreen-mode .live-token-wrap {
+	padding: 24px 12px 36px;
+	min-height: 100vh;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+body.fullscreen-mode .live-token-title,
+body.fullscreen-mode .live-token-subtitle {
+	display: none;
+}
+
+body.fullscreen-mode .calendar-card {
+	max-width: 720px;
+	transform: scale(1.1);
+	transform-origin: center;
+}
+
 .times-list {
 	border-top: 1px dashed #ead9c3;
 	padding: 14px 18px 18px;
@@ -297,6 +326,8 @@ const cards = document.querySelectorAll('.calendar-card');
 const cardsRow = document.querySelector('.cards-row');
 const apiUrl = 'api/live-tokens-previous.php';
 const visibilityUrl = 'api/live-token-visibility.php';
+const urlParams = new URLSearchParams(window.location.search);
+const fullscreenCity = urlParams.get('fullscreen');
 
 function formatDateLabel(dateStr) {
 	const d = new Date(dateStr + 'T00:00:00');
@@ -353,6 +384,10 @@ async function updateVisibility() {
 		const visible = data.visible || [];
 		cards.forEach(card => {
 			const city = card.getAttribute('data-city');
+			if (fullscreenCity) {
+				card.style.display = city === fullscreenCity ? '' : 'none';
+				return;
+			}
 			if (visible.includes(city)) {
 				card.style.display = '';
 			} else {
@@ -360,7 +395,7 @@ async function updateVisibility() {
 			}
 		});
 		if (cardsRow) {
-			cardsRow.classList.toggle('two-cards', visible.length === 2);
+			cardsRow.classList.toggle('two-cards', !fullscreenCity && visible.length === 2);
 		}
 	} catch (err) {}
 }
@@ -371,6 +406,17 @@ async function liveUpdate() {
 
 liveUpdate();
 setInterval(liveUpdate, 10000);
+
+if (fullscreenCity) {
+	document.body.classList.add('fullscreen-mode');
+}
+
+cards.forEach(card => {
+	card.addEventListener('click', () => {
+		const city = card.getAttribute('data-city');
+		window.location.href = `live-token.php?fullscreen=${encodeURIComponent(city)}`;
+	});
+});
 </script>
 
 <?php include 'footer.php'; ?>
