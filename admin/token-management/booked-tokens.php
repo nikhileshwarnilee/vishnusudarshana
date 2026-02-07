@@ -138,6 +138,25 @@ $bookings = array_values(array_filter($bookings, function($b) use ($today) {
             font-weight: 600;
             font-size: 0.95em;
         }
+        .start-btn {
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 8px;
+            background: #1a8917;
+            color: #fff;
+            font-weight: 600;
+            font-size: 0.95em;
+            border: none;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        .start-btn:hover {
+            background: #158910;
+        }
+        .start-btn:disabled {
+            background: #888;
+            cursor: not-allowed;
+        }
         .table-wrap {
             overflow-x: auto;
         }
@@ -295,6 +314,19 @@ $bookings = array_values(array_filter($bookings, function($b) use ($today) {
                 - <?= htmlspecialchars(ucfirst($city)) ?>
             </h3>
             <div class="group-meta">Total Tokens: <?= isset($tokenTotals[$date][$city]) ? $tokenTotals[$date][$city] : '-' ?> | Booked Tokens: <?= count($cityBookings) ?> | Per Token: <?= htmlspecialchars($perTokenLabel) ?></div>
+            <?php if ($date === date('Y-m-d')): ?>
+            <?php
+                // Check if tokens 1-5 are all completed
+                $allCompleted = true;
+                $checkStmt = $pdo->prepare("SELECT COUNT(*) as cnt FROM token_bookings WHERE token_no IN (1,2,3,4,5) AND token_date = ? AND LOWER(TRIM(location)) = LOWER(TRIM(?)) AND LOWER(TRIM(status)) != 'completed'");
+                $checkStmt->execute([$date, $city]);
+                $checkResult = $checkStmt->fetch(PDO::FETCH_ASSOC);
+                if ($checkResult && (int)$checkResult['cnt'] > 0) {
+                    $allCompleted = false;
+                }
+            ?>
+            <button class="start-btn" data-date="<?= htmlspecialchars($date) ?>" data-city="<?= htmlspecialchars($city) ?>" <?php if ($allCompleted): ?>disabled<?php endif; ?>><?php if ($allCompleted): ?>All Completed<?php else: ?>Start<?php endif; ?></button>
+            <?php endif; ?>
         </div>
         <div class="table-wrap">
         <table class="bookedTokensTable">
@@ -502,6 +534,50 @@ $bookings = array_values(array_filter($bookings, function($b) use ($today) {
                 }
             })
             .catch(() => alert('Failed to revert booking status.'));
+        });
+    });
+
+    // Start button functionality - sends reminder to tokens 1-5
+    document.querySelectorAll('.start-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            if (this.disabled) {
+                alert('All tokens 1-5 are completed.');
+                return;
+            }
+            
+            var date = this.getAttribute('data-date');
+            var city = this.getAttribute('data-city');
+            var button = this;
+            
+            if (!date || !city) return;
+            
+            if (!confirm('Send revised time reminders to tokens 1-5?')) return;
+            
+            button.disabled = true;
+            button.textContent = 'Sending...';
+            
+            fetch('send-token-start-reminder.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: 'date=' + encodeURIComponent(date) + '&location=' + encodeURIComponent(city)
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Reminders sent to ' + data.sent_count + ' token(s)');
+                    button.style.display = 'none';
+                } else {
+                    alert('Failed: ' + (data.message || 'Unknown error'));
+                    button.disabled = false;
+                    button.textContent = 'Start';
+                }
+            })
+            .catch(err => {
+                alert('Error sending reminders');
+                console.error(err);
+                button.disabled = false;
+                button.textContent = 'Start';
+            });
         });
     });
     </script>
