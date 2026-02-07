@@ -96,31 +96,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         if ($t['mobile']) {
             try {
-                // Use Marathi template for Solapur
-                if (strtolower(trim($location)) === 'solapur') {
-                    sendWhatsAppMessage(
-                        $t['mobile'],
-                        'token_update_marathi',
-                        [
-                            'name' => $t['name'],
-                            'token_no' => $tokenNo,
-                            'revised_slot' => $dateTimeSlot,
-                            'current_token' => $currentToken
-                        ]
-                    );
-                } else {
-                    // For other locations, can add other templates later
-                    sendWhatsAppMessage(
-                        $t['mobile'],
-                        'token_update_marathi',
-                        [
-                            'name' => $t['name'],
-                            'token_no' => $tokenNo,
-                            'revised_slot' => $dateTimeSlot,
-                            'current_token' => $currentToken
-                        ]
-                    );
+                // Use location-specific template
+                $template = 'token_update_marathi'; // Default for Solapur
+                if (strtolower(trim($location)) === 'hyderabad') {
+                    $template = 'token_update_telugu';
                 }
+                
+                sendWhatsAppMessage(
+                    $t['mobile'],
+                    $template,
+                    [
+                        'name' => $t['name'],
+                        'token_no' => $tokenNo,
+                        'revised_slot' => $dateTimeSlot,
+                        'current_token' => $currentToken
+                    ]
+                );
                 $sentCount++;
             } catch (Throwable $e) {
                 error_log('WhatsApp token start reminder failed for token ' . $tokenNo . ': ' . $e->getMessage());

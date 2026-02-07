@@ -75,12 +75,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $formattedDate = $dateObj ? $dateObj->format('d-M-Y') : $currentBooking['token_date'];
                     $dateTimeSlot = $formattedDate . ' | ' . $revisedSlot;
                     
-                    // Send WhatsApp reminder using Marathi template
+                    // Send WhatsApp reminder using location-specific template
                     require_once __DIR__ . '/../../helpers/send_whatsapp.php';
                     try {
+                        // Use location-specific template
+                        $template = 'token_update_marathi'; // Default for Solapur
+                        if (strtolower(trim($currentBooking['location'])) === 'hyderabad') {
+                            $template = 'token_update_telugu';
+                        }
+                        
                         sendWhatsAppMessage(
                             $nextBooking['mobile'],
-                            'token_update_marathi',
+                            $template,
                             [
                                 'name' => $nextBooking['name'],
                                 'token_no' => $nextTokenNo,
