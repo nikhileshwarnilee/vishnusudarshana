@@ -263,6 +263,27 @@ $bookings = array_values(array_filter($bookings, function($b) use ($today) {
             usort($cityBookings, function($a, $b) {
                 return $a['token_no'] - $b['token_no'];
             });
+            $perTokenLabel = '-';
+            $slotInfoStmt = $pdo->prepare("SELECT from_time, to_time, total_tokens FROM token_management WHERE token_date = ? AND LOWER(TRIM(location)) = LOWER(TRIM(?)) LIMIT 1");
+            $slotInfoStmt->execute([$date, $city]);
+            $slotInfo = $slotInfoStmt->fetch(PDO::FETCH_ASSOC);
+            if ($slotInfo && $slotInfo['from_time'] && $slotInfo['to_time'] && (int)$slotInfo['total_tokens'] > 0) {
+                $fromParts = explode(':', $slotInfo['from_time']);
+                $toParts = explode(':', $slotInfo['to_time']);
+                if (count($fromParts) >= 2 && count($toParts) >= 2) {
+                    $fromMins = intval($fromParts[0]) * 60 + intval($fromParts[1]);
+                    $toMins = intval($toParts[0]) * 60 + intval($toParts[1]);
+                    $diffMins = $toMins - $fromMins;
+                    if ($diffMins > 0) {
+                        $perMins = floor($diffMins / (int)$slotInfo['total_tokens']);
+                        if ($perMins > 0) {
+                            $hours = floor($perMins / 60);
+                            $mins = $perMins % 60;
+                            $perTokenLabel = ($hours ? $hours . 'h ' : '') . $mins . 'm';
+                        }
+                    }
+                }
+            }
     ?>
     <div class="booking-table-group" data-city="<?= htmlspecialchars($city) ?>">
         <div class="group-title">
@@ -273,7 +294,7 @@ $bookings = array_values(array_filter($bookings, function($b) use ($today) {
                 <?php endif; ?>
                 - <?= htmlspecialchars(ucfirst($city)) ?>
             </h3>
-            <div class="group-meta">Total Tokens: <?= isset($tokenTotals[$date][$city]) ? $tokenTotals[$date][$city] : '-' ?> | Booked Tokens: <?= count($cityBookings) ?></div>
+            <div class="group-meta">Total Tokens: <?= isset($tokenTotals[$date][$city]) ? $tokenTotals[$date][$city] : '-' ?> | Booked Tokens: <?= count($cityBookings) ?> | Per Token: <?= htmlspecialchars($perTokenLabel) ?></div>
         </div>
         <div class="table-wrap">
         <table class="bookedTokensTable">
@@ -286,7 +307,7 @@ $bookings = array_values(array_filter($bookings, function($b) use ($today) {
                     <th>Service Time</th>
                     <th>Time Slot</th>
                     <th>Revised Time Slot</th>
-                    <th>Late By</th>
+                    <th>Delayed By</th>
                     <th>Action</th>
                     <th>Created At</th>
                 </tr>
@@ -309,6 +330,7 @@ $bookings = array_values(array_filter($bookings, function($b) use ($today) {
                         $slotText = '-';
                         $highlight = false;
                         $perMinsCalc = 0;
+                        $slotStartMins = null;
                         if ($slot && $slot['from_time'] && $slot['to_time'] && $slot['total_tokens'] > 0) {
                             $fromParts = explode(':', $slot['from_time']);
                             $toParts = explode(':', $slot['to_time']);
@@ -320,6 +342,7 @@ $bookings = array_values(array_filter($bookings, function($b) use ($today) {
                                     $perMinsCalc = floor($diffMins / $slot['total_tokens']);
                                     $startMins = $fromMins + ($rowIndex) * $perMinsCalc;
                                     $endMins = $fromMins + ($rowIndex + 1) * $perMinsCalc;
+                                    $slotStartMins = $startMins;
                                     $slotText = minsToTime($startMins) . ' - ' . minsToTime($endMins);
                                     // Highlight if current time is within slot and date is today
                                     $today = date('Y-m-d');
@@ -344,10 +367,12 @@ $bookings = array_values(array_filter($bookings, function($b) use ($today) {
                     <td>
                         <?php
                         $revisedText = '-';
+                        $revisedStartMins = null;
                         if ($perMinsCalc > 0) {
                             $nowMins = ((int)date('G')) * 60 + (int)date('i');
                             $revStart = $nowMins + ($rowIndex * $perMinsCalc);
                             $revEnd = $nowMins + (($rowIndex + 1) * $perMinsCalc);
+                            $revisedStartMins = $revStart;
                             $revisedText = minsToTime($revStart) . ' - ' . minsToTime($revEnd);
                         }
                         echo htmlspecialchars($revisedText);
@@ -355,45 +380,26 @@ $bookings = array_values(array_filter($bookings, function($b) use ($today) {
                     </td>
                     <td>
                         <?php
-                        // Calculate late by comparing current time to calculated time slot start time
-                        $lateBy = '-';
-                        if ($slot && $slot['from_time'] && $slot['to_time'] && $slot['total_tokens'] > 0) {
-                            $fromParts = explode(':', $slot['from_time']);
-                            $toParts = explode(':', $slot['to_time']);
-                            if (count($fromParts) >= 2 && count($toParts) >= 2) {
-                                $fromMins = intval($fromParts[0]) * 60 + intval($fromParts[1]);
-                                $toMins = intval($toParts[0]) * 60 + intval($toParts[1]);
-                                $diffMins = $toMins - $fromMins;
-                                if ($diffMins > 0) {
-                                    $perMins = floor($diffMins / $slot['total_tokens']);
-                                    $startMins = $fromMins + ($rowIndex) * $perMins;
-                                    $slotStartHour = floor($startMins / 60);
-                                    $slotStartMin = $startMins % 60;
-                                    $slotStartTimestamp = strtotime($b['token_date'] . sprintf(' %02d:%02d:00', $slotStartHour, $slotStartMin));
-                                    $now = time();
-                                    $diff = $now - $slotStartTimestamp;
-                                    if ($diff > 60) {
-                                        $hours = floor($diff / 3600);
-                                        $mins = floor(($diff % 3600) / 60);
-                                        $lateBy = ($hours ? $hours . 'h ' : '') . $mins . 'm late';
-                                    } else if ($diff > 0) {
-                                        $lateBy = $diff . 's late';
-                                    } else if ($diff < -60) {
-                                        $hours = floor(abs($diff) / 3600);
-                                        $mins = floor((abs($diff) % 3600) / 60);
-                                        $lateBy = 'Early by ' . ($hours ? $hours . 'h ' : '') . $mins . 'm';
-                                    } else if ($diff < 0) {
-                                        $lateBy = 'Early by ' . abs($diff) . 's';
-                                    } else {
-                                        $lateBy = 'On time';
-                                    }
-                                }
+                        $delayText = '-';
+                        if ($slotStartMins !== null && $revisedStartMins !== null) {
+                            $delayMins = $revisedStartMins - $slotStartMins;
+                            if ($delayMins > 0) {
+                                $hours = floor($delayMins / 60);
+                                $mins = $delayMins % 60;
+                                $delayText = ($hours ? $hours . 'h ' : '') . $mins . 'm late';
+                            } elseif ($delayMins < 0) {
+                                $earlyMins = abs($delayMins);
+                                $hours = floor($earlyMins / 60);
+                                $mins = $earlyMins % 60;
+                                $delayText = 'Early by ' . ($hours ? $hours . 'h ' : '') . $mins . 'm';
+                            } else {
+                                $delayText = 'On time';
                             }
                         }
-                        if (strpos($lateBy, 'late') !== false) {
-                            echo '<span style="color:#c00;font-weight:bold;">' . htmlspecialchars($lateBy) . '</span>';
+                        if (strpos($delayText, 'late') !== false) {
+                            echo '<span style="color:#c00;font-weight:bold;">' . htmlspecialchars($delayText) . '</span>';
                         } else {
-                            echo htmlspecialchars($lateBy);
+                            echo htmlspecialchars($delayText);
                         }
                         ?>
                     </td>
