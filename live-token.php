@@ -1,542 +1,363 @@
-<?php
-require_once __DIR__ . '/config/db.php';
-
-// Get all bookings for today and future dates
-$stmt = $pdo->prepare("SELECT * FROM token_bookings WHERE token_date >= ? ORDER BY token_date ASC, CAST(token_no AS UNSIGNED) ASC");
-$stmt->execute([date('Y-m-d')]);
-$bookings = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-// Get city filter from query
-$filterCity = isset($_GET['city']) ? strtolower(trim($_GET['city'])) : 'solapur';
-
-// Utility function for time formatting
-function minsToTime($mins) {
-    $h = floor($mins / 60);
-    $m = $mins % 60;
-    $ampm = $h >= 12 ? 'PM' : 'AM';
-    $h12 = $h % 12;
-    if ($h12 == 0) $h12 = 12;
-    return sprintf('%02d:%02d %s', $h12, $m, $ampm);
-}
+<?php 
+$pageTitle = 'Live Token'; 
+include 'header.php'; 
 ?>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Live Token Tracking - Vishnusudarshana</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 20px;
-        }
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-        .header {
-            background: white;
-            padding: 30px;
-            border-radius: 12px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            margin-bottom: 30px;
-        }
-        .header h1 {
-            color: #333;
-            margin-bottom: 20px;
-            text-align: center;
-            font-size: 2.5em;
-        }
-        .header-content {
-            display: flex;
-            gap: 20px;
-            align-items: center;
-            justify-content: center;
-            flex-wrap: wrap;
-        }
-        .current-time {
-            font-size: 1.2em;
-            color: #667eea;
-            font-weight: bold;
-        }
-        .location-filter {
-            display: flex;
-            gap: 10px;
-            align-items: center;
-        }
-        .location-filter label {
-            font-weight: 600;
-            color: #333;
-        }
-        .location-filter select {
-            padding: 10px 15px;
-            border: 2px solid #667eea;
-            border-radius: 6px;
-            font-size: 1em;
-            cursor: pointer;
-            background: white;
-            color: #333;
-        }
-        .location-filter select:focus {
-            outline: none;
-            border-color: #764ba2;
-        }
 
-        .tabs {
-            display: flex;
-            gap: 10px;
-            justify-content: center;
-            margin-bottom: 20px;
-            flex-wrap: wrap;
-        }
-        .tab-btn {
-            padding: 12px 24px;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 1em;
-            font-weight: 600;
-            transition: all 0.3s;
-            background: white;
-            color: #667eea;
-            border: 2px solid #667eea;
-        }
-        .tab-btn.active {
-            background: #667eea;
-            color: white;
-        }
-        .tab-btn:hover {
-            background: #667eea;
-            color: white;
-        }
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;700&family=Work+Sans:wght@400;600;700&display=swap');
 
-        .booking-group {
-            background: white;
-            border-radius: 12px;
-            overflow: hidden;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-            margin-bottom: 25px;
-            display: none;
-        }
-        .booking-group.active {
-            display: block;
-        }
+:root {
+	--ink: #2a2a2a;
+	--sand: #f7f2e8;
+	--clay: #ead9c3;
+	--teal: #1f6f6d;
+	--sun: #f3b94e;
+	--shadow: 0 14px 30px rgba(0,0,0,0.12);
+}
 
-        .group-header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 20px;
-            border-bottom: 4px solid #764ba2;
-        }
-        .group-header h2 {
-            font-size: 1.8em;
-            margin-bottom: 10px;
-        }
-        .group-meta {
-            font-size: 0.95em;
-            opacity: 0.9;
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-        }
-        .meta-item {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        .meta-item strong {
-            opacity: 1;
-        }
+.live-token-wrap {
+	background: radial-gradient(1200px 600px at 10% 10%, #fff8ea 0%, #f4ead6 45%, #efe1c8 100%);
+	padding: 48px 16px 72px;
+	min-height: 70vh;
+}
 
-        .current-token-section {
-            background: #fff3cd;
-            padding: 20px;
-            border-left: 5px solid #ffc107;
-            margin: 20px;
-            border-radius: 6px;
-        }
-        .current-token-section h3 {
-            color: #856404;
-            margin-bottom: 10px;
-            font-size: 1.2em;
-        }
-        .current-token-info {
-            color: #856404;
-            font-size: 1.1em;
-            font-weight: 600;
-        }
+.live-token-shell {
+	max-width: 1200px;
+	margin: 0 auto;
+}
 
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            background: white;
-        }
-        thead {
-            background: #f8f9fa;
-            border-bottom: 3px solid #667eea;
-        }
-        th {
-            padding: 15px;
-            text-align: left;
-            font-weight: 700;
-            color: #333;
-            text-transform: uppercase;
-            font-size: 0.9em;
-            letter-spacing: 0.5px;
-        }
-        td {
-            padding: 14px 15px;
-            border-bottom: 1px solid #eee;
-            color: #555;
-        }
-        tbody tr:hover {
-            background: #f5f5f5;
-            transition: background 0.2s;
-        }
-        tbody tr.completed {
-            background: #e8f5e9;
-            opacity: 0.7;
-        }
-        tbody tr.completed td {
-            text-decoration: line-through;
-            color: #999;
-        }
+.live-token-title {
+	font-family: 'Playfair Display', serif;
+	font-size: 2.2rem;
+	color: var(--ink);
+	text-align: center;
+	margin-bottom: 10px;
+}
 
-        .token-no {
-            font-weight: bold;
-            color: #667eea;
-            font-size: 1.1em;
-            min-width: 50px;
-        }
-        .token-name {
-            font-weight: 600;
-            color: #333;
-        }
-        .token-status {
-            display: inline-block;
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 0.85em;
-            font-weight: 600;
-            text-transform: uppercase;
-        }
-        .status-pending {
-            background: #e3f2fd;
-            color: #1976d2;
-        }
-        .status-completed {
-            background: #c8e6c9;
-            color: #388e3c;
-        }
+.live-token-subtitle {
+	font-family: 'Work Sans', sans-serif;
+	text-align: center;
+	color: #5b5b5b;
+	margin-bottom: 28px;
+}
 
-        .empty-message {
-            text-align: center;
-            padding: 40px;
-            color: #999;
-            font-size: 1.1em;
-        }
+.cards-row {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(260px, 1fr));
+	gap: 22px;
+}
 
-        .time-slot-display {
-            background: #f0f4ff;
-            padding: 8px 12px;
-            border-radius: 4px;
-            font-weight: 600;
-            color: #667eea;
-        }
+.calendar-card {
+	background: white;
+	border-radius: 18px;
+	box-shadow: var(--shadow);
+	overflow: hidden;
+	position: relative;
+	border: 1px solid #f0e2cc;
+}
 
-        @media (max-width: 768px) {
-            .header {
-                padding: 20px;
-            }
-            .header h1 {
-                font-size: 1.8em;
-            }
-            .header-content {
-                flex-direction: column;
-            }
-            table {
-                font-size: 0.9em;
-            }
-            th, td {
-                padding: 10px 8px;
-            }
-            .group-header h2 {
-                font-size: 1.3em;
-            }
-            .group-meta {
-                grid-template-columns: 1fr;
-            }
-        }
-    </style>
-</head>
-<body>
-    <?php include __DIR__ . '/header.php'; ?>
-    
-    <div class="container">
-        <div class="header">
-            <h1>🎫 Live Token Tracking</h1>
-            <div class="header-content">
-                <div class="current-time">
-                    Current Time: <span id="liveTime">--:--</span>
-                </div>
-                <div class="location-filter">
-                    <label for="locationSelect">Select Location:</label>
-                    <select id="locationSelect" onchange="switchLocation(this.value)">
-                        <option value="solapur">Solapur</option>
-                        <option value="hyderabad">Hyderabad</option>
-                    </select>
-                </div>
-            </div>
-        </div>
+.calendar-card::before {
+	content: '';
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	height: 8px;
+	background: linear-gradient(90deg, var(--teal), var(--sun));
+}
 
-        <div class="tabs">
-            <button class="tab-btn active" onclick="switchTab('today')">Today</button>
-            <button class="tab-btn" onclick="switchTab('upcoming')">Upcoming</button>
-        </div>
+.calendar-top {
+	padding: 18px 18px 8px;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+}
 
-        <!-- Today's Tokens -->
-        <div id="today" class="booking-group active">
-            <?php
-            $todayBookings = array_filter($bookings, function($b) {
-                return $b['token_date'] === date('Y-m-d');
-            });
+.calendar-city {
+	font-family: 'Playfair Display', serif;
+	font-size: 1.2rem;
+	color: var(--ink);
+}
 
-            if (!empty($todayBookings)) {
-                // Group by city
-                $byCity = [];
-                foreach ($todayBookings as $b) {
-                    $city = strtolower(trim($b['location']));
-                    if (!isset($byCity[$city])) $byCity[$city] = [];
-                    $byCity[$city][] = $b;
-                }
+.calendar-date {
+	font-family: 'Work Sans', sans-serif;
+	font-size: 0.85rem;
+	color: #7a7a7a;
+}
 
-                foreach ($byCity as $city => $cityBookings) {
-                    if ($city !== $filterCity) continue;
+.flip-window {
+	padding: 0 18px 14px;
+}
 
-                    // Sort by token number
-                    usort($cityBookings, function($a, $b) {
-                        return (int)$a['token_no'] - (int)$b['token_no'];
-                    });
+.flip-stack {
+	position: relative;
+	height: 68px;
+	perspective: 800px;
+}
 
-                    // Get current serving token
-                    $currentStmt = $pdo->prepare("SELECT MAX(CAST(token_no AS UNSIGNED)) as current FROM token_bookings WHERE token_date = ? AND LOWER(TRIM(location)) = LOWER(TRIM(?)) AND status = 'completed'");
-                    $currentStmt->execute([date('Y-m-d'), $city]);
-                    $currentResult = $currentStmt->fetch(PDO::FETCH_ASSOC);
-                    $currentToken = $currentResult['current'] ?? 0;
+.flip-card {
+	position: absolute;
+	inset: 0;
+	transform-style: preserve-3d;
+	transition: transform 0.6s ease;
+}
 
-                    // Get slot info
-                    $slotStmt = $pdo->prepare("SELECT from_time, to_time, total_tokens FROM token_management WHERE token_date = ? AND LOWER(TRIM(location)) = LOWER(TRIM(?))");
-                    $slotStmt->execute([date('Y-m-d'), $city]);
-                    $slot = $slotStmt->fetch(PDO::FETCH_ASSOC);
+.flip-card.is-flipped {
+	transform: rotateX(-180deg);
+}
 
-                    $perTokenMins = 0;
-                    if ($slot && $slot['from_time'] && $slot['to_time'] && (int)$slot['total_tokens'] > 0) {
-                        $fromParts = explode(':', $slot['from_time']);
-                        $toParts = explode(':', $slot['to_time']);
-                        if (count($fromParts) >= 2 && count($toParts) >= 2) {
-                            $fromMins = intval($fromParts[0]) * 60 + intval($fromParts[1]);
-                            $toMins = intval($toParts[0]) * 60 + intval($toParts[1]);
-                            $diffMins = $toMins - $fromMins;
-                            if ($diffMins > 0) {
-                                $perTokenMins = floor($diffMins / (int)$slot['total_tokens']);
-                            }
-                        }
-                    }
+.flip-face {
+	position: absolute;
+	inset: 0;
+	backface-visibility: hidden;
+	display: grid;
+	place-items: center;
+	border-radius: 12px;
+	background: var(--sand);
+	border: 1px solid var(--clay);
+	font-family: 'Work Sans', sans-serif;
+	font-weight: 700;
+	color: var(--teal);
+	font-size: 1.5rem;
+	letter-spacing: 1px;
+}
 
-                    ?>
-                    <div class="group-header">
-                        <h2><?= htmlspecialchars(ucfirst($city)) ?> - Today</h2>
-                        <div class="group-meta">
-                            <div class="meta-item">
-                                <strong>Total Appointments:</strong> <?= count($cityBookings) ?>
-                            </div>
-                            <div class="meta-item">
-                                <strong>Per Token:</strong> <?= $perTokenMins > 0 ? ($perTokenMins . ' mins') : '-' ?>
-                            </div>
-                            <div class="meta-item">
-                                <strong>Current Serving:</strong> Token #<?= $currentToken ?: 'None yet' ?>
-                            </div>
-                        </div>
-                    </div>
+.flip-face.back {
+	transform: rotateX(180deg);
+}
 
-                    <?php if ($currentToken > 0): ?>
-                    <div class="current-token-section">
-                        <h3>🎯 Now Serving</h3>
-                        <div class="current-token-info">
-                            Token #<?= $currentToken ?> has been completed. Next: Token #<?= ($currentToken + 1) ?>
-                        </div>
-                    </div>
-                    <?php endif; ?>
+.token-meta {
+	padding: 6px 18px 18px;
+	display: grid;
+	grid-template-columns: repeat(3, 1fr);
+	gap: 10px;
+	font-family: 'Work Sans', sans-serif;
+}
 
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Token #</th>
-                                <th>Name</th>
-                                <th>Mobile</th>
-                                <th>Time Slot</th>
-                                <th>Revised Time Slot</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php
-                            $nowMins = ((int)date('G')) * 60 + (int)date('i');
-                            foreach ($cityBookings as $booking):
-                                $tokenNo = (int)$booking['token_no'];
-                                $status = isset($booking['status']) ? $booking['status'] : 'pending';
-                                
-                                // Calculate revised time
-                                $rowIndex = $tokenNo - 1;
-                                $revStart = $nowMins + ($rowIndex * $perTokenMins);
-                                $revEnd = $nowMins + (($rowIndex + 1) * $perTokenMins);
-                                $revisedSlot = ($perTokenMins > 0) ? (minsToTime($revStart) . ' - ' . minsToTime($revEnd)) : '-';
-                                
-                                // Get scheduled slot
-                                $scheduledSlot = '-';
-                                if ($slot && $slot['from_time'] && $slot['to_time'] && $perTokenMins > 0) {
-                                    $schedStart = (intval(explode(':', $slot['from_time'])[0]) * 60 + intval(explode(':', $slot['from_time'])[1])) + ($rowIndex * $perTokenMins);
-                                    $schedEnd = $schedStart + $perTokenMins;
-                                    $scheduledSlot = minsToTime($schedStart) . ' - ' . minsToTime($schedEnd);
-                                }
-                            ?>
-                            <tr <?= $status === 'completed' ? 'class="completed"' : '' ?>>
-                                <td class="token-no"><?= sprintf('%02d', $tokenNo) ?></td>
-                                <td class="token-name"><?= htmlspecialchars($booking['name']) ?></td>
-                                <td><?= htmlspecialchars($booking['mobile']) ?></td>
-                                <td>
-                                    <div class="time-slot-display"><?= htmlspecialchars($scheduledSlot) ?></div>
-                                </td>
-                                <td>
-                                    <div class="time-slot-display"><?= htmlspecialchars($revisedSlot) ?></div>
-                                </td>
-                                <td>
-                                    <span class="token-status <?= $status === 'completed' ? 'status-completed' : 'status-pending' ?>">
-                                        <?= ucfirst($status) ?>
-                                    </span>
-                                </td>
-                            </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                    <?php
-                }
-            } else {
-                echo '<div class="empty-message">No appointments booked for today yet.</div>';
-            }
-            ?>
-        </div>
+.meta-box {
+	background: #fcf8f1;
+	border: 1px solid #f1e4cf;
+	border-radius: 10px;
+	padding: 10px;
+	text-align: center;
+}
 
-        <!-- Upcoming Tokens -->
-        <div id="upcoming" class="booking-group">
-            <?php
-            $upcomingBookings = array_filter($bookings, function($b) {
-                return $b['token_date'] > date('Y-m-d');
-            });
+.meta-label {
+	font-size: 0.75rem;
+	color: #8b7a62;
+	text-transform: uppercase;
+	letter-spacing: 0.6px;
+}
 
-            if (!empty($upcomingBookings)) {
-                // Group by date then city
-                $byDate = [];
-                foreach ($upcomingBookings as $b) {
-                    $date = $b['token_date'];
-                    if (!isset($byDate[$date])) $byDate[$date] = [];
-                    $byDate[$date][] = $b;
-                }
-                ksort($byDate);
+.meta-value {
+	font-size: 1.1rem;
+	color: var(--ink);
+	font-weight: 700;
+}
 
-                foreach ($byDate as $date => $dateBookings) {
-                    $byCity = [];
-                    foreach ($dateBookings as $b) {
-                        $city = strtolower(trim($b['location']));
-                        if (!isset($byCity[$city])) $byCity[$city] = [];
-                        $byCity[$city][] = $b;
-                    }
+.times-list {
+	border-top: 1px dashed #ead9c3;
+	padding: 14px 18px 18px;
+	max-height: 240px;
+	overflow: auto;
+	font-family: 'Work Sans', sans-serif;
+}
 
-                    foreach ($byCity as $city => $cityBookings) {
-                        if ($city !== $filterCity) continue;
+.time-item {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 8px 0;
+	border-bottom: 1px solid #f4eadb;
+	font-size: 0.95rem;
+	color: #4a4a4a;
+}
 
-                        usort($cityBookings, function($a, $b) {
-                            return (int)$a['token_no'] - (int)$b['token_no'];
-                        });
+.time-item:last-child {
+	border-bottom: none;
+}
 
-                        $dayName = date('l', strtotime($date));
-                        $dateFormatted = date('d-M-Y', strtotime($date));
-                        ?>
-                        <div class="group-header">
-                            <h2><?= htmlspecialchars(ucfirst($city)) ?> - <?= $dateFormatted ?> (<?= $dayName ?>)</h2>
-                            <div class="group-meta">
-                                <div class="meta-item">
-                                    <strong>Total Appointments:</strong> <?= count($cityBookings) ?>
-                                </div>
-                            </div>
-                        </div>
+.token-tag {
+	font-weight: 700;
+	color: var(--teal);
+}
 
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Token #</th>
-                                    <th>Name</th>
-                                    <th>Mobile</th>
-                                    <th>Status</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php foreach ($cityBookings as $booking): ?>
-                                <tr>
-                                    <td class="token-no"><?= sprintf('%02d', (int)$booking['token_no']) ?></td>
-                                    <td class="token-name"><?= htmlspecialchars($booking['name']) ?></td>
-                                    <td><?= htmlspecialchars($booking['mobile']) ?></td>
-                                    <td>
-                                        <span class="token-status status-pending">Booked</span>
-                                    </td>
-                                </tr>
-                                <?php endforeach; ?>
-                            </tbody>
-                        </table>
-                        <?php
-                    }
-                }
-            } else {
-                echo '<div class="empty-message">No upcoming appointments.</div>';
-            }
-            ?>
-        </div>
-    </div>
+.status-pill {
+	background: #e7f4f1;
+	color: #1d6b68;
+	padding: 3px 8px;
+	border-radius: 999px;
+	font-size: 0.75rem;
+	font-weight: 600;
+	text-transform: uppercase;
+}
 
-    <?php include __DIR__ . '/footer.php'; ?>
+.status-pill.completed {
+	background: #f3eee4;
+	color: #7a6b55;
+}
 
-    <script>
-        // Update live time
-        function updateTime() {
-            const now = new Date();
-            const hours = String(now.getHours()).padStart(2, '0');
-            const mins = String(now.getMinutes()).padStart(2, '0');
-            document.getElementById('liveTime').textContent = hours + ':' + mins;
-        }
-        updateTime();
-        setInterval(updateTime, 1000);
+.empty-state {
+	text-align: center;
+	color: #907d63;
+	padding: 14px 0 6px;
+	font-size: 0.95rem;
+}
 
-        // Tab switching
-        function switchTab(tab) {
-            document.querySelectorAll('.booking-group').forEach(el => el.classList.remove('active'));
-            document.getElementById(tab).classList.add('active');
-            
-            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-            event.target.classList.add('active');
-        }
+@media (max-width: 980px) {
+	.cards-row {
+		grid-template-columns: 1fr;
+	}
+	.token-meta {
+		grid-template-columns: 1fr;
+	}
+}
+</style>
 
-        // Location switching
-        function switchLocation(location) {
-            window.location.href = '?city=' + location;
-        }
+<main class="live-token-wrap">
+	<div class="live-token-shell">
+		<h1 class="live-token-title">Live Token Calendar</h1>
+		<p class="live-token-subtitle">Live status updates, refreshed every 10 seconds</p>
 
-        // Set initial location from current filter
-        const urlParams = new URLSearchParams(window.location.search);
-        const city = urlParams.get('city') || 'solapur';
-        document.getElementById('locationSelect').value = city;
-    </script>
-</body>
-</html>
+		<div class="cards-row">
+			<section class="calendar-card" data-city="solapur">
+				<div class="calendar-top">
+					<div class="calendar-city">Solapur</div>
+					<div class="calendar-date" data-date>--</div>
+				</div>
+				<div class="flip-window">
+					<div class="flip-stack">
+						<div class="flip-card" data-flip>
+							<div class="flip-face front" data-front>--</div>
+							<div class="flip-face back" data-back>--</div>
+						</div>
+					</div>
+				</div>
+				<div class="token-meta">
+					<div class="meta-box">
+						<div class="meta-label">Previous Token</div>
+						<div class="meta-value" data-last>--</div>
+					</div>
+					<div class="meta-box">
+						<div class="meta-label">Current Token</div>
+						<div class="meta-value" data-current>--</div>
+					</div>
+					<div class="meta-box">
+						<div class="meta-label">Next Token</div>
+						<div class="meta-value" data-next>--</div>
+					</div>
+				</div>
+			</section>
+
+			<section class="calendar-card" data-city="hyderabad">
+				<div class="calendar-top">
+					<div class="calendar-city">Hyderabad</div>
+					<div class="calendar-date" data-date>--</div>
+				</div>
+				<div class="flip-window">
+					<div class="flip-stack">
+						<div class="flip-card" data-flip>
+							<div class="flip-face front" data-front>--</div>
+							<div class="flip-face back" data-back>--</div>
+						</div>
+					</div>
+				</div>
+				<div class="token-meta">
+					<div class="meta-box">
+						<div class="meta-label">Previous Token</div>
+						<div class="meta-value" data-last>--</div>
+					</div>
+					<div class="meta-box">
+						<div class="meta-label">Current Token</div>
+						<div class="meta-value" data-current>--</div>
+					</div>
+					<div class="meta-box">
+						<div class="meta-label">Next Token</div>
+						<div class="meta-value" data-next>--</div>
+					</div>
+				</div>
+			</section>
+
+		</div>
+	</div>
+</main>
+
+<script>
+
+const cards = document.querySelectorAll('.calendar-card');
+const apiUrl = 'api/live-tokens.php';
+const visibilityUrl = 'api/live-token-visibility.php';
+
+function formatDateLabel(dateStr) {
+	const d = new Date(dateStr + 'T00:00:00');
+	if (isNaN(d)) return dateStr;
+	return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+function updateFlip(card, value) {
+	const flip = card.querySelector('[data-flip]');
+	const front = card.querySelector('[data-front]');
+	const back = card.querySelector('[data-back]');
+
+	if (front.textContent.trim() === value) return;
+
+	back.textContent = value;
+	flip.classList.add('is-flipped');
+
+	setTimeout(() => {
+		front.textContent = value;
+		flip.classList.remove('is-flipped');
+	}, 620);
+}
+
+function renderCard(card, data, dateStr) {
+	card.querySelector('[data-date]').textContent = formatDateLabel(dateStr);
+	// Show previous token as last completed token number
+	card.querySelector('[data-last]').textContent = data.current_token || '--';
+	card.querySelector('[data-current]').textContent = data.current_token || '--';
+	card.querySelector('[data-next]').textContent = data.next_token || '--';
+	updateFlip(card, data.current_token || '--');
+}
+
+async function fetchLiveTokens() {
+	try {
+		const res = await fetch(apiUrl, { cache: 'no-store' });
+		const data = await res.json();
+		if (!data.success) return;
+
+		cards.forEach(card => {
+			const city = card.getAttribute('data-city');
+			renderCard(card, data.cities[city], data.date);
+		});
+	} catch (err) {
+		// Silent fail for live refresh
+	}
+}
+
+
+async function updateVisibility() {
+	try {
+		const res = await fetch(visibilityUrl, { cache: 'no-store' });
+		const data = await res.json();
+		if (!data.success) return;
+		const visible = data.visible || [];
+		cards.forEach(card => {
+			const city = card.getAttribute('data-city');
+			if (visible.includes(city)) {
+				card.style.display = '';
+			} else {
+				card.style.display = 'none';
+			}
+		});
+	} catch (err) {}
+}
+
+async function liveUpdate() {
+	await Promise.all([fetchLiveTokens(), updateVisibility()]);
+}
+
+liveUpdate();
+setInterval(liveUpdate, 10000);
+</script>
+
+<?php include 'footer.php'; ?>
