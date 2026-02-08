@@ -31,6 +31,11 @@ function getPanchangValue($key, $default = '—') {
 ?>
 
 <main class="main-content">
+    <section>
+        <marquee style="font-size:1.05em;color:#800000;margin:12px 0 18px;display:block;">
+            Go to the Services section menu to book a token for an in-person visit, schedule online appointments, and explore other related services. | प्रत्यक्ष भेटीसाठी टोकन बुक करण्यासाठी, ऑनलाइन अपॉइंटमेंट ठरवण्यासाठी आणि इतर संबंधित सेवांचा वापर करण्यासाठी Services विभागातील मेनूला भेट द्या. | प्रत्यक्ष मुलाक़ात के लिए टोकन बुक करने, ऑनलाइन अपॉइंटमेंट तय करने और अन्य संबंधित सेवाओं के लिए Services सेक्शन मेनू पर जाएँ। | ప్రత్యక్ష సందర్శన కోసం టోకెన్ బుక్ చేయడానికి, ఆన్‌లైన్ అపాయింట్‌మెంట్‌లను షెడ్యూల్ చేయడానికి మరియు ఇతర సంబంధిత సేవలను పొందడానికి Services విభాగం మెనూను సందర్శించండి. | ನೇರ ಭೇಟಿಗಾಗಿ ಟೋಕನ್ ಬುಕ್ ಮಾಡಲು, ಆನ್‌ಲೈನ್ ಅಪಾಯಿಂಟ್‌ಮೆಂಟ್‌ಗಳನ್ನು ನಿಗದಿಪಡಿಸಲು ಮತ್ತು ಇತರ ಸಂಬಂಧಿತ ಸೇವೆಗಳನ್ನು ಪಡೆಯಲು Services ವಿಭಾಗದ ಮೆನುವಿಗೆ ಹೋಗಿ. | રૂબરૂ મુલાકાત માટે ટોકન બુક કરવા, ઑનલાઇન અપૉઇન્ટમેન્ટ નક્કી કરવા અને અન્ય સંબંધિત સેવાઓ માટે Services વિભાગના મેનુ પર જાઓ.
+        </marquee>
+    </section>
 
     <!-- Home Top 4 Cards Section -->
     <section class="home-top-cards-section">

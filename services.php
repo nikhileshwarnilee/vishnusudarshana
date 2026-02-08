@@ -2,7 +2,10 @@
 
 <main class="services-main">
     <section class="service-categories">
-        <button class="redesigned-cta-btn" style="width:100%;max-width:100%;margin-bottom:10px;border:3px solid #FFD700;box-shadow:0 4px 18px rgba(212,175,55,0.13);" onclick="window.location.href='book-token.php'">Book Token</button>
+        <div style="display:flex;gap:16px;justify-content:center;margin-bottom:18px;flex-wrap:wrap;">
+            <button class="redesigned-cta-btn" style="flex:1 1 260px;max-width:340px;border:3px solid #FFD700;box-shadow:0 4px 18px rgba(212,175,55,0.13);" onclick="window.location.href='book-token.php'">Book Token</button>
+            <button class="redesigned-cta-btn" style="flex:1 1 260px;max-width:340px;border:3px solid #FFD700;box-shadow:0 4px 18px rgba(212,175,55,0.13);" onclick="window.location.href='live-token.php'">Live Token Status</button>
+        </div>
         <marquee style="font-size:1.08em;color:#800000;margin-bottom:18px;display:block;">
             Book your token for in-person services easily! | आपल्या प्रत्यक्ष सेवेसाठी टोकन बुक करा! | మీ ప్రత్యక్ష సేవల కోసం టోకెన్ బుక్ చేయండి!
         </marquee>

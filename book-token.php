@@ -27,6 +27,9 @@ include 'header.php';
 }
 </style>
 <main class="book-token-main" style="max-width:520px;margin:0 auto;padding:36px 10px;">
+    <div style="display:flex;justify-content:center;margin-bottom:22px;">
+        <button class="redesigned-cta-btn" style="flex:1 1 260px;max-width:340px;border:3px solid #FFD700;box-shadow:0 4px 18px rgba(212,175,55,0.13);" onclick="window.location.href='live-token.php'">Live Token Status</button>
+    </div>
     <div id="loader" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(255,255,255,0.7);z-index:9999;align-items:center;justify-content:center;"><div style="background:#fff7d6;border:2px solid #f2d98c;border-radius:50%;padding:30px 40px;font-size:1.3em;color:#800000;font-weight:bold;box-shadow:0 2px 12px #e7c25d;">Processing...</div></div>
     <h1 style="color:#800000;margin-bottom:10px;text-align:center;letter-spacing:0.3px;">Book Your Token</h1>
     <p style="text-align:center;color:#6b0000;margin-bottom:18px;font-weight:600;">Fast, simple booking for in-person services.</p>

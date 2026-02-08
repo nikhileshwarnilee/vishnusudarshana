@@ -4,7 +4,7 @@ include 'header.php';
 ?>
 
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Mulish:wght@400;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Marcellus:wght@500;700&family=Mulish:wght@400;600;700&display=swap');
 
 :root {
 	--ink: #4a2a2a;
@@ -28,7 +28,7 @@ include 'header.php';
 }
 
 .live-token-title {
-	font-family: 'Cinzel', serif;
+	font-family: 'Marcellus', serif;
 	font-size: 2.1rem;
 	color: var(--maroon);
 	text-align: center;
@@ -36,7 +36,7 @@ include 'header.php';
 }
 
 .live-token-subtitle {
-	font-family: 'Mulish', sans-serif;
+	font-family: 'Marcellus', sans-serif;
 	text-align: center;
 	color: #6b0000;
 	margin-bottom: 28px;
@@ -83,13 +83,13 @@ include 'header.php';
 }
 
 .calendar-city {
-	font-family: 'Cinzel', serif;
+	font-family: 'Marcellus', serif;
 	font-size: 1.2rem;
 	color: var(--maroon);
 }
 
 .calendar-date {
-	font-family: 'Mulish', sans-serif;
+	font-family: 'Marcellus', sans-serif;
 	font-size: 0.85rem;
 	color: #7a4d4d;
 }
@@ -124,7 +124,7 @@ include 'header.php';
 	border-radius: 12px;
 	background: var(--cream);
 	border: 1px solid var(--gold);
-	font-family: 'Mulish', sans-serif;
+	font-family: 'Marcellus', serif;
 	font-weight: 700;
 	color: var(--maroon);
 	font-size: 1.5rem;
@@ -140,7 +140,7 @@ include 'header.php';
 	display: grid;
 	grid-template-columns: repeat(3, 1fr);
 	gap: 10px;
-	font-family: 'Mulish', sans-serif;
+	font-family: 'Marcellus', serif;
 }
 
 .meta-box {
@@ -198,7 +198,7 @@ body.fullscreen-mode .calendar-card {
 	padding: 14px 18px 18px;
 	max-height: 240px;
 	overflow: auto;
-	font-family: 'Work Sans', sans-serif;
+	font-family: 'Marcellus', serif;
 }
 
 .time-item {
@@ -254,7 +254,10 @@ body.fullscreen-mode .calendar-card {
 
 <main class="live-token-wrap">
 	<div class="live-token-shell">
-		<h1 class="live-token-title">Live Token Calendar</h1>
+		<div style="display:flex;justify-content:center;margin-bottom:22px;">
+			<button class="redesigned-cta-btn" style="flex:1 1 260px;max-width:340px;border:3px solid #FFD700;box-shadow:0 4px 18px rgba(212,175,55,0.13);" onclick="window.location.href='book-token.php'">Book Token</button>
+		</div>
+		<h1 class="live-token-title">Live Token Status</h1>
 		<p class="live-token-subtitle">Live status updates, refreshed every 10 seconds</p>
 
 		<div class="cards-row">
