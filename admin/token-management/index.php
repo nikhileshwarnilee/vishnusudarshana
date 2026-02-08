@@ -55,7 +55,7 @@ include '../includes/top-menu.php';
             <input type="time" name="to_time" class="form-input" required>
         </label>
         <label class="form-label">Total Number of Tokens:
-            <input type="number" name="total_tokens" class="form-input" min="1" required>
+            <input type="number" name="total_tokens" class="form-input" min="0" required>
         </label>
         <label class="form-label">Location:
             <select name="location" class="form-select" required>

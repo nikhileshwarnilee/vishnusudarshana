@@ -6,7 +6,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $date = $_POST['token_date'] ?? '';
     $from_time = $_POST['from_time'] ?? '';
     $to_time = $_POST['to_time'] ?? '';
-    $total_tokens = intval($_POST['total_tokens'] ?? 0);
+    $total_tokens = isset($_POST['total_tokens']) ? intval($_POST['total_tokens']) : 0;
     $location = $_POST['location'] ?? 'solapur';
     $notes = $_POST['note'] ?? '';
     // Check for duplicate entry
