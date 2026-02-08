@@ -52,7 +52,7 @@ if (session_status() === PHP_SESSION_NONE) {
     <p style="text-align:center;color:#6b0000;margin-bottom:18px;font-weight:600;">Fast, simple booking for in-person services.</p>
     <form id="bookTokenForm" autocomplete="off" style="background:linear-gradient(180deg,#fff7d6 0%,#fffef6 100%);border:1px solid #f2d98c;border-radius:20px;padding:26px 18px 20px 18px;box-shadow:0 6px 22px rgba(212,175,55,0.16);">
         <label class="form-label" style="font-weight:700;margin-bottom:14px;display:block;">Select Appointment Token Date
-            <input type="date" name="token_date" class="form-input" required style="margin-top:6px;width:100%;">
+            <input type="date" name="token_date" class="form-input" required style="margin-top:6px;width:95%;">
         </label>
         <label class="form-label" style="font-weight:700;margin-bottom:14px;display:block;">Location
             <select name="location" class="form-select" required style="margin-top:6px;width:100%;">
@@ -62,14 +62,14 @@ if (session_status() === PHP_SESSION_NONE) {
         </label>
         <div id="tokenInfo" style="margin:-4px 0 14px 0;font-weight:700;color:#800000;background:#fff2b8;border:1px dashed #e7c25d;border-radius:12px;padding:8px 10px;">Select a date to see token availability.</div>
         <label class="form-label" style="font-weight:700;margin-bottom:14px;display:block;">Name
-            <input type="text" name="name" class="form-input" required style="margin-top:6px;width:100%;">
+            <input type="text" name="name" class="form-input" required style="margin-top:6px;width:95%;">
         </label>
         <label class="form-label" style="font-weight:700;margin-bottom:14px;display:block;">WhatsApp Number <span style="color:#c00">*</span>
-            <input type="tel" name="mobile" class="form-input" pattern="[0-9]{10}" maxlength="10" required style="margin-top:6px;width:100%;">
+            <input type="tel" name="mobile" class="form-input" pattern="[0-9]{10}" maxlength="10" required style="margin-top:6px;width:95%;">
             <span style="font-size:0.98em;color:#800000;display:block;margin-top:6px;">Please enter your WhatsApp number to get updates on your token queue.</span>
         </label>
         <label class="form-label" style="font-weight:700;margin-bottom:16px;display:none;">Service Time
-            <input type="text" name="service_time" class="form-input" readonly style="margin-top:6px;width:100%;background:#fff;display:none;">
+            <input type="text" name="service_time" class="form-input" readonly style="margin-top:6px;width:95%;background:#fff;display:none;">
         </label>
         <button type="submit" class="redesigned-cta-btn" style="width:100%;margin-top:6px;font-size:1.13em;">Book Token</button>
     </form>
