@@ -8,6 +8,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $to_time = $_POST['to_time'] ?? '';
     $total_tokens = intval($_POST['total_tokens'] ?? 0);
     $location = $_POST['location'] ?? 'solapur';
+    $notes = $_POST['note'] ?? '';
     // Check for duplicate entry
     $checkStmt = $pdo->prepare("SELECT COUNT(*) FROM token_management WHERE token_date = ? AND from_time = ? AND to_time = ? AND location = ?");
     $checkStmt->execute([$date, $from_time, $to_time, $location]);
@@ -16,8 +17,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         echo json_encode(['success' => false, 'error' => 'Duplicate token entry for this date, time, and location.']);
         exit;
     }
-    $stmt = $pdo->prepare("INSERT INTO token_management (token_date, from_time, to_time, total_tokens, unbooked_tokens, location) VALUES (?, ?, ?, ?, ?, ?)");
-    $stmt->execute([$date, $from_time, $to_time, $total_tokens, $total_tokens, $location]);
+    $stmt = $pdo->prepare("INSERT INTO token_management (token_date, from_time, to_time, total_tokens, unbooked_tokens, location, notes) VALUES (?, ?, ?, ?, ?, ?, ?)");
+    $stmt->execute([$date, $from_time, $to_time, $total_tokens, $total_tokens, $location, $notes]);
     echo json_encode(['success' => true]);
     exit;
 }

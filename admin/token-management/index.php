@@ -63,6 +63,9 @@ include '../includes/top-menu.php';
                 <option value="hyderabad">Hyderabad</option>
             </select>
         </label>
+        <label class="form-label">Note:
+            <input type="text" name="note" class="form-input" placeholder="Enter note (optional)">
+        </label>
         <button type="submit" class="form-btn form-actions">Save</button>
     </form>
     <div id="saveMsg" style="margin-top:16px;font-weight:600;text-align:center;"></div>
@@ -97,6 +100,7 @@ include '../includes/top-menu.php';
                 html += '<th>Remaining Tokens</th>';
                 html += '<th>Appointment Time</th>';
                 html += '<th>Location</th>';
+                html += '<th>Note</th>';
                 html += '<th>Created At</th>';
                 html += '<th>Actions</th>';
                 html += '</tr></thead><tbody>';
@@ -130,6 +134,7 @@ include '../includes/top-menu.php';
                         html += '<td>-</td>';
                     }
                     html += '<td>'+t.location+'</td>';
+                    html += '<td>'+(t.notes ? t.notes : '-')+'</td>';
                     html += '<td>'+t.created_at+'</td>';
                     html += '<td>';
                     html += '<button class="edit-btn" data-id="'+t.id+'" style="margin-right:6px;padding:6px 12px;background:#1a8917;color:#fff;border:none;border-radius:6px;cursor:pointer;">Edit</button>';
@@ -170,6 +175,9 @@ include '../includes/top-menu.php';
                     document.querySelector('input[name="to_time"]').value = token.to_time;
                     document.querySelector('input[name="total_tokens"]').value = token.total_tokens;
                     locationSelect.value = token.location;
+                    // Prefill notes field and make editable
+                    document.querySelector('input[name="note"]').value = token.notes || '';
+                    document.querySelector('input[name="note"]').readOnly = false;
                     // Only in edit mode: make date/location readonly/disabled
                     dateInput.readOnly = true;
                     locationSelect.disabled = true;
@@ -181,6 +189,8 @@ include '../includes/top-menu.php';
             document.getElementById('tokenForm').addEventListener('reset', function() {
                 dateInput.readOnly = false;
                 locationSelect.disabled = false;
+                document.querySelector('input[name="note"]').readOnly = false;
+                document.querySelector('input[name="note"]').value = '';
                 document.querySelector('button[type="submit"]').textContent = 'Save';
             });
             // Delete functionality

@@ -26,6 +26,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $total_tokens = intval($_POST['total_tokens'] ?? 0);
     $booked_tokens = intval($_POST['booked_tokens'] ?? 0);
     $location = $_POST['location'] ?? 'solapur';
+    $notes = $_POST['note'] ?? '';
     if ($id > 0) {
         // Fetch current total and unbooked tokens
         $stmt = $pdo->prepare("SELECT total_tokens, unbooked_tokens FROM token_management WHERE id = ?");
@@ -44,8 +45,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             echo json_encode(['success' => false, 'error' => 'Cannot reduce tokens below number already booked.']);
             exit;
         }
-        $stmt = $pdo->prepare("UPDATE token_management SET token_date = ?, from_time = ?, to_time = ?, total_tokens = ?, unbooked_tokens = ?, location = ? WHERE id = ?");
-        $stmt->execute([$date, $from_time, $to_time, $total_tokens, $new_unbooked, $location, $id]);
+        $stmt = $pdo->prepare("UPDATE token_management SET token_date = ?, from_time = ?, to_time = ?, total_tokens = ?, unbooked_tokens = ?, location = ?, notes = ? WHERE id = ?");
+        $stmt->execute([$date, $from_time, $to_time, $total_tokens, $new_unbooked, $location, $notes, $id]);
 
         // Update service_time in token_bookings for all bookings on the same date and location
         if ($from_time && $to_time && $date && $location) {
