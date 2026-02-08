@@ -349,7 +349,11 @@ $bookings = array_values(array_filter($bookings, function($b) use ($today) {
                 <tr>
                     <td class="token-no"><?= htmlspecialchars($b['token_no']) ?></td>
                     <td><?= htmlspecialchars($b['location']) ?></td>
-                    <td><?= htmlspecialchars($b['name']) ?></td>
+                    <td>
+                        <a href="../cif/index.php?prefill_name=<?= rawurlencode($b['name']) ?>" style="color:#0056b3;text-decoration:underline;">
+                            <?= htmlspecialchars($b['name']) ?>
+                        </a>
+                    </td>
                     <td><?= htmlspecialchars($b['mobile']) ?></td>
                     <td><?= htmlspecialchars(formatTime12($b['service_time'])) ?></td>
                     <td>

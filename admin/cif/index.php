@@ -303,6 +303,7 @@ h1 {
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script>
 $(function() {
+    var prefillName = new URLSearchParams(window.location.search).get('prefill_name') || '';
     function formatNoMatches(params) {
         if (params.term && params.term.length > 1) {
             return '<div style="cursor:pointer;color:#800000;font-weight:600;" id="addNewCustomerOption">+ Add new customer: <span style="color:#333;">' + $('<div>').text(params.term).html() + '</span></div>';
@@ -364,6 +365,17 @@ $(function() {
             this.form.submit();
         }
     });
+
+    if (prefillName) {
+        $('#clientSelect').select2('open');
+        setTimeout(function() {
+            var searchField = document.querySelector('.select2-container--open .select2-search__field');
+            if (searchField) {
+                searchField.value = prefillName;
+                searchField.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+        }, 0);
+    }
 });
 </script>
 
