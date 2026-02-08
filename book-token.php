@@ -93,8 +93,10 @@ function updateTokenInfo() {
             if (data.success && data.data) {
                 const t = data.data;
                 const remaining = parseInt(t.unbooked_tokens, 10);
+                const total = parseInt(t.total_tokens, 10);
                 const from12 = formatTime12hr(t.from_time);
                 const to12 = formatTime12hr(t.to_time);
+                const notes = t.notes || '';
                 // Check if selected date is today and current time is past to_time
                 const now = new Date();
                 const selected = new Date(date);
@@ -110,8 +112,13 @@ function updateTokenInfo() {
                     serviceTimeInput.value = '';
                     form.querySelector('button[type="submit"]').disabled = true;
                 } else {
-                    tokenInfo.textContent = `Tokens remaining: ${remaining} | Service time: ${from12} to ${to12}`;
-                    serviceTimeInput.value = from12 + ' to ' + to12;
+                    if (total === 0) {
+                        tokenInfo.textContent = `Tokens remaining: ${remaining}` + (notes ? ` | ${notes}` : '');
+                        serviceTimeInput.value = '';
+                    } else {
+                        tokenInfo.textContent = `Tokens remaining: ${remaining} | Service time: ${from12} to ${to12}`;
+                        serviceTimeInput.value = from12 + ' to ' + to12;
+                    }
                     form.querySelector('button[type="submit"]').disabled = false;
                 }
             } else {

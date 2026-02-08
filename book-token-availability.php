@@ -12,7 +12,7 @@ try {
     }
 
     $stmt = $pdo->prepare(
-        'SELECT token_date, from_time, to_time, unbooked_tokens
+        'SELECT token_date, from_time, to_time, unbooked_tokens, total_tokens, notes
          FROM token_management
          WHERE (
              DATE(token_date) = ?
