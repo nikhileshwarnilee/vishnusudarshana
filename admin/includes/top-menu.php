@@ -137,7 +137,7 @@ $menu = [
 ];
 
 // Ensure session and DB connection for permission filtering
-if (session_status() === PHP_SESSION_NONE) {
+if (session_status() === PHP_SESSION_NONE && !headers_sent()) {
     session_start();
 }
 if (!isset($pdo)) {

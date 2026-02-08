@@ -38,6 +38,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Admin Login</title>
     <link rel="stylesheet" href="../assets/css/style.css">
     <style>
@@ -52,6 +53,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         .btn-main { padding: 8px 18px; background: #800000; color: #fff; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; width: 100%; }
         .btn-main:hover { background: #600000; }
         .msg { margin-bottom: 16px; font-weight: 600; text-align: center; }
+        @media (max-width: 600px) {
+            body { padding: 16px 0; }
+            .login-container { margin: 28px 12px; padding: 24px 18px; }
+            h1 { font-size: 1.4em; }
+        }
     </style>
 </head>
 <body>

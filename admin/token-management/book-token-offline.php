@@ -1,7 +1,18 @@
 <?php
-include '../includes/top-menu.php';
 require_once __DIR__ . '/../../config/db.php';
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 ?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Book Token (Offline)</title>
+</head>
+<body>
+<?php include '../includes/top-menu.php'; ?>
 <style>
 .book-token-main .form-input,
 .book-token-main .form-select {
@@ -24,6 +35,15 @@ require_once __DIR__ . '/../../config/db.php';
 }
 .book-token-main .form-label {
     color: #6b0000;
+}
+@media (max-width: 600px) {
+    .book-token-main {
+        max-width: 100% !important;
+        padding: 22px 12px !important;
+    }
+    .book-token-main h1 {
+        font-size: 1.35rem;
+    }
 }
 </style>
 <main class="book-token-main" style="max-width:520px;margin:0 auto;padding:36px 10px;">
@@ -195,4 +215,6 @@ form.addEventListener('submit', function(e) {
         });
 });
 </script>
+</body>
+</html>
 

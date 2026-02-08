@@ -1,6 +1,5 @@
 <?php
 require_once __DIR__ . '/../../config/db.php';
-include __DIR__ . '/../includes/top-menu.php';
 
 // Utility function for time formatting
 if (!function_exists('minsToTime')) {
@@ -45,6 +44,7 @@ $bookings = array_values(array_filter($bookings, function($b) use ($today) {
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Booked Tokens</title>
     <style>
         body {
@@ -209,6 +209,12 @@ $bookings = array_values(array_filter($bookings, function($b) use ($today) {
         @media (max-width: 600px) {
             .page-header { flex-direction: column; align-items: flex-start; }
             #cityFilter { width: 100%; }
+            body { padding: 12px 0 20px 0; }
+            .admin-container { padding: 0 8px 18px 8px; }
+            .page-header h2 { font-size: 1.1em; }
+            .header-actions { width: 100%; }
+            .action-link { width: 100%; text-align: center; }
+            .filter-bar { width: 100%; flex-wrap: wrap; }
         }
     </style>
 </head>

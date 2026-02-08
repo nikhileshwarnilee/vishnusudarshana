@@ -1,5 +1,8 @@
 <?php
 require_once __DIR__ . '/../../config/db.php';
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'delete_all') {
     $delete = $pdo->prepare("DELETE FROM token_bookings WHERE LOWER(TRIM(status)) = 'completed'");
@@ -7,8 +10,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     header('Location: completed-tokens.php?deleted=1');
     exit;
 }
-
-include __DIR__ . '/../includes/top-menu.php';
 
 // Utility function for time formatting
 if (!function_exists('minsToTime')) {
@@ -44,6 +45,7 @@ $bookings = $stmt->fetchAll(PDO::FETCH_ASSOC);
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Completed Tokens</title>
     <style>
         body {
@@ -193,6 +195,12 @@ $bookings = $stmt->fetchAll(PDO::FETCH_ASSOC);
         @media (max-width: 600px) {
             .page-header { flex-direction: column; align-items: flex-start; }
             #cityFilter { width: 100%; }
+            body { padding: 12px 0 20px 0; }
+            .admin-container { padding: 0 8px 18px 8px; }
+            .page-header h2 { font-size: 1.1em; }
+            .header-actions { width: 100%; }
+            .action-link, .danger-btn { width: 100%; text-align: center; }
+            .filter-bar { width: 100%; flex-wrap: wrap; }
         }
     </style>
 </head>
