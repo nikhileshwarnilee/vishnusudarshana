@@ -119,6 +119,30 @@ $recentRows = $recentStmt->fetchAll(PDO::FETCH_ASSOC);
             color: #800000;
             margin-bottom: 18px;
         }
+        .dashboard-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+            margin: 6px 0 18px;
+        }
+        .dashboard-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 14px;
+            border-radius: 8px;
+            background: #800000;
+            color: #fff;
+            text-decoration: none;
+            font-weight: 600;
+            border: 1px solid #800000;
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+        }
+        .dashboard-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(128, 0, 0, 0.2);
+        }
         /* SUMMARY CARDS - Now in responsive-cards.css */
         .filter-bar label {
             font-weight: 600;
@@ -240,6 +264,13 @@ $recentRows = $recentStmt->fetchAll(PDO::FETCH_ASSOC);
 <body>
 <div class="admin-container" style="max-width:1100px;margin:0 auto;padding:24px 12px;">
     <h1 style="color:var(--maroon);margin-bottom:18px;">Admin Dashboard</h1>
+    <div class="dashboard-actions">
+        <a class="dashboard-btn" href="cif/index.php">CIF</a>
+        <a class="dashboard-btn" href="token-management/booked-tokens.php">Booked Tokens</a>
+        <a class="dashboard-btn" href="services/accepted-appointments.php">Accepted Appointments</a>
+        <a class="dashboard-btn" href="services/service-request-list.php">Service Request List</a>
+        <a class="dashboard-btn" href="payments/create-invoice.php">Create Invoice</a>
+    </div>
     <div style="text-align:center;color:#666;font-size:1.08rem;margin-bottom:28px;">Overview of appointments, services, and payments</div>
 
 
