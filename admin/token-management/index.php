@@ -64,7 +64,7 @@ include '../includes/top-menu.php';
             </select>
         </label>
         <label class="form-label">Note:
-            <input type="text" name="note" class="form-input" placeholder="Enter note (optional)">
+            <textarea name="note" class="form-input" placeholder="Enter note (optional)" rows="3" style="resize:vertical;"></textarea>
         </label>
         <button type="submit" class="form-btn form-actions">Save</button>
     </form>
@@ -176,8 +176,8 @@ include '../includes/top-menu.php';
                     document.querySelector('input[name="total_tokens"]').value = token.total_tokens;
                     locationSelect.value = token.location;
                     // Prefill notes field and make editable
-                    document.querySelector('input[name="note"]').value = token.notes || '';
-                    document.querySelector('input[name="note"]').readOnly = false;
+                    document.querySelector('textarea[name="note"]').value = token.notes || '';
+                    document.querySelector('textarea[name="note"]').readOnly = false;
                     // Only in edit mode: make date/location readonly/disabled
                     dateInput.readOnly = true;
                     locationSelect.disabled = true;
@@ -189,8 +189,8 @@ include '../includes/top-menu.php';
             document.getElementById('tokenForm').addEventListener('reset', function() {
                 dateInput.readOnly = false;
                 locationSelect.disabled = false;
-                document.querySelector('input[name="note"]').readOnly = false;
-                document.querySelector('input[name="note"]').value = '';
+                document.querySelector('textarea[name="note"]').readOnly = false;
+                document.querySelector('textarea[name="note"]').value = '';
                 document.querySelector('button[type="submit"]').textContent = 'Save';
             });
             // Delete functionality
