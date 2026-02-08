@@ -86,7 +86,10 @@ include '../includes/top-menu.php';
             const tokens = data.tokens || [];
             const selectedCity = (document.getElementById('cityTableFilter')?.value || '').toLowerCase();
             const filteredTokens = selectedCity ? tokens.filter(t => String(t.location || '').toLowerCase() === selectedCity) : tokens;
-            let html = '<h2 style="margin-bottom:12px;">Saved Token Details</h2>';
+            let html = '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">';
+            html += '<h2 style="margin-bottom:0;">Saved Token Details</h2>';
+            html += '<button id="deleteOldTokensBtn" style="padding:8px 18px;background:#c00;color:#fff;border:none;border-radius:8px;font-weight:600;cursor:pointer;font-size:1em;">Delete Old Tokens</button>';
+            html += '</div>';
             if (filteredTokens.length === 0) {
                 html += '<div style="color:#c00;">No token details found.</div>';
             } else {
@@ -145,6 +148,26 @@ include '../includes/top-menu.php';
                 html += '</tbody></table></div>';
             }
             document.getElementById('tokensTableContainer').innerHTML = html;
+            // Delete old tokens handler
+            const deleteBtn = document.getElementById('deleteOldTokensBtn');
+            if (deleteBtn) {
+                deleteBtn.onclick = function() {
+                    if (!confirm('Delete all tokens older than today? This cannot be undone.')) return;
+                    fetch('delete-old-tokens.php', { method: 'POST' })
+                        .then(res => res.json())
+                        .then(data => {
+                            if (data.success) {
+                                fetchTokens();
+                                document.getElementById('saveMsg').textContent = 'Old tokens deleted.';
+                            } else {
+                                document.getElementById('saveMsg').textContent = 'Failed to delete old tokens.';
+                            }
+                        })
+                        .catch(() => {
+                            document.getElementById('saveMsg').textContent = 'Error deleting old tokens.';
+                        });
+                };
+            }
             // Disable already used dates in the date picker
             const dateInput = document.querySelector('input[name="token_date"]');
             const locationSelect = document.querySelector('select[name="location"]');
