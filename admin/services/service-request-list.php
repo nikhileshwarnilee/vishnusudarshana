@@ -418,7 +418,11 @@ include __DIR__ . '/../includes/top-menu.php';
             <tr>
                 <td><a class="view-btn" href="view.php?id=<?= $row['id'] ?>">View</a></td>
                 <td><?= htmlspecialchars($row['tracking_id']) ?></td>
-                <td><?= htmlspecialchars($row['customer_name']) ?></td>
+                <td>
+                    <a href="../cif/index.php?prefill_name=<?= rawurlencode($row['customer_name']) ?>" style="color:#0056b3;text-decoration:underline;">
+                        <?= htmlspecialchars($row['customer_name']) ?>
+                    </a>
+                </td>
                 <td><?= htmlspecialchars($row['mobile']) ?></td>
                 <td>
                     <?php

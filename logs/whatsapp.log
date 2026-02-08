@@ -33,3 +33,4 @@
 [2026-02-08 00:08:31] TO: 919595744266 | TEMPLATE: Token Booked | STATUS: SUCCESS | DETAILS: {"success":"true","submitted_message_id":"f70dbe7c-4a7e-46cc-adcc-27950835a347"}
 [2026-02-08 00:08:37] TO: 919595744266 | TEMPLATE: Token Booked | STATUS: SUCCESS | DETAILS: {"success":"true","submitted_message_id":"1eda4bf9-a19b-40a6-b8b8-2f8877e1ccff"}
 [2026-02-08 00:08:43] TO: 919595744266 | TEMPLATE: Token Booked | STATUS: SUCCESS | DETAILS: {"success":"true","submitted_message_id":"0cafc4ff-d33f-4673-b69e-4868a05348a0"}
+[2026-02-08 16:20:51] TO: 919595744266 | TEMPLATE: Appointment Scheduled | STATUS: SUCCESS | DETAILS: {"success":"true","submitted_message_id":"07e1ebb8-56cf-4214-b277-fe99e409c33b"}

@@ -205,7 +205,11 @@ $customers = $stmt->fetchAll();
             <tr><td colspan="4" style="text-align:center;color:#888;">No customers found.</td></tr>
         <?php else: foreach ($customers as $c): ?>
             <tr>
-                <td><?= htmlspecialchars($c['name']) ?></td>
+                <td>
+                    <a href="../cif/index.php?prefill_name=<?= rawurlencode($c['name']) ?>" style="color:#0056b3;text-decoration:underline;">
+                        <?= htmlspecialchars($c['name']) ?>
+                    </a>
+                </td>
                 <td><?= htmlspecialchars($c['mobile']) ?></td>
                 <td><?= htmlspecialchars($c['address_city']) ?></td>
                 <td>

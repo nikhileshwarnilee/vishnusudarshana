@@ -728,7 +728,11 @@ document.getElementById('refreshRollbackBtn').onclick = function() {
                             echo $products;
                             ?>
                         </td>
-                        <td><?= htmlspecialchars($a['customer_name']) ?></td>
+                        <td>
+                            <a href="../cif/index.php?prefill_name=<?= rawurlencode($a['customer_name']) ?>" style="color:#0056b3;text-decoration:underline;">
+                                <?= htmlspecialchars($a['customer_name']) ?>
+                            </a>
+                        </td>
                         <td><?= htmlspecialchars($a['mobile']) ?></td>
                         <td style="font-weight:600;color:#800000;">
                             <?= htmlspecialchars($preferredDisplay) ?>
