@@ -116,7 +116,11 @@ function updateTokenInfo() {
                     form.querySelector('button[type="submit"]').disabled = true;
                 } else {
                     if (total === 0) {
-                        tokenInfo.textContent = `Tokens remaining: ${remaining}` + (notes ? ` | ${notes}` : '');
+                        if (notes) {
+                            tokenInfo.innerHTML = `Tokens remaining: ${remaining} <span style="color:#fff;background:#ff0600;padding:2px 10px;border-radius:8px;font-weight:900;box-shadow:0 2px 8px #e5393555;display:inline-block;margin-left:8px;">${notes}</span>`;
+                        } else {
+                            tokenInfo.textContent = `Tokens remaining: ${remaining}`;
+                        }
                         serviceTimeInput.value = '';
                     } else {
                         tokenInfo.textContent = `Tokens remaining: ${remaining} | Service time: ${from12} to ${to12}`;
