@@ -256,7 +256,7 @@ body.fullscreen-mode .calendar-card {
 <main class="live-token-wrap">
 	<div class="live-token-shell">
 		<div class="live-token-actions" style="display:flex;justify-content:center;margin-bottom:22px;">
-			<button class="redesigned-cta-btn" style="flex:1 1 260px;max-width:340px;border:3px solid #FFD700;box-shadow:0 4px 18px rgba(212,175,55,0.13);" onclick="window.location.href='book-token.php'">Book Token</button>
+			<button class="redesigned-cta-btn" style="flex:1 1 260px;max-width:340px;border:3px solid #FFD700;box-shadow:0 4px 18px rgba(212,175,55,0.13);" onclick="window.location.href='book-token.php'">Book Office Visit Token</button>
 		</div>
 		<h1 class="live-token-title">Live Token Status</h1>
 		<p class="live-token-subtitle">Live status updates, refreshed every 10 seconds</p>

@@ -71,7 +71,7 @@ if (session_status() === PHP_SESSION_NONE) {
         <label class="form-label" style="font-weight:700;margin-bottom:16px;display:none;">Service Time
             <input type="text" name="service_time" class="form-input" readonly style="margin-top:6px;width:95%;background:#fff;display:none;">
         </label>
-        <button type="submit" class="redesigned-cta-btn" style="width:100%;margin-top:6px;font-size:1.13em;">Book Token</button>
+        <button type="submit" class="redesigned-cta-btn" style="width:100%;margin-top:6px;font-size:1.13em;">Book Office Visit Token</button>
     </form>
 </main>
 <script>
