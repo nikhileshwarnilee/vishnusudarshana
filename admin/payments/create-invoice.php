@@ -1,14 +1,5 @@
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-	var productsBtn = document.getElementById('productsBtn');
-	if (productsBtn) {
-		productsBtn.addEventListener('click', function() {
-			window.open('products.php', 'ProductsPopup', 'width=900,height=600,scrollbars=yes,resizable=yes');
-		});
-	}
-});
-</script>
 <?php
+
 session_start();
 if (!isset($_SESSION['user_id'])) {
 	header('Location: ../login.php');
@@ -20,6 +11,16 @@ $productStmt = $pdo->prepare("SELECT title FROM letterpad_titles WHERE source = 
 $productStmt->execute();
 $productList = $productStmt->fetchAll(PDO::FETCH_COLUMN);
 ?>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+	var productsBtn = document.getElementById('productsBtn');
+	if (productsBtn) {
+		productsBtn.addEventListener('click', function() {
+			window.open('products.php', 'ProductsPopup', 'width=900,height=600,scrollbars=yes,resizable=yes');
+		});
+	}
+});
+</script>
 <!DOCTYPE html>
 <html lang="en">
 <head>
