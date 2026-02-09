@@ -1,3 +1,13 @@
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+	var productsBtn = document.getElementById('productsBtn');
+	if (productsBtn) {
+		productsBtn.addEventListener('click', function() {
+			window.open('products.php', 'ProductsPopup', 'width=900,height=600,scrollbars=yes,resizable=yes');
+		});
+	}
+});
+</script>
 <?php
 session_start();
 if (!isset($_SESSION['user_id'])) {
@@ -5,6 +15,10 @@ if (!isset($_SESSION['user_id'])) {
 	exit;
 }
 require_once __DIR__ . '/../../config/db.php';
+// Fetch products for dropdown
+$productStmt = $pdo->prepare("SELECT title FROM letterpad_titles WHERE source = 'product' ORDER BY title ASC");
+$productStmt->execute();
+$productList = $productStmt->fetchAll(PDO::FETCH_COLUMN);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -212,8 +226,8 @@ require_once __DIR__ . '/../../config/db.php';
 
 <div class="admin-container" style="display:flex; flex-direction:column; align-items:center; min-height:100vh; justify-content:flex-start; padding-top:32px;">
 	<div class="form-box" style="width:100%; max-width:1000px; margin-bottom:32px; box-shadow:0 2px 12px rgba(128,0,0,0.06);">
-		<div style="text-align:center; margin-bottom:18px;">
-			<h1 style="margin:0; font-size:1.7em; color:#800000; font-weight:700; letter-spacing:0.5px;">Create Invoice</h1>
+		<div style="text-align:center; margin-bottom:18px; display:flex; flex-direction:column; align-items:center; gap:10px;">
+			   <h1 style="margin:0; font-size:1.7em; color:#800000; font-weight:700; letter-spacing:0.5px;">Create Invoice</h1>
 		</div>
 		<form id="invoiceForm" method="post" autocomplete="off">
 			<div class="form-sections-row" style="display:flex; gap:32px; flex-wrap:wrap;">
@@ -235,14 +249,25 @@ require_once __DIR__ . '/../../config/db.php';
 				</div>
 			</div>
 			<div class="form-section" style="border-top:1px solid #eee; padding-top:18px; margin-top:24px;">
-				<label>Add Product/Service</label>
+				   <div style="display:flex; align-items:center; gap:16px; margin-bottom:8px;">
+					   <label style="margin-bottom:0;">Add Product/Service</label>
+					   <button type="button" id="productsBtn" style="background:linear-gradient(90deg,#ffc107 60%,#ff9800 100%);color:#333;border:none;border-radius:6px;padding:7px 18px;font-size:1em;font-weight:600;cursor:pointer;box-shadow:0 2px 8px rgba(255,193,7,0.08);transition:background 0.2s;">Products</button>
+				   </div>
 				<div id="productRows">
-					<div class="product-row" style="display:flex; gap:10px; align-items:center; flex-wrap:nowrap;">
-						<input type="text" name="product_name[]" placeholder="Product/Service Name" style="flex:2; min-width:180px;">
-						<input type="number" name="product_qty[]" class="product-qty" placeholder="Qty" min="1" value="1" style="width:80px;">
-						<input type="number" name="product_amount[]" class="product-amount" placeholder="Amount" min="0" step="0.01" style="width:120px;">
-						<button type="button" class="addProductRowBtn">+</button>
-					</div>
+					   <div class="product-row" style="display:flex; gap:10px; align-items:center; flex-wrap:nowrap;">
+						   <select class="product-dropdown" style="min-width:140px;">
+							   <option value="">Select Product</option>
+							   <?php foreach ($productList as $prod): ?>
+								   <option value="<?= htmlspecialchars($prod) ?>"><?= htmlspecialchars($prod) ?></option>
+							   <?php endforeach; ?>
+						   </select>
+						   <input type="text" name="product_name[]" placeholder="Product/Service Name" style="flex:2; min-width:180px;">
+						   <input type="number" name="product_qty[]" class="product-qty" placeholder="Qty" min="1" value="1" style="width:80px;">
+						   <input type="number" name="product_amount[]" class="product-amount" placeholder="Amount" min="0" step="0.01" style="width:120px;">
+						   <button type="button" class="addProductRowBtn">+</button>
+						   <!-- X button for deleting extra rows, hidden for first row by default -->
+						   <button type="button" class="removeProductRowBtn xRemoveBtn" title="Delete Row" style="display:none; background:#dc3545; color:#fff; border:none; border-radius:4px; padding:8px 14px; font-size:1.2em; font-weight:700; cursor:pointer;">×</button>
+					   </div>
 				</div>
 				<div id="productTotals">
 					Total Qty: <span id="totalQty">1</span> &nbsp; | &nbsp; Total Amount: ₹<span id="totalAmount">0.00</span>
@@ -352,6 +377,54 @@ require_once __DIR__ . '/../../config/db.php';
 </style>
 
 <script>
+// Product dropdown auto-fill logic
+document.addEventListener('DOMContentLoaded', function() {
+	function bindProductDropdowns() {
+		document.querySelectorAll('.product-row').forEach(function(row, idx) {
+			var dropdown = row.querySelector('.product-dropdown');
+			var input = row.querySelector('input[name="product_name[]"]');
+			if (dropdown && input) {
+				dropdown.onchange = function() {
+					if (this.value) input.value = this.value;
+				};
+			}
+			// Show X button only for extra rows (not the first)
+			var xBtn = row.querySelector('.xRemoveBtn');
+			if (xBtn) xBtn.style.display = (idx === 0) ? 'none' : 'inline-block';
+		});
+	}
+	bindProductDropdowns();
+	var productList = <?php echo json_encode($productList); ?>;
+	document.getElementById('productRows').addEventListener('click', function(e) {
+		if (e.target.classList.contains('addProductRowBtn')) {
+			var row = e.target.closest('.product-row');
+			var newRow = row.cloneNode(true);
+			// Clear input values
+			newRow.querySelectorAll('input').forEach(function(inp) { inp.value = inp.type === 'number' ? (inp.name === 'product_qty[]' ? 1 : '') : ''; });
+			// Rebuild dropdown
+			var select = newRow.querySelector('.product-dropdown');
+			if (select) {
+				select.innerHTML = '<option value="">Select Product</option>' + productList.map(function(p) {
+					return '<option value="'+p.replace(/"/g,'&quot;')+'">'+p.replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</option>';
+				}).join('');
+				select.selectedIndex = 0;
+			}
+			// Remove any duplicate event listeners on the new row's + button
+			var addBtn = newRow.querySelector('.addProductRowBtn');
+			if (addBtn) addBtn.disabled = false;
+			row.parentNode.insertBefore(newRow, row.nextSibling);
+			bindProductDropdowns();
+		}
+		// Handle X button click for row removal
+		if (e.target.classList.contains('xRemoveBtn')) {
+			var row = e.target.closest('.product-row');
+			if (row && row.parentNode.children.length > 1) {
+				row.remove();
+				bindProductDropdowns();
+			}
+		}
+	});
+});
 // --- Dynamic Customer Search Dropdown ---
 
 // --- Dynamic Invoices & Payments Table Logic ---
@@ -601,31 +674,11 @@ addCustomerForm.addEventListener('submit', function(e) {
 	});
 });
 
-// --- Product/Service Row Add/Remove Logic ---
+// --- Product/Service Row Remove Logic ---
 document.addEventListener('click', function(e) {
-	// Add new row
-	if (e.target.classList.contains('addProductRowBtn')) {
-			updateProductTotals();
-		const productRows = document.getElementById('productRows');
-		const row = document.createElement('div');
-		row.className = 'product-row';
-		row.style.display = 'flex';
-		row.style.gap = '10px';
-		row.style.marginTop = '10px';
-		row.style.flexWrap = 'wrap';
-		row.style.alignItems = 'center';
-		row.style.whiteSpace = 'nowrap';
-		row.innerHTML = `
-			<input type="text" name="product_name[]" placeholder="Product/Service Name" style="flex:2; min-width:180px; padding:9px; border:1px solid #ccc; border-radius:4px;">
-			<input type="number" name="product_qty[]" placeholder="Qty" min="1" value="1" style="width:80px; padding:9px; border:1px solid #ccc; border-radius:4px;">
-			<input type="number" name="product_amount[]" placeholder="Amount" min="0" step="0.01" style="width:120px; padding:9px; border:1px solid #ccc; border-radius:4px;">
-			<button type="button" class="removeProductRowBtn" title="Remove">-</button>
-		`;
-		productRows.appendChild(row);
-	}
 	// Remove row (not first)
 	if (e.target.classList.contains('removeProductRowBtn')) {
-			updateProductTotals();
+		updateProductTotals();
 		const row = e.target.closest('.product-row');
 		if (row && row.parentNode.children.length > 1) {
 			row.remove();
