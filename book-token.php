@@ -129,7 +129,7 @@ function updateTokenInfo() {
                     form.querySelector('button[type="submit"]').disabled = false;
                 }
             } else {
-                tokenInfo.textContent = 'No tokens Available/Released for this date/location.';
+                tokenInfo.textContent = 'No tokens Available/Released for this date/location. Please select another date.';
                 serviceTimeInput.value = '';
                 form.querySelector('button[type="submit"]').disabled = true;
             }
