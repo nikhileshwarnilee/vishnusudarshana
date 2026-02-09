@@ -762,8 +762,11 @@ document.getElementById('refreshRollbackBtn').onclick = function() {
             <input type="hidden" name="appointment_ids[]" id="acceptAppointmentIds">
             
             <div class="form-group">
-                <label for="assignedDate">Assigned Date *</label>
-                <input type="date" id="assignedDate" name="assigned_date" required min="<?= date('Y-m-d') ?>">
+                    <label for="assignedDate">Assigned Date *</label>
+                    <div style="display:flex;gap:8px;align-items:center;">
+                        <input type="date" id="assignedDate" name="assigned_date" required min="<?= date('Y-m-d') ?>">
+                        <button type="button" id="setTodayBtn" style="padding:6px 10px;font-size:0.95em;border-radius:6px;border:1px solid #ccc;background:#f3f3f3;cursor:pointer;">Today</button>
+                    </div>
             </div>
             
             <div class="form-group">
@@ -885,7 +888,19 @@ setTimeout(function() {
         });
     });
 }, 100);
+
+// Set today's date in assigned date input when button is clicked
+document.getElementById('setTodayBtn').onclick = function() {
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
+    const todayStr = `${yyyy}-${mm}-${dd}`;
+    document.getElementById('assignedDate').value = todayStr;
+};
 </script>
+
+
 
 </body>
 </html>
