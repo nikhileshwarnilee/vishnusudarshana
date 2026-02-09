@@ -448,8 +448,11 @@ $bookings = array_values(array_filter($bookings, function($b) use ($today) {
                     <td>
                         <?php if (isset($b['status']) && $b['status'] === 'completed'): ?>
                             <button class="revert-btn" data-booking-id="<?= htmlspecialchars($b['id']) ?>" style="background:#888;color:#fff;padding:4px 10px;border:none;border-radius:4px;cursor:pointer;margin-right:6px;">Revert</button>
+                        <?php elseif (isset($b['status']) && $b['status'] === 'skip'): ?>
+                            <button class="unskip-btn" data-booking-id="<?= htmlspecialchars($b['id']) ?>" style="background:#888;color:#fff;padding:4px 10px;border:none;border-radius:4px;cursor:pointer;margin-right:6px;">Unskip</button>
                         <?php else: ?>
                             <button class="complete-btn" style="background:#1a8917;color:#fff;padding:4px 10px;border:none;border-radius:4px;cursor:pointer;margin-right:6px;">Start</button>
+                            <button class="skip-btn" data-booking-id="<?= htmlspecialchars($b['id']) ?>" style="background:#ffc107;color:#333;padding:4px 10px;border:none;border-radius:4px;cursor:pointer;margin-right:6px;">Skip</button>
                         <?php endif; ?>
                         <button class="delete-btn" data-booking-id="<?= htmlspecialchars($b['id']) ?>" style="background:#c00;color:#fff;padding:4px 10px;border:none;border-radius:4px;cursor:pointer;">Delete</button>
                     </td>
@@ -493,6 +496,52 @@ $bookings = array_values(array_filter($bookings, function($b) use ($today) {
         filterByCity(this.value);
     });
     </script>
+        <script>
+        // Unskip booking functionality
+        document.querySelectorAll('.unskip-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var bookingId = this.getAttribute('data-booking-id');
+                if (!bookingId) return;
+                fetch('skip-booking.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: 'id=' + encodeURIComponent(bookingId) + '&unskip=1'
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        location.reload();
+                    } else {
+                        alert('Failed to unskip booking.');
+                    }
+                })
+                .catch(() => alert('Failed to unskip booking.'));
+            });
+        });
+        </script>
+        <script>
+        // Skip booking functionality
+        document.querySelectorAll('.skip-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var bookingId = this.getAttribute('data-booking-id');
+                if (!bookingId) return;
+                fetch('skip-booking.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: 'id=' + encodeURIComponent(bookingId)
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        location.reload();
+                    } else {
+                        alert('Failed to skip booking.');
+                    }
+                })
+                .catch(() => alert('Failed to skip booking.'));
+            });
+        });
+        </script>
     <script>
     // Delete booking functionality
     document.querySelectorAll('.delete-btn').forEach(function(btn) {

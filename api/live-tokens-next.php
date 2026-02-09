@@ -30,6 +30,10 @@ foreach ($cities as $city) {
     $pendingTokens = [];
 
     foreach ($bookings as $booking) {
+        // Exclude skipped tokens from next token logic
+        if (isset($booking['status']) && $booking['status'] === 'skip') {
+            continue;
+        }
         $tokenNo = (int)$booking['token_no'];
         if ($tokenNo > $lastToken) $lastToken = $tokenNo;
         if (isset($booking['status']) && $booking['status'] === 'completed' && $tokenNo > $currentToken) {

@@ -55,7 +55,12 @@ foreach ($cities as $city) {
     $currentToken = 0;
     $times = [];
 
+
     foreach ($bookings as $booking) {
+        // Exclude skipped tokens from all live logic
+        if (isset($booking['status']) && $booking['status'] === 'skip') {
+            continue;
+        }
         $tokenNo = (int)$booking['token_no'];
         if ($tokenNo > $lastToken) $lastToken = $tokenNo;
         if (isset($booking['status']) && $booking['status'] === 'completed' && $tokenNo > $currentToken) {
@@ -78,9 +83,17 @@ foreach ($cities as $city) {
         ];
     }
 
+    // Find next token (lowest not completed and not skipped)
     $nextToken = null;
     if ($lastToken > 0 && $currentToken < $lastToken) {
-        $nextToken = $currentToken + 1;
+        // Find the next token_no greater than currentToken that is not skipped or completed
+        foreach ($bookings as $booking) {
+            $tokenNo = (int)$booking['token_no'];
+            if ($tokenNo > $currentToken && (!isset($booking['status']) || ($booking['status'] !== 'completed' && $booking['status'] !== 'skip'))) {
+                $nextToken = $tokenNo;
+                break;
+            }
+        }
     }
 
     $result['cities'][$city] = [
