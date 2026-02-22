@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 /**
  * FCM Debug & Test Endpoint
  * Shows current FCM token status and allows testing
@@ -202,7 +202,7 @@ if (!isset($_SESSION['user_id'])) {
         }
 
         .checklist li::before {
-            content: '✓';
+            content: 'âœ“';
             position: absolute;
             left: 0;
             color: #28a745;
@@ -210,7 +210,7 @@ if (!isset($_SESSION['user_id'])) {
         }
 
         .checklist li.error::before {
-            content: '✗';
+            content: 'âœ—';
             color: #dc3545;
         }
 
@@ -261,7 +261,7 @@ if (!isset($_SESSION['user_id'])) {
 <body>
     <div class="container">
         <div class="header">
-            <h1>🔧 FCM Debug Console</h1>
+            <h1>ðŸ”§ FCM Debug Console</h1>
             <p>Check Firebase Cloud Messaging token status and connectivity</p>
         </div>
 
@@ -283,8 +283,8 @@ if (!isset($_SESSION['user_id'])) {
             <div id="token-status" class="status-box status-info">
                 <span class="loading"></span> Checking...
             </div>
-            <button onclick="checkBrowserStatus()">🔄 Refresh Status</button>
-            <button onclick="requestPermission()">📢 Request Permission</button>
+            <button onclick="checkBrowserStatus()">ðŸ”„ Refresh Status</button>
+            <button onclick="requestPermission()">ðŸ“¢ Request Permission</button>
         </div>
 
         <!-- System Diagnostics -->
@@ -294,26 +294,26 @@ if (!isset($_SESSION['user_id'])) {
                 Check if database tables are created and properly configured
             </p>
             <div id="diagnostics-status">Loading diagnostics...</div>
-            <button onclick="checkDiagnostics()">🔍 Check System Status</button>
+            <button onclick="checkDiagnostics()">ðŸ” Check System Status</button>
         </div>
 
         <!-- Database Tokens -->
         <div class="card">
             <h2>Database Tokens (fcm_tokens table)</h2>
             <div id="db-status">Loading...</div>
-            <button onclick="loadDatabaseTokens()">🔄 Refresh from DB</button>
+            <button onclick="loadDatabaseTokens()">ðŸ”„ Refresh from DB</button>
         </div>
 
         <!-- Test Notification -->
         <div class="card">
             <h2>Send Test Notification</h2>
             <p style="margin-bottom: 15px; color: #666; font-size: 0.9em;">
-                ⚠️ First get a token, then send a test notification to your current device.
+                âš ï¸ First get a token, then send a test notification to your current device.
             </p>
             <div>
                 <input type="text" id="test-title" placeholder="Title" value="Test Notification" style="width: 100%; padding: 8px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 4px;">
                 <textarea id="test-body" placeholder="Message body" style="width: 100%; padding: 8px; margins-bottom: 10px; border: 1px solid #ddd; border-radius: 4px; height: 60px;">This is a test notification from FCM Debug Console</textarea>
-                <button onclick="sendTestNotification()">📤 Send Test Notification</button>
+                <button onclick="sendTestNotification()">ðŸ“¤ Send Test Notification</button>
             </div>
             <div id="test-response" style="margin-top: 15px;"></div>
         </div>
@@ -380,19 +380,19 @@ if (!isset($_SESSION['user_id'])) {
             // Service Worker
             if ('serviceWorker' in navigator) {
                 document.getElementById('service-worker-check').classList.remove('error');
-                console.log('✓ Service Workers supported');
+                console.log('âœ“ Service Workers supported');
             } else {
                 document.getElementById('service-worker-check').classList.add('error');
-                console.log('✗ Service Workers NOT supported');
+                console.log('âœ— Service Workers NOT supported');
             }
 
             // Notifications
             if ('Notification' in window) {
                 document.getElementById('notification-check').classList.remove('error');
-                console.log('✓ Notifications API supported');
+                console.log('âœ“ Notifications API supported');
             } else {
                 document.getElementById('notification-check').classList.add('error');
-                console.log('✗ Notifications API NOT supported');
+                console.log('âœ— Notifications API NOT supported');
             }
 
             // Permission
@@ -414,20 +414,20 @@ if (!isset($_SESSION['user_id'])) {
             if (token) {
                 tokenCheck.innerHTML = `<span class="status-label">Token:</span> ${token.substring(0, 50)}...`;
                 tokenCheck.classList.remove('error');
-                console.log('✓ Token in localStorage');
+                console.log('âœ“ Token in localStorage');
             } else {
                 tokenCheck.innerHTML = '<span class="status-label">Token:</span> Not found in localStorage';
                 tokenCheck.classList.add('error');
-                console.log('✗ No token in localStorage');
+                console.log('âœ— No token in localStorage');
             }
 
             // Firebase
             if (typeof firebase !== 'undefined') {
                 document.getElementById('firebase-check').classList.remove('error');
-                console.log('✓ Firebase SDK loaded');
+                console.log('âœ“ Firebase SDK loaded');
             } else {
                 document.getElementById('firebase-check').classList.add('error');
-                console.log('✗ Firebase SDK NOT loaded');
+                console.log('âœ— Firebase SDK NOT loaded');
             }
 
             displayToken();
@@ -439,9 +439,9 @@ if (!isset($_SESSION['user_id'])) {
             const box = document.getElementById('token-status');
 
             if (token) {
-                box.innerHTML = `<div class="status-success"><strong>✓ Token found:</strong><div class="token-box">${token}</div></div>`;
+                box.innerHTML = `<div class="status-success"><strong>âœ“ Token found:</strong><div class="token-box">${token}</div></div>`;
             } else {
-                box.innerHTML = `<div class="status-error"><strong>✗ No token</strong><br>Allow notifications and refresh to generate token</div>`;
+                box.innerHTML = `<div class="status-error"><strong>âœ— No token</strong><br>Allow notifications and refresh to generate token</div>`;
             }
         }
 
@@ -449,15 +449,18 @@ if (!isset($_SESSION['user_id'])) {
         async function requestPermission() {
             console.log('Requesting notification permission...');
             if (typeof initializeFirebaseCM !== 'undefined') {
-                const success = await initializeFirebaseCM();
+                const success = await initializeFirebaseCM({ askUser: true });
                 if (success) {
-                    console.log('✓ FCM initialized successfully');
-                    setTimeout(checkBrowserStatus, 1000);
+                    console.log('âœ“ FCM initialized successfully');
+                    setTimeout(() => {
+                        checkBrowserStatus();
+                        loadDatabaseTokens();
+                    }, 1000);
                 } else {
-                    console.log('✗ FCM initialization failed');
+                    console.log('âœ— FCM initialization failed');
                 }
             } else {
-                console.log('✗ initializeFirebaseCM function not available');
+                console.log('âœ— initializeFirebaseCM function not available');
             }
         }
 
@@ -476,7 +479,7 @@ if (!isset($_SESSION['user_id'])) {
                     let html = '<div class="status-box status-info">';
                     
                     // Database connection
-                    html += `<div><strong>Database Connected:</strong> ${diag.database_connected ? '✓ Yes' : '✗ No'}</div>`;
+                    html += `<div><strong>Database Connected:</strong> ${diag.database_connected ? 'âœ“ Yes' : 'âœ— No'}</div>`;
                     
                     // Tables status
                     html += '<div style="margin-top: 10px;"><strong>Database Tables:</strong><ul style="list-style: none; margin-top: 5px; margin-left: 0;">';
@@ -498,7 +501,7 @@ if (!isset($_SESSION['user_id'])) {
                     
                     // Recommendations
                     if (diag.recommendations && diag.recommendations.length > 0) {
-                        html += '<div style="margin-top: 10px; background: #fff3cd; border: 1px solid #ffc107; padding: 10px; border-radius: 4px;"><strong style="color: #856404;">⚠️ Recommendations:</strong><ul style="margin: 5px 0 0 20px;">';
+                        html += '<div style="margin-top: 10px; background: #fff3cd; border: 1px solid #ffc107; padding: 10px; border-radius: 4px;"><strong style="color: #856404;">âš ï¸ Recommendations:</strong><ul style="margin: 5px 0 0 20px;">';
                         diag.recommendations.forEach(rec => {
                             html += `<li style="color: #856404;">${rec}</li>`;
                         });
@@ -507,14 +510,14 @@ if (!isset($_SESSION['user_id'])) {
                     
                     html += '</div>';
                     box.innerHTML = html;
-                    console.log('✓ Diagnostics loaded');
+                    console.log('âœ“ Diagnostics loaded');
                 } else {
                     box.innerHTML = `<div class="status-error"><strong>Error:</strong> ${data.message}</div>`;
-                    console.log('✗ Error: ' + data.message);
+                    console.log('âœ— Error: ' + data.message);
                 }
             } catch (error) {
                 box.innerHTML = `<div class="status-error"><strong>Error:</strong> ${error.message}</div>`;
-                console.log('✗ Error: ' + error.message);
+                console.log('âœ— Error: ' + error.message);
             }
         }
 
@@ -542,14 +545,14 @@ if (!isset($_SESSION['user_id'])) {
                     });
                     html += '</div>';
                     box.innerHTML = html;
-                    console.log('✓ Loaded ' + data.tokens.length + ' tokens from database');
+                    console.log('âœ“ Loaded ' + data.tokens.length + ' tokens from database');
                 } else {
                     box.innerHTML = '<div class="status-error"><strong>No tokens in database</strong><br>Allow notifications first to generate a token</div>';
-                    console.log('✗ No tokens found in database');
+                    console.log('âœ— No tokens found in database');
                 }
             } catch (error) {
                 box.innerHTML = '<div class="status-error"><strong>Error loading tokens:</strong> ' + error.message + '</div>';
-                console.log('✗ Error: ' + error.message);
+                console.log('âœ— Error: ' + error.message);
             }
         }
 
@@ -591,30 +594,38 @@ if (!isset($_SESSION['user_id'])) {
                 }
 
                 if (data.success) {
-                    responseDiv.innerHTML = `<div class="status-success"><strong>✓ Notification sent!</strong><br>Check your notifications<br><pre style="font-size: 0.8em; margin-top: 10px; white-space: pre-wrap;">${JSON.stringify(data, null, 2)}</pre></div>`;
-                    console.log('✓ Notification sent successfully');
+                    responseDiv.innerHTML = `<div class="status-success"><strong>âœ“ Notification sent!</strong><br>Check your notifications<br><pre style="font-size: 0.8em; margin-top: 10px; white-space: pre-wrap;">${JSON.stringify(data, null, 2)}</pre></div>`;
+                    console.log('âœ“ Notification sent successfully');
                 } else {
-                    responseDiv.innerHTML = `<div class="status-error"><strong>✗ Failed to send</strong><br>${data.message}<br><pre style="font-size: 0.8em; margin-top: 10px; white-space: pre-wrap;">${JSON.stringify(data, null, 2)}</pre></div>`;
-                    console.log('✗ Error: ' + data.message);
+                    responseDiv.innerHTML = `<div class="status-error"><strong>âœ— Failed to send</strong><br>${data.message}<br><pre style="font-size: 0.8em; margin-top: 10px; white-space: pre-wrap;">${JSON.stringify(data, null, 2)}</pre></div>`;
+                    console.log('âœ— Error: ' + data.message);
                 }
             } catch (error) {
                 responseDiv.innerHTML = `<div class="status-error"><strong>Error:</strong> ${error.message}</div>`;
-                console.log('✗ Error: ' + error.message);
+                console.log('âœ— Error: ' + error.message);
             }
         }
 
         // Initialize on load
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', async () => {
             console.log('FCM Debug Console loaded');
+            console.log('initializeFirebaseCM available: ' + (typeof initializeFirebaseCM !== 'undefined'));
+            console.log('Initial permission: ' + (typeof Notification !== 'undefined' ? Notification.permission : 'unsupported'));
             checkBrowserStatus();
             checkDiagnostics();
             loadDatabaseTokens();
-            if (Notification.permission === 'granted' && !localStorage.getItem('fcmToken')) {
-                console.log('Permission granted but no token found. Attempting token initialization...');
-                requestPermission();
+            if (typeof initializeFirebaseCM !== 'undefined' && Notification.permission === 'granted' && !localStorage.getItem('fcmToken')) {
+                console.log('Permission granted but no token found. Attempting automatic token initialization...');
+                const ok = await initializeFirebaseCM({ askUser: false });
+                console.log(ok ? 'Auto token initialization succeeded' : 'Auto token initialization failed');
+                setTimeout(() => {
+                    checkBrowserStatus();
+                    loadDatabaseTokens();
+                }, 1000);
             }
             setInterval(loadDatabaseTokens, 10000); // Refresh every 10 seconds
         });
     </script>
 </body>
 </html>
+

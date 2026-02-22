@@ -101,25 +101,37 @@ async function ensureMessagingInitialized() {
 /**
  * Initialize Firebase Cloud Messaging
  */
-async function initializeFirebaseCM() {
+async function initializeFirebaseCM(options = {}) {
   try {
+    const askUser = options.askUser === true;
+
     if (!('Notification' in window)) {
       console.warn('Notification API not supported in this browser');
       return false;
     }
 
-    const initialized = await ensureMessagingInitialized();
-    if (!initialized) {
-      return false;
+    let permission = Notification.permission;
+    if (permission === 'default') {
+      if (!askUser) {
+        console.log('Notification permission is default. Waiting for explicit user action.');
+        return false;
+      }
+
+      // Must be called from direct user action to reliably show browser prompt.
+      permission = await Notification.requestPermission();
     }
 
-    const permission = await Notification.requestPermission();
     if (permission !== 'granted') {
       console.log('Notification permission denied');
       return false;
     }
 
     console.log('Notification permission granted');
+
+    const initialized = await ensureMessagingInitialized();
+    if (!initialized) {
+      return false;
+    }
 
     const token = await messaging.getToken({
       vapidKey: VAPID_KEY,
@@ -319,14 +331,22 @@ function getFCMToken() {
  * Initialize on page load
  */
 document.addEventListener('DOMContentLoaded', async () => {
+  console.log('[FCM] DOMContentLoaded handler started');
   const initialized = await ensureMessagingInitialized();
   if (!initialized) {
+    console.log('[FCM] Messaging initialization skipped: ensureMessagingInitialized failed');
     return;
   }
 
   if (!getFCMToken()) {
-    await initializeFirebaseCM();
+    if (Notification.permission === 'granted') {
+      console.log('[FCM] No local token + permission granted. Attempting token init.');
+      await initializeFirebaseCM({ askUser: false });
+    } else {
+      console.log('Notification permission is not granted yet. Click Request Permission to continue.');
+    }
   } else {
+    console.log('[FCM] Existing token found. Refresh/check path.');
     await refreshFCMTokenIfNeeded();
     handleForegroundMessages();
   }
