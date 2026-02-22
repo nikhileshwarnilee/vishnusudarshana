@@ -331,11 +331,34 @@ if (!isset($_SESSION['user_id'])) {
         // Log messages to page
         let logMessages = [];
         const originalLog = console.log;
+        const originalWarn = console.warn;
+        const originalError = console.error;
+
+        function writeLog(level, args) {
+            const msg = args.map((a) => {
+                try {
+                    return typeof a === 'object' ? JSON.stringify(a) : String(a);
+                } catch (e) {
+                    return String(a);
+                }
+            }).join(' ');
+            logMessages.push(new Date().toLocaleTimeString() + ` [${level}] ` + msg);
+            updateLogsDisplay();
+        }
+
         console.log = function(...args) {
             originalLog(...args);
-            const msg = args.map(a => typeof a === 'object' ? JSON.stringify(a) : a).join(' ');
-            logMessages.push(new Date().toLocaleTimeString() + ': ' + msg);
-            updateLogsDisplay();
+            writeLog('LOG', args);
+        };
+
+        console.warn = function(...args) {
+            originalWarn(...args);
+            writeLog('WARN', args);
+        };
+
+        console.error = function(...args) {
+            originalError(...args);
+            writeLog('ERROR', args);
         };
 
         function updateLogsDisplay() {
@@ -585,6 +608,10 @@ if (!isset($_SESSION['user_id'])) {
             checkBrowserStatus();
             checkDiagnostics();
             loadDatabaseTokens();
+            if (Notification.permission === 'granted' && !localStorage.getItem('fcmToken')) {
+                console.log('Permission granted but no token found. Attempting token initialization...');
+                requestPermission();
+            }
             setInterval(loadDatabaseTokens, 10000); // Refresh every 10 seconds
         });
     </script>

@@ -52,6 +52,14 @@ function getServiceWorkerScope() {
 
 const DEFAULT_NOTIFICATION_ICON = appUrl('/assets/images/logo/icon-iconpwa192.png');
 
+function persistLocalFCMToken(token) {
+  if (!token) {
+    return;
+  }
+  localStorage.setItem('fcmToken', token);
+  localStorage.setItem('fcmTokenTimestamp', String(Date.now()));
+}
+
 async function ensureMessagingInitialized() {
   try {
     if (!('serviceWorker' in navigator)) {
@@ -108,7 +116,8 @@ async function initializeFirebaseCM() {
     console.log('Notification permission granted');
 
     const token = await messaging.getToken({
-      vapidKey: VAPID_KEY
+      vapidKey: VAPID_KEY,
+      serviceWorkerRegistration
     });
 
     if (!token) {
@@ -130,6 +139,8 @@ async function initializeFirebaseCM() {
  * Store FCM token on the server
  */
 async function storeFCMToken(token) {
+  persistLocalFCMToken(token);
+
   try {
     const response = await fetch(appUrl('/ajax/store_fcm_token.php'), {
       method: 'POST',
@@ -142,13 +153,11 @@ async function storeFCMToken(token) {
     const data = await response.json();
     if (data.success) {
       console.log('FCM token stored on server');
-      localStorage.setItem('fcmToken', token);
-      localStorage.setItem('fcmTokenTimestamp', String(Date.now()));
     } else {
-      console.error('Failed to store FCM token:', data.message);
+      console.warn('Failed to store FCM token on server, local token kept:', data.message);
     }
   } catch (error) {
-    console.error('Error storing FCM token:', error);
+    console.warn('Error storing FCM token on server, local token kept:', error);
   }
 }
 
@@ -201,7 +210,8 @@ async function refreshFCMTokenIfNeeded() {
 
     if (needsRefresh) {
       const token = await messaging.getToken({
-        vapidKey: VAPID_KEY
+        vapidKey: VAPID_KEY,
+        serviceWorkerRegistration
       });
       if (token) {
         await storeFCMToken(token);
