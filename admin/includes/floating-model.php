@@ -17,8 +17,18 @@ function showFloatingModal(content) {
     document.getElementById('floatingModalContent').innerHTML = content || 'This is a floating modal.';
     document.getElementById('floatingModal').style.display = 'block';
 }
+function getAdminBasePath() {
+    const path = window.location.pathname || '';
+    const adminMarker = '/admin/';
+    const adminIndex = path.indexOf(adminMarker);
+    if (adminIndex >= 0) {
+        return path.slice(0, adminIndex + '/admin'.length);
+    }
+    return '/admin';
+}
 function openFloatingPopup() {
-    window.open(window.location.origin + '/vishnusudarshana/admin/popup-floating.php', 'FloatingPopup', 'width=600,height=600,scrollbars=yes,resizable=yes');
+    const popupUrl = window.location.origin + getAdminBasePath() + '/popup-floating.php';
+    window.open(popupUrl, 'FloatingPopup', 'width=600,height=600,scrollbars=yes,resizable=yes');
 }
 </script>
 <!-- Usage: Call showFloatingModal('Your content here') from anywhere -->
