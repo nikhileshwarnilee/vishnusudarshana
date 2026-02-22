@@ -1,5 +1,8 @@
 <?php
 session_start();
+require_once __DIR__ . '/../../helpers/blog-media.php';
+header('Content-Type: application/json; charset=UTF-8');
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['cover_image_file'])) {
     $imgTmp = $_FILES['cover_image_file']['tmp_name'];
     $imgName = basename($_FILES['cover_image_file']['name']);
@@ -15,7 +18,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['cover_image_file']))
         if (move_uploaded_file($imgTmp, $uploadPath)) {
             $cover_image = $newName;
             $_SESSION['cover_image'] = $cover_image;
-            echo json_encode(['success' => true, 'path' => $cover_image]);
+            echo json_encode([
+                'success' => true,
+                'path' => $cover_image,
+                'url' => vs_blog_cover_image_url($cover_image),
+            ]);
             exit;
         }
     }

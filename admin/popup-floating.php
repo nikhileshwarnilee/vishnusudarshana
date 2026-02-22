@@ -1,9 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <?php require_once __DIR__ . '/../helpers/favicon.php'; ?>
     <meta charset="UTF-8">
     <title>Floating Popup</title>
     <meta name="viewport" content="width=600, initial-scale=1.0">
+    <?php echo vs_favicon_tags(); ?>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

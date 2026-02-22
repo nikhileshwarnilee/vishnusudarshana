@@ -1,13 +1,14 @@
 <?php
 // Secure file download handler for service files
 require_once __DIR__ . '/config/db.php';
+require_once __DIR__ . '/helpers/favicon.php';
 
 $trackingId = $_GET['tracking_id'] ?? '';
 $fileName = $_GET['file'] ?? '';
 $downloadToken = $_GET['token'] ?? '';
 
 function errorMsg($msg) {
-    echo '<!DOCTYPE html><html><head><title>Download Error</title><style>@import url(https://fonts.googleapis.com/css2?family=Marcellus&display=swap);html,body{font-family:\'Marcellus\',serif!important;}</style></head><body style="font-family:Arial,sans-serif;background:#f7f7fa;padding:32px;"><div style="max-width:400px;margin:0 auto;background:#fff1f0;color:#cf1322;padding:18px 14px;border-radius:10px;text-align:center;font-weight:600;">' . htmlspecialchars($msg) . '</div></body></html>';
+    echo '<!DOCTYPE html><html><head><title>Download Error</title>' . vs_favicon_tags() . '<style>@import url(https://fonts.googleapis.com/css2?family=Marcellus&display=swap);html,body{font-family:\'Marcellus\',serif!important;}</style></head><body style="font-family:Arial,sans-serif;background:#f7f7fa;padding:32px;"><div style="max-width:400px;margin:0 auto;background:#fff1f0;color:#cf1322;padding:18px 14px;border-radius:10px;text-align:center;font-weight:600;">' . htmlspecialchars($msg) . '</div></body></html>';
     exit;
 }
 

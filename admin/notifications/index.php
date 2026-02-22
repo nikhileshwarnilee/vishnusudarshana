@@ -3,6 +3,7 @@
  * Admin Notification Center
  * UI for managing and sending notifications
  */
+require_once __DIR__ . '/../../helpers/favicon.php';
 
 // Optional: Check if user is authenticated as admin
 // include 'admin_check.php'; // Uncomment if you have authentication
@@ -14,6 +15,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Notification Center - Vishnusudarshana Admin</title>
+    <?php echo vs_favicon_tags(); ?>
     <style>
         * {
             margin: 0;

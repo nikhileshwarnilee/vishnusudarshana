@@ -1,6 +1,7 @@
 <?php
 // admin/login.php
 require_once __DIR__ . '/../config/db.php';
+require_once __DIR__ . '/../helpers/favicon.php';
 session_start();
 
 // If already logged in, redirect to admin dashboard
@@ -40,6 +41,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Admin Login</title>
+    <?php echo vs_favicon_tags(); ?>
     <link rel="stylesheet" href="../assets/css/style.css">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Marcellus&display=swap');

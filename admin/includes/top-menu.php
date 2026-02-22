@@ -5,6 +5,7 @@
  * Works correctly with subfolders like /1/
  * No hardcoded paths
  */
+require_once __DIR__ . '/../../helpers/favicon.php';
 
 /* --------------------------------------------------
    BASE URL DETECTION
@@ -273,7 +274,52 @@ if (!function_exists('isActivePage')) {
         return rtrim($urlPath, '/') === rtrim($currPath, '/');
     }
 }
+
+$adminFaviconConfig = [
+    'themeColor' => '#800000',
+    'manifest' => $baseUrl . '/manifest.json',
+    'icon32' => $baseUrl . '/assets/images/logo/logo-icon.png',
+    'icon192' => $baseUrl . '/assets/images/logo/logo-iconpwa192.png',
+    'apple' => $baseUrl . '/assets/images/logo/logo-iconpwa512.png',
+];
 ?>
+<script>
+(function() {
+    if (document.querySelector('link[rel="icon"], link[rel="shortcut icon"]')) {
+        return;
+    }
+    const cfg = <?php echo json_encode($adminFaviconConfig, JSON_UNESCAPED_SLASHES); ?>;
+    const head = document.head || document.getElementsByTagName('head')[0];
+    if (!head) return;
+
+    const setTheme = () => {
+        let meta = document.querySelector('meta[name="theme-color"]');
+        if (!meta) {
+            meta = document.createElement('meta');
+            meta.setAttribute('name', 'theme-color');
+            head.appendChild(meta);
+        }
+        meta.setAttribute('content', cfg.themeColor);
+    };
+
+    const addLink = (rel, href, type, sizes) => {
+        if (!href) return;
+        const link = document.createElement('link');
+        link.rel = rel;
+        link.href = href;
+        if (type) link.type = type;
+        if (sizes) link.sizes = sizes;
+        head.appendChild(link);
+    };
+
+    setTheme();
+    addLink('manifest', cfg.manifest, '', '');
+    addLink('icon', cfg.icon32, 'image/png', '32x32');
+    addLink('icon', cfg.icon192, 'image/png', '192x192');
+    addLink('shortcut icon', cfg.icon32, '', '');
+    addLink('apple-touch-icon', cfg.apple, '', '');
+})();
+</script>
 <!-- =======================
      ADMIN MENU CSS (LOADED FIRST TO PREVENT FOUC)
      ======================= -->

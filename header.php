@@ -3,16 +3,14 @@
     Do not add or auto-generate Marathi or Hindi text in source files.
     Use Google Translate widget for user-facing translation only.
 -->
+<?php require_once __DIR__ . '/helpers/favicon.php'; ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo isset($pageTitle) ? $pageTitle : 'Vishnusudarshana'; ?></title>
-        <link rel="manifest" href="/manifest.json">
-        <meta name="theme-color" content="#FFD700">
-        <link rel="icon" href="/assets/images/icon-192.png" sizes="192x192">
-        <link rel="apple-touch-icon" href="/assets/images/icon-512.png">
+    <?php echo vs_favicon_tags(); ?>
     <link rel="stylesheet" href="<?php echo (strpos($_SERVER['PHP_SELF'], '/forms/') === false ? 'assets/css/style.css' : '../assets/css/style.css'); ?>">
     <link rel="stylesheet" href="<?php echo (strpos($_SERVER['PHP_SELF'], '/forms/') === false ? 'assets/css/welcome-intro.css' : '../assets/css/welcome-intro.css'); ?>">
     <script src="<?php echo (strpos($_SERVER['PHP_SELF'], '/forms/') === false ? 'assets/js/language.js' : '../assets/js/language.js'); ?>" defer></script>

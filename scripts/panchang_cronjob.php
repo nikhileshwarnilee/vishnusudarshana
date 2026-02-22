@@ -3,6 +3,7 @@
 // Fetches Panchang details for default city and stores in DB for use by panchang.php
 
 require_once __DIR__ . '/../config/db.php';
+require_once __DIR__ . '/../helpers/favicon.php';
 
 // Detect if running from web browser or CLI
 $isWebRequest = php_sapi_name() !== 'cli';
@@ -84,6 +85,7 @@ if ($isWebRequest) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Panchang Cronjob Results</title>
+    <?php echo vs_favicon_tags(); ?>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;

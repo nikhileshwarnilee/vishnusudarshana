@@ -5,6 +5,7 @@
  */
 
 require_once __DIR__ . '/../../config/db.php';
+require_once __DIR__ . '/../../helpers/favicon.php';
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -12,6 +13,7 @@ require_once __DIR__ . '/../../config/db.php';
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FCM Debug - Vishnusudarshana</title>
+    <?php echo vs_favicon_tags(); ?>
     <style>
         * {
             margin: 0;

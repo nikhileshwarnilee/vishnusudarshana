@@ -1,6 +1,7 @@
 <?php
 include 'header.php';
 require_once __DIR__ . '/config/db.php';
+require_once __DIR__ . '/helpers/blog-media.php';
 
 // Get slug from URL
 $slug = isset($_GET['slug']) ? trim($_GET['slug']) : '';
@@ -23,6 +24,9 @@ if (!$blog) {
 // Parse body content
 $bodyData = json_decode($blog['body'], true);
 $bodyContent = isset($bodyData['html']) ? $bodyData['html'] : $blog['body'];
+$basePrefix = vs_get_base_url_prefix();
+$bodyContent = vs_blog_normalize_content_media_urls($bodyContent, $basePrefix);
+$coverImageUrl = vs_blog_cover_image_url($blog['cover_image'] ?? '', $basePrefix);
 
 // Parse tags
 $tags = !empty($blog['tags']) ? array_map('trim', explode(',', $blog['tags'])) : [];
@@ -77,7 +81,7 @@ $publishDate = date('d F Y', strtotime($blog['publish_date']));
     }
 
     .blog-title {
-        font-size: 2.8em;
+        font-size: 2.2em;
         color: #800000;
         margin-bottom: 20px;
         line-height: 1.2;
@@ -219,6 +223,55 @@ $publishDate = date('d F Y', strtotime($blog['publish_date']));
         border-radius: 12px;
         margin: 24px 0;
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        cursor: zoom-in;
+    }
+
+    .blog-cover-image img {
+        cursor: zoom-in;
+    }
+
+    .image-lightbox {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.88);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 28px;
+        z-index: 100000;
+    }
+
+    .image-lightbox.open {
+        display: flex;
+    }
+
+    .image-lightbox img {
+        max-width: min(96vw, 1600px);
+        max-height: 92vh;
+        width: auto;
+        height: auto;
+        object-fit: contain;
+        border-radius: 10px;
+        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+        background: #111;
+    }
+
+    .image-lightbox-close {
+        position: absolute;
+        top: 18px;
+        right: 22px;
+        width: 44px;
+        height: 44px;
+        border: 1px solid rgba(255, 255, 255, 0.45);
+        border-radius: 999px;
+        background: rgba(0, 0, 0, 0.45);
+        color: #fff;
+        font-size: 30px;
+        line-height: 1;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
 
     .blog-content code {
@@ -350,7 +403,7 @@ $publishDate = date('d F Y', strtotime($blog['publish_date']));
         }
 
         .blog-title {
-            font-size: 2em;
+            font-size: 1.8em;
         }
 
         .blog-meta {
@@ -387,7 +440,7 @@ $publishDate = date('d F Y', strtotime($blog['publish_date']));
             padding: 0 8px;
         }
         .blog-title {
-            font-size: 1.2em;
+            font-size: 1.3em;
             word-break: break-word;
         }
         .blog-meta {
@@ -438,7 +491,7 @@ $publishDate = date('d F Y', strtotime($blog['publish_date']));
 
     @media (max-width: 480px) {
         .blog-title {
-            font-size: 1.6em;
+            font-size: 1.2em;
         }
 
         .blog-cover-image {
@@ -447,6 +500,18 @@ $publishDate = date('d F Y', strtotime($blog['publish_date']));
 
         .share-section {
             padding: 20px;
+        }
+
+        .image-lightbox {
+            padding: 16px;
+        }
+
+        .image-lightbox-close {
+            top: 10px;
+            right: 10px;
+            width: 40px;
+            height: 40px;
+            font-size: 26px;
         }
     }
 </style>
@@ -480,9 +545,9 @@ $publishDate = date('d F Y', strtotime($blog['publish_date']));
         </div>
     </div>
 
-    <?php if (!empty($blog['cover_image'])): ?>
+    <?php if ($coverImageUrl !== ''): ?>
         <div class="blog-cover-image">
-            <img src="uploads/blogs/<?= htmlspecialchars($blog['cover_image']) ?>" alt="<?= htmlspecialchars($blog['title']) ?>">
+            <img src="<?= htmlspecialchars($coverImageUrl) ?>" alt="<?= htmlspecialchars($blog['title']) ?>">
         </div>
     <?php endif; ?>
 
@@ -563,5 +628,57 @@ $publishDate = date('d F Y', strtotime($blog['publish_date']));
         <?php endif; ?>
     </div>
 </div>
+
+<div id="imageLightbox" class="image-lightbox" aria-hidden="true">
+    <button type="button" id="imageLightboxClose" class="image-lightbox-close" aria-label="Close image preview">&times;</button>
+    <img id="imageLightboxImg" src="" alt="">
+</div>
+
+<script>
+(() => {
+    const lightbox = document.getElementById('imageLightbox');
+    const lightboxImg = document.getElementById('imageLightboxImg');
+    const closeBtn = document.getElementById('imageLightboxClose');
+    const images = document.querySelectorAll('.blog-cover-image img, .blog-content img');
+    if (!lightbox || !lightboxImg || !closeBtn || !images.length) {
+        return;
+    }
+
+    const openLightbox = (imgEl) => {
+        lightboxImg.src = imgEl.currentSrc || imgEl.src;
+        lightboxImg.alt = imgEl.alt || 'Image preview';
+        lightbox.classList.add('open');
+        lightbox.setAttribute('aria-hidden', 'false');
+        document.body.style.overflow = 'hidden';
+    };
+
+    const closeLightbox = () => {
+        lightbox.classList.remove('open');
+        lightbox.setAttribute('aria-hidden', 'true');
+        lightboxImg.src = '';
+        document.body.style.overflow = '';
+    };
+
+    images.forEach((imgEl) => {
+        imgEl.addEventListener('click', (event) => {
+            event.preventDefault();
+            openLightbox(imgEl);
+        });
+    });
+
+    closeBtn.addEventListener('click', closeLightbox);
+    lightbox.addEventListener('click', (event) => {
+        if (event.target === lightbox) {
+            closeLightbox();
+        }
+    });
+
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && lightbox.classList.contains('open')) {
+            closeLightbox();
+        }
+    });
+})();
+</script>
 
 <?php include 'footer.php'; ?>

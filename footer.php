@@ -1,3 +1,52 @@
+<?php
+require_once __DIR__ . '/helpers/favicon.php';
+$faviconBasePrefix = vs_get_base_url_prefix();
+$faviconConfig = [
+    'themeColor' => '#800000',
+    'manifest' => $faviconBasePrefix . '/manifest.json',
+    'icon32' => $faviconBasePrefix . '/assets/images/logo/logo-icon.png',
+    'icon192' => $faviconBasePrefix . '/assets/images/logo/logo-iconpwa192.png',
+    'apple' => $faviconBasePrefix . '/assets/images/logo/logo-iconpwa512.png',
+];
+?>
+<script>
+(function() {
+    if (document.querySelector('link[rel="icon"], link[rel="shortcut icon"]')) {
+        return;
+    }
+    const cfg = <?php echo json_encode($faviconConfig, JSON_UNESCAPED_SLASHES); ?>;
+    const head = document.head || document.getElementsByTagName('head')[0];
+    if (!head) return;
+
+    const setMetaTheme = () => {
+        let themeMeta = document.querySelector('meta[name="theme-color"]');
+        if (!themeMeta) {
+            themeMeta = document.createElement('meta');
+            themeMeta.setAttribute('name', 'theme-color');
+            head.appendChild(themeMeta);
+        }
+        themeMeta.setAttribute('content', cfg.themeColor);
+    };
+
+    const addLink = (rel, href, type, sizes) => {
+        if (!href) return;
+        const link = document.createElement('link');
+        link.rel = rel;
+        link.href = href;
+        if (type) link.type = type;
+        if (sizes) link.sizes = sizes;
+        head.appendChild(link);
+    };
+
+    setMetaTheme();
+    addLink('manifest', cfg.manifest, '', '');
+    addLink('icon', cfg.icon32, 'image/png', '32x32');
+    addLink('icon', cfg.icon192, 'image/png', '192x192');
+    addLink('shortcut icon', cfg.icon32, '', '');
+    addLink('apple-touch-icon', cfg.apple, '', '');
+})();
+</script>
+
     <nav class="mobile-nav">
         <ul>
             <li>

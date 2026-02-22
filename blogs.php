@@ -2,6 +2,7 @@
 $pageTitle = 'Knowledge Centre';
 include 'header.php';
 require_once __DIR__ . '/config/db.php';
+require_once __DIR__ . '/helpers/blog-media.php';
 
 // Fetch published blogs from database
 
@@ -36,6 +37,7 @@ foreach ($blogs as $blog) {
     }
 }
 sort($allTags);
+$basePrefix = vs_get_base_url_prefix();
 ?>
 
 <style>
@@ -677,7 +679,7 @@ html,body{font-family:'Marcellus',serif!important;}
 
 <script>
     // Blog data from database
-    const blogs = <?php echo json_encode(array_map(function($blog) {
+    const blogs = <?php echo json_encode(array_map(function($blog) use ($basePrefix) {
         // Parse tags
         $tags = !empty($blog['tags']) ? array_map('trim', explode(',', $blog['tags'])) : ['general'];
         
@@ -694,8 +696,8 @@ html,body{font-family:'Marcellus',serif!important;}
         
         // Get cover image or use icon
         $icon = '📝';
-        $hasImage = !empty($blog['cover_image']);
-        $imagePath = $hasImage ? 'uploads/blogs/' . $blog['cover_image'] : '';
+        $imagePath = vs_blog_cover_image_url($blog['cover_image'] ?? '', $basePrefix);
+        $hasImage = $imagePath !== '';
         
         return [
             'id' => $blog['id'],

@@ -6,6 +6,7 @@ if (!isset($_SESSION['user_id'])) {
 	exit;
 }
 require_once __DIR__ . '/../../config/db.php';
+require_once __DIR__ . '/../../helpers/favicon.php';
 
 // Handle add, edit, delete actions
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -41,6 +42,7 @@ $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
     <meta charset="UTF-8">
     <title>Products</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <?php echo vs_favicon_tags(); ?>
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f7f7fa; margin: 0; padding: 24px; }
         .container { max-width: 600px; margin: 0 auto; background: #fff; border-radius: 10px; box-shadow: 0 2px 12px #e0bebe22; padding: 24px; }

@@ -5,14 +5,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $input = file_get_contents('php://input');
     $data = json_decode($input, true);
     if (!empty($data['path'])) {
-        $filePath = __DIR__ . '/../../' . $data['path'];
-        if (file_exists($filePath)) {
-            unlink($filePath);
-            if (isset($_SESSION['cover_image']) && $_SESSION['cover_image'] === $data['path']) {
-                unset($_SESSION['cover_image']);
+        $rawPath = str_replace('\\', '/', trim((string)$data['path']));
+        $cleanPath = ltrim($rawPath, '/');
+        $fileName = basename($cleanPath);
+
+        $candidates = [];
+        if (str_starts_with($cleanPath, 'uploads/blogs/')) {
+            $candidates[] = __DIR__ . '/../../' . $cleanPath;
+        }
+        $candidates[] = __DIR__ . '/../../uploads/blogs/' . $fileName;
+
+        foreach ($candidates as $filePath) {
+            if (file_exists($filePath) && is_file($filePath)) {
+                unlink($filePath);
+                if (isset($_SESSION['cover_image']) && $_SESSION['cover_image'] === $data['path']) {
+                    unset($_SESSION['cover_image']);
+                }
+                echo json_encode(['success' => true]);
+                exit;
             }
-            echo json_encode(['success' => true]);
-            exit;
         }
     }
 }

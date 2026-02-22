@@ -6,6 +6,7 @@ if (!isset($_SESSION['user_id'])) {
     exit;
 }
 require_once __DIR__ . '/../../config/db.php';
+require_once __DIR__ . '/../../helpers/blog-media.php';
 
 $editId = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 if ($editId > 0 && $_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -24,9 +25,13 @@ if ($editId > 0 && $_SERVER['REQUEST_METHOD'] !== 'POST') {
         $video_url = $blog['video_url'];
         $publish_date = $blog['publish_date'];
         $status = $blog['status'];
-        $cover_image = $blog['cover_image'];
+        $cover_image = vs_blog_normalize_cover_image_for_storage($blog['cover_image']);
         $_SESSION['cover_image'] = $cover_image;
     }
+}
+
+if ($editId <= 0 && $_SERVER['REQUEST_METHOD'] !== 'POST') {
+    unset($_SESSION['cover_image']);
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -39,6 +44,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     $excerpt = trim($_POST['excerpt'] ?? '');
     $body = trim($_POST['body'] ?? '');
+    $body = vs_blog_normalize_content_media_urls($body);
     // Store body as JSON
     $bodyJson = json_encode(['html' => $body], JSON_UNESCAPED_UNICODE);
     $tags = trim($_POST['tags'] ?? '');
@@ -80,7 +86,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             $uploadPath = $uploadDir . $newName;
             if (move_uploaded_file($imgTmp, $uploadPath)) {
-                $cover_image = 'uploads/blogs/' . $newName;
+                $cover_image = $newName;
                 $_SESSION['cover_image'] = $cover_image;
             } else {
                 $errors[] = 'Failed to upload image.';
@@ -92,11 +98,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // Use uploaded image from session if available
     if (isset($_SESSION['cover_image']) && $_SESSION['cover_image'] !== '') {
-        $cover_image = $_SESSION['cover_image'];
+        $cover_image = vs_blog_normalize_cover_image_for_storage($_SESSION['cover_image']);
     }
 
     // If no errors, insert or update in DB
     if (empty($errors)) {
+        $cover_image = vs_blog_normalize_cover_image_for_storage($cover_image);
         if ($editId > 0) {
             // Update existing blog
             $stmt = $pdo->prepare("UPDATE blogs SET title = ?, slug = ?, excerpt = ?, body = ?, tags = ?, cover_image = ?, video_url = ?, publish_date = ?, status = ? WHERE id = ?");
@@ -127,6 +134,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $status
             ]);
         }
+        unset($_SESSION['cover_image']);
         $success = true;
         // Redirect to management page after save
         header('Location: blogs-management.php?success=1');
@@ -321,31 +329,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             box-shadow: inset 0 1px 0 #f7f0f0;
         }
 
-        .editor-toolbar {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            padding: 10px 12px;
-            background: #f9eaea;
-            border-bottom: 1px solid #f3caca;
-        }
-
-        .editor-toolbar button {
-            border: 1px solid #e0bebe;
-            background: #fff;
-            padding: 8px 10px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: 700;
-            color: #800000;
-            transition: all 0.2s ease;
-        }
-
-        .editor-toolbar button:hover {
-            background: #fdf7f7;
-            box-shadow: 0 2px 8px rgba(128, 0, 0, 0.1);
-        }
-
         .editor-area {
             min-height: 260px;
             padding: 14px;
@@ -423,18 +406,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <div class="form-group">
                 <label for="body">Full Content</label>
                 <div class="editor-wrapper">
-                    <div class="editor-toolbar">
-                        <button type="button" data-cmd="bold"><b>B</b></button>
-                        <button type="button" data-cmd="italic"><i>I</i></button>
-                        <button type="button" data-cmd="underline"><u>U</u></button>
-                        <button type="button" data-cmd="insertUnorderedList">• List</button>
-                        <button type="button" data-cmd="insertOrderedList">1. List</button>
-                        <button type="button" data-cmd="createLink">Link</button>
-                        <button type="button" data-cmd="removeFormat">Clear</button>
-                    </div>
-                    <div id="editor" class="editor-area" contenteditable="true" aria-label="Blog content editor"><?php echo isset($body) ? $body : ''; ?></div>
+                    <textarea id="bodyEditor" class="editor-area" aria-label="Blog content editor"></textarea>
                 </div>
                 <textarea id="body" name="body" style="display:none;"></textarea>
+                <div class="helper-text">Supports headings, tables, links, quotes, media embeds, and inline image upload.</div>
             </div>
 
             <div class="section-title" style="margin-top:24px;">Media & Tags</div>
@@ -443,26 +418,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <label for="cover_image_file">Cover Image Upload</label>
                     <input type="file" id="cover_image_file" name="cover_image_file" accept="image/*">
                     <button type="button" id="uploadImageBtn" class="btn-secondary" style="margin-top:8px;">Upload Image</button>
-                    <div id="imagePreviewDiv" style="margin-top:10px;">
-                    <?php 
-                    // Show only one image preview with correct path, and do not show if file does not exist
-                    if (!empty($cover_image)) {
-                        $imgPath = __DIR__ . '/../../uploads/blogs/' . $cover_image;
-                        if (file_exists($imgPath)) {
-                            $webPath = '../../uploads/blogs/' . $cover_image;
-                            echo '<img src="' . htmlspecialchars($webPath) . '" alt="Cover Image" style="max-width:220px; border-radius:10px; box-shadow:0 2px 8px #e0bebe;">';
-                        }
-                    }
+                    <?php
+                    $coverImageUrl = vs_blog_cover_image_url($cover_image ?? '');
+                    $coverImageFsPath = vs_blog_cover_image_file_path($cover_image ?? '');
+                    $canShowCoverImage = $coverImageUrl !== '' && ($coverImageFsPath === '' || file_exists($coverImageFsPath));
                     ?>
+                    <div id="imagePreviewDiv" style="margin-top:10px;">
+                        <?php if ($canShowCoverImage): ?>
+                            <img src="<?= htmlspecialchars($coverImageUrl) ?>" alt="Cover Image" style="max-width:220px; border-radius:10px; box-shadow:0 2px 8px #e0bebe;">
+                        <?php endif; ?>
                     </div>
-                    <?php 
-                    // Show image preview if uploaded or editing
-                    $showImage = !empty($cover_image) && file_exists(__DIR__ . '/../../' . $cover_image);
-                    if ($showImage): ?>
-                        <div style="margin-top:10px;">
-                            <img src="<?= htmlspecialchars('../../uploads/blogs/' . $cover_image) ?>" alt="Cover Image" style="max-width:220px; border-radius:10px; box-shadow:0 2px 8px #e0bebe;">
-                        </div>
-                    <?php endif; ?>
                     <div class="helper-text">Upload a high-quality image. Preferred 1200x630 or better.</div>
                 </div>
                 <div class="form-group">
@@ -486,6 +451,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/tinymce@7.6.1/tinymce.min.js" referrerpolicy="origin"></script>
 <script>
                 // Auto-generate slug from title on the client side
                 const titleInput = document.getElementById('title');
@@ -500,7 +466,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         const coverInput = document.getElementById('cover_image_file');
         const uploadBtn = document.getElementById('uploadImageBtn');
         const saveBlogBtn = document.getElementById('saveBlogBtn');
-        let uploadedImagePath = "<?= isset($cover_image) ? htmlspecialchars($cover_image) : '' ?>";
+        let uploadedImagePath = '';
 
         uploadBtn.addEventListener('click', function() {
             if (!coverInput.files.length) return;
@@ -521,7 +487,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     // Show preview, only one image
                     let previewDiv = document.getElementById('imagePreviewDiv');
                     if (previewDiv) {
-                        let webPath = '../../uploads/blogs/' + data.path;
+                        let webPath = data.url || ('../../uploads/blogs/' + data.path);
                         previewDiv.innerHTML = `<img src="${webPath}" alt="Cover Image" style="max-width:220px; border-radius:10px; box-shadow:0 2px 8px #e0bebe;">`;
                     }
                 } else {
@@ -545,6 +511,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // On page unload, delete image if not saved
         let blogSaved = false;
         document.getElementById('blogCreateForm').addEventListener('submit', function() {
+            if (window.tinymce && window.tinymce.get('bodyEditor')) {
+                document.getElementById('body').value = window.tinymce.get('bodyEditor').getContent();
+            } else {
+                document.getElementById('body').value = document.getElementById('bodyEditor').value || '';
+            }
             blogSaved = true;
         });
         window.addEventListener('beforeunload', function(e) {
@@ -552,38 +523,92 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 navigator.sendBeacon('delete-blog-image.php', JSON.stringify({ path: uploadedImagePath }));
             }
         });
-    // Rich text editor toolbar
-    const toolbarButtons = document.querySelectorAll('.editor-toolbar button');
-    const editor = document.getElementById('editor');
+    // TinyMCE rich text editor with inline image/media tools and uploads
     const bodyTextarea = document.getElementById('body');
+    const bodyEditorEl = document.getElementById('bodyEditor');
+    const initialEditorHtml = <?= json_encode($body ?? '', JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
+    bodyEditorEl.value = initialEditorHtml || '';
 
-    toolbarButtons.forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            e.preventDefault();
-            const command = btn.dataset.cmd;
-            
-            if (command === 'createLink') {
-                const url = prompt('Enter URL:');
-                if (url) {
-                    document.execCommand(command, false, url);
-                }
-            } else {
-                document.execCommand(command, false, null);
+    const uploadEditorFile = file => new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', 'upload-editor-image.php', true);
+        xhr.responseType = 'json';
+        xhr.onerror = () => reject('Upload failed');
+        xhr.onload = () => {
+            const response = xhr.response || {};
+            if (!response.url) {
+                reject(response.error || 'Upload failed');
+                return;
             }
-            editor.focus();
+            resolve(response.url);
+        };
+        const data = new FormData();
+        data.append('upload', file);
+        xhr.send(data);
+    });
+
+    if (typeof tinymce !== 'undefined') {
+        tinymce.init({
+            selector: '#bodyEditor',
+            height: 560,
+            menubar: 'file edit view insert format tools table help',
+            plugins: 'advlist autolink lists link image media table code fullscreen preview searchreplace visualblocks wordcount charmap emoticons codesample autoresize anchor',
+            toolbar: 'undo redo | blocks fontfamily fontsize | bold italic underline strikethrough forecolor backcolor | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | link image media table blockquote codesample | removeformat | preview code fullscreen',
+            toolbar_mode: 'sliding',
+            branding: false,
+            promotion: false,
+            content_style: 'body { font-family:Segoe UI,Tahoma,Verdana,sans-serif; font-size:16px } img { max-width:100%; height:auto; }',
+            object_resizing: 'img,table,iframe,video',
+            image_advtab: true,
+            image_caption: true,
+            image_dimensions: true,
+            media_dimensions: true,
+            media_live_embeds: true,
+            link_default_target: '_blank',
+            extended_valid_elements: 'iframe[src|frameborder|style|scrolling|class|width|height|name|align|allow|allowfullscreen],video[*],source[*]',
+            setup: function(editor) {
+                editor.on('init', function() {
+                    editor.setContent(initialEditorHtml || '');
+                    bodyTextarea.value = editor.getContent();
+                });
+                editor.on('change input undo redo', function() {
+                    bodyTextarea.value = editor.getContent();
+                });
+            },
+            images_upload_handler: (blobInfo, progress) => new Promise((resolve, reject) => {
+                const file = blobInfo.blob();
+                uploadEditorFile(file).then(resolve).catch(reject);
+            }),
+            file_picker_types: 'image media',
+            file_picker_callback: (callback, value, meta) => {
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = meta.filetype === 'media'
+                    ? 'video/*,audio/*'
+                    : 'image/*';
+                input.onchange = async () => {
+                    const file = input.files && input.files[0];
+                    if (!file) {
+                        return;
+                    }
+                    try {
+                        const url = await uploadEditorFile(file);
+                        callback(url, { title: file.name });
+                    } catch (err) {
+                        alert(typeof err === 'string' ? err : 'Upload failed');
+                    }
+                };
+                input.click();
+            }
         });
-    });
-
-    // Save editor content to hidden textarea
-    editor.addEventListener('blur', () => {
-        bodyTextarea.value = editor.innerHTML;
-    });
-
-    // Update textarea before submit so PHP gets editor content
-    document.getElementById('blogCreateForm').addEventListener('submit', function() {
-        bodyTextarea.value = editor.innerHTML;
-    });
+    } else {
+        alert('Failed to load rich text editor. Please refresh and try again.');
+    }
 </script>
 
 </body>
 </html>
+
+
+
+
