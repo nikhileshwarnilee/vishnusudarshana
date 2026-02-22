@@ -12,6 +12,10 @@ if (ob_get_level()) {
 require_once __DIR__ . '/../config/db.php';
 header('Content-Type: application/json');
 
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
 try {
     // Verify database connection
     if (!$connection) {

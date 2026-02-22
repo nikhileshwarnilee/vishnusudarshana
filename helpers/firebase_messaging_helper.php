@@ -64,6 +64,25 @@ class FirebaseMessaging {
      * @return array Response with success status and message
      */
     public function sendToTopic($topic, $title, $body, $data = [], $options = []) {
+        // In this project, topic subscriptions are persisted in DB.
+        // Use those subscribers as the source of truth for web push delivery.
+        if ($this->dbConnection) {
+            $subscribers = $this->getTopicSubscribers($topic);
+            if (empty($subscribers)) {
+                return [
+                    'success' => false,
+                    'message' => "No subscribers found for topic: $topic",
+                    'topic' => $topic,
+                    'total' => 0
+                ];
+            }
+
+            $result = $this->sendToMultipleDevices($subscribers, $title, $body, $data, $options);
+            $result['type'] = 'topic';
+            $result['topic'] = $topic;
+            return $result;
+        }
+
         return $this->sendNotification(
             "/topics/$topic",
             $title,

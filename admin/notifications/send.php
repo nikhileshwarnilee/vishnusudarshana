@@ -60,19 +60,18 @@ try {
         throw new Exception('topic is required for topic type notifications');
     }
 
-    // Initialize Firebase Messaging
-    $serviceAccountPath = __DIR__ . '/../../firebase-service-account.json';
-    if (!file_exists($serviceAccountPath)) {
-        throw new Exception('Firebase service account file is missing at project root: firebase-service-account.json');
-    }
-
     if (!$connection) {
         throw new Exception('Database connection is not available');
     }
 
+    // Initialize Firebase Messaging.
+    // If service account is missing, helper will queue/log notifications without sending.
+    $serviceAccountPath = __DIR__ . '/../../firebase-service-account.json';
+    $serviceAccountConfigured = file_exists($serviceAccountPath);
+
     $fcm = new FirebaseMessaging(
         'vishnusudarshana-cfcf7',
-        $serviceAccountPath,
+        $serviceAccountConfigured ? $serviceAccountPath : null,
         $connection
     );
 
@@ -102,6 +101,18 @@ try {
     // Add metadata to response
     $result['timestamp'] = date('Y-m-d H:i:s');
     $result['recipient_type'] = $recipientType;
+
+    if (!$serviceAccountConfigured) {
+        $result['service_account_configured'] = false;
+        $result['mode'] = 'queued';
+        $result['warning'] = 'firebase-service-account.json is missing. Notification was queued/logged only.';
+        if (!empty($result['success'])) {
+            $result['message'] = 'Notification queued for testing. Live send is disabled until firebase-service-account.json is added.';
+        }
+    } else {
+        $result['service_account_configured'] = true;
+        $result['mode'] = 'live';
+    }
 
     echo json_encode($result);
 

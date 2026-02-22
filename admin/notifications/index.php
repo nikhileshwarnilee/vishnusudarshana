@@ -478,8 +478,13 @@ if (!isset($_SESSION['user_id'])) {
 
                 const alertDiv = document.getElementById('alert');
                 if (result.success) {
-                    alertDiv.className = 'alert alert-success';
-                    alertDiv.textContent = '✓ ' + result.message;
+                    if (result.mode === 'queued' || result.warning) {
+                        alertDiv.className = 'alert alert-info';
+                        alertDiv.textContent = 'Queued: ' + (result.warning || result.message);
+                    } else {
+                        alertDiv.className = 'alert alert-success';
+                        alertDiv.textContent = 'Sent: ' + result.message;
+                    }
                     e.target.reset();
                 } else {
                     alertDiv.className = 'alert alert-error';

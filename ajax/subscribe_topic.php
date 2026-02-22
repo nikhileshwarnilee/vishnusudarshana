@@ -7,6 +7,10 @@
 require_once __DIR__ . '/../config/db.php';
 header('Content-Type: application/json');
 
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
 try {
     $data = json_decode(file_get_contents('php://input'), true);
     

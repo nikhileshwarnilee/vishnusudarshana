@@ -11,7 +11,10 @@ $isLocal = false;
 if (
     (getenv('CODESPACES') !== false) ||
     (isset($_SERVER['CODESPACES']) && $_SERVER['CODESPACES']) ||
-    (isset($_SERVER['SERVER_NAME']) && ($_SERVER['SERVER_NAME'] === 'localhost' || $_SERVER['SERVER_ADDR'] === '127.0.0.1'))
+    (
+        (isset($_SERVER['SERVER_NAME']) && $_SERVER['SERVER_NAME'] === 'localhost') ||
+        (isset($_SERVER['SERVER_ADDR']) && $_SERVER['SERVER_ADDR'] === '127.0.0.1')
+    )
 ) {
     $isLocal = true;
 }
@@ -48,10 +51,13 @@ try {
 
 // Backward-compatible mysqli connection for legacy modules.
 // Keep this non-fatal so PDO-based pages continue to work even if mysqli is unavailable.
+mysqli_report(MYSQLI_REPORT_OFF);
 $connection = @mysqli_connect($DB_HOST, $DB_USER, $DB_PASS, $DB_NAME);
 if ($connection) {
     mysqli_set_charset($connection, 'utf8mb4');
     mysqli_query($connection, "SET time_zone = '+05:30'");
+} else {
+    $connection = null;
 }
 
 // Usage: include this file and use $pdo (preferred) or $connection (legacy).
