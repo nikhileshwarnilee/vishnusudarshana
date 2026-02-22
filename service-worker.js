@@ -1,7 +1,15 @@
-const CACHE_VERSION = 'vishnusudarshana-pwa-v3';
+const APP_SCOPE_PATH = new URL(self.registration.scope).pathname.replace(/\/$/, '');
+const APP_BASE_PATH = APP_SCOPE_PATH === '/' ? '' : APP_SCOPE_PATH;
+
+function appPath(path) {
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+  return `${APP_BASE_PATH}${normalizedPath}`;
+}
+
+const CACHE_VERSION = 'vishnusudarshana-pwa-v4';
 const PRECACHE_ASSETS = [
-  '/assets/images/logo/icon-iconpwa192.png',
-  '/assets/images/logo/icon-iconpwa512.png'
+  appPath('/assets/images/logo/icon-iconpwa192.png'),
+  appPath('/assets/images/logo/icon-iconpwa512.png')
 ];
 
 self.addEventListener('install', (event) => {
@@ -65,14 +73,14 @@ self.addEventListener('push', (event) => {
   const notificationTitle = notificationData.notification?.title || notificationData.title || 'Vishnu Sudarshana';
   const notificationOptions = {
     body: notificationData.notification?.body || notificationData.body || '',
-    icon: notificationData.notification?.icon || '/assets/images/logo/icon-iconpwa192.png',
-    badge: '/assets/images/logo/icon-iconpwa192.png',
+    icon: notificationData.notification?.icon || appPath('/assets/images/logo/icon-iconpwa192.png'),
+    badge: appPath('/assets/images/logo/icon-iconpwa192.png'),
     tag: 'vishnusudarshana-notification',
     requireInteraction: notificationData.notification?.requireInteraction || false,
     data: {
       ...notificationData.data,
       timestamp: new Date().getTime(),
-      url: notificationData.notification?.clickAction || notificationData.data?.link || '/'
+      url: notificationData.notification?.clickAction || notificationData.data?.link || appPath('/')
     }
   };
 
@@ -87,20 +95,21 @@ self.addEventListener('push', (event) => {
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
 
-  const urlToOpen = event.notification.data.url || '/';
+  const urlToOpen = event.notification.data.url || appPath('/');
+  const targetUrl = new URL(urlToOpen, self.location.origin).href;
 
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
       // Check if the app is already open in a window/tab
       for (let i = 0; i < clientList.length; i++) {
         const client = clientList[i];
-        if (client.url === urlToOpen && 'focus' in client) {
+        if (client.url === targetUrl && 'focus' in client) {
           return client.focus();
         }
       }
       // If not open, open a new window/tab
       if (clients.openWindow) {
-        return clients.openWindow(urlToOpen);
+        return clients.openWindow(targetUrl);
       }
     })
   );

@@ -10,10 +10,27 @@ require_once __DIR__ . '/../../helpers/firebase_messaging_helper.php';
 
 header('Content-Type: application/json');
 
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+if (!isset($_SESSION['user_id'])) {
+    http_response_code(401);
+    echo json_encode([
+        'success' => false,
+        'message' => 'Unauthorized',
+        'timestamp' => date('Y-m-d H:i:s')
+    ]);
+    exit;
+}
+
 try {
     // For HTTP POST requests
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $data = json_decode(file_get_contents('php://input'), true);
+        if (!is_array($data)) {
+            $data = $_POST;
+        }
     } else {
         $data = $_REQUEST;
     }
@@ -45,6 +62,14 @@ try {
 
     // Initialize Firebase Messaging
     $serviceAccountPath = __DIR__ . '/../../firebase-service-account.json';
+    if (!file_exists($serviceAccountPath)) {
+        throw new Exception('Firebase service account file is missing at project root: firebase-service-account.json');
+    }
+
+    if (!$connection) {
+        throw new Exception('Database connection is not available');
+    }
+
     $fcm = new FirebaseMessaging(
         'vishnusudarshana-cfcf7',
         $serviceAccountPath,

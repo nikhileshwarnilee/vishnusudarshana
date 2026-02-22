@@ -10,7 +10,7 @@ $shareTitle = 'Daily Panchang | ' . $todayDateText;
 $shareDescription = "View today's Panchang and auspicious timings.";
 $shareUrl = $panchangShareUrl;
 $shareType = 'website';
-$shareImage = vs_project_absolute_url('assets/images/logo/logo-iconpwa512.png');
+$shareImage = vs_project_absolute_url('assets/images/logo/panchang.png');
 
 $panchangWhatsAppText = "🪔 Panchang ({$todayDateText})\n\n\n🪔 आजचे पंचांग पहा - शुभ मुहूर्त जाणून घ्या.\n\n\n🪔 View today's Panchang - know the auspicious timings.\n\n{$panchangWhatsAppUrl}";
 

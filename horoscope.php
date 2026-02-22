@@ -10,7 +10,7 @@ $shareTitle = 'Rashi Bhavishya | ' . $todayDateText;
 $shareDescription = "Today's horoscope and planetary guidance for all zodiac signs.";
 $shareUrl = $horoscopeShareUrl;
 $shareType = 'website';
-$shareImage = vs_project_absolute_url('assets/images/logo/logo-iconpwa512.png');
+$shareImage = vs_project_absolute_url('assets/images/logo/dailyhoroscope.png');
 
 $horoscopeWhatsAppText = "🔮 Rashi Bhavishya ({$todayDateText})\n\nMarathi:\n🔮 आजचे राशिभविष्य - ग्रहांचे संकेत जाणून घ्या.\n\nEnglish:\n🔮 Today's horoscope - know your planetary guidance.\n\n{$horoscopeWhatsAppUrl}";
 

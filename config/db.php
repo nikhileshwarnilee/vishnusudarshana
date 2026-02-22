@@ -45,4 +45,13 @@ try {
 } catch (PDOException $e) {
     die('Database connection failed. Please try again later.');
 }
-// Usage: include this file and use $pdo
+
+// Backward-compatible mysqli connection for legacy modules.
+// Keep this non-fatal so PDO-based pages continue to work even if mysqli is unavailable.
+$connection = @mysqli_connect($DB_HOST, $DB_USER, $DB_PASS, $DB_NAME);
+if ($connection) {
+    mysqli_set_charset($connection, 'utf8mb4');
+    mysqli_query($connection, "SET time_zone = '+05:30'");
+}
+
+// Usage: include this file and use $pdo (preferred) or $connection (legacy).

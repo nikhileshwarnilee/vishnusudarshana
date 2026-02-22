@@ -7,6 +7,20 @@
 require_once __DIR__ . '/../../config/db.php';
 header('Content-Type: application/json');
 
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+if (!isset($_SESSION['user_id'])) {
+    http_response_code(401);
+    echo json_encode([
+        'success' => false,
+        'message' => 'Unauthorized',
+        'timestamp' => date('Y-m-d H:i:s')
+    ]);
+    exit;
+}
+
 try {
     if (!$connection) {
         throw new Exception('Database connection failed');
@@ -63,7 +77,7 @@ try {
     }
 
     // Check service account file
-    $serviceAccountPath = __DIR__ . '/../firebase-service-account.json';
+    $serviceAccountPath = __DIR__ . '/../../firebase-service-account.json';
     $diagnostics['service_account_file'] = file_exists($serviceAccountPath) ? 'EXISTS ✓' : 'MISSING ✗';
     
     if (file_exists($serviceAccountPath)) {

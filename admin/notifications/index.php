@@ -5,8 +5,14 @@
  */
 require_once __DIR__ . '/../../helpers/favicon.php';
 
-// Optional: Check if user is authenticated as admin
-// include 'admin_check.php'; // Uncomment if you have authentication
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+if (!isset($_SESSION['user_id'])) {
+    header('Location: ../login.php');
+    exit;
+}
 
 ?>
 <!DOCTYPE html>

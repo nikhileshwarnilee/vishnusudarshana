@@ -6,6 +6,59 @@
 
 require_once __DIR__ . '/../../config/db.php';
 require_once __DIR__ . '/../../helpers/favicon.php';
+
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+// Handle AJAX requests before any HTML output.
+if (isset($_GET['action']) && $_GET['action'] === 'get_tokens') {
+    header('Content-Type: application/json');
+
+    if (!isset($_SESSION['user_id'])) {
+        http_response_code(401);
+        echo json_encode([
+            'success' => false,
+            'message' => 'Unauthorized'
+        ]);
+        exit;
+    }
+
+    try {
+        if (!$connection) {
+            throw new Exception('Database connection failed');
+        }
+
+        $query = "SELECT id, token, created_at, is_active FROM fcm_tokens ORDER BY created_at DESC LIMIT 20";
+        $result = mysqli_query($connection, $query);
+
+        if (!$result) {
+            throw new Exception('Query error: ' . mysqli_error($connection));
+        }
+
+        $tokens = [];
+        while ($row = mysqli_fetch_assoc($result)) {
+            $tokens[] = $row;
+        }
+
+        echo json_encode([
+            'success' => true,
+            'tokens' => $tokens
+        ]);
+    } catch (Exception $e) {
+        http_response_code(400);
+        echo json_encode([
+            'success' => false,
+            'message' => $e->getMessage()
+        ]);
+    }
+    exit;
+}
+
+if (!isset($_SESSION['user_id'])) {
+    header('Location: ../login.php');
+    exit;
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -537,35 +590,3 @@ require_once __DIR__ . '/../../helpers/favicon.php';
     </script>
 </body>
 </html>
-
-<?php
-// Handle AJAX requests
-if (isset($_GET['action']) && $_GET['action'] === 'get_tokens') {
-    header('Content-Type: application/json');
-    try {
-        $query = "SELECT id, token, created_at, is_active FROM fcm_tokens ORDER BY created_at DESC LIMIT 20";
-        $result = mysqli_query($connection, $query);
-        
-        if (!$result) {
-            throw new Exception('Query error: ' . mysqli_error($connection));
-        }
-        
-        $tokens = [];
-        while ($row = mysqli_fetch_assoc($result)) {
-            $tokens[] = $row;
-        }
-        
-        echo json_encode([
-            'success' => true,
-            'tokens' => $tokens
-        ]);
-    } catch (Exception $e) {
-        http_response_code(400);
-        echo json_encode([
-            'success' => false,
-            'message' => $e->getMessage()
-        ]);
-    }
-    exit;
-}
-?>

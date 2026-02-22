@@ -10,7 +10,7 @@ $shareTitle = 'Din Vishesh | ' . $todayDateText;
 $shareDescription = "Today's festivals and significance from the Hindu calendar.";
 $shareUrl = $dinVisheshShareUrl;
 $shareType = 'website';
-$shareImage = vs_project_absolute_url('assets/images/logo/logo-iconpwa512.png');
+$shareImage = vs_project_absolute_url('assets/images/logo/dinvishesh.png');
 
 $dinVisheshWhatsAppText = "📿 Din Vishesh ({$todayDateText})\n\nMarathi:\n📿 आजचा दिनविशेष - पवित्र माहिती एका क्लिकमध्ये.\n\nEnglish:\n📿 Today's significance - divine insights in one click.\n\n{$dinVisheshWhatsAppUrl}";
 

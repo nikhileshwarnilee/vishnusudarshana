@@ -39,10 +39,27 @@ require_once __DIR__ . '/helpers/share.php';
 </head>
 <body class="body-homepage">
         <script>
-        // Register service worker
+        // Register service worker (supports both root and subfolder installs)
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', function() {
-                navigator.serviceWorker.register('/service-worker.js');
+                var path = window.location.pathname || '';
+                var adminMarker = '/admin/';
+                var formsMarker = '/forms/';
+                var basePath = '';
+
+                if (path.indexOf(adminMarker) >= 0) {
+                    basePath = path.slice(0, path.indexOf(adminMarker));
+                } else if (path.indexOf(formsMarker) >= 0) {
+                    basePath = path.slice(0, path.indexOf(formsMarker));
+                } else {
+                    var lastSlash = path.lastIndexOf('/');
+                    basePath = lastSlash > 0 ? path.slice(0, lastSlash) : '';
+                }
+
+                var swUrl = (basePath || '') + '/service-worker.js';
+                var swScope = basePath ? (basePath + '/') : '/';
+
+                navigator.serviceWorker.register(swUrl, { scope: swScope });
             });
         }
         // Show PWA install prompt for new users

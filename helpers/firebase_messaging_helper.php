@@ -205,6 +205,9 @@ class FirebaseMessaging {
         try {
             $recipientType = strpos($recipient, '/topics/') === 0 ? 'topic' : 'device';
             $recipientName = str_replace('/topics/', '', $recipient);
+            $appBasePath = $this->detectBasePath();
+            $defaultIcon = $appBasePath . '/assets/images/logo/icon-iconpwa192.png';
+            $defaultLink = $appBasePath ? ($appBasePath . '/') : '/';
 
             // Build FCM v1 message
             $message = [
@@ -214,16 +217,16 @@ class FirebaseMessaging {
                 ],
                 'data' => $this->stringifyData(array_merge([
                     'timestamp' => (string) time(),
-                    'url' => $options['clickAction'] ?? '/'
+                    'url' => $options['clickAction'] ?? $defaultLink
                 ], $data)),
                 'webpush' => [
                     'notification' => [
-                        'icon' => $options['icon'] ?? '/assets/images/logo/icon-iconpwa192.png',
-                        'badge' => $options['badge'] ?? '/assets/images/logo/icon-iconpwa192.png',
+                        'icon' => $options['icon'] ?? $defaultIcon,
+                        'badge' => $options['badge'] ?? $defaultIcon,
                         'requireInteraction' => $options['requireInteraction'] ?? false
                     ],
                     'fcm_options' => [
-                        'link' => $options['clickAction'] ?? '/'
+                        'link' => $options['clickAction'] ?? $defaultLink
                     ]
                 ]
             ];
@@ -507,6 +510,25 @@ class FirebaseMessaging {
         }
 
         return json_decode($responseBody, true) ?? [];
+    }
+
+    /**
+     * Detect app base path from current request path (supports subfolder installs).
+     */
+    private function detectBasePath() {
+        $scriptName = $_SERVER['SCRIPT_NAME'] ?? '';
+        if ($scriptName === '') {
+            return '';
+        }
+
+        foreach (['/admin/', '/ajax/', '/api/', '/scripts/'] as $marker) {
+            $pos = strpos($scriptName, $marker);
+            if ($pos !== false) {
+                return rtrim(substr($scriptName, 0, $pos), '/');
+            }
+        }
+
+        return '';
     }
 
     /**
