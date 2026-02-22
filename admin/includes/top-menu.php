@@ -144,6 +144,85 @@ if (!isset($pdo)) {
     require_once __DIR__ . '/../../config/db.php';
 }
 
+// --- Menu notification dots (Appointments / Services) ---
+if (!isset($_SESSION['menu_notif_seen']) || !is_array($_SESSION['menu_notif_seen'])) {
+    $_SESSION['menu_notif_seen'] = [];
+}
+
+$requestPath = parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH) ?? '';
+$isPendingAppointmentsPage = (bool)preg_match('#/admin/services/appointments\.php$#', $requestPath);
+$isServiceRequestListPage = (bool)preg_match('#/admin/services/service-request-list\.php$#', $requestPath);
+
+// Mark as seen when admin opens the relevant page.
+if ($isPendingAppointmentsPage) {
+    $seenAppointmentsStmt = $pdo->query("
+        SELECT COALESCE(MAX(created_at), NOW())
+        FROM service_requests
+        WHERE category_slug = 'appointment'
+          AND payment_status IN ('Paid', 'Free')
+          AND service_status IN ('Received', 'Pending')
+          AND JSON_UNQUOTE(JSON_EXTRACT(form_data, '$.preferred_date')) = CURDATE()
+    ");
+    $_SESSION['menu_notif_seen']['appointments'] = (string)$seenAppointmentsStmt->fetchColumn();
+}
+
+if ($isServiceRequestListPage) {
+    $seenServicesStmt = $pdo->query("
+        SELECT COALESCE(MAX(created_at), NOW())
+        FROM service_requests
+        WHERE category_slug != 'appointment'
+          AND DATE(created_at) = CURDATE()
+    ");
+    $_SESSION['menu_notif_seen']['services'] = (string)$seenServicesStmt->fetchColumn();
+}
+
+$appointmentsSeenAt = $_SESSION['menu_notif_seen']['appointments'] ?? null;
+$servicesSeenAt = $_SESSION['menu_notif_seen']['services'] ?? null;
+
+if ($appointmentsSeenAt) {
+    $appointmentsDotStmt = $pdo->prepare("
+        SELECT COUNT(*)
+        FROM service_requests
+        WHERE category_slug = 'appointment'
+          AND payment_status IN ('Paid', 'Free')
+          AND service_status IN ('Received', 'Pending')
+          AND JSON_UNQUOTE(JSON_EXTRACT(form_data, '$.preferred_date')) = CURDATE()
+          AND created_at > ?
+    ");
+    $appointmentsDotStmt->execute([$appointmentsSeenAt]);
+} else {
+    $appointmentsDotStmt = $pdo->prepare("
+        SELECT COUNT(*)
+        FROM service_requests
+        WHERE category_slug = 'appointment'
+          AND payment_status IN ('Paid', 'Free')
+          AND service_status IN ('Received', 'Pending')
+          AND JSON_UNQUOTE(JSON_EXTRACT(form_data, '$.preferred_date')) = CURDATE()
+    ");
+    $appointmentsDotStmt->execute();
+}
+$showAppointmentsNotificationDot = ((int)$appointmentsDotStmt->fetchColumn()) > 0;
+
+if ($servicesSeenAt) {
+    $servicesDotStmt = $pdo->prepare("
+        SELECT COUNT(*)
+        FROM service_requests
+        WHERE category_slug != 'appointment'
+          AND DATE(created_at) = CURDATE()
+          AND created_at > ?
+    ");
+    $servicesDotStmt->execute([$servicesSeenAt]);
+} else {
+    $servicesDotStmt = $pdo->prepare("
+        SELECT COUNT(*)
+        FROM service_requests
+        WHERE category_slug != 'appointment'
+          AND DATE(created_at) = CURDATE()
+    ");
+    $servicesDotStmt->execute();
+}
+$showServicesNotificationDot = ((int)$servicesDotStmt->fetchColumn()) > 0;
+
 // --- Permission filtering ---
 // Only filter for non-admins; admin (user_id=1) always sees all menus/submenus
 if (isset($_SESSION['user_id']) && $_SESSION['user_id'] != 1) {
@@ -310,6 +389,28 @@ body {
     margin-left: 2px;
     opacity: 0.6;
     transition: transform 0.2s ease;
+}
+
+.menu-notification-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: #00ff66;
+    box-shadow: 0 0 0 0 rgba(0, 255, 102, 0.85);
+    margin-left: 6px;
+    display: inline-block;
+    flex-shrink: 0;
+    animation: menuNotifGlow 1.4s ease-in-out infinite;
+}
+
+.admin-top-menu-item.active > .admin-top-menu-link .menu-notification-dot {
+    border: 1px solid rgba(255, 255, 255, 0.7);
+}
+
+@keyframes menuNotifGlow {
+    0%   { box-shadow: 0 0 0 0 rgba(0, 255, 102, 0.85); }
+    70%  { box-shadow: 0 0 0 8px rgba(0, 255, 102, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(0, 255, 102, 0); }
 }
 
 .admin-top-menu-item:hover > .admin-top-menu-link .dropdown-arrow {
@@ -749,6 +850,9 @@ body {
                 $hasSubmenu = isset($item['submenu']);
                 $isActive = false;
                 $activeSub = null;
+                $showMenuNotificationDot =
+                    (($label === 'Appointments') && $showAppointmentsNotificationDot) ||
+                    (($label === 'Services') && $showServicesNotificationDot);
                 if ($hasSubmenu) {
                     foreach ($item['submenu'] as $subLabel => $subUrl) {
                         if (isActivePage($subUrl, $currentPage)) {
@@ -770,6 +874,9 @@ body {
                         <a href="javascript:void(0)" class="admin-top-menu-link">
                             <span class="icon"><?= $item['icon'] ?></span>
                             <?php if ($label !== 'Settings') echo htmlspecialchars($label); ?>
+                            <?php if ($showMenuNotificationDot): ?>
+                                <span class="menu-notification-dot" title="New updates"></span>
+                            <?php endif; ?>
                             <span class="dropdown-arrow">▼</span>
                         </a>
 
@@ -787,6 +894,9 @@ body {
                         <a href="<?= htmlspecialchars($item['url']) ?>" class="admin-top-menu-link">
                             <span class="icon"><?= $item['icon'] ?></span>
                             <?php if ($label !== 'Logout') echo htmlspecialchars($label); ?>
+                            <?php if ($showMenuNotificationDot): ?>
+                                <span class="menu-notification-dot" title="New updates"></span>
+                            <?php endif; ?>
                         </a>
                     <?php endif; ?>
 
