@@ -21,7 +21,7 @@ if ($isLocal) {
     $DB_HOST = 'localhost';
     $DB_USER = 'root';
     $DB_PASS = '';
-    $DB_NAME = 'vishnusudarshana_dev';
+    $DB_NAME = 'vishnusudarshana';
 } else {
     // Production/hosting credentials
     $DB_HOST = '162.214.80.18';
