@@ -255,7 +255,8 @@ if (!isset($_SESSION['user_id'])) {
     <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-messaging-compat.js"></script>
     
     <!-- Firebase Cloud Messaging Service -->
-    <script src="../../assets/js/firebase-messaging.js"></script>
+    <?php $fcmDebugJsVersion = @filemtime(__DIR__ . '/../../assets/js/firebase-messaging.js') ?: time(); ?>
+    <script src="../../assets/js/firebase-messaging.js?v=<?php echo $fcmDebugJsVersion; ?>"></script>
 </head>
 <body>
     <div class="container">

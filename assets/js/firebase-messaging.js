@@ -80,6 +80,12 @@ async function ensureMessagingInitialized() {
       console.log('Service Worker registered successfully');
     }
 
+    // Ensure the worker is active before requesting FCM token.
+    const readyRegistration = await navigator.serviceWorker.ready;
+    if (readyRegistration) {
+      serviceWorkerRegistration = readyRegistration;
+    }
+
     if (!firebase.apps.length) {
       firebase.initializeApp(firebaseConfig);
     }

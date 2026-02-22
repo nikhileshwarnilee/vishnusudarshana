@@ -75,8 +75,8 @@ try {
         $connection
     );
 
-    $title = sanitize($data['title']);
-    $body = sanitize($data['body']);
+    $title = sanitizeText($data['title']);
+    $body = sanitizeText($data['body']);
     $additionalData = isset($data['data']) && is_array($data['data']) ? $data['data'] : [];
     $options = isset($data['options']) && is_array($data['options']) ? $data['options'] : [];
 
@@ -84,12 +84,12 @@ try {
 
     switch ($recipientType) {
         case 'device':
-            $token = sanitize($data['device_token']);
+            $token = normalizeToken($data['device_token']);
             $result = $fcm->sendToDevice($token, $title, $body, $additionalData, $options);
             break;
 
         case 'topic':
-            $topic = sanitize($data['topic']);
+            $topic = normalizeTopic($data['topic']);
             $result = $fcm->sendToTopic($topic, $title, $body, $additionalData, $options);
             break;
 
@@ -128,8 +128,16 @@ try {
 /**
  * Sanitize input
  */
-function sanitize($input) {
+function sanitizeText($input) {
     return htmlspecialchars(strip_tags(trim($input)), ENT_QUOTES, 'UTF-8');
+}
+
+function normalizeToken($input) {
+    return trim((string) $input);
+}
+
+function normalizeTopic($input) {
+    return trim((string) $input);
 }
 
 ?>

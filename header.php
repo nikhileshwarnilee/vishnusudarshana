@@ -35,7 +35,11 @@ require_once __DIR__ . '/helpers/share.php';
     <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-messaging-compat.js"></script>
     
     <!-- Firebase Cloud Messaging Service -->
-    <script src="<?php echo (strpos($_SERVER['PHP_SELF'], '/forms/') === false ? 'assets/js/firebase-messaging.js' : '../assets/js/firebase-messaging.js'); ?>" defer></script>
+    <?php
+        $fcmJsPath = __DIR__ . '/assets/js/firebase-messaging.js';
+        $fcmJsVersion = @filemtime($fcmJsPath) ?: time();
+    ?>
+    <script src="<?php echo (strpos($_SERVER['PHP_SELF'], '/forms/') === false ? 'assets/js/firebase-messaging.js' : '../assets/js/firebase-messaging.js'); ?>?v=<?php echo $fcmJsVersion; ?>" defer></script>
 </head>
 <body class="body-homepage">
         <script>

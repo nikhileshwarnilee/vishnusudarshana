@@ -13,13 +13,16 @@ if (session_status() === PHP_SESSION_NONE) {
 
 try {
     $data = json_decode(file_get_contents('php://input'), true);
+    if (!is_array($data)) {
+        $data = $_POST;
+    }
     
     if (empty($data['token']) || empty($data['topic'])) {
         throw new Exception('Token and topic are required');
     }
 
-    $token = sanitize($data['token']);
-    $topic = sanitize($data['topic']);
+    $token = normalizeToken($data['token']);
+    $topic = normalizeTopic($data['topic']);
 
     // Validate topic name
     if (!preg_match('/^[a-zA-Z0-9_-]+$/', $topic)) {
@@ -59,7 +62,11 @@ try {
     ]);
 }
 
-function sanitize($input) {
-    return htmlspecialchars(strip_tags(trim($input)), ENT_QUOTES, 'UTF-8');
+function normalizeToken($input) {
+    return trim((string) $input);
+}
+
+function normalizeTopic($input) {
+    return trim((string) $input);
 }
 ?>

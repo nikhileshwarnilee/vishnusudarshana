@@ -24,12 +24,18 @@ try {
 
     // Get JSON payload
     $data = json_decode(file_get_contents('php://input'), true);
+    if (!is_array($data)) {
+        $data = $_POST;
+    }
     
     if (empty($data['token'])) {
         throw new Exception('FCM token is required');
     }
 
-    $token = sanitize($data['token']);
+    $token = normalizeToken($data['token']);
+    if (strlen($token) > 512) {
+        throw new Exception('FCM token is too long for current schema (max 512). Please run schema migration.');
+    }
     
     // Get device/session info
     $device_id = isset($_COOKIE['device_id']) ? $_COOKIE['device_id'] : bin2hex(random_bytes(16));
@@ -137,10 +143,10 @@ try {
 }
 
 /**
- * Sanitize input
+ * Normalize token input without HTML escaping
  */
-function sanitize($input) {
-    return htmlspecialchars(strip_tags(trim($input)), ENT_QUOTES, 'UTF-8');
+function normalizeToken($input) {
+    return trim((string) $input);
 }
 ?>
 
