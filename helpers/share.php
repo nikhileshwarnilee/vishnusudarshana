@@ -3,6 +3,22 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/favicon.php';
 
+if (!function_exists('vs_is_local_host')) {
+    function vs_is_local_host(string $host): bool
+    {
+        $h = strtolower(trim($host));
+        if ($h === '') {
+            return false;
+        }
+
+        return $h === 'localhost'
+            || $h === '127.0.0.1'
+            || $h === '::1'
+            || str_starts_with($h, '127.')
+            || str_ends_with($h, '.local');
+    }
+}
+
 if (!function_exists('vs_request_scheme')) {
     function vs_request_scheme(): string
     {
@@ -32,6 +48,35 @@ if (!function_exists('vs_origin')) {
     }
 }
 
+if (!function_exists('vs_share_origin')) {
+    function vs_share_origin(): string
+    {
+        $host = trim((string)($_SERVER['HTTP_HOST'] ?? $_SERVER['SERVER_NAME'] ?? ''));
+        if (vs_is_local_host($host)) {
+            return 'https://vishnusudarshana.com';
+        }
+
+        return vs_origin();
+    }
+}
+
+if (!function_exists('vs_share_base_prefix')) {
+    function vs_share_base_prefix(): string
+    {
+        $host = trim((string)($_SERVER['HTTP_HOST'] ?? $_SERVER['SERVER_NAME'] ?? ''));
+        if (vs_is_local_host($host)) {
+            return '';
+        }
+
+        $prefix = rtrim(vs_get_base_url_prefix(), '/');
+        if ($prefix === '/' || $prefix === '.') {
+            return '';
+        }
+
+        return $prefix;
+    }
+}
+
 if (!function_exists('vs_project_absolute_url')) {
     /**
      * Build project-aware absolute URL from root-relative project path.
@@ -46,9 +91,9 @@ if (!function_exists('vs_project_absolute_url')) {
             return $rawPath;
         }
 
-        $basePrefix = rtrim(vs_get_base_url_prefix(), '/');
+        $basePrefix = vs_share_base_prefix();
         $pathPart = ltrim(str_replace('\\', '/', $rawPath), '/');
-        $origin = vs_origin();
+        $origin = vs_share_origin();
 
         if ($pathPart === '') {
             return $origin . ($basePrefix !== '' ? $basePrefix : '');
@@ -69,7 +114,19 @@ if (!function_exists('vs_current_absolute_url')) {
             $requestUri = '/' . $requestUri;
         }
 
-        return vs_origin() . $requestUri;
+        $host = trim((string)($_SERVER['HTTP_HOST'] ?? $_SERVER['SERVER_NAME'] ?? ''));
+        if (vs_is_local_host($host)) {
+            $localPrefix = rtrim(vs_get_base_url_prefix(), '/');
+            if ($localPrefix !== '' && $localPrefix !== '/' && $localPrefix !== '.') {
+                if (str_starts_with($requestUri, $localPrefix . '/')) {
+                    $requestUri = substr($requestUri, strlen($localPrefix));
+                } elseif ($requestUri === $localPrefix) {
+                    $requestUri = '/';
+                }
+            }
+        }
+
+        return vs_share_origin() . $requestUri;
     }
 }
 
