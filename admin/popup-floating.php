@@ -52,6 +52,8 @@
     const printBtn = document.getElementById('printBtn');
     const downloadBtn = document.getElementById('downloadBtn');
     let sectionIndex = 1;
+    const adminBaseUrl = new URL('.', window.location.href);
+    const getAdminAssetUrl = fileName => new URL(`includes/${fileName}`, adminBaseUrl).href;
 
     function ensureKalamFontLoaded() {
         return new Promise(resolve => {
@@ -150,60 +152,89 @@
     addBtn.addEventListener('click', createSection);
     printBtn.addEventListener('click', () => {
         const sections = Array.from(sectionsContainer.querySelectorAll('.rt-section'));
-        const headerImg = window.location.origin + '/admin/includes/compbanner.jpg';
-        let html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Print</title><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Kalam:wght@400&display=swap" rel="stylesheet"><style>@page{margin:0;}html,body{margin:0;padding:0;background:#fffbf0;font-family:Arial,sans-serif;}body{display:flex;flex-direction:column;min-height:100vh;} .page-body{flex:1;display:flex;flex-direction:column;} .content{padding:20px;padding-bottom:30px;margin:30px 50px;flex:1;} .welcome-note{text-align:center;padding:20px;font-size:18px;font-weight:600;color:#800000;} .section-title{font-family:\'Kalam\',cursive;font-weight:400;font-size:24px;color:#800000;} .section-content{font-family:\'Kalam\',cursive;font-weight:400;font-size:18px;} .footer{position:relative;width:100%;padding:20px 50px;border-top:2px solid #ddd;font-size:14px;line-height:1.6;background:#fffbf0;box-sizing:border-box;page-break-inside:avoid;margin-top:auto;}</style></head><body>';
+        const headerImg = getAdminAssetUrl('compbanner.jpg');
+        const footerImg = getAdminAssetUrl('footerbanner.jpg');
+        let html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Print</title><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Kalam:wght@400&display=swap" rel="stylesheet"><style>@page{margin:0;}html,body{margin:0;padding:0;background:#fef5b0;font-family:Arial,sans-serif;}body{display:flex;flex-direction:column;min-height:100vh;} .page-body{flex:1;display:flex;flex-direction:column;} .content{padding:20px;padding-bottom:30px;margin:24px 50px;flex:1;text-align:center;} .section-title{font-family:\'Kalam\',cursive;font-weight:700;font-size:20px;color:#800000;text-align:center;} .section-content{font-family:\'Kalam\',cursive;font-weight:400;font-size:16px;line-height:1.5;text-align:center;} .section-content *{text-align:center !important;} #printFooter{width:100%;display:block;margin:0;padding:0;page-break-inside:avoid;break-inside:avoid;}</style></head><body>';
         html += '<div class="page-body">';
         html += `<img src="${headerImg}" alt="Header" style="width:100%;display:block;margin:0;padding:0;">`;
-        html += '<div class="welcome-note">Welcome to VishnuSudarshana</div>';
         html += '<div class="content">';
         sections.forEach((section, idx) => {
             const titleSel = section.querySelector('select');
             const selectedText = titleSel ? titleSel.options[titleSel.selectedIndex]?.text || '' : '';
             const editor = section.querySelector('[contenteditable]');
             const content = editor ? editor.innerHTML : '';
-            html += `<div style="margin-bottom:20px;">
+            html += `<div style="margin-bottom:20px;text-align:center;">
                 <div class="section-title" style="font-weight:bold;margin-bottom:8px;">${selectedText}</div>
                 <div class="section-content">${content}</div>
             </div>`;
         });
         html += '</div>'; // end content
         html += '</div>'; // end page-body
-        html += '<div class="footer"><p><strong>We believe in clarity, peace of mind, and genuine support for every devotee, family, and seeker. Thank you for trusting us to serve your spiritual needs.</strong></p><p><strong>Contact Us</strong><br>98500 57444<br>Shubhamastu Nilayam, Plot No 63,<br>Srushti Nagar, Akkalkot Road,<br>Solapur - 413006</p></div>';
+        html += `<img id="printFooter" src="${footerImg}" alt="Footer">`;
         html += '</body></html>';
 
         const w = window.open('', 'PrintView');
         w.document.open();
         w.document.write(html);
         w.document.close();
+
+        const alignFooterInPrintWindow = () => {
+            const footerEl = w.document.getElementById('printFooter');
+            if (!footerEl) return;
+
+            const pageProbe = w.document.createElement('div');
+            pageProbe.style.position = 'absolute';
+            pageProbe.style.visibility = 'hidden';
+            pageProbe.style.height = '297mm';
+            pageProbe.style.width = '1px';
+            pageProbe.style.top = '0';
+            w.document.body.appendChild(pageProbe);
+            const totalPageHeight = pageProbe.getBoundingClientRect().height;
+            pageProbe.remove();
+            if (!totalPageHeight) return;
+
+            const pageHeight = totalPageHeight;
+            if (!pageHeight) return;
+
+            const footerRect = footerEl.getBoundingClientRect();
+            const footerTop = footerRect.top + w.pageYOffset;
+            const topOnPage = ((footerTop % pageHeight) + pageHeight) % pageHeight;
+            const extraSpace = Math.floor(pageHeight - topOnPage - footerRect.height - 1);
+            footerEl.style.marginTop = extraSpace > 0 ? `${extraSpace}px` : '0';
+        };
         
         // Wait for all resources to load before printing
         w.addEventListener('load', () => {
+            const triggerPrint = () => {
+                alignFooterInPrintWindow();
+                setTimeout(() => {
+                    alignFooterInPrintWindow();
+                    w.focus();
+                    w.print();
+                }, 80);
+            };
+
             // Wait for fonts to load
             if (w.document.fonts) {
                 w.document.fonts.ready.then(() => {
                     // Additional delay to ensure images are rendered
-                    setTimeout(() => {
-                        w.focus();
-                        w.print();
-                    }, 500);
+                    setTimeout(triggerPrint, 300);
                 });
             } else {
                 // Fallback for browsers without Font Loading API
-                setTimeout(() => {
-                    w.focus();
-                    w.print();
-                }, 1000);
+                setTimeout(triggerPrint, 700);
             }
         });
     });
     downloadBtn.addEventListener('click', () => {
         ensureKalamFontLoaded().then(() => {
             const sections = Array.from(sectionsContainer.querySelectorAll('.rt-section'));
-            const headerImg = window.location.origin + '/admin/includes/compbanner.jpg';
+            const headerImg = getAdminAssetUrl('compbanner.jpg');
+            const footerImg = getAdminAssetUrl('footerbanner.jpg');
             
             // Create proper DOM elements for PDF
             const pdfContainer = document.createElement('div');
-            pdfContainer.style.backgroundColor = '#fffbf0';
+            pdfContainer.style.backgroundColor = '#fef5b0';
             pdfContainer.style.fontFamily = 'Arial, sans-serif';
             pdfContainer.style.display = 'flex';
             pdfContainer.style.flexDirection = 'column';
@@ -227,23 +258,13 @@
             img.style.padding = '0';
             mainWrap.appendChild(img);
             
-            // Welcome note
-            const welcomeNote = document.createElement('div');
-            welcomeNote.style.textAlign = 'center';
-            welcomeNote.style.padding = '20px';
-            welcomeNote.style.fontSize = '18px';
-            welcomeNote.style.fontWeight = '600';
-            welcomeNote.style.color = '#800000';
-            welcomeNote.style.fontFamily = "'Kalam', cursive";
-            welcomeNote.textContent = 'Welcome to VishnuSudarshana';
-            mainWrap.appendChild(welcomeNote);
-            
             // Content wrapper
             const contentWrapper = document.createElement('div');
             contentWrapper.style.padding = '20px';
             contentWrapper.style.paddingBottom = '30px';
             contentWrapper.style.margin = '30px 50px';
             contentWrapper.style.flex = '1';
+            contentWrapper.style.textAlign = 'center';
             
             // Add sections
             sections.forEach((section, idx) => {
@@ -254,22 +275,29 @@
                 
                 const sectionDiv = document.createElement('div');
                 sectionDiv.style.marginBottom = '20px';
+                sectionDiv.style.textAlign = 'center';
                 
                 const titleDiv = document.createElement('div');
                 titleDiv.style.fontFamily = "'Kalam', cursive";
                 titleDiv.style.fontWeight = '400';
-                titleDiv.style.fontSize = '24px';
+                titleDiv.style.fontSize = '20px';
                 titleDiv.style.color = '#800000';
                 titleDiv.style.fontWeight = 'bold';
                 titleDiv.style.marginBottom = '8px';
+                titleDiv.style.textAlign = 'center';
                 titleDiv.textContent = selectedText;
                 sectionDiv.appendChild(titleDiv);
                 
                 const contentDiv = document.createElement('div');
                 contentDiv.style.fontFamily = "'Kalam', cursive";
                 contentDiv.style.fontWeight = '400';
-                contentDiv.style.fontSize = '18px';
+                contentDiv.style.fontSize = '16px';
+                contentDiv.style.lineHeight = '1.5';
+                contentDiv.style.textAlign = 'center';
                 contentDiv.innerHTML = content;
+                contentDiv.querySelectorAll('*').forEach(el => {
+                    el.style.textAlign = 'center';
+                });
                 sectionDiv.appendChild(contentDiv);
                 
                 contentWrapper.appendChild(sectionDiv);
@@ -277,25 +305,45 @@
             
             mainWrap.appendChild(contentWrapper);
             pdfContainer.appendChild(mainWrap);
-            
-            // Footer
-            const footer = document.createElement('div');
-            footer.style.position = 'relative';
+
+            // Footer image
+            const footer = document.createElement('img');
+            footer.src = footerImg;
             footer.style.width = '100%';
-            footer.style.padding = '20px 50px';
-            footer.style.borderTop = '2px solid #ddd';
-            footer.style.fontSize = '14px';
-            footer.style.lineHeight = '1.6';
-            footer.style.backgroundColor = '#fffbf0';
-            footer.style.boxSizing = 'border-box';
-            footer.style.pageBreakInside = 'avoid';
-            footer.style.marginTop = 'auto';
+            footer.style.display = 'block';
+            footer.style.margin = '0';
+            footer.style.padding = '0';
             footer.style.flexShrink = '0';
-            footer.innerHTML = `
-                <p><strong>We believe in clarity, peace of mind, and genuine support for every devotee, family, and seeker. Thank you for trusting us to serve your spiritual needs.</strong></p>
-                <p><strong>Contact Us</strong><br>98500 57444<br>Shubhamastu Nilayam, Plot No 63,<br>Srushti Nagar, Akkalkot Road,<br>Solapur - 413006</p>
-            `;
             pdfContainer.appendChild(footer);
+
+            const alignFooterInPdf = () => {
+                const pageProbe = document.createElement('div');
+                pageProbe.style.position = 'absolute';
+                pageProbe.style.visibility = 'hidden';
+                pageProbe.style.height = '297mm';
+                pageProbe.style.width = '1px';
+                pdfContainer.appendChild(pageProbe);
+                const totalPageHeight = pageProbe.getBoundingClientRect().height;
+                pageProbe.remove();
+                if (!totalPageHeight) return;
+
+                const pageHeight = totalPageHeight;
+                if (!pageHeight) return;
+
+                const containerRect = pdfContainer.getBoundingClientRect();
+                const footerRect = footer.getBoundingClientRect();
+                const footerTop = footerRect.top - containerRect.top;
+                const topOnPage = ((footerTop % pageHeight) + pageHeight) % pageHeight;
+                const extraSpace = Math.floor(pageHeight - topOnPage - footerRect.height - 1);
+                footer.style.marginTop = extraSpace > 0 ? `${extraSpace}px` : '0';
+            };
+
+            // Keep render source off-screen but in DOM for accurate measurements.
+            pdfContainer.style.position = 'fixed';
+            pdfContainer.style.left = '-10000px';
+            pdfContainer.style.top = '0';
+            pdfContainer.style.zIndex = '-1';
+            document.body.appendChild(pdfContainer);
             
             // Wait for images
             const waitForImages = root => {
@@ -311,15 +359,26 @@
             };
             
             waitForImages(pdfContainer).then(() => {
+                alignFooterInPdf();
+                alignFooterInPdf();
+
                 const opt = {
                     margin: 0,
                     filename: 'letterpad_' + new Date().getTime() + '.pdf',
                     image: { type: 'jpeg', quality: 0.98 },
-                    html2canvas: { scale: 2, useCORS: true, backgroundColor: '#fffbf0' },
+                    html2canvas: { scale: 2, useCORS: true, backgroundColor: '#fef5b0' },
                     jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
                 };
                 
-                html2pdf().set(opt).from(pdfContainer).save();
+                html2pdf().set(opt).from(pdfContainer).save().then(() => {
+                    if (pdfContainer.parentNode) {
+                        pdfContainer.parentNode.removeChild(pdfContainer);
+                    }
+                }).catch(() => {
+                    if (pdfContainer.parentNode) {
+                        pdfContainer.parentNode.removeChild(pdfContainer);
+                    }
+                });
             });
         });
     });
