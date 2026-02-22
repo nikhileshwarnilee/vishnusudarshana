@@ -3,7 +3,10 @@
     Do not add or auto-generate Marathi or Hindi text in source files.
     Use Google Translate widget for user-facing translation only.
 -->
-<?php require_once __DIR__ . '/helpers/favicon.php'; ?>
+<?php
+require_once __DIR__ . '/helpers/favicon.php';
+require_once __DIR__ . '/helpers/share.php';
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -11,6 +14,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo isset($pageTitle) ? $pageTitle : 'Vishnusudarshana'; ?></title>
     <?php echo vs_favicon_tags(); ?>
+    <?php echo vs_social_meta_tags(); ?>
     <link rel="stylesheet" href="<?php echo (strpos($_SERVER['PHP_SELF'], '/forms/') === false ? 'assets/css/style.css' : '../assets/css/style.css'); ?>">
     <link rel="stylesheet" href="<?php echo (strpos($_SERVER['PHP_SELF'], '/forms/') === false ? 'assets/css/welcome-intro.css' : '../assets/css/welcome-intro.css'); ?>">
     <script src="<?php echo (strpos($_SERVER['PHP_SELF'], '/forms/') === false ? 'assets/js/language.js' : '../assets/js/language.js'); ?>" defer></script>
