@@ -135,7 +135,20 @@ if ($category === 'appointment') {
     $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
-?><main class="main-content" style="background-color:var(--cream-bg);">
+?>
+<?php
+$reviewFieldLabels = [
+    'boy_name' => 'Men Name',
+    'girl_name' => 'Women Name',
+    'boy_dob' => 'Men Date Of Birth',
+    'boy_tob' => 'Men Time Of Birth',
+    'boy_pob' => 'Men Place Of Birth',
+    'girl_dob' => 'Women Date Of Birth',
+    'girl_tob' => 'Women Time Of Birth',
+    'girl_pob' => 'Women Place Of Birth',
+];
+?>
+<main class="main-content" style="background-color:var(--cream-bg);">
     <h1 class="review-title">Review &amp; Select Services</h1>
     <div class="review-card">
         <h2 class="section-title">Your Submitted Details</h2>
@@ -157,7 +170,7 @@ if ($category === 'appointment') {
                     </div>
                 <?php else: ?>
                     <div class="details-row">
-                        <span class="details-label"><?php echo htmlspecialchars(ucwords(str_replace('_', ' ', $key))); ?>:</span>
+                        <span class="details-label"><?php echo htmlspecialchars($reviewFieldLabels[$key] ?? ucwords(str_replace('_', ' ', $key))); ?>:</span>
                         <span class="details-value"><?php echo htmlspecialchars(is_array($val) ? implode(', ', $val) : $val); ?></span>
                     </div>
                 <?php endif; ?>

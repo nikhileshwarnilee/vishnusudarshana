@@ -384,6 +384,14 @@ $adminNotes = $stmt->fetchAll(PDO::FETCH_ASSOC);
         <?php
         // Standard field order and icons
         $fieldOrder = [
+            'boy_name' => ['label' => 'Men Name', 'icon' => '👨'],
+            'boy_dob' => ['label' => 'Men Date of Birth', 'icon' => '📅'],
+            'boy_tob' => ['label' => 'Men Time of Birth', 'icon' => '⏰'],
+            'boy_pob' => ['label' => 'Men Place of Birth', 'icon' => '📍'],
+            'girl_name' => ['label' => 'Women Name', 'icon' => '👩'],
+            'girl_dob' => ['label' => 'Women Date of Birth', 'icon' => '📅'],
+            'girl_tob' => ['label' => 'Women Time of Birth', 'icon' => '⏰'],
+            'girl_pob' => ['label' => 'Women Place of Birth', 'icon' => '📍'],
             'dob' => ['label' => 'Date of Birth', 'icon' => '📅'],
             'time_of_birth' => ['label' => 'Time of Birth', 'icon' => '⏰'],
             'place_of_birth' => ['label' => 'Place of Birth', 'icon' => '📍'],

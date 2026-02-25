@@ -43,9 +43,11 @@ $categoryFields = [
         ['label' => 'Gender', 'name' => 'gender', 'type' => 'select', 'options' => ['Male', 'Female', 'Other'], 'required' => true],
     ],
     'marriage-matching' => [
+        ['label' => 'Men Name', 'name' => 'boy_name', 'type' => 'text', 'required' => true],
         ['label' => 'Men Date of Birth', 'name' => 'boy_dob', 'type' => 'date', 'required' => true],
         ['label' => 'Men Time of Birth', 'name' => 'boy_tob', 'type' => 'time', 'required' => true],
         ['label' => 'Men Place of Birth', 'name' => 'boy_pob', 'type' => 'text', 'required' => true],
+        ['label' => 'Women Name', 'name' => 'girl_name', 'type' => 'text', 'required' => true],
         ['label' => 'Women Date of Birth', 'name' => 'girl_dob', 'type' => 'date', 'required' => true],
         ['label' => 'Women Time of Birth', 'name' => 'girl_tob', 'type' => 'time', 'required' => true],
         ['label' => 'Women Place of Birth', 'name' => 'girl_pob', 'type' => 'text', 'required' => true],
