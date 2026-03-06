@@ -56,7 +56,7 @@ body {
 
 .info-panel {
     display: grid;
-    grid-template-rows: auto auto auto 1fr auto;
+    grid-template-rows: auto auto auto auto 1fr auto;
     gap: clamp(8px, 0.9vw, 12px);
     padding: clamp(14px, 1.3vw, 20px);
 }
@@ -86,6 +86,72 @@ body {
 
 .info-text p:last-child {
     margin-bottom: 0;
+}
+
+.whatsapp-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.85em;
+    height: 1.7em;
+    margin: 0 4px;
+    padding: 0 0.4em;
+    border-radius: 999px;
+    background: linear-gradient(180deg, #25d366 0%, #1ebc58 100%);
+    color: #fff;
+    font-size: 0.72em;
+    font-weight: 800;
+    letter-spacing: 0.03em;
+    line-height: 1;
+    vertical-align: middle;
+    box-shadow: 0 3px 8px rgba(30, 150, 73, 0.35);
+}
+
+.remaining-tokens-card {
+    border: 2px solid #f2ca6f;
+    border-radius: 16px;
+    background: linear-gradient(140deg, #fff8dc 0%, #ffe5a8 100%);
+    box-shadow: 0 10px 22px rgba(120, 60, 8, 0.2);
+    padding: clamp(10px, 1vw, 14px);
+    text-align: center;
+}
+
+.remaining-label {
+    margin: 0;
+    color: #7a4200;
+    font-size: clamp(0.95rem, 1.3vw, 1.1rem);
+    font-weight: 800;
+}
+
+.remaining-value {
+    margin: 2px 0 0;
+    color: #0f6a2a;
+    font-size: clamp(1.9rem, 3.6vw, 3rem);
+    line-height: 1;
+    font-weight: 800;
+    text-shadow: 0 2px 8px rgba(22, 85, 40, 0.2);
+}
+
+.remaining-meta {
+    margin: 4px 0 0;
+    color: #6e4308;
+    font-size: clamp(0.78rem, 1.03vw, 0.92rem);
+    font-weight: 700;
+}
+
+.remaining-tokens-card.remaining-low .remaining-value {
+    color: #b33b00;
+    text-shadow: 0 2px 8px rgba(179, 59, 0, 0.24);
+}
+
+.remaining-tokens-card.remaining-full {
+    border-color: #d87070;
+    background: linear-gradient(140deg, #fff0f0 0%, #ffd2d2 100%);
+}
+
+.remaining-tokens-card.remaining-full .remaining-value {
+    color: #9b001f;
+    text-shadow: 0 2px 8px rgba(155, 0, 31, 0.2);
 }
 
 .terms-card {
@@ -165,6 +231,62 @@ body {
     display: flex;
     flex-direction: column;
     gap: clamp(8px, 0.85vw, 12px);
+}
+
+.tokens-full-notice {
+    width: min(700px, 100%);
+    margin-top: 8px;
+    border: 2px solid #d49797;
+    border-radius: 16px;
+    background: linear-gradient(180deg, #fff6f4 0%, #ffe8df 100%);
+    box-shadow: 0 10px 18px rgba(121, 22, 22, 0.16);
+    padding: clamp(12px, 1.2vw, 16px);
+}
+
+.tokens-full-title {
+    margin: 0 0 4px;
+    color: #850014;
+    font-size: clamp(1.24rem, 2.1vw, 1.68rem);
+    line-height: 1.2;
+}
+
+.tokens-full-text {
+    margin: 0 0 4px;
+    color: #5f2f0a;
+    font-size: clamp(0.88rem, 1.14vw, 1rem);
+    font-weight: 700;
+    line-height: 1.35;
+}
+
+.tokens-full-steps {
+    margin: 4px 0 10px;
+    padding-left: 18px;
+    display: grid;
+    gap: 2px;
+}
+
+.tokens-full-steps li {
+    color: #5f2f0a;
+    font-size: clamp(0.84rem, 1.06vw, 0.94rem);
+    font-weight: 700;
+    line-height: 1.32;
+}
+
+.online-book-link {
+    display: inline-block;
+    border-radius: 999px;
+    background: linear-gradient(180deg, #8f001f 0%, #640017 100%);
+    color: #ffe9bc;
+    text-decoration: none;
+    font-weight: 800;
+    font-size: clamp(0.9rem, 1.14vw, 1.02rem);
+    padding: 8px 16px;
+    box-shadow: 0 8px 14px rgba(82, 0, 18, 0.28);
+}
+
+.online-book-link:hover,
+.online-book-link:focus-visible {
+    filter: brightness(1.08);
 }
 
 .phone-display {
@@ -482,10 +604,11 @@ body {
 .cooldown-block {
     width: min(700px, 100%);
     margin-top: 14px;
-    padding: 10px 12px;
+    padding: 12px 14px;
     border-radius: 12px;
-    border: 1px dashed #d1af68;
-    background: #fff2ce;
+    border: 2px solid #e5b946;
+    background: linear-gradient(140deg, #fff6c9 0%, #ffd777 100%);
+    box-shadow: 0 10px 18px rgba(150, 75, 0, 0.2);
     text-align: center;
 }
 
@@ -500,16 +623,23 @@ body {
 
 .cooldown-text {
     margin: 0;
-    color: #6f4700;
-    font-size: clamp(0.84rem, 1vw, 0.96rem);
+    color: #7a3500;
+    font-size: clamp(0.92rem, 1.16vw, 1.06rem);
     font-weight: 700;
 }
 
 .cooldown-timer {
     margin: 2px 0 0;
-    color: #7f1f00;
-    font-size: clamp(1.02rem, 1.28vw, 1.2rem);
+    color: #ba1600;
+    font-size: clamp(1.2rem, 1.8vw, 1.5rem);
     font-weight: 800;
+    text-shadow: 0 2px 8px rgba(186, 22, 0, 0.2);
+}
+
+#cooldownSeconds {
+    color: #cc0000;
+    font-size: 1.2em;
+    animation: cooldownPulse 1s ease-in-out infinite;
 }
 
 .status-message {
@@ -568,5 +698,17 @@ body {
     100% {
         opacity: 1;
         transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes cooldownPulse {
+    0% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.08);
+    }
+    100% {
+        transform: scale(1);
     }
 }

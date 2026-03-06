@@ -37,6 +37,10 @@
     var cooldownSeconds = document.getElementById('cooldownSeconds');
     var printingStatus = document.getElementById('printingStatus');
     var statusMessage = document.getElementById('statusMessage');
+    var tokensFullNotice = document.getElementById('tokensFullNotice');
+    var remainingTokensCard = document.getElementById('remainingTokensCard');
+    var remainingTokensCount = document.getElementById('remainingTokensCount');
+    var remainingTokensMeta = document.getElementById('remainingTokensMeta');
 
     if (!entrySection || !keypad || !phoneDisplay || !getTokenButton || !printerStage || !printingTicket) {
         return;
@@ -50,6 +54,7 @@
     var cooldownIntervalId = null;
     var cooldownStorageKey = 'tablet_token_cooldown_until_' + location.replace(/\s+/g, '_');
     var receiptStorageKey = 'tablet_token_receipt_data_' + location.replace(/\s+/g, '_');
+    var availabilityRefreshIntervalId = null;
 
     var audioContext = null;
     var printerFallbackIntervalId = null;
@@ -250,6 +255,142 @@
         interactionShell.classList.toggle('print-active', Boolean(isActive));
     }
 
+    function setEntrySectionVisible(isVisible) {
+        if (!entrySection) {
+            return;
+        }
+        entrySection.classList.toggle('hidden', !isVisible);
+    }
+
+    function setTokensFullNoticeVisible(isVisible) {
+        if (!tokensFullNotice) {
+            return;
+        }
+        tokensFullNotice.classList.toggle('hidden', !isVisible);
+    }
+
+    function updateRemainingTokensDisplay(remaining, total, metaMessage) {
+        if (!remainingTokensCard || !remainingTokensCount || !remainingTokensMeta) {
+            return;
+        }
+
+        var parsedRemaining = Number(remaining);
+        var hasRemaining = Number.isFinite(parsedRemaining) && parsedRemaining >= 0;
+        var parsedTotal = Number(total);
+        var hasTotal = Number.isFinite(parsedTotal) && parsedTotal >= 0;
+
+        remainingTokensCard.classList.remove('remaining-low', 'remaining-full');
+
+        if (hasRemaining) {
+            remainingTokensCount.textContent = toMarathiDigits(parsedRemaining);
+            if (parsedRemaining <= 0) {
+                remainingTokensCard.classList.add('remaining-full');
+            } else if (parsedRemaining <= 10) {
+                remainingTokensCard.classList.add('remaining-low');
+            }
+        } else {
+            remainingTokensCount.textContent = '--';
+        }
+
+        if (metaMessage) {
+            remainingTokensMeta.textContent = metaMessage;
+            return;
+        }
+
+        if (hasRemaining && hasTotal) {
+            remainingTokensMeta.textContent = '\u090f\u0915\u0942\u0923 ' + toMarathiDigits(parsedTotal) + ' \u092a\u0948\u0915\u0940 ' + toMarathiDigits(parsedRemaining) + ' \u0909\u092a\u0932\u092c\u094d\u0927';
+            return;
+        }
+
+        if (hasRemaining) {
+            remainingTokensMeta.textContent = '\u0909\u092a\u0932\u092c\u094d\u0927 \u091f\u094b\u0915\u0928: ' + toMarathiDigits(parsedRemaining);
+            return;
+        }
+
+        remainingTokensMeta.textContent = '\u0938\u094d\u0925\u093f\u0924\u0940 \u0905\u092a\u0921\u0947\u091f \u0939\u094b\u0924 \u0906\u0939\u0947...';
+    }
+
+    function getTodayDateIsoString() {
+        var now = new Date();
+        var year = String(now.getFullYear());
+        var month = String(now.getMonth() + 1).padStart(2, '0');
+        var day = String(now.getDate()).padStart(2, '0');
+        return year + '-' + month + '-' + day;
+    }
+
+    async function fetchTodayAvailability() {
+        var date = getTodayDateIsoString();
+        var url = 'book-token-availability.php?date=' + encodeURIComponent(date) + '&location=' + encodeURIComponent(location);
+
+        try {
+            var response = await fetch(url, { cache: 'no-store' });
+            var data = await response.json();
+            if (!data || !data.success || !data.data) {
+                updateRemainingTokensDisplay(null, null, '\u0906\u091c\u091a\u094d\u092f\u093e \u0926\u093f\u0935\u0938\u093e\u0938\u093e\u0920\u0940 \u0938\u094d\u0932\u0949\u091f \u092e\u093e\u0939\u093f\u0924\u0940 \u0909\u092a\u0932\u092c\u094d\u0927 \u0928\u093e\u0939\u0940.');
+                return null;
+            }
+
+            var remaining = Number(data.data.unbooked_tokens);
+            var total = Number(data.data.total_tokens);
+            if (!Number.isFinite(remaining)) {
+                updateRemainingTokensDisplay(null, null, '\u0906\u091c\u091a\u094d\u092f\u093e \u0926\u093f\u0935\u0938\u093e\u091a\u0940 \u092e\u093e\u0939\u093f\u0924\u0940 \u0905\u092a\u0921\u0947\u091f \u0939\u094b\u0924 \u0906\u0939\u0947.');
+                return null;
+            }
+
+            updateRemainingTokensDisplay(remaining, total);
+            tokensFullForToday = remaining <= 0;
+            return {
+                remaining: remaining,
+                total: Number.isFinite(total) ? total : null
+            };
+        } catch (error) {
+            updateRemainingTokensDisplay(null, null, '\u091f\u094b\u0915\u0928 \u0938\u094d\u0925\u093f\u0924\u0940 \u092e\u093f\u0933\u0924 \u0928\u093e\u0939\u0940. \u0915\u0943\u092a\u092f\u093e \u0925\u094b\u0921\u094d\u092f\u093e \u0935\u0947\u0933\u093e\u0928\u0947 \u092a\u093e\u0939\u093e.');
+            return null;
+        }
+    }
+
+    function applyTokensFullState() {
+        tokensFullForToday = true;
+        setPrintLayoutActive(false);
+        showPrinterStage(false);
+        hideKeypadAndActionButtons();
+        setEntrySectionVisible(false);
+        setPhoneDisplayVisible(false);
+        setInteractionTitleVisible(false);
+        setTokensFullNoticeVisible(true);
+        setStatus('', null);
+    }
+
+    function clearTokensFullStateForInput() {
+        tokensFullForToday = false;
+        setTokensFullNoticeVisible(false);
+        setEntrySectionVisible(true);
+        setPhoneDisplayVisible(true);
+        setInteractionTitleVisible(true);
+        keypad.classList.remove('hidden');
+        updateGetTokenButton();
+    }
+
+    function startAvailabilityRefreshLoop() {
+        if (availabilityRefreshIntervalId) {
+            window.clearInterval(availabilityRefreshIntervalId);
+        }
+        availabilityRefreshIntervalId = window.setInterval(function () {
+            fetchTodayAvailability().then(function (availability) {
+                if (!availability) {
+                    return;
+                }
+                if (availability.remaining <= 0 && !isCooldownActive() && !requestInFlight) {
+                    applyTokensFullState();
+                    return;
+                }
+                if (availability.remaining > 0 && !isCooldownActive() && !requestInFlight && tokensFullForToday) {
+                    clearTokensFullStateForInput();
+                }
+            });
+        }, 20000);
+    }
+
     function toMarathiDigits(value) {
         return String(value).replace(/[0-9]/g, function (digit) {
             return String.fromCharCode(0x0966 + Number(digit));
@@ -265,7 +406,7 @@
             return [normalized];
         }
 
-        var parts = normalized.split(/([.!?।])/).map(function (part) {
+        var parts = normalized.split(/([.!?\u0964])/).map(function (part) {
             return part.trim();
         }).filter(Boolean);
 
@@ -725,21 +866,18 @@
             }
         }
         setPrintLayoutActive(false);
-        setInteractionTitleVisible(true);
-        setPhoneDisplayVisible(true);
         updatePhoneDisplay();
         resetPrintedTicketContent();
         showPrinterStage(false);
         stopPrinterSound();
 
-        if (!tokensFullForToday) {
-            keypad.classList.remove('hidden');
-            updateGetTokenButton();
-            setStatus('', null);
+        if (tokensFullForToday) {
+            applyTokensFullState();
             return;
         }
 
-        hideKeypadAndActionButtons();
+        clearTokensFullStateForInput();
+        setStatus('', null);
     }
 
     function finishCooldown() {
@@ -752,6 +890,16 @@
         }
         clearStoredReceipt();
         resetForNextVisitor();
+        fetchTodayAvailability().then(function (availability) {
+            if (!availability) {
+                return;
+            }
+            if (availability.remaining <= 0) {
+                applyTokensFullState();
+            } else {
+                clearTokensFullStateForInput();
+            }
+        });
     }
 
     function updateReceiptCooldown(remainingSeconds) {
@@ -787,6 +935,8 @@
         hideKeypadAndActionButtons();
         showPrinterStage(true);
         setPrintLayoutActive(true);
+        setTokensFullNoticeVisible(false);
+        setEntrySectionVisible(true);
         setInteractionTitleVisible(false);
         setPhoneDisplayVisible(false);
         if (cooldownBlock) {
@@ -812,6 +962,8 @@
             hideKeypadAndActionButtons();
             showPrinterStage(true);
             setPrintLayoutActive(true);
+            setTokensFullNoticeVisible(false);
+            setEntrySectionVisible(true);
             setInteractionTitleVisible(false);
             setPhoneDisplayVisible(false);
 
@@ -920,6 +1072,8 @@
             await animateButtonPress();
             hideKeypadAndActionButtons();
             setPrintLayoutActive(true);
+            setTokensFullNoticeVisible(false);
+            setEntrySectionVisible(true);
             setInteractionTitleVisible(false);
             setPhoneDisplayVisible(false);
             resetPrintedTicketContent();
@@ -941,6 +1095,16 @@
 
                 applyReceiptDetails(details);
                 persistReceipt(details);
+                var remainingAfterIssue = Number(data.remaining_tokens);
+                var totalTokenCapacity = Number(data.total_tokens);
+                if (Number.isFinite(remainingAfterIssue) && remainingAfterIssue >= 0) {
+                    updateRemainingTokensDisplay(remainingAfterIssue, totalTokenCapacity);
+                    if (remainingAfterIssue <= 0) {
+                        tokensFullForToday = true;
+                    }
+                } else {
+                    fetchTodayAvailability();
+                }
                 playSound(beepAudio, {
                     frequency: 980,
                     duration: 190,
@@ -959,13 +1123,8 @@
             }
 
             if (data.full) {
-                tokensFullForToday = true;
-                showPrinterStage(false);
-                setPrintLayoutActive(false);
-                setInteractionTitleVisible(true);
-                setPhoneDisplayVisible(true);
-                hideKeypadAndActionButtons();
-                setStatus('\u0906\u091c\u091a\u0947 \u091f\u094b\u0915\u0928 \u092a\u0942\u0930\u094d\u0923 \u091d\u093e\u0932\u0947 \u0906\u0939\u0947\u0924. \u0915\u0943\u092a\u092f\u093e \u0909\u0926\u094d\u092f\u093e \u092f\u093e.', 'error');
+                updateRemainingTokensDisplay(0, null, '\u0906\u091c\u091a\u0947 \u0938\u0930\u094d\u0935 \u091f\u094b\u0915\u0928 \u0938\u0902\u092a\u0932\u0947 \u0906\u0939\u0947\u0924.');
+                applyTokensFullState();
                 return;
             }
 
@@ -1026,6 +1185,10 @@
 
     window.addEventListener('beforeunload', function () {
         stopExternalTts();
+        if (availabilityRefreshIntervalId) {
+            window.clearInterval(availabilityRefreshIntervalId);
+            availabilityRefreshIntervalId = null;
+        }
         if ('speechSynthesis' in window) {
             try {
                 window.speechSynthesis.cancel();
@@ -1047,4 +1210,17 @@
     updatePhoneDisplay();
     updateGetTokenButton();
     restoreCooldown();
+    fetchTodayAvailability().then(function (availability) {
+        if (!availability) {
+            return;
+        }
+        if (availability.remaining <= 0 && !isCooldownActive()) {
+            applyTokensFullState();
+            return;
+        }
+        if (availability.remaining > 0 && !isCooldownActive()) {
+            clearTokensFullStateForInput();
+        }
+    });
+    startAvailabilityRefreshLoop();
 })();

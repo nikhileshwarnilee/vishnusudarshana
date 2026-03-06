@@ -81,7 +81,7 @@ try {
     $pdo->beginTransaction();
 
     $slotStmt = $pdo->prepare(
-        'SELECT id, token_date, from_time, to_time, unbooked_tokens
+        'SELECT id, token_date, from_time, to_time, unbooked_tokens, total_tokens
          FROM token_management
          WHERE (
              DATE(token_date) = ?
@@ -100,6 +100,7 @@ try {
         respond([
             'success' => false,
             'full' => true,
+            'remaining_tokens' => 0,
             'message' => "Today's tokens are full. Please come tomorrow."
         ]);
     }
@@ -140,6 +141,7 @@ try {
         respond([
             'success' => false,
             'full' => true,
+            'remaining_tokens' => 0,
             'message' => "Today's tokens are full. Please come tomorrow."
         ]);
     }
@@ -147,6 +149,8 @@ try {
     $pdo->commit();
     $lastIssuedAtMap[$location] = time();
     $_SESSION['tablet_last_issued_at'] = $lastIssuedAtMap;
+    $remainingTokens = max(0, (int) $slot['unbooked_tokens'] - 1);
+    $totalTokens = isset($slot['total_tokens']) ? (int) $slot['total_tokens'] : null;
 
     respond([
         'success' => true,
@@ -155,7 +159,9 @@ try {
         'token_date' => $tokenDate,
         'location' => $location,
         'phone_number' => $mobileNumber,
-        'cooldown_seconds' => $cooldownSeconds
+        'cooldown_seconds' => $cooldownSeconds,
+        'remaining_tokens' => $remainingTokens,
+        'total_tokens' => $totalTokens
     ]);
 } catch (Throwable $e) {
     if ($pdo->inTransaction()) {
