@@ -107,7 +107,16 @@ $receiptLocationLabel = $locationLabel;
                         <li>&#x924;&#x93E;&#x930;&#x940;&#x916;, &#x932;&#x94B;&#x915;&#x947;&#x936;&#x928;, &#x928;&#x93E;&#x935; &#x906;&#x923;&#x93F; WhatsApp &#x928;&#x902;&#x92C;&#x930; &#x92D;&#x930;&#x93E;.</li>
                         <li><strong>Book Office Visit Token</strong> &#x935;&#x930; &#x915;&#x94D;&#x932;&#x93F;&#x915; &#x915;&#x930;&#x942;&#x928; &#x91F;&#x94B;&#x915;&#x928; &#x928;&#x93F;&#x936;&#x94D;&#x91A;&#x93F;&#x924; &#x915;&#x930;&#x93E;.</li>
                     </ol>
-                    <a class="online-book-link" href="https://vishnusudarshana.com/book-token.php" target="_blank" rel="noopener">&#x911;&#x928;&#x932;&#x93E;&#x907;&#x928; &#x91F;&#x94B;&#x915;&#x928; &#x92C;&#x941;&#x915; &#x915;&#x930;&#x93E;</a>
+                    <div class="online-qr-wrap" aria-label="Online booking QR code">
+                        <p class="online-qr-title">&#x911;&#x928;&#x932;&#x93E;&#x907;&#x928; &#x91F;&#x94B;&#x915;&#x928; &#x938;&#x93E;&#x920;&#x940; QR &#x938;&#x94D;&#x915;&#x945;&#x928; &#x915;&#x930;&#x93E;</p>
+                        <img
+                            class="online-book-qr"
+                            src="https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=https%3A%2F%2Fvishnusudarshana.com%2Fbook-token.php"
+                            alt="Scan QR code for online token booking"
+                            loading="lazy"
+                        >
+                        <p class="online-qr-url">vishnusudarshana.com/book-token.php</p>
+                    </div>
                 </div>
 
                 <div id="printerStage" class="printer-stage hidden" aria-live="polite">
@@ -165,6 +174,7 @@ $receiptLocationLabel = $locationLabel;
         </section>
     </main>
 
-    <script charset="UTF-8" src="js/tablet-token.js?v=20260307v"></script>
+    <script charset="UTF-8" src="js/announcement-helper.js?v=20260307a1"></script>
+    <script charset="UTF-8" src="js/tablet-token.js?v=20260307a1"></script>
 </body>
 </html>

@@ -55,6 +55,8 @@
     var cooldownStorageKey = 'tablet_token_cooldown_until_' + location.replace(/\s+/g, '_');
     var receiptStorageKey = 'tablet_token_receipt_data_' + location.replace(/\s+/g, '_');
     var availabilityRefreshIntervalId = null;
+    var announcementLanguage = 'marathi';
+    var settingsRefreshIntervalId = null;
 
     var audioContext = null;
     var printerFallbackIntervalId = null;
@@ -349,6 +351,27 @@
         }
     }
 
+    async function loadAnnouncementLanguage() {
+        try {
+            var response = await fetch('api/get-settings.php', { cache: 'no-store' });
+            var data = await response.json();
+            if (!data || !data.success) {
+                return;
+            }
+            var language = String(data.announcement_language || 'marathi').toLowerCase();
+            announcementLanguage = language === 'english' ? 'english' : 'marathi';
+        } catch (error) {
+            // Keep default language when settings are unavailable.
+        }
+    }
+
+    function startSettingsRefreshLoop() {
+        if (settingsRefreshIntervalId) {
+            window.clearInterval(settingsRefreshIntervalId);
+        }
+        settingsRefreshIntervalId = window.setInterval(loadAnnouncementLanguage, 30000);
+    }
+
     function applyTokensFullState() {
         tokensFullForToday = true;
         setPrintLayoutActive(false);
@@ -631,18 +654,36 @@
     }
 
     function announcePrintingStarted() {
-        speakText('Your token is being printed. Please wait.', {
-            lang: 'en',
+        if (window.TokenAnnouncement && typeof window.TokenAnnouncement.announcePrintingStart === 'function') {
+            window.TokenAnnouncement.announcePrintingStart(announcementLanguage, {
+                cancelQueue: true
+            });
+            return;
+        }
+
+        // Fallback if helper script is unavailable.
+        var fallbackMessage = announcementLanguage === 'english'
+            ? 'Please wait. Your token is being generated.'
+            : '\u0915\u0943\u092a\u092f\u093e \u0925\u093e\u0902\u092c\u093e. \u0906\u092a\u0932\u0947 \u091f\u094b\u0915\u0928 \u0924\u092f\u093e\u0930 \u0939\u094b\u0924 \u0906\u0939\u0947.';
+        speakTextUsingBrowser(fallbackMessage, {
+            lang: announcementLanguage === 'english' ? 'en-IN' : 'mr-IN',
             cancel: true,
             preferFemale: true
         });
     }
 
     function announceToken(token) {
-        var tokenSpeech = String(token);
-        var message = 'Your token number is ' + tokenSpeech + '. Please collect your printed receipt. Thank you.';
-        speakText(message, {
-            lang: 'en',
+        if (window.TokenAnnouncement && typeof window.TokenAnnouncement.announceToken === 'function') {
+            window.TokenAnnouncement.announceToken(token, announcementLanguage);
+            return;
+        }
+
+        // Fallback if helper script is unavailable.
+        var fallbackMessage = announcementLanguage === 'english'
+            ? ('Thank you. Your token number is ' + String(token) + '. Please watch the screen for your turn.')
+            : ('\u0927\u0928\u094d\u092f\u0935\u093e\u0926. \u0906\u092a\u0932\u0947 \u091f\u094b\u0915\u0928 \u0915\u094d\u0930\u092e\u093e\u0902\u0915 ' + String(token) + ' \u0906\u0939\u0947. \u0915\u0943\u092a\u092f\u093e \u0938\u094d\u0915\u094d\u0930\u0940\u0928\u0935\u0930 \u091a\u093e\u0932\u0942 \u091f\u094b\u0915\u0928 \u092a\u093e\u0939\u0924 \u0930\u0939\u093e.');
+        speakTextUsingBrowser(fallbackMessage, {
+            lang: announcementLanguage === 'english' ? 'en-IN' : 'mr-IN',
             cancel: true,
             preferFemale: true
         });
@@ -1105,12 +1146,6 @@
                 } else {
                     fetchTodayAvailability();
                 }
-                playSound(beepAudio, {
-                    frequency: 980,
-                    duration: 190,
-                    type: 'sine',
-                    volume: 0.07
-                });
                 announceToken(generatedToken);
                 startCooldown(Number(data.cooldown_seconds) || COOLDOWN_SECONDS, true);
                 return;
@@ -1189,6 +1224,10 @@
             window.clearInterval(availabilityRefreshIntervalId);
             availabilityRefreshIntervalId = null;
         }
+        if (settingsRefreshIntervalId) {
+            window.clearInterval(settingsRefreshIntervalId);
+            settingsRefreshIntervalId = null;
+        }
         if ('speechSynthesis' in window) {
             try {
                 window.speechSynthesis.cancel();
@@ -1209,6 +1248,8 @@
     resetPrintedTicketContent();
     updatePhoneDisplay();
     updateGetTokenButton();
+    loadAnnouncementLanguage();
+    startSettingsRefreshLoop();
     restoreCooldown();
     fetchTodayAvailability().then(function (availability) {
         if (!availability) {

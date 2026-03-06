@@ -324,14 +324,67 @@ body.fullscreen-mode .calendar-card {
 	</div>
 </main>
 
+<script src="js/announcement-helper.js?v=20260307a1"></script>
 <script>
 
 const cards = document.querySelectorAll('.calendar-card');
 const cardsRow = document.querySelector('.cards-row');
 const apiUrl = 'api/live-tokens-previous.php';
 const visibilityUrl = 'api/live-token-visibility.php';
+const settingsUrl = 'api/get-settings.php';
 const urlParams = new URLSearchParams(window.location.search);
 const fullscreenCity = urlParams.get('fullscreen');
+let announcementLanguage = 'marathi';
+const announcedTokenByCity = {};
+const initializedTokenByCity = {};
+
+function normalizeAnnouncementLanguage(value) {
+	const v = String(value || '').trim().toLowerCase();
+	return v === 'english' ? 'english' : 'marathi';
+}
+
+function parseTokenValue(value) {
+	const parsed = Number(value);
+	if (Number.isFinite(parsed)) {
+		return Math.trunc(parsed);
+	}
+	const cleaned = String(value || '').replace(/\D+/g, '');
+	return cleaned ? parseInt(cleaned, 10) : NaN;
+}
+
+async function loadAnnouncementLanguage() {
+	try {
+		const res = await fetch(settingsUrl, { cache: 'no-store' });
+		const data = await res.json();
+		if (data && data.success) {
+			announcementLanguage = normalizeAnnouncementLanguage(data.announcement_language);
+		}
+	} catch (err) {
+		announcementLanguage = 'marathi';
+	}
+}
+
+function maybeAnnounceCurrentToken(city, currentTokenRaw) {
+	const token = parseTokenValue(currentTokenRaw);
+	if (!Number.isFinite(token) || token <= 0) {
+		return;
+	}
+
+	if (!Object.prototype.hasOwnProperty.call(initializedTokenByCity, city)) {
+		initializedTokenByCity[city] = true;
+		announcedTokenByCity[city] = token;
+		return;
+	}
+
+	if (announcedTokenByCity[city] === token) {
+		return;
+	}
+
+	announcedTokenByCity[city] = token;
+	if (window.TokenAnnouncement && typeof window.TokenAnnouncement.announceTokenCall === 'function') {
+		window.TokenAnnouncement.announceTokenCall(token, announcementLanguage);
+	}
+}
 
 function formatDateLabel(dateStr) {
 	const d = new Date(dateStr + 'T00:00:00');
@@ -372,7 +425,9 @@ async function fetchLiveTokens() {
 
 		cards.forEach(card => {
 			const city = card.getAttribute('data-city');
-			renderCard(card, data.cities[city], data.date);
+			const cityData = (data.cities && data.cities[city]) ? data.cities[city] : {};
+			maybeAnnounceCurrentToken(city, cityData.current_token);
+			renderCard(card, cityData, data.date);
 		});
 	} catch (err) {
 		// Silent fail for live refresh
@@ -408,6 +463,8 @@ async function liveUpdate() {
 	await Promise.all([fetchLiveTokens(), updateVisibility()]);
 }
 
+loadAnnouncementLanguage();
+setInterval(loadAnnouncementLanguage, 30000);
 liveUpdate();
 setInterval(liveUpdate, 10000);
 

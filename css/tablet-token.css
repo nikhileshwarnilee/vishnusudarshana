@@ -272,21 +272,44 @@ body {
     line-height: 1.32;
 }
 
-.online-book-link {
-    display: inline-block;
-    border-radius: 999px;
-    background: linear-gradient(180deg, #8f001f 0%, #640017 100%);
-    color: #ffe9bc;
-    text-decoration: none;
-    font-weight: 800;
-    font-size: clamp(0.9rem, 1.14vw, 1.02rem);
-    padding: 8px 16px;
-    box-shadow: 0 8px 14px rgba(82, 0, 18, 0.28);
+.online-qr-wrap {
+    margin-top: 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 10px;
+    border-radius: 12px;
+    border: 1px dashed #cb9d61;
+    background: linear-gradient(180deg, #fff9ea 0%, #fff2d8 100%);
 }
 
-.online-book-link:hover,
-.online-book-link:focus-visible {
-    filter: brightness(1.08);
+.online-qr-title {
+    margin: 0;
+    color: #6a2f00;
+    font-size: clamp(0.88rem, 1.12vw, 1rem);
+    font-weight: 800;
+    text-align: center;
+}
+
+.online-book-qr {
+    width: clamp(150px, 22vh, 210px);
+    height: auto;
+    border-radius: 10px;
+    border: 1px solid #e2c68d;
+    background: #fff;
+    box-shadow: 0 8px 16px rgba(109, 55, 0, 0.16);
+    padding: 8px;
+}
+
+.online-qr-url {
+    margin: 0;
+    color: #7a3c00;
+    font-size: clamp(0.78rem, 0.98vw, 0.88rem);
+    font-weight: 700;
+    text-align: center;
+    word-break: break-all;
 }
 
 .phone-display {

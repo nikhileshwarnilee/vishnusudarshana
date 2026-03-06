@@ -22,6 +22,14 @@ include '../includes/top-menu.php';
         .form-input, .form-select { width: 100%; margin-top: 6px; padding: 10px 12px; border-radius: 10px; border: 1px solid #f0d27a; font-size: 1em; background: #fff; }
         .form-btn { width: 100%; margin-top: 8px; font-size: 1.1em; border-radius: 10px; background: #800000; color: #fff; border: none; padding: 10px 12px; cursor: pointer; }
         .form-btn:hover { background: #600000; }
+        .settings-card { background: #fffef8; border: 1px solid #edd9a2; border-radius: 14px; padding: 16px 14px; max-width: 680px; margin: 0 auto 12px auto; box-shadow: 0 4px 14px rgba(128, 0, 0, 0.08); }
+        .settings-title { margin: 0 0 10px; color: #6b0000; font-size: 1.06em; font-weight: 700; }
+        .language-options { display: flex; flex-wrap: wrap; gap: 12px 22px; margin-bottom: 12px; }
+        .language-option { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; color: #5d2500; cursor: pointer; }
+        .language-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+        .language-save-btn { padding: 8px 14px; border-radius: 9px; border: 0; background: #800000; color: #fff; font-weight: 700; cursor: pointer; }
+        .language-save-btn:hover { background: #640000; }
+        .language-msg { min-height: 1.3em; font-weight: 700; color: #6b0000; }
         table { width: 100%; border-collapse: collapse; background: #fff; box-shadow: 0 2px 12px #e0bebe22; border-radius: 12px; table-layout: auto; font-size: 0.85em; }
         table th, table td { padding: 8px 6px; text-align: left; border-bottom: 1px solid #f3caca; white-space: nowrap; }
         table thead { background: #f9eaea; color: #800000; font-size: 0.9em; font-weight: 600; }
@@ -69,6 +77,23 @@ include '../includes/top-menu.php';
         <button type="submit" class="form-btn form-actions">Save</button>
     </form>
     <div id="saveMsg" style="margin-top:16px;font-weight:600;text-align:center;"></div>
+    <section class="settings-card" aria-label="Announcement Settings">
+        <h2 class="settings-title">Announcement Language</h2>
+        <div class="language-options">
+            <label class="language-option">
+                <input type="radio" name="announcementLanguage" value="marathi" checked>
+                Marathi
+            </label>
+            <label class="language-option">
+                <input type="radio" name="announcementLanguage" value="english">
+                English
+            </label>
+        </div>
+        <div class="language-actions">
+            <button type="button" id="saveLanguageBtn" class="language-save-btn">Save Language</button>
+            <span id="languageSaveMsg" class="language-msg"></span>
+        </div>
+    </section>
     <div style="max-width:900px;margin:18px auto 0 auto;display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
         <label for="cityTableFilter" style="font-weight:600;color:#6b0000;">Filter by City:</label>
         <select id="cityTableFilter" class="form-select" style="min-width:180px;">
@@ -79,6 +104,67 @@ include '../includes/top-menu.php';
     </div>
     <div id="tokensTableContainer" style="margin-top:18px;max-width:900px;margin-left:auto;margin-right:auto;"></div>
     <script>
+    function getSelectedAnnouncementLanguage() {
+        const selected = document.querySelector('input[name="announcementLanguage"]:checked');
+        return selected ? selected.value : 'marathi';
+    }
+
+    function setSelectedAnnouncementLanguage(language) {
+        const safeLanguage = language === 'english' ? 'english' : 'marathi';
+        const radio = document.querySelector('input[name="announcementLanguage"][value="' + safeLanguage + '"]');
+        if (radio) {
+            radio.checked = true;
+        }
+    }
+
+    function setLanguageMessage(message, isError) {
+        const msg = document.getElementById('languageSaveMsg');
+        if (!msg) return;
+        msg.textContent = message || '';
+        msg.style.color = isError ? '#a0001b' : '#176b1a';
+    }
+
+    function loadAnnouncementLanguage() {
+        fetch('../../api/get-settings.php', { cache: 'no-store' })
+            .then(res => res.json())
+            .then(data => {
+                if (data && data.success) {
+                    setSelectedAnnouncementLanguage(data.announcement_language || 'marathi');
+                } else {
+                    setSelectedAnnouncementLanguage('marathi');
+                }
+            })
+            .catch(() => {
+                setSelectedAnnouncementLanguage('marathi');
+            });
+    }
+
+    function saveAnnouncementLanguage() {
+        const language = getSelectedAnnouncementLanguage();
+        const body = new URLSearchParams();
+        body.set('announcement_language', language);
+
+        setLanguageMessage('Saving...', false);
+        fetch('../../api/save-settings.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
+            },
+            body: body.toString()
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data && data.success) {
+                setLanguageMessage('Announcement language saved.', false);
+            } else {
+                setLanguageMessage('Failed to save language.', true);
+            }
+        })
+        .catch(() => {
+            setLanguageMessage('Error while saving language.', true);
+        });
+    }
+
     function fetchTokens() {
         fetch('fetch-tokens.php')
         .then(res => res.json())
@@ -290,6 +376,11 @@ include '../includes/top-menu.php';
     });
     // Booked Tokens field is not shown in add or edit mode
     window.addEventListener('DOMContentLoaded', function() {
+        loadAnnouncementLanguage();
+        const saveLanguageBtn = document.getElementById('saveLanguageBtn');
+        if (saveLanguageBtn) {
+            saveLanguageBtn.addEventListener('click', saveAnnouncementLanguage);
+        }
         fetchTokens();
         const cityFilter = document.getElementById('cityTableFilter');
         if (cityFilter) {
