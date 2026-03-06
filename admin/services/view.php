@@ -407,7 +407,8 @@ $adminNotes = $stmt->fetchAll(PDO::FETCH_ASSOC);
             'country' => ['label' => 'Country', 'icon' => '🌏'],
             'notes' => ['label' => 'Notes', 'icon' => '🗒️'],
         ];
-        $skipFields = ['product_ids', 'qty', 'mobile', 'email', 'category', 'category_slug', 'full_name', 'name', 'city', 'country_code', 'custom_country_code'];
+        // Hide internal/system fields that should not appear in customer-submitted details.
+        $skipFields = ['product_ids', 'qty', 'make_payment', 'mobile', 'email', 'category', 'category_slug', 'full_name', 'name', 'city', 'country_code', 'custom_country_code'];
         $shownLabels = [];
         ?>
         <table class="details-table" style="margin-bottom:18px;">

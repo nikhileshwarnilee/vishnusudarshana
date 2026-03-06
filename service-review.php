@@ -5,6 +5,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['make_payment'])) {
     $category = $_POST['category'] ?? '';
     $customer_details = $_POST;
     unset($customer_details['product_ids'], $customer_details['qty'], $customer_details['make_payment']);
+    // Store only customer-entered fields in form_data. Product/payment control fields are internal.
+    $form_data = $customer_details;
     $product_ids = $_POST['product_ids'] ?? [];
     $quantities = $_POST['qty'] ?? [];
     $selected_products = [];
@@ -39,7 +41,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['make_payment'])) {
         $payment_id,
         'service',
         json_encode($customer_details),
-        json_encode($_POST),
+        json_encode($form_data),
         json_encode($selected_products),
         $category,
         $total_amount

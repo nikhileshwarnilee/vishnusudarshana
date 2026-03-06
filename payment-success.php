@@ -37,6 +37,7 @@ if (isset($_GET['free']) && $_GET['free'] == 1) {
     require_once __DIR__ . '/config/db.php';
     session_start();
     $form_data = $_POST ?? [];
+    unset($form_data['product_ids'], $form_data['qty'], $form_data['make_payment']);
     $category = $_POST['category'] ?? '';
     $customerName = $_POST['full_name'] ?? '';
     $mobile = $_POST['mobile'] ?? '';
