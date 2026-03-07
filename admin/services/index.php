@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 require_once (is_file(__DIR__ . '/includes/permissions.php') ? __DIR__ . '/includes/permissions.php' : dirname(__DIR__) . '/includes/permissions.php');
 admin_enforce_mapped_permission('auto');
 ?>
@@ -421,7 +421,7 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
         echo isset($catMap[$catSlug]) ? htmlspecialchars($catMap[$catSlug]) : htmlspecialchars($catSlug);
         ?>
     </td>
-    <td>â‚¹<?= number_format($row['total_amount'], 2) ?></td>
+    <td>&#8377;<?= number_format($row['total_amount'], 2) ?></td>
     <td>
         <?php
         $payClass = 'payment-' . strtolower(str_replace(' ', '-', $row['payment_status']));
@@ -563,4 +563,5 @@ document.getElementById('requestTypeSelect').addEventListener('change', function
     window.location.href = url.toString();
 });
 </script>
+
 

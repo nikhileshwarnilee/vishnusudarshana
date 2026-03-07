@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 require_once (is_file(__DIR__ . '/includes/permissions.php') ? __DIR__ . '/includes/permissions.php' : dirname(__DIR__) . '/includes/permissions.php');
 admin_enforce_mapped_permission('auto');
 // view-invoice.php
@@ -51,15 +51,16 @@ $items = $items->fetchAll();
 		<tr>
 			<td><?= htmlspecialchars($item['product_name']) ?></td>
 			<td><?= $item['qty'] ?></td>
-			<td>â‚¹<?= number_format($item['amount'],2) ?></td>
-			<td>â‚¹<?= number_format($item['qty'] * $item['amount'],2) ?></td>
+			<td>&#8377;<?= number_format($item['amount'],2) ?></td>
+			<td>&#8377;<?= number_format($item['qty'] * $item['amount'],2) ?></td>
 		</tr>
 		<?php endforeach; ?>
-		<tr style="font-weight:700; background:#f8f8f8;"><td colspan="2">Total</td><td><?= $inv['total_qty'] ?></td><td>â‚¹<?= number_format($inv['total_amount'],2) ?></td></tr>
+		<tr style="font-weight:700; background:#f8f8f8;"><td colspan="2">Total</td><td><?= $inv['total_qty'] ?></td><td>&#8377;<?= number_format($inv['total_amount'],2) ?></td></tr>
 	</table>
 </div>
 </body>
 </html>
+
 
 
 

@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 require_once (is_file(__DIR__ . '/includes/permissions.php') ? __DIR__ . '/includes/permissions.php' : dirname(__DIR__) . '/includes/permissions.php');
 admin_enforce_mapped_permission('auto');
 if (session_status() === PHP_SESSION_NONE) {
@@ -335,7 +335,7 @@ h1 {
                         if ($name !== '') {
                             $label = $name . ' x' . $qty;
                             if ($price !== '') {
-                                $label .= ' (â‚¹' . number_format((float)$price, 2) . ')';
+                                $label .= ' (&#8377;' . number_format((float)$price, 2) . ')';
                             }
                             $productDetails[] = $label;
                         }
@@ -521,6 +521,7 @@ setTimeout(function() {
 
 </body>
 </html>
+
 
 
 

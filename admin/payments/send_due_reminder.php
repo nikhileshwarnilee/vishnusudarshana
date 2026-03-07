@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 require_once (is_file(__DIR__ . '/includes/permissions.php') ? __DIR__ . '/includes/permissions.php' : dirname(__DIR__) . '/includes/permissions.php');
 admin_enforce_mapped_permission('auto');
 // send_due_reminder.php
@@ -41,7 +41,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         );
         
         if ($result['success']) {
-            error_log("Payment due reminder sent to $mobile for customer $customerName, amount: â‚¹$formattedAmount");
+            error_log("Payment due reminder sent to $mobile for customer $customerName, amount: &#8377;$formattedAmount");
             echo json_encode(['success' => true]);
         } else {
             error_log("Payment due reminder failed for $mobile: " . ($result['message'] ?? 'Unknown error'));
@@ -122,7 +122,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             
             if ($result['success']) {
                 $count++;
-                error_log("Bulk: Payment due reminder sent to {$customer['mobile']} for {$customer['name']}, amount: â‚¹$formattedAmount");
+                error_log("Bulk: Payment due reminder sent to {$customer['mobile']} for {$customer['name']}, amount: &#8377;$formattedAmount");
             } else {
                 $failed++;
                 error_log("Bulk: Payment due reminder failed for {$customer['mobile']}: " . ($result['message'] ?? 'Unknown error'));
@@ -142,6 +142,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 } else {
     echo json_encode(['success' => false, 'message' => 'Invalid request']);
 }
+
 
 
 

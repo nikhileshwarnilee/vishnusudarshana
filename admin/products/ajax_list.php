@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 require_once (is_file(__DIR__ . '/includes/permissions.php') ? __DIR__ . '/includes/permissions.php' : dirname(__DIR__) . '/includes/permissions.php');
 admin_enforce_mapped_permission('auto');
 require_once __DIR__ . '/../../config/db.php';
@@ -62,7 +62,7 @@ if ($categoryFilter) {
             echo '<tr>';
             echo '<td>' . $product['id'] . '</td>';
             echo '<td>' . htmlspecialchars($product['product_name']) . '</td>';
-            echo '<td>â‚¹' . number_format($product['price'], 2) . '</td>';
+            echo '<td>&#8377;' . number_format($product['price'], 2) . '</td>';
             echo '<td><span class="status-badge ' . ($product['is_active'] ? 'status-completed' : 'status-cancelled') . '">' . ($product['is_active'] ? 'Active' : 'Inactive') . '</span></td>';
             echo '<td>';
             echo '<select class="mandatory-select" data-id="' . $product['id'] . '" style="padding:4px 10px;border-radius:6px;">';
@@ -119,7 +119,7 @@ if ($categoryFilter) {
                     echo '<tr>';
                     echo '<td>' . $product['id'] . '</td>';
                     echo '<td>' . htmlspecialchars($product['product_name']) . '</td>';
-                    echo '<td>â‚¹' . number_format($product['price'], 2) . '</td>';
+                    echo '<td>&#8377;' . number_format($product['price'], 2) . '</td>';
                     echo '<td><span class="status-badge ' . ($product['is_active'] ? 'status-completed' : 'status-cancelled') . '">' . ($product['is_active'] ? 'Active' : 'Inactive') . '</span></td>';
                     echo '<td>';
                     echo '<select class="mandatory-select" data-id="' . $product['id'] . '" style="padding:4px 10px;border-radius:6px;">';
@@ -144,5 +144,6 @@ if ($categoryFilter) {
     }
     echo '<script>window.ajaxPagination = { currentPage: ' . json_encode($page) . ', totalPages: ' . json_encode($total_pages) . ' };</script>';
 }
+
 
 

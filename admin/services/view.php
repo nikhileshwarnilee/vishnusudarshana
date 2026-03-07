@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 require_once (is_file(__DIR__ . '/includes/permissions.php') ? __DIR__ . '/includes/permissions.php' : dirname(__DIR__) . '/includes/permissions.php');
 admin_enforce_mapped_permission('auto');
 require_once __DIR__ . '/../../config/db.php';
@@ -367,7 +367,7 @@ $adminNotes = $stmt->fetchAll(PDO::FETCH_ASSOC);
             $cat = $request['category_slug'];
             echo isset($categoryTitles[$cat]) ? $categoryTitles[$cat] : htmlspecialchars($cat);
         ?></td></tr>
-        <tr><th>Total Amount</th><td>â‚¹<?php echo number_format($request['total_amount'], 2); ?></td></tr>
+        <tr><th>Total Amount</th><td>&#8377;<?php echo number_format($request['total_amount'], 2); ?></td></tr>
         <?php
         // Check actual payment status from payments table
         // Use payment_status field from service_requests for payment status
@@ -375,8 +375,8 @@ $adminNotes = $stmt->fetchAll(PDO::FETCH_ASSOC);
         $discount = isset($request['discount']) ? (float)$request['discount'] : 0;
         $totalPaid = $request['total_amount'] - $discount;
         ?>
-        <tr><th>Discount Given</th><td>â‚¹<?php echo number_format($discount, 2); ?></td></tr>
-        <tr><th>Total Paid</th><td style="color:#1a8917;font-weight:600;">â‚¹<?php echo number_format($totalPaid, 2); ?></td></tr>
+        <tr><th>Discount Given</th><td>&#8377;<?php echo number_format($discount, 2); ?></td></tr>
+        <tr><th>Total Paid</th><td style="color:#1a8917;font-weight:600;">&#8377;<?php echo number_format($totalPaid, 2); ?></td></tr>
         <tr><th>Payment Status</th><td><span class="status-badge status-<?php echo $actualPaid ? 'paid' : 'unpaid'; ?>"><?php echo $actualPaid ? 'Paid' : 'Unpaid'; ?></span></td></tr>
         <tr><th>Service Status</th><td><span class="status-badge status-<?php echo strtolower(str_replace(' ', '-', $request['service_status'])); ?>"><?php echo htmlspecialchars($request['service_status']); ?></span></td></tr>
         <tr><th>Created Date</th><td><?php echo date('d-m-Y', strtotime($request['created_at'])); ?></td></tr>
@@ -455,8 +455,8 @@ $adminNotes = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     <tr>
                         <th>Product Name</th>
                         <th>Quantity</th>
-                        <th>Price (â‚¹)</th>
-                        <th>Subtotal (â‚¹)</th>
+                        <th>Price (&#8377;)</th>
+                        <th>Subtotal (&#8377;)</th>
                     </tr>
                     <?php
                     $grandTotal = 0;
@@ -485,13 +485,13 @@ $adminNotes = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     <tr>
                         <td><?php echo htmlspecialchars($name); ?></td>
                         <td><?php echo htmlspecialchars($qty); ?></td>
-                        <td>â‚¹<?php echo number_format($price, 2); ?></td>
-                        <td>â‚¹<?php echo number_format($subtotal, 2); ?></td>
+                        <td>&#8377;<?php echo number_format($price, 2); ?></td>
+                        <td>&#8377;<?php echo number_format($subtotal, 2); ?></td>
                     </tr>
                     <?php endforeach; ?>
                     <tr>
                         <th colspan="3" style="text-align:right;">Total Amount</th>
-                        <th>â‚¹<?php echo number_format($grandTotal, 2); ?></th>
+                        <th>&#8377;<?php echo number_format($grandTotal, 2); ?></th>
                     </tr>
                 </table>
             <?php else: ?>
@@ -707,4 +707,5 @@ $adminNotes = $stmt->fetchAll(PDO::FETCH_ASSOC);
 </div>
 </body>
 </html>
+
 

@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 require_once (is_file(__DIR__ . '/includes/permissions.php') ? __DIR__ . '/includes/permissions.php' : dirname(__DIR__) . '/includes/permissions.php');
 admin_enforce_mapped_permission('auto');
 if (session_status() === PHP_SESSION_NONE) {
@@ -274,7 +274,7 @@ document.addEventListener('DOMContentLoaded', function() {
 					   </div>
 				</div>
 				<div id="productTotals">
-					Total Qty: <span id="totalQty">1</span> &nbsp; | &nbsp; Total Amount: â‚¹<span id="totalAmount">0.00</span>
+					Total Qty: <span id="totalQty">1</span> &nbsp; | &nbsp; Total Amount: &#8377;<span id="totalAmount">0.00</span>
 				</div>
 			</div>
 			<div style="margin-top:32px; display:flex; align-items:flex-end; gap:24px; justify-content:flex-end;">
@@ -293,7 +293,7 @@ document.addEventListener('DOMContentLoaded', function() {
 				<tr>
 					<th style="padding:10px 8px; border-bottom:2px solid #ececec; text-align:left; color:#800000;">Invoice #</th>
 					<th style="padding:10px 8px; border-bottom:2px solid #ececec; text-align:left; color:#800000;">Date</th>
-					<th style="padding:10px 8px; border-bottom:2px solid #ececec; text-align:right; color:#800000;">Amount (â‚¹)</th>
+					<th style="padding:10px 8px; border-bottom:2px solid #ececec; text-align:right; color:#800000;">Amount (&#8377;)</th>
 					<th style="padding:10px 8px; border-bottom:2px solid #ececec; text-align:right; color:#800000;">Status</th>
 				</tr>
 			</thead>
@@ -311,7 +311,7 @@ document.addEventListener('DOMContentLoaded', function() {
 			<thead style="background:#f6f6f6;">
 				<tr>
 					<th style="padding:10px 8px; border-bottom:2px solid #ececec; text-align:left; color:#800000;">Date</th>
-					<th style="padding:10px 8px; border-bottom:2px solid #ececec; text-align:right; color:#800000;">Amount (â‚¹)</th>
+					<th style="padding:10px 8px; border-bottom:2px solid #ececec; text-align:right; color:#800000;">Amount (&#8377;)</th>
 					<th style="padding:10px 8px; border-bottom:2px solid #ececec; text-align:left; color:#800000;">Method</th>
 					<th style="padding:10px 8px; border-bottom:2px solid #ececec; text-align:left; color:#800000;">Ref/Note</th>
 				</tr>
@@ -543,7 +543,7 @@ searchInput.addEventListener('input', function() {
 						<span style=\"font-weight:600; color:#333;\">${c.name}</span>
 						<span style=\"font-size:0.97em; color:#888;\">${c.mobile}</span>
 						<span style=\"font-size:0.97em; color:#888;\">${c.address ? c.address : ''}</span>
-						<span style=\"font-size:0.97em; color:${c.dues > 0 ? '#b30000' : '#228B22'}; font-weight:600;\">Dues: â‚¹${c.dues.toFixed(2)}</span>
+						<span style=\"font-size:0.97em; color:${c.dues > 0 ? '#b30000' : '#228B22'}; font-weight:600;\">Dues: &#8377;${c.dues.toFixed(2)}</span>
 					</div>`
 				).join('');
 				dropdown.style.display = 'block';
@@ -575,9 +575,9 @@ dropdown.addEventListener('mousedown', function(e) {
 				if (data && !data.error) {
 					document.getElementById('customerDuesInfo').innerHTML = `
 						<div style='margin-top:6px;'>
-							<b>Total Invoiced:</b> â‚¹${data.total_invoiced.toFixed(2)}<br>
-							<b>Total Paid:</b> â‚¹${data.total_paid.toFixed(2)}<br>
-							<b>Total Dues:</b> <span style='color:${data.total_dues > 0 ? '#b30000' : '#228B22'};'>â‚¹${data.total_dues.toFixed(2)}</span>
+							<b>Total Invoiced:</b> &#8377;${data.total_invoiced.toFixed(2)}<br>
+							<b>Total Paid:</b> &#8377;${data.total_paid.toFixed(2)}<br>
+							<b>Total Dues:</b> <span style='color:${data.total_dues > 0 ? '#b30000' : '#228B22'};'>&#8377;${data.total_dues.toFixed(2)}</span>
 						</div>
 					`;
 					// Add Collect button if dues > 0
@@ -801,7 +801,7 @@ document.getElementById('invoiceForm').addEventListener('submit', function(e) {
 		<form id="collectPaymentForm" autocomplete="off">
 			<input type="hidden" name="customer_id" id="collectCustomerId">
 			<div style="margin-bottom:10px;color:#444;"><b>Customer:</b> <span id="collectCustomerName"></span></div>
-			<div style="margin-bottom:10px;color:#444;"><b>Due Amount:</b> â‚¹<span id="collectDueAmount"></span></div>
+			<div style="margin-bottom:10px;color:#444;"><b>Due Amount:</b> &#8377;<span id="collectDueAmount"></span></div>
 			<div style="margin-bottom:10px;">Amount: <input type="number" name="amount" id="collectAmount" min="1" step="0.01" style="width:120px;padding:5px 8px;border-radius:6px;border:1px solid #ccc;" required></div>
 			<div style="margin-bottom:10px;">Method: 
 				<select name="pay_method" id="collectPayMethod" style="padding:5px 8px;border-radius:6px;border:1px solid #ccc;" required>
@@ -892,9 +892,9 @@ document.getElementById('collectPaymentForm').onsubmit = function(e) {
 								// Update dues info
 								document.getElementById('customerDuesInfo').innerHTML = `
 									<div style='margin-top:6px;'>
-										<b>Total Invoiced:</b> â‚¹${data.total_invoiced.toFixed(2)}<br>
-										<b>Total Paid:</b> â‚¹${data.total_paid.toFixed(2)}<br>
-										<b>Total Dues:</b> <span style='color:${data.total_dues > 0 ? '#b30000' : '#228B22'};'>â‚¹${data.total_dues.toFixed(2)}</span>
+										<b>Total Invoiced:</b> &#8377;${data.total_invoiced.toFixed(2)}<br>
+										<b>Total Paid:</b> &#8377;${data.total_paid.toFixed(2)}<br>
+										<b>Total Dues:</b> <span style='color:${data.total_dues > 0 ? '#b30000' : '#228B22'};'>&#8377;${data.total_dues.toFixed(2)}</span>
 									</div>
 								`;
 								// Add Collect button if dues > 0
@@ -931,6 +931,7 @@ document.getElementById('collectPaymentForm').onsubmit = function(e) {
 
 </body>
 </html>
+
 
 
 

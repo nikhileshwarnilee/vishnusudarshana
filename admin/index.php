@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 require_once (is_file(__DIR__ . '/includes/permissions.php') ? __DIR__ . '/includes/permissions.php' : dirname(__DIR__) . '/includes/permissions.php');
 admin_enforce_mapped_permission('auto');
 date_default_timezone_set('Asia/Kolkata');
@@ -296,11 +296,11 @@ $recentRows = $recentStmt->fetchAll(PDO::FETCH_ASSOC);
         <div class="stat-group" style="background:#f0f7ff;">
             <h3 style="color:#007bff;">Payments (Today)</h3>
             <div class="summary-card" style="background:#e5f0ff; border:2px solid #007bff; margin-bottom:10px;">
-                <div class="summary-count" style="color:#007bff;">â‚¹<?php echo number_format($todays_offline,2); ?></div>
+                <div class="summary-count" style="color:#007bff;">&#8377;<?php echo number_format($todays_offline,2); ?></div>
                 <div class="summary-label">Offline Collection</div>
             </div>
             <div class="summary-card" style="background:#e5f0ff; border:2px solid #007bff;">
-                <div class="summary-count" style="color:#007bff;">â‚¹<?php echo number_format($todays_razorpay,2); ?></div>
+                <div class="summary-count" style="color:#007bff;">&#8377;<?php echo number_format($todays_razorpay,2); ?></div>
                 <div class="summary-label">Razorpay Collection</div>
             </div>
         </div>
@@ -443,6 +443,7 @@ document.getElementById('searchInput').addEventListener('keyup', function() {
 </script>
 </body>
 </html>
+
 
 
 

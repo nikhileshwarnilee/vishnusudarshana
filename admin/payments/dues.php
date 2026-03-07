@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 require_once (is_file(__DIR__ . '/includes/permissions.php') ? __DIR__ . '/includes/permissions.php' : dirname(__DIR__) . '/includes/permissions.php');
 admin_enforce_mapped_permission('auto');
 // dues.php
@@ -181,19 +181,19 @@ $queryStr = http_build_query(array_diff_key($_GET, ['page' => '']));
 	<div style="display:flex; gap:18px; flex-wrap:wrap; margin-bottom:22px;">
 		<div style="flex:1; min-width:180px; background:#f8f6f2; border-radius:8px; padding:18px 16px; box-shadow:0 1px 4px rgba(128,0,0,0.04);">
 			<div style="color:#888; font-size:0.98em;">Total Invoiced</div>
-			<div style="font-size:1.3em; color:#800000; font-weight:700;">â‚¹<?= number_format($total_invoiced,2) ?></div>
+			<div style="font-size:1.3em; color:#800000; font-weight:700;">&#8377;<?= number_format($total_invoiced,2) ?></div>
 		</div>
 		<div style="flex:1; min-width:180px; background:#f8f6f2; border-radius:8px; padding:18px 16px; box-shadow:0 1px 4px rgba(128,0,0,0.04);">
 			<div style="color:#888; font-size:0.98em;">Total Paid</div>
-			<div style="font-size:1.3em; color:#28a745; font-weight:700;">â‚¹<?= number_format($total_paid,2) ?></div>
+			<div style="font-size:1.3em; color:#28a745; font-weight:700;">&#8377;<?= number_format($total_paid,2) ?></div>
 		</div>
 		<div style="flex:1; min-width:180px; background:#f8f6f2; border-radius:8px; padding:18px 16px; box-shadow:0 1px 4px rgba(128,0,0,0.04);">
 			<div style="color:#888; font-size:0.98em;">Total Unpaid</div>
-			<div style="font-size:1.3em; color:#b30000; font-weight:700;">â‚¹<?= number_format($total_unpaid,2) ?></div>
+			<div style="font-size:1.3em; color:#b30000; font-weight:700;">&#8377;<?= number_format($total_unpaid,2) ?></div>
 		</div>
 		<div style="flex:1; min-width:180px; background:#f8f6f2; border-radius:8px; padding:18px 16px; box-shadow:0 1px 4px rgba(128,0,0,0.04);">
 			<div style="color:#888; font-size:0.98em;">Today's Collection</div>
-			<div style="font-size:1.3em; color:#007bff; font-weight:700;">â‚¹<?= number_format($todays_collection,2) ?></div>
+			<div style="font-size:1.3em; color:#007bff; font-weight:700;">&#8377;<?= number_format($todays_collection,2) ?></div>
 		</div>
 	</div>
 	<form class="filter-bar" method="get">
@@ -229,9 +229,9 @@ $queryStr = http_build_query(array_diff_key($_GET, ['page' => '']));
 				<td><?= htmlspecialchars($row['mobile']) ?></td>
 				<td><?= htmlspecialchars($row['address']) ?></td>
 				<td><a href="view-customer-invoices.php?id=<?= $row['id'] ?>" class="invoices-link"><?= $row['total_invoices'] ?></a></td>
-				<td><a href="view-customer-invoices.php?id=<?= $row['id'] ?>" class="invoices-link">â‚¹<?= number_format($row['total_invoiced'],2) ?></a></td>
-				<td><a href="view-customer-payments.php?id=<?= $row['id'] ?>" class="paid-link">â‚¹<?= number_format($row['paid_till_date'],2) ?></a></td>
-				<td style="color:#b30000; font-weight:700;">â‚¹<?= number_format($row['unpaid_dues'],2) ?></td>
+				<td><a href="view-customer-invoices.php?id=<?= $row['id'] ?>" class="invoices-link">&#8377;<?= number_format($row['total_invoiced'],2) ?></a></td>
+				<td><a href="view-customer-payments.php?id=<?= $row['id'] ?>" class="paid-link">&#8377;<?= number_format($row['paid_till_date'],2) ?></a></td>
+				<td style="color:#b30000; font-weight:700;">&#8377;<?= number_format($row['unpaid_dues'],2) ?></td>
 				<td>
 					<button type="button" class="action-btn collect-btn" onclick="openCollectModal(<?= $row['id'] ?>, '<?= htmlspecialchars(addslashes($row['name'])) ?>', <?= $row['unpaid_dues'] ?>)">Collect</button>
 				</td>
@@ -268,9 +268,9 @@ $queryStr = http_build_query(array_diff_key($_GET, ['page' => '']));
 			<td><?= htmlspecialchars($row['mobile']) ?></td>
 			<td><?= htmlspecialchars($row['address']) ?></td>
 			<td><a href="view-customer-invoices.php?id=<?= $row['id'] ?>" class="invoices-link"><?= $row['total_invoices'] ?></a></td>
-			<td><a href="view-customer-invoices.php?id=<?= $row['id'] ?>" class="invoices-link">â‚¹<?= number_format($row['total_invoiced'],2) ?></a></td>
-			<td><a href="view-customer-payments.php?id=<?= $row['id'] ?>" class="paid-link">â‚¹<?= number_format($row['paid_till_date'],2) ?></a></td>
-			<td style="color:#228B22; font-weight:700;">â‚¹0.00</td>
+			<td><a href="view-customer-invoices.php?id=<?= $row['id'] ?>" class="invoices-link">&#8377;<?= number_format($row['total_invoiced'],2) ?></a></td>
+			<td><a href="view-customer-payments.php?id=<?= $row['id'] ?>" class="paid-link">&#8377;<?= number_format($row['paid_till_date'],2) ?></a></td>
+			<td style="color:#228B22; font-weight:700;">&#8377;0.00</td>
 			<td></td>
 		</tr>
 	<?php endforeach; endif; ?>
@@ -291,7 +291,7 @@ $queryStr = http_build_query(array_diff_key($_GET, ['page' => '']));
 		<form id="collectForm" autocomplete="off">
 			<input type="hidden" name="customer_id" id="collectCustomerId">
 			<div style="margin-bottom:10px;color:#444;"><b>Customer:</b> <span id="collectCustomerName"></span></div>
-			<div style="margin-bottom:10px;color:#444;"><b>Due Amount:</b> â‚¹<span id="collectDueAmount"></span></div>
+			<div style="margin-bottom:10px;color:#444;"><b>Due Amount:</b> &#8377;<span id="collectDueAmount"></span></div>
 			<div style="margin-bottom:10px;">Amount: <input type="number" name="amount" id="collectAmount" min="1" step="0.01" style="width:120px;padding:5px 8px;border-radius:6px;border:1px solid #ccc;" required></div>
 			<div style="margin-bottom:10px;">Method: 
 				<select name="pay_method" id="collectPayMethod" style="padding:5px 8px;border-radius:6px;border:1px solid #ccc;" required>
@@ -584,6 +584,7 @@ function sendReminderToAll() {
 <script src="../includes/responsive-tables.js"></script>
 </body>
 </html>
+
 
 
 

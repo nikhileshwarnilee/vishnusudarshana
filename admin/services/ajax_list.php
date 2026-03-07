@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 require_once (is_file(__DIR__ . '/includes/permissions.php') ? __DIR__ . '/includes/permissions.php' : dirname(__DIR__) . '/includes/permissions.php');
 admin_enforce_mapped_permission('auto');
 require_once __DIR__ . '/../../config/db.php';
@@ -173,7 +173,7 @@ foreach ($requests as $row) {
     echo '<td>' . htmlspecialchars($row['mobile']) . '</td>';
     echo '<td>' . htmlspecialchars($products) . '</td>';
     echo '<td>' . htmlspecialchars($categoryText) . '</td>';
-    echo '<td>â‚¹' . number_format($row['total_amount'], 2) . '</td>';
+    echo '<td>&#8377;' . number_format($row['total_amount'], 2) . '</td>';
 
     $payClass = 'payment-' . strtolower(str_replace(' ', '-', $row['payment_status']));
     $isOffline = !empty($row['selected_products']);
@@ -196,4 +196,5 @@ document.getElementById('requestTypeSelect').addEventListener('change', function
     window.location.href = url.toString();
 });
 </script>
+
 

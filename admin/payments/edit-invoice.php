@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 require_once (is_file(__DIR__ . '/includes/permissions.php') ? __DIR__ . '/includes/permissions.php' : dirname(__DIR__) . '/includes/permissions.php');
 admin_enforce_mapped_permission('auto');
 // edit-invoice.php
@@ -101,7 +101,7 @@ $customers = $pdo->query("SELECT id, name FROM customers ORDER BY name")->fetchA
 			<?php endforeach; ?>
 		</div>
 		<div id="productTotals">
-			Total Qty: <span id="totalQty">0</span> &nbsp; | &nbsp; Total Amount: â‚¹<span id="totalAmount">0.00</span>
+			Total Qty: <span id="totalQty">0</span> &nbsp; | &nbsp; Total Amount: &#8377;<span id="totalAmount">0.00</span>
 		</div>
         <input type="hidden" name="total_qty" id="hiddenTotalQty">
         <input type="hidden" name="total_amount" id="hiddenTotalAmount">
@@ -168,6 +168,7 @@ document.getElementById('editInvoiceForm').addEventListener('submit', function(e
 </script>
 </body>
 </html>
+
 
 
 

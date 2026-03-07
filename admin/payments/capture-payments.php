@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 require_once (is_file(__DIR__ . '/includes/permissions.php') ? __DIR__ . '/includes/permissions.php' : dirname(__DIR__) . '/includes/permissions.php');
 admin_enforce_mapped_permission('auto');
 // capture-payments.php
@@ -77,7 +77,7 @@ $payments = $stmt->fetchAll();
 					echo htmlspecialchars(implode(', ', $products) ?: '-');
 					?>
 				</td>
-				<td>â‚¹<?= number_format($row['total_amount'],2) ?></td>
+				<td>&#8377;<?= number_format($row['total_amount'],2) ?></td>
 				<td><?= htmlspecialchars($row['payment_status']) ?></td>
 				<td><?= htmlspecialchars($row['payment_date'] ?? $row['created_at']) ?></td>
 			</tr>
@@ -87,6 +87,7 @@ $payments = $stmt->fetchAll();
 </body>
 <script src="../includes/responsive-tables.js"></script>
 </html>
+
 
 
 

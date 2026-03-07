@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 require_once (is_file(__DIR__ . '/includes/permissions.php') ? __DIR__ . '/includes/permissions.php' : dirname(__DIR__) . '/includes/permissions.php');
 admin_enforce_mapped_permission('auto');
 // Start session before any output
@@ -467,12 +467,12 @@ include __DIR__ . '/../includes/top-menu.php';
                     echo isset($catMap[$catSlug]) ? htmlspecialchars($catMap[$catSlug]) : htmlspecialchars($catSlug);
                     ?>
                 </td>
-                <td>â‚¹<?= number_format($row['total_amount'], 2) ?></td>
+                <td>&#8377;<?= number_format($row['total_amount'], 2) ?></td>
                 <td>
                     <?php
                     $discount = isset($row['discount']) ? (float)$row['discount'] : 0;
                     $collected = $row['total_amount'] - $discount;
-                    echo 'â‚¹' . number_format($collected, 2);
+                    echo '&#8377;' . number_format($collected, 2);
                     ?>
                 </td>
                 <td>
@@ -687,7 +687,7 @@ $(document).on('click', '.btn-pay', function(e){
                 var origAmt = parseFloat($('#origAmount').val()) || 0;
                 var disc = parseFloat($('#discountInput').val()) || 0;
                 var collected = (origAmt - disc).toFixed(2);
-                row.find('td:nth-child(7)').html('â‚¹' + collected);
+                row.find('td:nth-child(7)').html('&#8377;' + collected);
                 $('#payPopupOverlay').remove();
                 // Optionally reload or show toast
             }else{
@@ -714,6 +714,7 @@ $(document).on('click', '.btn-pay', function(e){
 </script>
 </body>
 </html>
+
 
 
 

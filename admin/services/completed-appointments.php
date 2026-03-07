@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 require_once (is_file(__DIR__ . '/includes/permissions.php') ? __DIR__ . '/includes/permissions.php' : dirname(__DIR__) . '/includes/permissions.php');
 admin_enforce_mapped_permission('auto');
 /**
@@ -143,7 +143,7 @@ h1 { color: #800000; margin-bottom: 18px; }
                                 if ($name !== '') {
                                     $label = $name . ' x' . $qty;
                                     if ($price !== '') {
-                                        $label .= ' (â‚¹' . number_format((float)$price, 2) . ')';
+                                        $label .= ' (&#8377;' . number_format((float)$price, 2) . ')';
                                     }
                                     $productDetails[] = $label;
                                 }
@@ -199,4 +199,5 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 </html>
+
 

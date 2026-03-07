@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 require_once (is_file(__DIR__ . '/includes/permissions.php') ? __DIR__ . '/includes/permissions.php' : dirname(__DIR__) . '/includes/permissions.php');
 admin_enforce_mapped_permission('auto');
 // invoice-list.php
@@ -132,7 +132,7 @@ $queryStr = http_build_query(array_diff_key($_GET, ['page' => '']));
 				<td><?= htmlspecialchars($inv['invoice_date']) ?></td>
 				<td><?= htmlspecialchars($inv['customer_name']) ?></td>
 				<td><?= $inv['total_qty'] ?></td>
-				<td>â‚¹<?= number_format($inv['total_amount'],2) ?></td>
+				<td>&#8377;<?= number_format($inv['total_amount'],2) ?></td>
 				<td><?= htmlspecialchars($inv['notes']) ?></td>
 				<td>
 					<a href="view-invoice.php?id=<?= $inv['id'] ?>" class="action-btn view-btn">View</a>
@@ -152,6 +152,7 @@ $queryStr = http_build_query(array_diff_key($_GET, ['page' => '']));
 </body>
 <script src="../includes/responsive-tables.js"></script>
 </html>
+
 
 
 
