@@ -7,7 +7,10 @@
     var BUTTON_PRESS_MS = 150;
     var PRINT_ANIMATION_MS = 3400;
     var TTS_CHUNK_LIMIT = 180;
-    var RAWBT_SCHEME_PREFIX = 'rawbt:print?text=';
+    var RAWBT_IMAGE_SCHEME_PREFIX = 'rawbt:data:image/jpeg;base64,';
+    var RAWBT_TEXT_SCHEME_PREFIX = 'rawbt:';
+    var RAWBT_RECEIPT_IMAGE_WIDTH_PX = 384;
+    var RAWBT_RECEIPT_IMAGE_PADDING_PX = 18;
     var THERMAL_PRINT_IFRAME_ID = 'tablet-thermal-print-frame';
     var THERMAL_RECEIPT_WIDTH_MM = 58;
 
@@ -475,16 +478,203 @@
         return lines.join('\n');
     }
 
-    function printViaRawBt(details) {
-        var receiptText = buildRawBtReceiptText(details);
-        var rawBtUrl = RAWBT_SCHEME_PREFIX + encodeURIComponent(receiptText);
+    function getRawBtCanvasHeight(details) {
+        var baseHeight = 640;
+        if (details && details.serviceTime) {
+            return baseHeight + 30;
+        }
+        return baseHeight;
+    }
 
+    function loadImageForRawBt(src) {
+        return new Promise(function (resolve, reject) {
+            var image = new Image();
+            image.crossOrigin = 'anonymous';
+            image.onload = function () {
+                resolve(image);
+            };
+            image.onerror = function () {
+                reject(new Error('Unable to load logo image for RawBT receipt'));
+            };
+            image.src = src;
+        });
+    }
+
+    function renderRawBtReceiptImage(details) {
+        return new Promise(function (resolve, reject) {
+            var canvas = document.createElement('canvas');
+            var width = RAWBT_RECEIPT_IMAGE_WIDTH_PX;
+            var height = getRawBtCanvasHeight(details);
+            var padding = RAWBT_RECEIPT_IMAGE_PADDING_PX;
+            var contentWidth = width - (padding * 2);
+            var y = padding;
+
+            canvas.width = width;
+            canvas.height = height;
+
+            var ctx = canvas.getContext('2d');
+            if (!ctx) {
+                reject(new Error('RawBT canvas context is unavailable'));
+                return;
+            }
+
+            var tokenText = '#' + toAsciiDigits(details.token);
+            var phoneText = toAsciiDigits(details.phone);
+            var locationText = String(details.location || defaultLocationLabel || 'Solapur');
+            var dateText = toAsciiDigits(details.date);
+            var timeText = toAsciiDigits(details.time);
+            var serviceTimeText = String(details.serviceTime || '').trim();
+            var logoUrl = resolveAssetUrl('assets/images/logo/logomain.png');
+
+            function drawSeparator() {
+                ctx.strokeStyle = '#000000';
+                ctx.lineWidth = 1;
+                ctx.setLineDash([5, 3]);
+                ctx.beginPath();
+                ctx.moveTo(padding, y);
+                ctx.lineTo(width - padding, y);
+                ctx.stroke();
+                ctx.setLineDash([]);
+                y += 18;
+            }
+
+            function drawLabelValue(label, value) {
+                ctx.font = '700 23px monospace';
+                ctx.fillStyle = '#000000';
+                ctx.textAlign = 'left';
+                ctx.fillText(label, padding, y);
+                ctx.textAlign = 'right';
+                ctx.font = '500 23px monospace';
+                ctx.fillText(value, width - padding, y);
+                y += 34;
+            }
+
+            function finalize() {
+                var dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+                var base64Index = dataUrl.indexOf('base64,');
+                if (base64Index === -1) {
+                    reject(new Error('Unexpected data URL format for RawBT receipt'));
+                    return;
+                }
+                resolve(dataUrl.slice(base64Index + 7));
+            }
+
+            function drawWithoutLogo() {
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, width, height);
+
+                ctx.fillStyle = '#000000';
+                ctx.textAlign = 'center';
+                ctx.font = '700 26px monospace';
+                ctx.fillText('VISHNUSUDARSHANA.COM', width / 2, y + 22);
+                y += 44;
+
+                ctx.font = '700 22px sans-serif';
+                ctx.fillText('\u092a\u094d\u0930\u0924\u094d\u092f\u0915\u094d\u0937 \u0915\u093e\u0930\u094d\u092f\u093e\u0932\u092f \u092d\u0947\u091f \u091f\u094b\u0915\u0928', width / 2, y + 20);
+                y += 34;
+
+                drawSeparator();
+
+                ctx.font = '700 20px monospace';
+                ctx.fillText('TOKEN NO', width / 2, y + 20);
+                y += 28;
+
+                ctx.font = '700 68px monospace';
+                ctx.fillText(tokenText, width / 2, y + 66);
+                y += 82;
+
+                drawSeparator();
+                drawLabelValue('Mobile', phoneText);
+                drawLabelValue('Location', locationText);
+                drawLabelValue('Date', dateText);
+                drawLabelValue('Time', timeText);
+                if (serviceTimeText) {
+                    drawLabelValue('Slot', serviceTimeText);
+                }
+
+                drawSeparator();
+                ctx.textAlign = 'center';
+                ctx.font = '500 20px sans-serif';
+                ctx.fillText('Please keep this token slip safely.', width / 2, y + 20);
+                y += 30;
+                ctx.fillText('\u0915\u0943\u092a\u092f\u093e \u0938\u094d\u0915\u094d\u0930\u0940\u0928\u0935\u0930 \u091a\u093e\u0932\u0942 \u091f\u094b\u0915\u0928 \u092a\u093e\u0939\u093e', width / 2, y + 20);
+
+                finalize();
+            }
+
+            loadImageForRawBt(logoUrl).then(function (logoImage) {
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, width, height);
+
+                var logoRatio = logoImage.naturalWidth > 0 ? (logoImage.naturalHeight / logoImage.naturalWidth) : 0.3;
+                var logoWidth = contentWidth;
+                var logoHeight = Math.max(42, Math.round(logoWidth * logoRatio));
+                ctx.drawImage(logoImage, padding, y, logoWidth, logoHeight);
+                y += logoHeight + 8;
+
+                ctx.fillStyle = '#000000';
+                ctx.textAlign = 'center';
+                ctx.font = '700 22px sans-serif';
+                ctx.fillText('\u092a\u094d\u0930\u0924\u094d\u092f\u0915\u094d\u0937 \u0915\u093e\u0930\u094d\u092f\u093e\u0932\u092f \u092d\u0947\u091f \u091f\u094b\u0915\u0928', width / 2, y + 20);
+                y += 34;
+
+                drawSeparator();
+
+                ctx.font = '700 20px monospace';
+                ctx.fillText('TOKEN NO', width / 2, y + 20);
+                y += 28;
+
+                ctx.font = '700 68px monospace';
+                ctx.fillText(tokenText, width / 2, y + 66);
+                y += 82;
+
+                drawSeparator();
+                drawLabelValue('Mobile', phoneText);
+                drawLabelValue('Location', locationText);
+                drawLabelValue('Date', dateText);
+                drawLabelValue('Time', timeText);
+                if (serviceTimeText) {
+                    drawLabelValue('Slot', serviceTimeText);
+                }
+
+                drawSeparator();
+                ctx.textAlign = 'center';
+                ctx.font = '500 20px sans-serif';
+                ctx.fillText('Please keep this token slip safely.', width / 2, y + 20);
+                y += 30;
+                ctx.fillText('\u0915\u0943\u092a\u092f\u093e \u0938\u094d\u0915\u094d\u0930\u0940\u0928\u0935\u0930 \u091a\u093e\u0932\u0942 \u091f\u094b\u0915\u0928 \u092a\u093e\u0939\u093e', width / 2, y + 20);
+
+                finalize();
+            }).catch(function () {
+                drawWithoutLogo();
+            });
+        });
+    }
+
+    function tryNavigateToRawBt(rawBtUrl) {
         try {
             window.location.href = rawBtUrl;
             return true;
         } catch (error) {
             return false;
         }
+    }
+
+    function printViaRawBt(details) {
+        return renderRawBtReceiptImage(details).then(function (imageBase64) {
+            var imageUrl = RAWBT_IMAGE_SCHEME_PREFIX + imageBase64;
+            if (tryNavigateToRawBt(imageUrl)) {
+                return true;
+            }
+
+            var receiptText = buildRawBtReceiptText(details);
+            var textUrl = RAWBT_TEXT_SCHEME_PREFIX + encodeURIComponent(receiptText);
+            return tryNavigateToRawBt(textUrl);
+        }).catch(function () {
+            var fallbackText = buildRawBtReceiptText(details);
+            var fallbackUrl = RAWBT_TEXT_SCHEME_PREFIX + encodeURIComponent(fallbackText);
+            return tryNavigateToRawBt(fallbackUrl);
+        });
     }
 
     function getThermalPrintFrame() {
@@ -554,7 +744,8 @@
     }
 
     function printThermalReceipt(details) {
-        if (isAndroidDevice() && printViaRawBt(details)) {
+        if (isAndroidDevice()) {
+            printViaRawBt(details);
             return;
         }
 
