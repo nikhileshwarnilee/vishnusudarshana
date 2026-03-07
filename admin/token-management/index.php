@@ -116,7 +116,7 @@ include '../includes/top-menu.php';
     </section>
     <section class="settings-card" aria-label="Same-Day Online Booking Cutoff">
         <h2 class="settings-title">Same-Day Online Booking Stop Time</h2>
-        <p class="settings-desc">Public website same-day booking will stop after this time.</p>
+        <p class="settings-desc">Public website same-day booking will stop after this time (India time: Asia/Kolkata).</p>
         <div class="language-actions">
             <label for="sameDayCutoffTime" class="form-label" style="margin:0;">
                 Cutoff Time

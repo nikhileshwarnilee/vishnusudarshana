@@ -126,6 +126,18 @@ const dd = String(today.getDate()).padStart(2, '0');
 dateInput.min = `${yyyy}-${mm}-${dd}`;
 dateInput.value = '';
 
+function getLocalIsoDate(dateObj) {
+    const safeDate = dateObj instanceof Date ? dateObj : new Date();
+    const year = safeDate.getFullYear();
+    const month = String(safeDate.getMonth() + 1).padStart(2, '0');
+    const day = String(safeDate.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
+function isSelectedDateToday(selectedDate) {
+    return String(selectedDate || '').trim() === getLocalIsoDate(new Date());
+}
+
 function setSubmitButtonEnabled(isEnabled) {
     if (!submitButton) return;
     submitButton.disabled = !isEnabled;
@@ -204,17 +216,19 @@ function updateTokenInfo() {
                 const notes = t.notes || '';
                 const sameDayClosed = Boolean(data.same_day_online_closed);
                 const cutoffDisplay = data.same_day_online_cutoff_display || '9:00 AM';
-                // Check if selected date is today and current time is past to_time
+
+                if (sameDayClosed) {
+                    renderSameDayClosedMessage(cutoffDisplay, remaining, total);
+                    serviceTimeInput.value = '';
+                    setBookingFieldsEnabled(false);
+                    setSubmitButtonEnabled(false);
+                    return;
+                }
+
                 const now = new Date();
                 let timePassed = false;
-                if (now.toISOString().slice(0,10) === date) {
-                    if (sameDayClosed) {
-                        renderSameDayClosedMessage(cutoffDisplay, remaining, total);
-                        serviceTimeInput.value = '';
-                        setBookingFieldsEnabled(false);
-                        setSubmitButtonEnabled(false);
-                        return;
-                    }
+                // Check if selected date is today and current time is past to_time
+                if (isSelectedDateToday(date)) {
                     // Compare current time with to_time
                     const [toHour, toMin] = t.to_time.split(":");
                     const toTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), parseInt(toHour,10), parseInt(toMin,10), 0);
@@ -277,15 +291,17 @@ form.addEventListener('submit', function(e) {
                 const total = parseInt(t.total_tokens, 10);
                 const sameDayClosed = Boolean(data.same_day_online_closed);
                 const cutoffDisplay = data.same_day_online_cutoff_display || '9:00 AM';
+
+                if (sameDayClosed) {
+                    loader.style.display = 'none';
+                    renderSameDayClosedMessage(cutoffDisplay, remaining, total);
+                    setBookingFieldsEnabled(false);
+                    setSubmitButtonEnabled(false);
+                    return;
+                }
+
                 const now = new Date();
-                if (now.toISOString().slice(0,10) === date) {
-                    if (sameDayClosed) {
-                        loader.style.display = 'none';
-                        renderSameDayClosedMessage(cutoffDisplay, remaining, total);
-                        setBookingFieldsEnabled(false);
-                        setSubmitButtonEnabled(false);
-                        return;
-                    }
+                if (isSelectedDateToday(date)) {
                     const [toHour, toMin] = t.to_time.split(":");
                     const toTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), parseInt(toHour,10), parseInt(toMin,10), 0);
                     if (now > toTime) {

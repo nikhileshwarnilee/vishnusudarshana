@@ -2,6 +2,22 @@
 require_once __DIR__ . '/config/db.php';
 header('Content-Type: application/json');
 
+function getBookingTimezone(): DateTimeZone
+{
+    static $timezone = null;
+    if ($timezone instanceof DateTimeZone) {
+        return $timezone;
+    }
+
+    try {
+        $timezone = new DateTimeZone('Asia/Kolkata');
+    } catch (Throwable $e) {
+        $timezone = new DateTimeZone(date_default_timezone_get());
+    }
+
+    return $timezone;
+}
+
 function normalizeSameDayOnlineBookingCutoffTime($value): string
 {
     $raw = trim((string) $value);
@@ -35,16 +51,32 @@ function getSameDayOnlineBookingCutoffTime(PDO $pdo): string
 
 function isSameDayOnlineBookingClosed(string $selectedDate, string $cutoffTime): bool
 {
-    if ($selectedDate !== date('Y-m-d')) {
+    $selectedDate = trim($selectedDate);
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $selectedDate)) {
         return false;
     }
 
-    $cutoffDateTime = DateTime::createFromFormat('Y-m-d H:i:s', $selectedDate . ' ' . $cutoffTime . ':00');
+    $timezone = getBookingTimezone();
+    $now = new DateTimeImmutable('now', $timezone);
+    if ($selectedDate !== $now->format('Y-m-d')) {
+        return false;
+    }
+
+    $cutoffDateTime = DateTimeImmutable::createFromFormat(
+        'Y-m-d H:i:s',
+        $selectedDate . ' ' . $cutoffTime . ':00',
+        $timezone
+    );
     if (!$cutoffDateTime) {
         return false;
     }
 
-    return new DateTime('now') >= $cutoffDateTime;
+    $parseErrors = DateTimeImmutable::getLastErrors();
+    if (is_array($parseErrors) && (($parseErrors['warning_count'] ?? 0) > 0 || ($parseErrors['error_count'] ?? 0) > 0)) {
+        return false;
+    }
+
+    return $now >= $cutoffDateTime;
 }
 
 function formatCutoffTimeDisplay(string $cutoffTime): string
