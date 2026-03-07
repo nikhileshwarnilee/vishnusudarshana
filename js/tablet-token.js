@@ -523,12 +523,10 @@
         var lines = [
             receipt.brand,
             receipt.title,
-            '----------------------',
             receipt.tokenLabel,
             receipt.tokenText,
             receipt.estimatedServiceLabel,
-            receipt.estimatedServiceValue,
-            '----------------------'
+            receipt.estimatedServiceValue
         ];
 
         receipt.rows.forEach(function (row) {
@@ -545,12 +543,10 @@
             lines.push(labelLines.join(' ') + ' : ' + String(row.value || ''));
         });
 
-        lines.push('----------------------');
         receipt.notes.forEach(function (note) {
             lines.push(note);
         });
         if (receipt.footerBookingTime) {
-            lines.push('----------------------');
             lines.push(receipt.footerBookingTime);
         }
         lines.push('');
@@ -731,8 +727,6 @@
                 ctx.fillText(receipt.title, width / 2, y + 18);
                 y += 28;
 
-                drawSeparator();
-
                 ctx.font = '700 18px "Noto Sans Devanagari", sans-serif';
                 ctx.fillText(receipt.tokenLabel, width / 2, y + 17);
                 y += 22;
@@ -749,7 +743,6 @@
                 ctx.fillText(receipt.estimatedServiceValue, width / 2, y + 16);
                 y += 22;
 
-                drawSeparator();
                 receipt.rows.forEach(function (row) {
                     var layout = String((row && row.layout) || 'inline').toLowerCase();
                     if (layout === 'stacked') {
@@ -759,7 +752,6 @@
                     }
                 });
 
-                drawSeparator();
                 ctx.textAlign = 'center';
                 receipt.notes.forEach(function (note) {
                     drawWrappedCenterText(note, '500 15px "Noto Sans Devanagari", sans-serif', 20);
@@ -767,7 +759,6 @@
                 });
 
                 if (receipt.footerBookingTime) {
-                    drawSeparator();
                     ctx.textAlign = 'left';
                     ctx.fillStyle = '#000000';
                     ctx.font = '500 12px "Noto Sans Devanagari", sans-serif';
@@ -852,7 +843,7 @@
             return '<div class="note center">' + escapeHtml(note) + '</div>';
         }).join('');
         var footerHtml = receipt.footerBookingTime
-            ? ('<div class="line"></div><div class="footer-time">' + escapeHtml(receipt.footerBookingTime) + '</div>')
+            ? ('<div class="footer-time">' + escapeHtml(receipt.footerBookingTime) + '</div>')
             : '';
 
         return '<!DOCTYPE html>' +
@@ -867,7 +858,6 @@
             '.logo{display:block;width:100%;height:auto;margin:0 auto 1mm auto;}' +
             '.brand{font-weight:700;font-size:11.5px;letter-spacing:0.15px;}' +
             '.title{font-weight:700;margin-top:1mm;font-size:11.5px;}' +
-            '.line{border-top:1px dashed #000;margin:1.2mm 0;}' +
             '.token{font-size:24px;font-weight:700;line-height:1.02;margin:0.4mm 0 1mm 0;}' +
             '.estimate-label{font-size:11px;font-weight:700;line-height:1.1;margin-top:0.2mm;}' +
             '.estimate-value{font-size:12px;font-weight:700;line-height:1.12;margin-top:0.2mm;}' +
@@ -887,13 +877,10 @@
             '<img class="logo" src="' + escapeHtml(logoUrl) + '" alt="Vishnusudarshana Logo">' +
             '<div class="center brand">' + escapeHtml(receipt.brand) + '</div>' +
             '<div class="center title">' + escapeHtml(receipt.title) + '</div>' +
-            '<div class="line"></div>' +
             '<div class="center">' + escapeHtml(receipt.tokenLabel) + '</div>' +
             '<div class="center token">' + escapeHtml(receipt.tokenText) + '</div>' +
             estimatedHtml +
-            '<div class="line"></div>' +
             rowsHtml +
-            '<div class="line"></div>' +
             notesHtml +
             footerHtml +
             '</body></html>';
