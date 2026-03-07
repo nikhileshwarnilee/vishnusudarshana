@@ -7,6 +7,9 @@
     var BUTTON_PRESS_MS = 150;
     var PRINT_ANIMATION_MS = 3400;
     var TTS_CHUNK_LIMIT = 180;
+    var AVAILABILITY_REFRESH_ACTIVE_MS = 10000;
+    var AVAILABILITY_REFRESH_COOLDOWN_MS = 4000;
+    var AVAILABILITY_REFRESH_HIDDEN_MS = 20000;
     var RAWBT_IMAGE_SCHEME_PREFIX = 'rawbt:data:image/jpeg;base64,';
     var RAWBT_TEXT_SCHEME_PREFIX = 'rawbt:';
     var RAWBT_RECEIPT_IMAGE_WIDTH_PX = 384;
@@ -61,6 +64,7 @@
     var cooldownStorageKey = 'tablet_token_cooldown_until_' + location.replace(/\s+/g, '_');
     var receiptStorageKey = 'tablet_token_receipt_data_' + location.replace(/\s+/g, '_');
     var availabilityRefreshIntervalId = null;
+    var availabilityRefreshInFlight = false;
     var announcementLanguage = 'marathi';
     var settingsRefreshIntervalId = null;
 
@@ -401,23 +405,61 @@
     }
 
     function startAvailabilityRefreshLoop() {
-        if (availabilityRefreshIntervalId) {
-            window.clearInterval(availabilityRefreshIntervalId);
+        function applyAvailabilityState(availability) {
+            if (!availability) {
+                return;
+            }
+            if (availability.remaining <= 0 && !isCooldownActive() && !requestInFlight) {
+                applyTokensFullState();
+                return;
+            }
+            if (availability.remaining > 0 && !isCooldownActive() && !requestInFlight && tokensFullForToday) {
+                clearTokensFullStateForInput();
+            }
         }
-        availabilityRefreshIntervalId = window.setInterval(function () {
-            fetchTodayAvailability().then(function (availability) {
-                if (!availability) {
-                    return;
-                }
-                if (availability.remaining <= 0 && !isCooldownActive() && !requestInFlight) {
-                    applyTokensFullState();
-                    return;
-                }
-                if (availability.remaining > 0 && !isCooldownActive() && !requestInFlight && tokensFullForToday) {
-                    clearTokensFullStateForInput();
-                }
+
+        function getAvailabilityRefreshDelay() {
+            if (document.hidden) {
+                return AVAILABILITY_REFRESH_HIDDEN_MS;
+            }
+            if (isCooldownActive() || requestInFlight) {
+                return AVAILABILITY_REFRESH_COOLDOWN_MS;
+            }
+            return AVAILABILITY_REFRESH_ACTIVE_MS;
+        }
+
+        function scheduleNextAvailabilityRefresh() {
+            if (availabilityRefreshIntervalId) {
+                window.clearTimeout(availabilityRefreshIntervalId);
+            }
+            availabilityRefreshIntervalId = window.setTimeout(runAvailabilityRefresh, getAvailabilityRefreshDelay());
+        }
+
+        function refreshAvailabilityNow() {
+            if (availabilityRefreshInFlight) {
+                return Promise.resolve(null);
+            }
+            availabilityRefreshInFlight = true;
+            return fetchTodayAvailability().then(function (availability) {
+                applyAvailabilityState(availability);
+                return availability;
+            }).finally(function () {
+                availabilityRefreshInFlight = false;
             });
-        }, 20000);
+        }
+
+        function runAvailabilityRefresh() {
+            refreshAvailabilityNow().finally(scheduleNextAvailabilityRefresh);
+        }
+
+        window.refreshTabletAvailabilityNow = function () {
+            return refreshAvailabilityNow();
+        };
+        window.rescheduleTabletAvailabilityRefresh = function () {
+            scheduleNextAvailabilityRefresh();
+        };
+
+        runAvailabilityRefresh();
     }
 
     function toMarathiDigits(value) {
@@ -1256,16 +1298,14 @@
         }
         clearStoredReceipt();
         resetForNextVisitor();
-        fetchTodayAvailability().then(function (availability) {
-            if (!availability) {
-                return;
-            }
-            if (availability.remaining <= 0) {
-                applyTokensFullState();
-            } else {
-                clearTokensFullStateForInput();
-            }
-        });
+        if (typeof window.refreshTabletAvailabilityNow === 'function') {
+            window.refreshTabletAvailabilityNow();
+        } else {
+            fetchTodayAvailability();
+        }
+        if (typeof window.rescheduleTabletAvailabilityRefresh === 'function') {
+            window.rescheduleTabletAvailabilityRefresh();
+        }
     }
 
     function updateReceiptCooldown(remainingSeconds) {
@@ -1313,6 +1353,14 @@
         clearCooldownInterval();
         tickCooldown();
         cooldownIntervalId = window.setInterval(tickCooldown, 1000);
+        if (typeof window.refreshTabletAvailabilityNow === 'function') {
+            window.refreshTabletAvailabilityNow();
+        } else {
+            fetchTodayAvailability();
+        }
+        if (typeof window.rescheduleTabletAvailabilityRefresh === 'function') {
+            window.rescheduleTabletAvailabilityRefresh();
+        }
     }
 
     function restoreCooldown() {
@@ -1470,8 +1518,14 @@
                     if (remainingAfterIssue <= 0) {
                         tokensFullForToday = true;
                     }
+                }
+                if (typeof window.refreshTabletAvailabilityNow === 'function') {
+                    window.refreshTabletAvailabilityNow();
                 } else {
                     fetchTodayAvailability();
+                }
+                if (typeof window.rescheduleTabletAvailabilityRefresh === 'function') {
+                    window.rescheduleTabletAvailabilityRefresh();
                 }
                 announceToken(generatedToken);
                 startCooldown(Number(data.cooldown_seconds) || COOLDOWN_SECONDS, true);
@@ -1548,7 +1602,7 @@
     window.addEventListener('beforeunload', function () {
         stopExternalTts();
         if (availabilityRefreshIntervalId) {
-            window.clearInterval(availabilityRefreshIntervalId);
+            window.clearTimeout(availabilityRefreshIntervalId);
             availabilityRefreshIntervalId = null;
         }
         if (settingsRefreshIntervalId) {
@@ -1571,6 +1625,31 @@
             // Ignore voice priming errors
         }
     }
+
+    document.addEventListener('visibilitychange', function () {
+        if (document.hidden) {
+            return;
+        }
+        if (typeof window.refreshTabletAvailabilityNow === 'function') {
+            window.refreshTabletAvailabilityNow();
+        } else {
+            fetchTodayAvailability();
+        }
+        if (typeof window.rescheduleTabletAvailabilityRefresh === 'function') {
+            window.rescheduleTabletAvailabilityRefresh();
+        }
+    });
+
+    window.addEventListener('focus', function () {
+        if (typeof window.refreshTabletAvailabilityNow === 'function') {
+            window.refreshTabletAvailabilityNow();
+        } else {
+            fetchTodayAvailability();
+        }
+        if (typeof window.rescheduleTabletAvailabilityRefresh === 'function') {
+            window.rescheduleTabletAvailabilityRefresh();
+        }
+    });
 
     resetPrintedTicketContent();
     updatePhoneDisplay();
