@@ -36,6 +36,23 @@ function to12Hour(string $timeValue): string
     return date('g:i A', $timestamp);
 }
 
+function isTabletTokenWhatsAppEnabled(PDO $pdo): bool
+{
+    try {
+        $stmt = $pdo->prepare('SELECT setting_value FROM system_settings WHERE setting_key = ? LIMIT 1');
+        $stmt->execute(['tablet_token_whatsapp_enabled']);
+        $value = $stmt->fetchColumn();
+        if ($value === false || $value === null) {
+            return true; // default ON
+        }
+        $normalized = strtolower(trim((string) $value));
+        return in_array($normalized, ['1', 'true', 'yes', 'on', 'enabled'], true);
+    } catch (Throwable $e) {
+        // If settings table/key does not exist, keep legacy behavior (enabled).
+        return true;
+    }
+}
+
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     respond(['success' => false, 'message' => 'Method not allowed.'], 405);
 }
@@ -75,6 +92,7 @@ if ($lastIssuedAt > 0 && $elapsed < $cooldownSeconds) {
 
 $tokenDate = date('Y-m-d');
 $defaultName = 'Walk-in Visitor';
+$whatsappName = 'Customer';
 $mobileNumber = $phoneNumber;
 
 try {
@@ -151,6 +169,28 @@ try {
     $_SESSION['tablet_last_issued_at'] = $lastIssuedAtMap;
     $remainingTokens = max(0, (int) $slot['unbooked_tokens'] - 1);
     $totalTokens = isset($slot['total_tokens']) ? (int) $slot['total_tokens'] : null;
+    $tabletWhatsAppEnabled = isTabletTokenWhatsAppEnabled($pdo);
+    $waStatus = false;
+
+    // Keep booking flow successful even if WhatsApp send fails.
+    if ($tabletWhatsAppEnabled) {
+        try {
+            require_once __DIR__ . '/../helpers/send_whatsapp.php';
+            $waResult = sendWhatsAppMessage(
+                $mobileNumber,
+                'token_booking_confirmation',
+                [
+                    'name' => $whatsappName,
+                    'date' => $tokenDate,
+                    'time' => $serviceTime,
+                    'token_no' => $nextTokenNo
+                ]
+            );
+            $waStatus = !empty($waResult['success']);
+        } catch (Throwable $waException) {
+            error_log('Tablet token WhatsApp failed: ' . $waException->getMessage());
+        }
+    }
 
     respond([
         'success' => true,
@@ -161,7 +201,9 @@ try {
         'phone_number' => $mobileNumber,
         'cooldown_seconds' => $cooldownSeconds,
         'remaining_tokens' => $remainingTokens,
-        'total_tokens' => $totalTokens
+        'total_tokens' => $totalTokens,
+        'wa_enabled' => $tabletWhatsAppEnabled,
+        'wa_status' => $waStatus
     ]);
 } catch (Throwable $e) {
     if ($pdo->inTransaction()) {

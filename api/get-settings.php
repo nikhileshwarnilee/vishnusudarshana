@@ -29,30 +29,57 @@ function normalizeAnnouncementLanguage(?string $value): string
     return in_array($normalized, ['marathi', 'english'], true) ? $normalized : 'marathi';
 }
 
+function normalizeTabletWhatsAppEnabled($value): int
+{
+    $normalized = strtolower(trim((string) $value));
+    return in_array($normalized, ['1', 'true', 'yes', 'on', 'enabled'], true) ? 1 : 0;
+}
+
+function getSettingValue(PDO $pdo, string $key): ?string
+{
+    $stmt = $pdo->prepare('SELECT setting_value FROM system_settings WHERE setting_key = ? LIMIT 1');
+    $stmt->execute([$key]);
+    $value = $stmt->fetchColumn();
+    return $value === false ? null : (string) $value;
+}
+
+function upsertSetting(PDO $pdo, string $key, string $value): void
+{
+    $stmt = $pdo->prepare(
+        'INSERT INTO system_settings (setting_key, setting_value)
+         VALUES (?, ?)
+         ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)'
+    );
+    $stmt->execute([$key, $value]);
+}
+
 try {
     ensureSettingsTable($pdo);
 
-    $stmt = $pdo->prepare('SELECT setting_value FROM system_settings WHERE setting_key = ? LIMIT 1');
-    $stmt->execute(['announcement_language']);
-    $language = normalizeAnnouncementLanguage($stmt->fetchColumn() ?: null);
+    $languageRaw = getSettingValue($pdo, 'announcement_language');
+    $tabletWhatsAppRaw = getSettingValue($pdo, 'tablet_token_whatsapp_enabled');
 
-    // Ensure a persistent default exists for first-time installs.
-    if ($stmt->rowCount() === 0) {
-        $insertStmt = $pdo->prepare(
-            'INSERT INTO system_settings (setting_key, setting_value) VALUES (?, ?)'
-        );
-        $insertStmt->execute(['announcement_language', $language]);
+    $language = normalizeAnnouncementLanguage($languageRaw);
+    $tabletWhatsAppEnabled = normalizeTabletWhatsAppEnabled($tabletWhatsAppRaw ?? '1');
+
+    // Ensure persistent defaults exist.
+    if ($languageRaw === null) {
+        upsertSetting($pdo, 'announcement_language', $language);
+    }
+    if ($tabletWhatsAppRaw === null) {
+        upsertSetting($pdo, 'tablet_token_whatsapp_enabled', (string) $tabletWhatsAppEnabled);
     }
 
     respond([
         'success' => true,
         'announcement_language' => $language,
+        'tablet_token_whatsapp_enabled' => $tabletWhatsAppEnabled === 1,
     ]);
 } catch (Throwable $e) {
     respond([
         'success' => false,
         'announcement_language' => 'marathi',
+        'tablet_token_whatsapp_enabled' => true,
         'message' => 'Unable to load settings right now.'
     ], 500);
 }
-

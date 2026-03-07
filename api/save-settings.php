@@ -32,25 +32,63 @@ function normalizeAnnouncementLanguage(?string $value): string
     return in_array($normalized, ['marathi', 'english'], true) ? $normalized : 'marathi';
 }
 
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    respond(['success' => false, 'message' => 'Method not allowed.'], 405);
+function normalizeTabletWhatsAppEnabled($value): int
+{
+    $normalized = strtolower(trim((string) $value));
+    return in_array($normalized, ['1', 'true', 'yes', 'on', 'enabled'], true) ? 1 : 0;
 }
 
-$language = normalizeAnnouncementLanguage($_POST['announcement_language'] ?? null);
-
-try {
-    ensureSettingsTable($pdo);
-
+function upsertSetting(PDO $pdo, string $key, string $value): void
+{
     $stmt = $pdo->prepare(
         'INSERT INTO system_settings (setting_key, setting_value)
          VALUES (?, ?)
          ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)'
     );
-    $stmt->execute(['announcement_language', $language]);
+    $stmt->execute([$key, $value]);
+}
+
+function getSettingValue(PDO $pdo, string $key): ?string
+{
+    $stmt = $pdo->prepare('SELECT setting_value FROM system_settings WHERE setting_key = ? LIMIT 1');
+    $stmt->execute([$key]);
+    $value = $stmt->fetchColumn();
+    return $value === false ? null : (string) $value;
+}
+
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    respond(['success' => false, 'message' => 'Method not allowed.'], 405);
+}
+
+$hasLanguage = array_key_exists('announcement_language', $_POST);
+$hasTabletWhatsApp = array_key_exists('tablet_token_whatsapp_enabled', $_POST);
+
+if (!$hasLanguage && !$hasTabletWhatsApp) {
+    respond([
+        'success' => false,
+        'message' => 'No supported setting provided.'
+    ], 422);
+}
+
+try {
+    ensureSettingsTable($pdo);
+
+    if ($hasLanguage) {
+        $language = normalizeAnnouncementLanguage($_POST['announcement_language'] ?? null);
+        upsertSetting($pdo, 'announcement_language', $language);
+    }
+    if ($hasTabletWhatsApp) {
+        $tabletWhatsAppEnabled = normalizeTabletWhatsAppEnabled($_POST['tablet_token_whatsapp_enabled'] ?? null);
+        upsertSetting($pdo, 'tablet_token_whatsapp_enabled', (string) $tabletWhatsAppEnabled);
+    }
+
+    $savedLanguage = normalizeAnnouncementLanguage(getSettingValue($pdo, 'announcement_language'));
+    $savedTabletWhatsAppEnabled = normalizeTabletWhatsAppEnabled(getSettingValue($pdo, 'tablet_token_whatsapp_enabled') ?? '1');
 
     respond([
         'success' => true,
-        'announcement_language' => $language,
+        'announcement_language' => $savedLanguage,
+        'tablet_token_whatsapp_enabled' => $savedTabletWhatsAppEnabled === 1,
         'message' => 'Settings saved.'
     ]);
 } catch (Throwable $e) {
@@ -59,4 +97,3 @@ try {
         'message' => 'Unable to save settings right now.'
     ], 500);
 }
-

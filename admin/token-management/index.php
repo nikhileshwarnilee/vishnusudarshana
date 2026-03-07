@@ -94,6 +94,23 @@ include '../includes/top-menu.php';
             <span id="languageSaveMsg" class="language-msg"></span>
         </div>
     </section>
+    <section class="settings-card" aria-label="Tablet WhatsApp Settings">
+        <h2 class="settings-title">Tablet Token WhatsApp</h2>
+        <div class="language-options">
+            <label class="language-option">
+                <input type="radio" name="tabletTokenWhatsapp" value="1" checked>
+                ON
+            </label>
+            <label class="language-option">
+                <input type="radio" name="tabletTokenWhatsapp" value="0">
+                OFF
+            </label>
+        </div>
+        <div class="language-actions">
+            <button type="button" id="saveTabletWhatsAppBtn" class="language-save-btn">Save Tablet WhatsApp Setting</button>
+            <span id="tabletWhatsAppSaveMsg" class="language-msg"></span>
+        </div>
+    </section>
     <div style="max-width:900px;margin:18px auto 0 auto;display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
         <label for="cityTableFilter" style="font-weight:600;color:#6b0000;">Filter by City:</label>
         <select id="cityTableFilter" class="form-select" style="min-width:180px;">
@@ -117,8 +134,28 @@ include '../includes/top-menu.php';
         }
     }
 
+    function getSelectedTabletTokenWhatsappEnabled() {
+        const selected = document.querySelector('input[name="tabletTokenWhatsapp"]:checked');
+        return selected ? selected.value : '1';
+    }
+
+    function setSelectedTabletTokenWhatsappEnabled(enabled) {
+        const safeValue = String(enabled) === '0' ? '0' : '1';
+        const radio = document.querySelector('input[name="tabletTokenWhatsapp"][value="' + safeValue + '"]');
+        if (radio) {
+            radio.checked = true;
+        }
+    }
+
     function setLanguageMessage(message, isError) {
         const msg = document.getElementById('languageSaveMsg');
+        if (!msg) return;
+        msg.textContent = message || '';
+        msg.style.color = isError ? '#a0001b' : '#176b1a';
+    }
+
+    function setTabletWhatsAppMessage(message, isError) {
+        const msg = document.getElementById('tabletWhatsAppSaveMsg');
         if (!msg) return;
         msg.textContent = message || '';
         msg.style.color = isError ? '#a0001b' : '#176b1a';
@@ -130,12 +167,15 @@ include '../includes/top-menu.php';
             .then(data => {
                 if (data && data.success) {
                     setSelectedAnnouncementLanguage(data.announcement_language || 'marathi');
+                    setSelectedTabletTokenWhatsappEnabled(data.tablet_token_whatsapp_enabled ? '1' : '0');
                 } else {
                     setSelectedAnnouncementLanguage('marathi');
+                    setSelectedTabletTokenWhatsappEnabled('1');
                 }
             })
             .catch(() => {
                 setSelectedAnnouncementLanguage('marathi');
+                setSelectedTabletTokenWhatsappEnabled('1');
             });
     }
 
@@ -162,6 +202,33 @@ include '../includes/top-menu.php';
         })
         .catch(() => {
             setLanguageMessage('Error while saving language.', true);
+        });
+    }
+
+    function saveTabletTokenWhatsAppSetting() {
+        const enabledValue = getSelectedTabletTokenWhatsappEnabled();
+        const body = new URLSearchParams();
+        body.set('tablet_token_whatsapp_enabled', enabledValue);
+
+        setTabletWhatsAppMessage('Saving...', false);
+        fetch('../../api/save-settings.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
+            },
+            body: body.toString()
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data && data.success) {
+                setSelectedTabletTokenWhatsappEnabled(data.tablet_token_whatsapp_enabled ? '1' : '0');
+                setTabletWhatsAppMessage('Tablet token WhatsApp setting saved.', false);
+            } else {
+                setTabletWhatsAppMessage('Failed to save tablet WhatsApp setting.', true);
+            }
+        })
+        .catch(() => {
+            setTabletWhatsAppMessage('Error while saving tablet WhatsApp setting.', true);
         });
     }
 
@@ -380,6 +447,10 @@ include '../includes/top-menu.php';
         const saveLanguageBtn = document.getElementById('saveLanguageBtn');
         if (saveLanguageBtn) {
             saveLanguageBtn.addEventListener('click', saveAnnouncementLanguage);
+        }
+        const saveTabletWhatsAppBtn = document.getElementById('saveTabletWhatsAppBtn');
+        if (saveTabletWhatsAppBtn) {
+            saveTabletWhatsAppBtn.addEventListener('click', saveTabletTokenWhatsAppSetting);
         }
         fetchTokens();
         const cityFilter = document.getElementById('cityTableFilter');

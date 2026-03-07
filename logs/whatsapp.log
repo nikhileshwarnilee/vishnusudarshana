@@ -40,3 +40,4 @@
 [2026-02-22 19:16:57] TO: 919850057444 | TEMPLATE: Admin Service Alert | STATUS: SUCCESS | DETAILS: {"success":"true","submitted_message_id":"0c6266e9-4f0f-49bc-a8a9-8092aeec891e"}
 [2026-02-26 04:15:39] TO: 919595744266 | TEMPLATE: Website Service Request Confirmation | STATUS: SUCCESS | DETAILS: {"success":"true","submitted_message_id":"1e4ac68f-35e6-4448-b72f-f81da3baea82"}
 [2026-02-26 04:15:39] TO: 919850057444 | TEMPLATE: Admin Service Alert | STATUS: SUCCESS | DETAILS: {"success":"true","submitted_message_id":"5088a47b-4ef9-4b6b-8977-0a72286aedc1"}
+[2026-03-07 15:12:23] TO: 919595744266 | TEMPLATE: Token Booked | STATUS: SUCCESS | DETAILS: {"success":"true","submitted_message_id":"73222313-f9a1-44dc-8766-fc0b6f2e2c58"}
