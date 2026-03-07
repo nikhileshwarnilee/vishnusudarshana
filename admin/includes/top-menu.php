@@ -6,6 +6,8 @@
  * No hardcoded paths
  */
 require_once __DIR__ . '/../../helpers/favicon.php';
+require_once __DIR__ . '/admin-auth.php';
+require_once __DIR__ . '/permissions.php';
 
 /* --------------------------------------------------
    BASE URL DETECTION
@@ -223,9 +225,24 @@ if ($servicesSeenAt) {
 }
 $showServicesNotificationDot = ((int)$servicesDotStmt->fetchColumn()) > 0;
 
+// --- Current route action visibility (UI layer) ---
+$vsCanEditCurrentRoute = true;
+$vsCanDeleteCurrentRoute = true;
+if (
+    isset($_SESSION['user_id']) &&
+    !vs_admin_is_super_admin() &&
+    function_exists('vs_admin_can_access_route') &&
+    function_exists('vs_admin_current_route')
+) {
+    $vsCurrentRoute = vs_admin_current_route();
+    $vsCurrentUserId = (int)$_SESSION['user_id'];
+    $vsCanEditCurrentRoute = vs_admin_can_access_route($vsCurrentUserId, $vsCurrentRoute, 'edit');
+    $vsCanDeleteCurrentRoute = vs_admin_can_access_route($vsCurrentUserId, $vsCurrentRoute, 'delete');
+}
+
 // --- Permission filtering ---
 // Only filter for non-admins; admin (user_id=1) always sees all menus/submenus
-if (isset($_SESSION['user_id']) && $_SESSION['user_id'] != 1) {
+if (isset($_SESSION['user_id']) && !vs_admin_is_super_admin()) {
     $user_id = $_SESSION['user_id'];
     $perms = $pdo->prepare('SELECT menu, submenu FROM user_permissions WHERE user_id=? AND action="view"');
     $perms->execute([$user_id]);
@@ -328,6 +345,29 @@ $adminFaviconConfig = [
 html, body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif !important;
 }
+
+<?php if (!$vsCanEditCurrentRoute): ?>
+.edit-btn,
+.btn-edit,
+.action-btn.edit,
+[class*="edit-title-btn"],
+[id*="editBtn"],
+[id*="EditBtn"] {
+    display: none !important;
+}
+<?php endif; ?>
+
+<?php if (!$vsCanDeleteCurrentRoute): ?>
+.delete-btn,
+.btn-delete,
+.action-btn.delete,
+[class*="delete-title-btn"],
+[id*="deleteBtn"],
+[id*="DeleteBtn"],
+.danger-btn {
+    display: none !important;
+}
+<?php endif; ?>
 
 *, *::before, *::after {
     font-family: inherit;
@@ -922,7 +962,7 @@ body {
                             <?php if ($showMenuNotificationDot): ?>
                                 <span class="menu-notification-dot" title="New updates"></span>
                             <?php endif; ?>
-                            <span class="dropdown-arrow">▼</span>
+                            <span class="dropdown-arrow">&#9660;</span>
                         </a>
 
                         <ul class="admin-top-menu-dropdown">
@@ -950,7 +990,7 @@ body {
         </ul>
 
         <!-- Mobile toggle -->
-        <div class="admin-top-menu-mobile-toggle" id="adminTopMenuToggle">☰</div>
+        <div class="admin-top-menu-mobile-toggle" id="adminTopMenuToggle">&#9776;</div>
 
     </div>
 </nav>
@@ -960,6 +1000,59 @@ body {
      ======================= -->
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+    const canEditOnRoute = <?= $vsCanEditCurrentRoute ? 'true' : 'false' ?>;
+    const canDeleteOnRoute = <?= $vsCanDeleteCurrentRoute ? 'true' : 'false' ?>;
+
+    // Hide action controls on UI when user doesn't have route-level action permission.
+    if (!canEditOnRoute || !canDeleteOnRoute) {
+        const nodes = document.querySelectorAll('a, button, input[type="submit"], input[type="button"]');
+        nodes.forEach(function (el) {
+            const meta = [
+                el.textContent || '',
+                el.value || '',
+                el.getAttribute('title') || '',
+                el.getAttribute('aria-label') || '',
+                el.getAttribute('href') || '',
+                el.getAttribute('onclick') || '',
+                el.className || '',
+                el.id || ''
+            ].join(' ').toLowerCase();
+
+            const isEditControl =
+                meta.includes(' edit') ||
+                meta.startsWith('edit') ||
+                meta.includes('btn-edit') ||
+                meta.includes('edit-btn') ||
+                meta.includes('blog-edit.php') ||
+                meta.includes('edit.php');
+
+            const isDeleteControl =
+                meta.includes(' delete') ||
+                meta.startsWith('delete') ||
+                meta.includes('remove') ||
+                meta.includes('btn-delete') ||
+                meta.includes('delete-btn') ||
+                meta.includes('delete=') ||
+                meta.includes('delete-');
+
+            if ((!canEditOnRoute && isEditControl) || (!canDeleteOnRoute && isDeleteControl)) {
+                el.style.display = 'none';
+                el.setAttribute('data-hidden-by-permission', '1');
+            }
+        });
+
+        // Hide table/action column labels if present
+        document.querySelectorAll('th, td').forEach(function (cell) {
+            const txt = (cell.textContent || '').trim().toLowerCase();
+            if (!canEditOnRoute && txt === 'edit') {
+                cell.style.display = 'none';
+            }
+            if (!canDeleteOnRoute && (txt === 'delete' || txt === 'remove')) {
+                cell.style.display = 'none';
+            }
+        });
+    }
+
     const toggle = document.getElementById('adminTopMenuToggle');
     const menu = document.getElementById('adminTopMenuList');
     const body = document.body;
@@ -1105,3 +1198,4 @@ document.addEventListener('DOMContentLoaded', function () {
 <!-- RESPONSIVE TABLES AUTO-WRAPPER SCRIPT -->
 <script src="<?= $baseUrl ?>/admin/includes/responsive-tables.js"></script>
 <?php include __DIR__ . '/floating-model.php'; ?>
+

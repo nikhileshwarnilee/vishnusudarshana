@@ -2,12 +2,13 @@
 // admin/login.php
 require_once __DIR__ . '/../config/db.php';
 require_once __DIR__ . '/../helpers/favicon.php';
+require_once __DIR__ . '/includes/admin-auth.php';
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 // If already logged in, redirect to admin dashboard
 if (isset($_SESSION['user_id'])) {
-    if ($_SESSION['user_id'] == 1) {
+    if (vs_admin_is_super_admin()) {
         header('Location: index.php');
     } else {
         header('Location: staff-dashboard.php');
@@ -23,9 +24,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $stmt->execute([$email]);
     $user = $stmt->fetch();
     if ($user && $user['password'] === $password) {
-        $_SESSION['user_id'] = $user['id'];
-        $_SESSION['user_name'] = $user['name'];
-        if ($user['id'] == 1) {
+        vs_admin_mark_session_user($user);
+        if (vs_admin_is_super_admin()) {
             header('Location: index.php');
         } else {
             header('Location: staff-dashboard.php');

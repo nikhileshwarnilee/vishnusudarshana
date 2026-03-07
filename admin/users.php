@@ -1,10 +1,11 @@
 <?php
 require_once (is_file(__DIR__ . '/includes/permissions.php') ? __DIR__ . '/includes/permissions.php' : dirname(__DIR__) . '/includes/permissions.php');
 admin_enforce_mapped_permission('auto');
+require_once __DIR__ . '/includes/admin-auth.php';
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
-if (!isset($_SESSION['user_id']) || $_SESSION['user_id'] != 1) {
+if (!isset($_SESSION['user_id']) || !vs_admin_is_super_admin()) {
     header('Location: index.php');
     exit;
 }

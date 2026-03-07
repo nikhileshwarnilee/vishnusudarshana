@@ -1,6 +1,7 @@
-﻿<?php
+<?php
 require_once (is_file(__DIR__ . '/includes/permissions.php') ? __DIR__ . '/includes/permissions.php' : dirname(__DIR__) . '/includes/permissions.php');
 admin_enforce_mapped_permission('auto');
+require_once __DIR__ . '/includes/admin-auth.php';
 date_default_timezone_set('Asia/Kolkata');
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -9,7 +10,7 @@ if (!isset($_SESSION['user_id'])) {
     header('Location: login.php');
     exit;
 }
-if ($_SESSION['user_id'] != 1) {
+if (!vs_admin_is_super_admin()) {
     header('Location: staff-dashboard.php');
     exit;
 }

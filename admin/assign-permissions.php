@@ -1,7 +1,8 @@
 <?php
 require_once (is_file(__DIR__ . '/includes/permissions.php') ? __DIR__ . '/includes/permissions.php' : dirname(__DIR__) . '/includes/permissions.php');
 admin_enforce_mapped_permission('auto');
-if (!isset($_SESSION['user_id']) || (int)$_SESSION['user_id'] !== 1) {
+require_once __DIR__ . '/includes/admin-auth.php';
+if (!isset($_SESSION['user_id']) || !vs_admin_is_super_admin()) {
     header('Location: index.php');
     exit;
 }

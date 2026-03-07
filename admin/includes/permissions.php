@@ -5,6 +5,7 @@
  * This guard maps admin routes to permission rows in user_permissions
  * (menu + submenu + action) and enforces view/edit/delete access.
  */
+require_once __DIR__ . '/admin-auth.php';
 
 if (!function_exists('vs_admin_permission_map')) {
     function vs_admin_permission_map(): array
@@ -288,7 +289,20 @@ if (!function_exists('vs_admin_permissions_matrix')) {
 if (!function_exists('vs_admin_user_has_permission')) {
     function vs_admin_user_has_permission(int $userId, string $menu, string $submenu, string $action): bool
     {
-        if ($userId === 1) {
+        if (
+            $userId === 1 &&
+            function_exists('vs_admin_use_id1_fallback') &&
+            vs_admin_use_id1_fallback()
+        ) {
+            return true;
+        }
+
+        if (
+            session_status() === PHP_SESSION_ACTIVE &&
+            (int)($_SESSION['user_id'] ?? 0) === $userId &&
+            function_exists('vs_admin_is_super_admin') &&
+            vs_admin_is_super_admin()
+        ) {
             return true;
         }
 
@@ -323,7 +337,20 @@ if (!function_exists('vs_admin_permission_denied')) {
 if (!function_exists('admin_enforce_mapped_permission')) {
     function vs_admin_can_access_route(int $userId, string $route, string $requestedAction = 'auto'): bool
     {
-        if ($userId === 1) {
+        if (
+            $userId === 1 &&
+            function_exists('vs_admin_use_id1_fallback') &&
+            vs_admin_use_id1_fallback()
+        ) {
+            return true;
+        }
+
+        if (
+            session_status() === PHP_SESSION_ACTIVE &&
+            (int)($_SESSION['user_id'] ?? 0) === $userId &&
+            function_exists('vs_admin_is_super_admin') &&
+            vs_admin_is_super_admin()
+        ) {
             return true;
         }
 
@@ -377,7 +404,7 @@ if (!function_exists('admin_enforce_mapped_permission')) {
         }
 
         $userId = (int)$_SESSION['user_id'];
-        if ($userId === 1) {
+        if (vs_admin_is_super_admin()) {
             return true;
         }
 

@@ -261,13 +261,13 @@ $bookings = $stmt->fetchAll(PDO::FETCH_ASSOC);
             $bookingsForDate = $grouped[$date];
             $dayName = date('l', strtotime($date));
             $marathiDays = [
-                'Sunday' => 'à¤°à¤µà¤¿à¤µà¤¾à¤°',
-                'Monday' => 'à¤¸à¥‹à¤®à¤µà¤¾à¤°',
-                'Tuesday' => 'à¤®à¤‚à¤—à¤³à¤µà¤¾à¤°',
-                'Wednesday' => 'à¤¬à¥à¤§à¤µà¤¾à¤°',
-                'Thursday' => 'à¤—à¥à¤°à¥à¤µà¤¾à¤°',
-                'Friday' => 'à¤¶à¥à¤•à¥à¤°à¤µà¤¾à¤°',
-                'Saturday' => 'à¤¶à¤¨à¤¿à¤µà¤¾à¤°'
+                'Sunday' => 'रविवार',
+                'Monday' => 'सोमवार',
+                'Tuesday' => 'मंगळवार',
+                'Wednesday' => 'बुधवार',
+                'Thursday' => 'गुरुवार',
+                'Friday' => 'शुक्रवार',
+                'Saturday' => 'शनिवार'
             ];
             $marathiDay = $marathiDays[$dayName] ?? '';
             // Group by city for filter
