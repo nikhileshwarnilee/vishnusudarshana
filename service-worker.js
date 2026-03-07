@@ -37,7 +37,8 @@ self.addEventListener('fetch', (event) => {
 
   // For PHP/HTML and API requests, always go to network to avoid stale pages
   const isDynamic = url.pathname.endsWith('.php') || request.mode === 'navigate';
-  if (isDynamic) {
+  const isCssOrJs = url.pathname.endsWith('.css') || url.pathname.endsWith('.js');
+  if (isDynamic || isCssOrJs) {
     event.respondWith(fetch(request).catch(() => caches.match(request)));
     return;
   }

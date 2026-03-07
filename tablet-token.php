@@ -105,7 +105,7 @@ $receiptLocationLabel = $locationLabel;
                         <li>&#x92E;&#x94B;&#x92C;&#x93E;&#x908;&#x932;&#x92E;&#x927;&#x94D;&#x92F;&#x947; &#x92C;&#x94D;&#x930;&#x93E;&#x909;&#x91D;&#x930; &#x909;&#x918;&#x921;&#x93E; &#x906;&#x923;&#x93F; <strong>vishnusudarshana.com</strong> &#x932;&#x93E; &#x92D;&#x947;&#x91F; &#x926;&#x94D;&#x92F;&#x93E;.</li>
                         <li><strong>Book Token</strong> &#x92A;&#x947;&#x91C; &#x909;&#x918;&#x921;&#x93E; &#x915;&#x93F;&#x902;&#x935;&#x93E; &#x925;&#x947;&#x91F; <strong>/book-token.php</strong> &#x935;&#x93E;&#x92A;&#x930;&#x93E;.</li>
                         <li>&#x924;&#x93E;&#x930;&#x940;&#x916;, &#x932;&#x94B;&#x915;&#x947;&#x936;&#x928;, &#x928;&#x93E;&#x935; &#x906;&#x923;&#x93F; WhatsApp &#x928;&#x902;&#x92C;&#x930; &#x92D;&#x930;&#x93E;.</li>
-                        <li><strong>Book Office Visit Token</strong> &#x935;&#x930; &#x915;&#x94D;&#x932;&#x93F;&#x915; &#x915;&#x930;&#x942;&#x928; &#x91F;&#x94B;&#x915;&#x928; &#x928;&#x93F;&#x936;&#x94D;&#x91A;&#x93F;&#x924; &#x915;&#x930;&#x93E;.</li>
+                        <li><strong>Book Token</strong> &#x935;&#x930; &#x915;&#x94D;&#x932;&#x93F;&#x915; &#x915;&#x930;&#x942;&#x928; &#x91F;&#x94B;&#x915;&#x928; &#x928;&#x93F;&#x936;&#x94D;&#x91A;&#x93F;&#x924; &#x915;&#x930;&#x93E;.</li>
                     </ol>
                     <div class="online-qr-wrap" aria-label="Online booking QR code">
                         <p class="online-qr-title">&#x911;&#x928;&#x932;&#x93E;&#x907;&#x928; &#x91F;&#x94B;&#x915;&#x928; &#x938;&#x93E;&#x920;&#x940; QR &#x938;&#x94D;&#x915;&#x945;&#x928; &#x915;&#x930;&#x93E;</p>

@@ -57,8 +57,14 @@ $faviconConfig = [
             </li>
             <li>
                 <a href="services.php" class="nav-link">
-                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg>
-                        <span>Services</span>
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15 15 0 0 1 4 10 15 15 0 0 1-4 10 15 15 0 0 1-4-10 15 15 0 0 1 4-10z"></path></svg>
+                        <span>Online Services</span>
+                </a>
+            </li>
+            <li>
+                <a href="offlineservices.php" class="nav-link">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 22h18"></path><path d="M5 22V7l7-4 7 4v15"></path><rect x="9" y="10" width="2" height="2"></rect><rect x="13" y="10" width="2" height="2"></rect><path d="M10 22v-5h4v5"></path></svg>
+                        <span>Offline Services</span>
                 </a>
             </li>
             <li>

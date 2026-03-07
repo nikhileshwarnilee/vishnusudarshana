@@ -6,6 +6,38 @@
 <?php
 require_once __DIR__ . '/helpers/favicon.php';
 require_once __DIR__ . '/helpers/share.php';
+
+$isFormsPath = (strpos($_SERVER['PHP_SELF'] ?? '', '/forms/') !== false);
+$assetPrefix = $isFormsPath ? '../' : '';
+
+$styleHref = $assetPrefix . 'assets/css/style.css';
+$welcomeIntroCssHref = $assetPrefix . 'assets/css/welcome-intro.css';
+$languageJsSrc = $assetPrefix . 'assets/js/language.js';
+$welcomeIntroJsSrc = $assetPrefix . 'assets/js/welcome-intro.js';
+
+$styleFile = __DIR__ . '/assets/css/style.css';
+$welcomeIntroCssFile = __DIR__ . '/assets/css/welcome-intro.css';
+$languageJsFile = __DIR__ . '/assets/js/language.js';
+$welcomeIntroJsFile = __DIR__ . '/assets/js/welcome-intro.js';
+
+if (is_file($styleFile)) {
+    $styleHref .= '?v=' . filemtime($styleFile);
+}
+if (is_file($welcomeIntroCssFile)) {
+    $welcomeIntroCssHref .= '?v=' . filemtime($welcomeIntroCssFile);
+}
+if (is_file($languageJsFile)) {
+    $languageJsSrc .= '?v=' . filemtime($languageJsFile);
+}
+if (is_file($welcomeIntroJsFile)) {
+    $welcomeIntroJsSrc .= '?v=' . filemtime($welcomeIntroJsFile);
+}
+
+$currentRequestPath = parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH);
+$currentPage = basename($currentRequestPath ?: ($_SERVER['PHP_SELF'] ?? ''));
+$isActiveTopNav = static function (array $pages) use ($currentPage) {
+    return in_array($currentPage, $pages, true);
+};
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -15,11 +47,11 @@ require_once __DIR__ . '/helpers/share.php';
     <title><?php echo isset($pageTitle) ? $pageTitle : 'Vishnusudarshana'; ?></title>
     <?php echo vs_favicon_tags(); ?>
     <?php echo vs_social_meta_tags(); ?>
-    <link rel="stylesheet" href="<?php echo (strpos($_SERVER['PHP_SELF'], '/forms/') === false ? 'assets/css/style.css' : '../assets/css/style.css'); ?>">
-    <link rel="stylesheet" href="<?php echo (strpos($_SERVER['PHP_SELF'], '/forms/') === false ? 'assets/css/welcome-intro.css' : '../assets/css/welcome-intro.css'); ?>">
-    <script src="<?php echo (strpos($_SERVER['PHP_SELF'], '/forms/') === false ? 'assets/js/language.js' : '../assets/js/language.js'); ?>" defer></script>
+    <link rel="stylesheet" href="<?php echo htmlspecialchars($styleHref, ENT_QUOTES, 'UTF-8'); ?>">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars($welcomeIntroCssHref, ENT_QUOTES, 'UTF-8'); ?>">
+    <script src="<?php echo htmlspecialchars($languageJsSrc, ENT_QUOTES, 'UTF-8'); ?>" defer></script>
     <!-- <script src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script> -->
-    <script src="<?php echo (strpos($_SERVER['PHP_SELF'], '/forms/') === false ? 'assets/js/welcome-intro.js' : '../assets/js/welcome-intro.js'); ?>" defer></script>
+    <script src="<?php echo htmlspecialchars($welcomeIntroJsSrc, ENT_QUOTES, 'UTF-8'); ?>" defer></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Marcellus&display=swap');
         html, body {
@@ -178,11 +210,12 @@ require_once __DIR__ . '/helpers/share.php';
             <div class="header-12-nav-icons-row">
                 <nav class="header-12-nav" aria-label="Primary Navigation">
                     <ul class="nav-menu">
-                        <li><a href="index.php" data-i18n="nav_home">Home</a></li>
-                        <li><a href="services.php" data-i18n="nav_services">Services</a></li>
-                        <li><a href="blogs.php" data-i18n="nav_blogs">Knowledge Centre</a></li>
-                        <li><a href="track.php" data-i18n="nav_track">Track</a></li>
-                        <li><a href="about-us.php" data-i18n="nav_about">About Us</a></li>
+                        <li><a class="top-nav-link<?php echo $isActiveTopNav(['index.php', '']) ? ' is-active' : ''; ?>" href="index.php" data-i18n="nav_home">Home</a></li>
+                        <li><a class="top-nav-link<?php echo $isActiveTopNav(['services.php', 'category.php', 'service-form.php', 'service-review.php', 'service-review2.php', 'payment-init.php', 'payment-success.php', 'payment-failed.php']) ? ' is-active' : ''; ?>" href="services.php">Online Services</a></li>
+                        <li><a class="top-nav-link<?php echo $isActiveTopNav(['offlineservices.php', 'book-token.php', 'live-token.php']) ? ' is-active' : ''; ?>" href="offlineservices.php">Offline Services</a></li>
+                        <li><a class="top-nav-link<?php echo $isActiveTopNav(['blogs.php', 'blog-detail.php']) ? ' is-active' : ''; ?>" href="blogs.php" data-i18n="nav_blogs">Knowledge Centre</a></li>
+                        <li><a class="top-nav-link<?php echo $isActiveTopNav(['track.php']) ? ' is-active' : ''; ?>" href="track.php" data-i18n="nav_track">Track</a></li>
+                        <li><a class="top-nav-link<?php echo $isActiveTopNav(['about-us.php']) ? ' is-active' : ''; ?>" href="about-us.php" data-i18n="nav_about">About Us</a></li>
                     </ul>
                 </nav>
                 <div class="header-icons-right">
