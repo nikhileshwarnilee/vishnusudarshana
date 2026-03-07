@@ -7,6 +7,7 @@
     var BUTTON_PRESS_MS = 150;
     var PRINT_ANIMATION_MS = 3400;
     var TTS_CHUNK_LIMIT = 180;
+    var RAWBT_SCHEME_PREFIX = 'rawbt:print?text=';
     var THERMAL_PRINT_IFRAME_ID = 'tablet-thermal-print-frame';
     var THERMAL_RECEIPT_WIDTH_MM = 58;
 
@@ -437,6 +438,55 @@
             .replace(/'/g, '&#39;');
     }
 
+    function isAndroidDevice() {
+        return /android/i.test(String(window.navigator.userAgent || ''));
+    }
+
+    function buildRawBtReceiptText(details) {
+        var tokenText = toAsciiDigits(details.token);
+        var phoneText = toAsciiDigits(details.phone);
+        var dateText = toAsciiDigits(details.date);
+        var timeText = toAsciiDigits(details.time);
+        var locationText = String(details.location || defaultLocationLabel || 'Solapur');
+        var serviceTimeText = String(details.serviceTime || '').trim();
+
+        var lines = [
+            'VISHNUSUDARSHANA',
+            '\u092a\u094d\u0930\u0924\u094d\u092f\u0915\u094d\u0937 \u0915\u093e\u0930\u094d\u092f\u093e\u0932\u092f \u092d\u0947\u091f \u091f\u094b\u0915\u0928',
+            '----------------------',
+            'Token Number : ' + tokenText,
+            'Mobile       : ' + phoneText,
+            'Location     : ' + locationText,
+            'Date         : ' + dateText,
+            'Time         : ' + timeText
+        ];
+
+        if (serviceTimeText) {
+            lines.push('Slot         : ' + serviceTimeText);
+        }
+
+        lines.push('----------------------');
+        lines.push('\u0915\u0943\u092a\u092f\u093e \u0938\u094d\u0915\u094d\u0930\u0940\u0928\u0935\u0930 \u091a\u093e\u0932\u0942 \u091f\u094b\u0915\u0928 \u092a\u093e\u0939\u093e');
+        lines.push('\u0927\u0928\u094d\u092f\u0935\u093e\u0926');
+        lines.push('');
+        lines.push('');
+        lines.push('');
+
+        return lines.join('\n');
+    }
+
+    function printViaRawBt(details) {
+        var receiptText = buildRawBtReceiptText(details);
+        var rawBtUrl = RAWBT_SCHEME_PREFIX + encodeURIComponent(receiptText);
+
+        try {
+            window.location.href = rawBtUrl;
+            return true;
+        } catch (error) {
+            return false;
+        }
+    }
+
     function getThermalPrintFrame() {
         var frame = document.getElementById(THERMAL_PRINT_IFRAME_ID);
         if (frame) {
@@ -504,6 +554,10 @@
     }
 
     function printThermalReceipt(details) {
+        if (isAndroidDevice() && printViaRawBt(details)) {
+            return;
+        }
+
         try {
             var frame = getThermalPrintFrame();
             if (!frame || !frame.contentWindow || !frame.contentWindow.document) {
