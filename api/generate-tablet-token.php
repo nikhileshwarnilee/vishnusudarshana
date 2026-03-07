@@ -197,6 +197,7 @@ try {
         'token' => $nextTokenNo,
         'token_no' => $nextTokenNo,
         'token_date' => $tokenDate,
+        'service_time' => $serviceTime,
         'location' => $location,
         'phone_number' => $mobileNumber,
         'cooldown_seconds' => $cooldownSeconds,

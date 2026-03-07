@@ -7,6 +7,8 @@
     var BUTTON_PRESS_MS = 150;
     var PRINT_ANIMATION_MS = 3400;
     var TTS_CHUNK_LIMIT = 180;
+    var THERMAL_PRINT_IFRAME_ID = 'tablet-thermal-print-frame';
+    var THERMAL_RECEIPT_WIDTH_MM = 58;
 
     var LOCATION_LABELS_MR = {
         solapur: '\u0938\u094b\u0932\u093e\u092a\u0942\u0930'
@@ -418,6 +420,109 @@
         return String(value).replace(/[0-9]/g, function (digit) {
             return String.fromCharCode(0x0966 + Number(digit));
         });
+    }
+
+    function toAsciiDigits(value) {
+        return String(value || '').replace(/[\u0966-\u096f]/g, function (digit) {
+            return String(digit.charCodeAt(0) - 0x0966);
+        });
+    }
+
+    function escapeHtml(value) {
+        return String(value || '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    function getThermalPrintFrame() {
+        var frame = document.getElementById(THERMAL_PRINT_IFRAME_ID);
+        if (frame) {
+            return frame;
+        }
+
+        frame = document.createElement('iframe');
+        frame.id = THERMAL_PRINT_IFRAME_ID;
+        frame.setAttribute('aria-hidden', 'true');
+        frame.style.position = 'fixed';
+        frame.style.width = '0';
+        frame.style.height = '0';
+        frame.style.border = '0';
+        frame.style.opacity = '0';
+        frame.style.pointerEvents = 'none';
+        frame.style.right = '0';
+        frame.style.bottom = '0';
+        document.body.appendChild(frame);
+
+        return frame;
+    }
+
+    function buildThermalReceiptHtml(details) {
+        var tokenText = '#' + toAsciiDigits(details.token);
+        var phoneText = toAsciiDigits(details.phone);
+        var locationText = details.location || defaultLocationLabel || 'Solapur';
+        var dateText = toAsciiDigits(details.date);
+        var timeText = toAsciiDigits(details.time);
+        var serviceTimeText = details.serviceTime || '';
+
+        return '<!DOCTYPE html>' +
+            '<html><head><meta charset="UTF-8">' +
+            '<meta name="viewport" content="width=device-width, initial-scale=1">' +
+            '<title>Token Receipt</title>' +
+            '<style>' +
+            '@page{size:' + THERMAL_RECEIPT_WIDTH_MM + 'mm auto;margin:0;}' +
+            'html,body{margin:0;padding:0;width:' + THERMAL_RECEIPT_WIDTH_MM + 'mm;background:#fff;color:#000;}' +
+            'body{font-family:monospace;font-size:12px;line-height:1.35;padding:4mm 3mm;box-sizing:border-box;}' +
+            '.center{text-align:center;}' +
+            '.brand{font-weight:700;font-size:13px;letter-spacing:0.2px;}' +
+            '.title{font-weight:700;margin-top:2mm;font-size:12px;}' +
+            '.line{border-top:1px dashed #000;margin:2mm 0;}' +
+            '.token{font-size:26px;font-weight:700;line-height:1.05;margin:1mm 0 2mm 0;}' +
+            '.row{display:flex;justify-content:space-between;gap:4px;white-space:nowrap;}' +
+            '.row .label{font-weight:700;}' +
+            '.note{margin-top:2mm;font-size:11px;}' +
+            '</style></head><body>' +
+            '<div class="center brand">VISHNUSUDARSHANA.COM</div>' +
+            '<div class="center title">OFFICE VISIT TOKEN</div>' +
+            '<div class="line"></div>' +
+            '<div class="center">TOKEN NO</div>' +
+            '<div class="center token">' + escapeHtml(tokenText) + '</div>' +
+            '<div class="line"></div>' +
+            '<div class="row"><span class="label">Mobile</span><span>' + escapeHtml(phoneText) + '</span></div>' +
+            '<div class="row"><span class="label">Location</span><span>' + escapeHtml(locationText) + '</span></div>' +
+            '<div class="row"><span class="label">Date</span><span>' + escapeHtml(dateText) + '</span></div>' +
+            '<div class="row"><span class="label">Time</span><span>' + escapeHtml(timeText) + '</span></div>' +
+            (serviceTimeText ? '<div class="row"><span class="label">Slot</span><span>' + escapeHtml(serviceTimeText) + '</span></div>' : '') +
+            '<div class="line"></div>' +
+            '<div class="note center">Please keep this token slip safely.</div>' +
+            '</body></html>';
+    }
+
+    function printThermalReceipt(details) {
+        try {
+            var frame = getThermalPrintFrame();
+            if (!frame || !frame.contentWindow || !frame.contentWindow.document) {
+                return;
+            }
+
+            var frameDoc = frame.contentWindow.document;
+            frameDoc.open();
+            frameDoc.write(buildThermalReceiptHtml(details));
+            frameDoc.close();
+
+            window.setTimeout(function () {
+                try {
+                    frame.contentWindow.focus();
+                    frame.contentWindow.print();
+                } catch (error) {
+                    // Ignore print errors; on-screen receipt remains visible.
+                }
+            }, 120);
+        } catch (error) {
+            // Ignore print setup errors; on-screen receipt remains visible.
+        }
     }
 
     function buildTtsChunks(text) {
@@ -1131,11 +1236,13 @@
                     phone: submittedPhone,
                     location: toLocationLabel(data.location || location),
                     date: getFormattedDate(now),
-                    time: getFormattedTime(now)
+                    time: getFormattedTime(now),
+                    serviceTime: data.service_time || ''
                 };
 
                 applyReceiptDetails(details);
                 persistReceipt(details);
+                printThermalReceipt(details);
                 var remainingAfterIssue = Number(data.remaining_tokens);
                 var totalTokenCapacity = Number(data.total_tokens);
                 if (Number.isFinite(remainingAfterIssue) && remainingAfterIssue >= 0) {
