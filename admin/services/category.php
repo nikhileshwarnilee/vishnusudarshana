@@ -1,9 +1,13 @@
 <?php
+require_once (is_file(__DIR__ . '/includes/permissions.php') ? __DIR__ . '/includes/permissions.php' : dirname(__DIR__) . '/includes/permissions.php');
+admin_enforce_mapped_permission('auto');
 require_once __DIR__ . '/../../config/db.php';
 
 // Ensure session is started
 if (session_status() === PHP_SESSION_NONE) {
-    session_start();
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
 }
 
 // Check authentication
@@ -265,7 +269,7 @@ $categories = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     <?php if (!empty($cat['logo'])): ?>
                         <img src="/assets/images/logo/<?php echo htmlspecialchars($cat['logo']); ?>" class="cat-logo" alt="Logo">
                     <?php else: ?>
-                        <span style="color:#aaa;">—</span>
+                        <span style="color:#aaa;">â€”</span>
                     <?php endif; ?>
                 </td>
                 <td><?php echo htmlspecialchars($cat['category_name']); ?></td>
@@ -361,3 +365,6 @@ $categories = $stmt->fetchAll(PDO::FETCH_ASSOC);
 </div>
 </body>
 </html>
+
+
+

@@ -1,6 +1,10 @@
 <?php
+require_once (is_file(__DIR__ . '/includes/permissions.php') ? __DIR__ . '/includes/permissions.php' : dirname(__DIR__) . '/includes/permissions.php');
+admin_enforce_mapped_permission('auto');
 // view-customer-payments.php
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 if (!isset($_SESSION['user_id'])) {
 	header('Location: ../login.php');
 	exit;
@@ -50,7 +54,7 @@ $payments = $stmt->fetchAll();
 		<?php else: foreach ($payments as $pay): ?>
 			<tr>
 				<td><?= htmlspecialchars($pay['paid_date']) ?></td>
-				<td>₹<?= number_format($pay['paid_amount'],2) ?></td>
+				<td>â‚¹<?= number_format($pay['paid_amount'],2) ?></td>
 				<td><?= htmlspecialchars($pay['note']) ?></td>
 				<td><?= htmlspecialchars($pay['method']) ?></td>
 				<td><?= htmlspecialchars($pay['transaction_details']) ?></td>
@@ -60,3 +64,6 @@ $payments = $stmt->fetchAll();
 </div>
 </body>
 </html>
+
+
+

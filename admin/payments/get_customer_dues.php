@@ -1,4 +1,6 @@
 <?php
+require_once (is_file(__DIR__ . '/includes/permissions.php') ? __DIR__ . '/includes/permissions.php' : dirname(__DIR__) . '/includes/permissions.php');
+admin_enforce_mapped_permission('auto');
 // get_customer_dues.php
 require_once __DIR__ . '/../../config/db.php';
 header('Content-Type: application/json');
@@ -27,3 +29,4 @@ echo json_encode([
     'total_paid' => (float)$total_paid,
     'total_dues' => (float)$total_dues
 ]);
+

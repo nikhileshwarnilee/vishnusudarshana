@@ -1,4 +1,6 @@
 <?php
+require_once (is_file(__DIR__ . '/includes/permissions.php') ? __DIR__ . '/includes/permissions.php' : dirname(__DIR__) . '/includes/permissions.php');
+admin_enforce_mapped_permission('auto');
 date_default_timezone_set('Asia/Kolkata');
 require_once __DIR__ . '/../../config/db.php';
 require_once __DIR__ . '/../../helpers/send_whatsapp.php';
@@ -194,7 +196,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['category_slug'])) {
         </label>
         <div id="dynamicFields"></div>
         <div id="productSection" style="display:none;"></div>
-        <div id="totalSection" style="display:none;margin-bottom:12px;font-weight:600;color:#800000;">Total: <span id="totalAmount">₹0.00</span></div>
+        <div id="totalSection" style="display:none;margin-bottom:12px;font-weight:600;color:#800000;">Total: <span id="totalAmount">â‚¹0.00</span></div>
         <input type="hidden" name="selected_products" id="selectedProductsInput">
         <input type="hidden" name="total_amount" id="totalAmountInput">
         <div id="paymentFields" style="display:none;">
@@ -215,9 +217,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['category_slug'])) {
             html += '<span style="font-weight:600;color:#800000;">'+p.product_name+'</span>';
             if (p.short_description) html += '<div style="font-size:0.97em;color:#555;">'+p.short_description+'</div>';
             html += '</div>';
-            html += '<div style="min-width:80px;color:#1a8917;font-weight:600;">₹'+parseFloat(p.price).toFixed(2)+'</div>';
+            html += '<div style="min-width:80px;color:#1a8917;font-weight:600;">â‚¹'+parseFloat(p.price).toFixed(2)+'</div>';
             html += '<input type="number" class="qty-input" data-id="'+p.id+'" value="1" min="1" max="99" style="width:40px;" disabled>';
-            html += '<div class="line-total" data-id="'+p.id+'" style="min-width:60px;text-align:right;">₹0.00</div>';
+            html += '<div class="line-total" data-id="'+p.id+'" style="min-width:60px;text-align:right;">â‚¹0.00</div>';
             html += '</li>';
         });
         html += '</ul>';
@@ -234,7 +236,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['category_slug'])) {
             let qty = parseInt(qtyInput.val());
             if (!cb.prop('checked')) qty = 0;
             const lineTotal = price * qty;
-            $(this).find('.line-total').text('₹'+lineTotal.toFixed(2));
+            $(this).find('.line-total').text('â‚¹'+lineTotal.toFixed(2));
             if (cb.prop('checked')) {
                 selected.push({id: cb.data('id'), qty: qty, price: price});
                 total += lineTotal;
@@ -243,7 +245,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['category_slug'])) {
                 qtyInput.prop('disabled', true);
             }
         });
-        $('#totalAmount').text('₹'+total.toFixed(2));
+        $('#totalAmount').text('â‚¹'+total.toFixed(2));
         $('#totalAmountInput').val(total.toFixed(2));
         $('#selectedProductsInput').val(JSON.stringify(selected));
     }
@@ -310,3 +312,4 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['category_slug'])) {
 </div>
 </body>
 </html>
+

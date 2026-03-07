@@ -1,5 +1,9 @@
 <?php
-session_start();
+require_once (is_file(__DIR__ . '/includes/permissions.php') ? __DIR__ . '/includes/permissions.php' : dirname(__DIR__) . '/includes/permissions.php');
+admin_enforce_mapped_permission('auto');
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 // Only allow POST requests
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $input = file_get_contents('php://input');
@@ -29,3 +33,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 echo json_encode(['success' => false]);
 exit;
+
+
+

@@ -1,4 +1,6 @@
 <?php
+require_once (is_file(__DIR__ . '/includes/permissions.php') ? __DIR__ . '/includes/permissions.php' : dirname(__DIR__) . '/includes/permissions.php');
+admin_enforce_mapped_permission('auto');
 // AJAX endpoint for Visitors Log module
 
 require_once '../../config/db.php';
@@ -99,3 +101,4 @@ switch ($action) {
     default:
         echo json_encode(['success' => false, 'error' => 'Invalid action']);
 }
+

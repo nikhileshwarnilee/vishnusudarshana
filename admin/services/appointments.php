@@ -1,14 +1,19 @@
 <?php
+require_once (is_file(__DIR__ . '/includes/permissions.php') ? __DIR__ . '/includes/permissions.php' : dirname(__DIR__) . '/includes/permissions.php');
+admin_enforce_mapped_permission('auto');
 /**
  * admin/services/appointments.php
  *
- * Appointment Management – Phase 3 (Pending-first, date-driven)
+ * Appointment Management â€“ Phase 3 (Pending-first, date-driven)
  * Data source: service_requests table
  * category_slug = 'appointment'
  */
 
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
 
+    session_start();
+
+}
 require_once __DIR__ . '/../../config/db.php';
 
 /* ============================================================
@@ -527,7 +532,7 @@ h1 {
 .btn-submit:hover {
     background: #600000;
 }
-/* PHASE 4 – Dropdown Styling */
+/* PHASE 4 â€“ Dropdown Styling */
 #appointmentDateSelect {
     padding: 8px 12px;
     border-radius: 6px;
@@ -595,7 +600,7 @@ document.getElementById('refreshRollbackBtn').onclick = function() {
 <div class="summary-cards">
     <div class="summary-card">
         <div class="summary-count"><?= $todayAppointments ?></div>
-        <div class="summary-label">Today’s Appointments</div>
+        <div class="summary-label">Todayâ€™s Appointments</div>
     </div>
     <div class="summary-card">
         <div class="summary-count"><?= $pendingAppointments ?></div>
@@ -630,7 +635,7 @@ document.getElementById('refreshRollbackBtn').onclick = function() {
             $formattedDate = $dateObj ? $dateObj->format('d-M-Y') : htmlspecialchars($date);
         ?>
         <h2 style="margin-top:32px;color:#800000;font-size:1.3em;">
-            <?= $formattedDate ?> – <?= count($appointments) ?> Appointment<?= count($appointments) !== 1 ? 's' : '' ?>
+            <?= $formattedDate ?> â€“ <?= count($appointments) ?> Appointment<?= count($appointments) !== 1 ? 's' : '' ?>
         </h2>
         <div class="action-bar" id="actionBar-<?= htmlspecialchars($date) ?>">
             <span class="action-bar-label"><span id="selectedCount-<?= htmlspecialchars($date) ?>">0</span> appointment(s) selected</span>
@@ -679,7 +684,7 @@ document.getElementById('refreshRollbackBtn').onclick = function() {
                         $formData = json_decode($a['form_data'], true) ?? [];
                         $notes = isset($formData['notes']) ? htmlspecialchars($formData['notes']) : '';
                         $preferredDate = $formData['preferred_date'] ?? '';
-                        $preferredDisplay = $preferredDate ? (DateTime::createFromFormat('Y-m-d', $preferredDate)?->format('d-M-Y') ?: $preferredDate) : '—';
+                        $preferredDisplay = $preferredDate ? (DateTime::createFromFormat('Y-m-d', $preferredDate)?->format('d-M-Y') ?: $preferredDate) : 'â€”';
                         $createdDisplay = '';
                         if (!empty($a['created_at'])) {
                             $co = new DateTime($a['created_at']);
@@ -716,7 +721,7 @@ document.getElementById('refreshRollbackBtn').onclick = function() {
                                     if ($name !== '') {
                                         $label = $name . ' x' . $qty;
                                         if ($price !== '') {
-                                            $label .= ' (₹' . number_format((float)$price, 2) . ')';
+                                            $label .= ' (â‚¹' . number_format((float)$price, 2) . ')';
                                         }
                                         $productDetails[] = $label;
                                     }
@@ -750,7 +755,7 @@ document.getElementById('refreshRollbackBtn').onclick = function() {
 
 </div>
 
-<!-- PHASE 3 – ACCEPT APPOINTMENT MODAL -->
+<!-- PHASE 3 â€“ ACCEPT APPOINTMENT MODAL -->
 <div class="modal" id="acceptModal">
     <div class="modal-content">
         <div class="modal-header">
@@ -904,3 +909,6 @@ document.getElementById('setTodayBtn').onclick = function() {
 
 </body>
 </html>
+
+
+

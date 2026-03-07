@@ -1,5 +1,9 @@
 <?php
-session_start();
+require_once (is_file(__DIR__ . '/includes/permissions.php') ? __DIR__ . '/includes/permissions.php' : dirname(__DIR__) . '/includes/permissions.php');
+admin_enforce_mapped_permission('auto');
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 require_once __DIR__ . '/../../helpers/blog-media.php';
 header('Content-Type: application/json; charset=UTF-8');
 
@@ -31,3 +35,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['cover_image_file']))
 }
 echo json_encode(['success' => false, 'error' => 'No image uploaded.']);
 exit;
+
+
+

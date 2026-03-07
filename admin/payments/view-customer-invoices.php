@@ -1,6 +1,10 @@
 <?php
+require_once (is_file(__DIR__ . '/includes/permissions.php') ? __DIR__ . '/includes/permissions.php' : dirname(__DIR__) . '/includes/permissions.php');
+admin_enforce_mapped_permission('auto');
 // view-customer-invoices.php
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 if (!isset($_SESSION['user_id'])) {
 	header('Location: ../login.php');
 	exit;
@@ -68,13 +72,13 @@ $queryStr = http_build_query(array_diff_key($_GET, ['page' => '']));
 			<tr>
 				<td><?= $inv['id'] ?></td>
 				<td><?= htmlspecialchars($inv['invoice_date']) ?></td>
-				<td>₹<?= number_format($inv['total_amount'],2) ?></td>
+				<td>â‚¹<?= number_format($inv['total_amount'],2) ?></td>
 				<td><a href='view-invoice.php?id=<?= $inv['id'] ?>' class='action-btn view-btn'>View</a></td>
 			</tr>
 		<?php endforeach; ?>
 		<tr style="font-weight:700; background:#f8f8f8;">
 			<td colspan="2">Total</td>
-			<td>₹<?= number_format($totalAmount,2) ?></td>
+			<td>â‚¹<?= number_format($totalAmount,2) ?></td>
 			<td></td>
 		</tr>
 		<?php endif; ?>
@@ -89,3 +93,6 @@ $queryStr = http_build_query(array_diff_key($_GET, ['page' => '']));
 </div>
 </body>
 </html>
+
+
+

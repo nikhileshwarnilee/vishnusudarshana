@@ -1,8 +1,12 @@
+<?php
+require_once (is_file(__DIR__ . '/includes/permissions.php') ? __DIR__ . '/includes/permissions.php' : dirname(__DIR__) . '/includes/permissions.php');
+admin_enforce_mapped_permission('auto');
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Admin – Service Requests</title>
+<title>Admin â€“ Service Requests</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="stylesheet" href="/assets/css/style.css">
 <style>
@@ -417,7 +421,7 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
         echo isset($catMap[$catSlug]) ? htmlspecialchars($catMap[$catSlug]) : htmlspecialchars($catSlug);
         ?>
     </td>
-    <td>₹<?= number_format($row['total_amount'], 2) ?></td>
+    <td>â‚¹<?= number_format($row['total_amount'], 2) ?></td>
     <td>
         <?php
         $payClass = 'payment-' . strtolower(str_replace(' ', '-', $row['payment_status']));
@@ -559,3 +563,4 @@ document.getElementById('requestTypeSelect').addEventListener('change', function
     window.location.href = url.toString();
 });
 </script>
+

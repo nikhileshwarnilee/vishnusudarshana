@@ -1,4 +1,6 @@
 <?php
+require_once (is_file(__DIR__ . '/includes/permissions.php') ? __DIR__ . '/includes/permissions.php' : dirname(__DIR__) . '/includes/permissions.php');
+admin_enforce_mapped_permission('auto');
 // fetch_customers.php
 require_once __DIR__ . '/../../config/db.php';
 header('Content-Type: application/json');
@@ -28,3 +30,4 @@ foreach ($results as &$row) {
 }
 unset($row);
 echo json_encode($results);
+

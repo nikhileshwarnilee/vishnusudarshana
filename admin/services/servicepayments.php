@@ -1,6 +1,10 @@
 <?php
+require_once (is_file(__DIR__ . '/includes/permissions.php') ? __DIR__ . '/includes/permissions.php' : dirname(__DIR__) . '/includes/permissions.php');
+admin_enforce_mapped_permission('auto');
 // servicepayments.php
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 if (!isset($_SESSION['user_id'])) {
 	header('Location: ../login.php');
 	exit;
@@ -191,9 +195,9 @@ $queryStr = http_build_query(array_diff_key($_GET, ['page' => '']));
 				<td><?= htmlspecialchars($row['customer_name']) ?></td>
 				<td><?= htmlspecialchars($row['mobile']) ?></td>
 				<td><?= htmlspecialchars($row['payment_date'] ?? '') ?></td>
-				<td>₹<?= number_format($row['total_bill'],2) ?></td>
-				<td>₹<?= number_format($row['discount'],2) ?></td>
-				<td style="color:#1a8917;font-weight:600;">₹<?= number_format($row['paid_amount'],2) ?></td>
+				<td>â‚¹<?= number_format($row['total_bill'],2) ?></td>
+				<td>â‚¹<?= number_format($row['discount'],2) ?></td>
+				<td style="color:#1a8917;font-weight:600;">â‚¹<?= number_format($row['paid_amount'],2) ?></td>
 				<td><?= htmlspecialchars($row['method'] ?? '') ?></td>
 				<td><?= htmlspecialchars($row['note'] ?? '') ?></td>
 				<td><?php
@@ -212,7 +216,7 @@ $queryStr = http_build_query(array_diff_key($_GET, ['page' => '']));
 								$pname = isset($prod['name']) ? $prod['name'] : (isset($prod['product_name']) ? $prod['product_name'] : '');
 								$qty = isset($prod['qty']) ? $prod['qty'] : 1;
 								$price = isset($prod['price']) ? $prod['price'] : 0;
-								echo htmlspecialchars($pname) . ' x' . $qty . ' (₹' . number_format($price,2) . ')<br>';
+								echo htmlspecialchars($pname) . ' x' . $qty . ' (â‚¹' . number_format($price,2) . ')<br>';
 							}
 						}
 						?>
@@ -232,3 +236,6 @@ $queryStr = http_build_query(array_diff_key($_GET, ['page' => '']));
 </body>
 <script src="../includes/responsive-tables.js"></script>
 </html>
+
+
+

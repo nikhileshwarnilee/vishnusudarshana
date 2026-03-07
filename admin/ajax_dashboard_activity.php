@@ -1,4 +1,6 @@
 <?php
+require_once (is_file(__DIR__ . '/includes/permissions.php') ? __DIR__ . '/includes/permissions.php' : dirname(__DIR__) . '/includes/permissions.php');
+admin_enforce_mapped_permission('auto');
 // AJAX endpoint for dashboard recent activity (admin/index.php)
 require_once __DIR__ . '/../config/db.php';
 
@@ -101,3 +103,4 @@ $pagination = [
     'currentPage' => $page
 ];
 echo '<script>window.dashboardPagination = ' . json_encode($pagination) . ';</script>';
+

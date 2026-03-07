@@ -1,6 +1,10 @@
 <?php
+require_once (is_file(__DIR__ . '/includes/permissions.php') ? __DIR__ . '/includes/permissions.php' : dirname(__DIR__) . '/includes/permissions.php');
+admin_enforce_mapped_permission('auto');
 // collect-payment.php
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 header('Content-Type: application/json');
 if (!isset($_SESSION['user_id'])) {
 	echo json_encode(['success'=>false, 'error'=>'Not logged in.']);
@@ -54,3 +58,6 @@ if ($amount > 0 && $paid_any) {
 } else {
 	echo json_encode(['success'=>false, 'error'=>'No dues found or nothing paid.']);
 }
+
+
+

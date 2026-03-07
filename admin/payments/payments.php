@@ -1,6 +1,10 @@
 <?php
+require_once (is_file(__DIR__ . '/includes/permissions.php') ? __DIR__ . '/includes/permissions.php' : dirname(__DIR__) . '/includes/permissions.php');
+admin_enforce_mapped_permission('auto');
 // payments.php
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 if (!isset($_SESSION['user_id'])) {
 	header('Location: ../login.php');
 	exit;
@@ -198,7 +202,7 @@ $queryStr = http_build_query(array_diff_key($_GET, ['page' => '']));
 			<td><?= htmlspecialchars($row['customer_name']) ?></td>
 			<td><?= htmlspecialchars($row['mobile']) ?></td>
 			<td><?= htmlspecialchars($row['paid_date']) ?></td>
-			<td>₹<?= number_format($row['paid_amount'],2) ?></td>
+			<td>â‚¹<?= number_format($row['paid_amount'],2) ?></td>
 			<td><?= htmlspecialchars($row['method']) ?></td>
 			<td><?= htmlspecialchars($row['note']) ?></td>
 			<td><?= htmlspecialchars($row['transaction_details']) ?></td>
@@ -246,3 +250,6 @@ $queryStr = http_build_query(array_diff_key($_GET, ['page' => '']));
 </body>
 <script src="../includes/responsive-tables.js"></script>
 </html>
+
+
+

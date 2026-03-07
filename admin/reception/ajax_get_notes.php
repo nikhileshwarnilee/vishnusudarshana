@@ -1,4 +1,6 @@
 <?php
+require_once (is_file(__DIR__ . '/includes/permissions.php') ? __DIR__ . '/includes/permissions.php' : dirname(__DIR__) . '/includes/permissions.php');
+admin_enforce_mapped_permission('auto');
 require_once '../../config/db.php';
 $visitor_id = isset($_POST['ref_id']) ? (int)$_POST['ref_id'] : 0;
 if ($visitor_id <= 0) {
@@ -12,3 +14,4 @@ foreach ($notes as &$n) {
     $n['note'] = htmlspecialchars($n['note_text']);
 }
 echo json_encode(['success' => true, 'notes' => $notes]);
+

@@ -1,7 +1,11 @@
 <?php
 declare(strict_types=1);
 
-session_start();
+require_once (is_file(__DIR__ . '/includes/permissions.php') ? __DIR__ . '/includes/permissions.php' : dirname(__DIR__) . '/includes/permissions.php');
+admin_enforce_mapped_permission('auto');
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 header('Content-Type: application/json; charset=UTF-8');
 require_once __DIR__ . '/../../helpers/blog-media.php';
 
@@ -92,3 +96,6 @@ $baseUrl = vs_blog_base_prefix();
 $publicUrl = ($baseUrl !== '' ? $baseUrl : '') . '/uploads/blogs/editor/' . $subDir . '/' . rawurlencode($fileName);
 echo json_encode(['url' => $publicUrl]);
 exit;
+
+
+

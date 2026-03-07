@@ -2,8 +2,9 @@
 // admin/login.php
 require_once __DIR__ . '/../config/db.php';
 require_once __DIR__ . '/../helpers/favicon.php';
-session_start();
-
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 // If already logged in, redirect to admin dashboard
 if (isset($_SESSION['user_id'])) {
     if ($_SESSION['user_id'] == 1) {
@@ -83,3 +84,5 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 </div>
 </body>
 </html>
+
+

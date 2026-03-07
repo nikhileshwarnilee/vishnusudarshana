@@ -1,7 +1,11 @@
 <?php
+require_once (is_file(__DIR__ . '/includes/permissions.php') ? __DIR__ . '/includes/permissions.php' : dirname(__DIR__) . '/includes/permissions.php');
+admin_enforce_mapped_permission('auto');
 require_once __DIR__ . '/../../config/db.php';
 if (session_status() === PHP_SESSION_NONE) {
-    session_start();
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'delete_all') {
@@ -257,13 +261,13 @@ $bookings = $stmt->fetchAll(PDO::FETCH_ASSOC);
             $bookingsForDate = $grouped[$date];
             $dayName = date('l', strtotime($date));
             $marathiDays = [
-                'Sunday' => 'रविवार',
-                'Monday' => 'सोमवार',
-                'Tuesday' => 'मंगळवार',
-                'Wednesday' => 'बुधवार',
-                'Thursday' => 'गुरुवार',
-                'Friday' => 'शुक्रवार',
-                'Saturday' => 'शनिवार'
+                'Sunday' => 'à¤°à¤µà¤¿à¤µà¤¾à¤°',
+                'Monday' => 'à¤¸à¥‹à¤®à¤µà¤¾à¤°',
+                'Tuesday' => 'à¤®à¤‚à¤—à¤³à¤µà¤¾à¤°',
+                'Wednesday' => 'à¤¬à¥à¤§à¤µà¤¾à¤°',
+                'Thursday' => 'à¤—à¥à¤°à¥à¤µà¤¾à¤°',
+                'Friday' => 'à¤¶à¥à¤•à¥à¤°à¤µà¤¾à¤°',
+                'Saturday' => 'à¤¶à¤¨à¤¿à¤µà¤¾à¤°'
             ];
             $marathiDay = $marathiDays[$dayName] ?? '';
             // Group by city for filter
@@ -423,3 +427,6 @@ $bookings = $stmt->fetchAll(PDO::FETCH_ASSOC);
     </script>
 </body>
 </html>
+
+
+

@@ -1,4 +1,6 @@
 <?php
+require_once (is_file(__DIR__ . '/includes/permissions.php') ? __DIR__ . '/includes/permissions.php' : dirname(__DIR__) . '/includes/permissions.php');
+admin_enforce_mapped_permission('auto');
 /**
  * admin/services/completed-appointments.php
  *
@@ -105,7 +107,7 @@ h1 { color: #800000; margin-bottom: 18px; }
             <?php foreach ($appointments as $a):
                 $formData = json_decode($a['form_data'], true) ?? [];
                 $preferredDate = $formData['preferred_date'] ?? '';
-                $preferredDisplay = $preferredDate ? (DateTime::createFromFormat('Y-m-d', $preferredDate)?->format('d-M-Y') ?: $preferredDate) : '—';
+                $preferredDisplay = $preferredDate ? (DateTime::createFromFormat('Y-m-d', $preferredDate)?->format('d-M-Y') ?: $preferredDate) : 'â€”';
                 $fromTime = $formData['assigned_from_time'] ?? ($formData['time_from'] ?? '');
                 $toTime = $formData['assigned_to_time'] ?? ($formData['time_to'] ?? '');
                 $updatedDisplay = '';
@@ -141,7 +143,7 @@ h1 { color: #800000; margin-bottom: 18px; }
                                 if ($name !== '') {
                                     $label = $name . ' x' . $qty;
                                     if ($price !== '') {
-                                        $label .= ' (₹' . number_format((float)$price, 2) . ')';
+                                        $label .= ' (â‚¹' . number_format((float)$price, 2) . ')';
                                     }
                                     $productDetails[] = $label;
                                 }
@@ -167,7 +169,7 @@ h1 { color: #800000; margin-bottom: 18px; }
                         if ($fromTime && $toTime) {
                             $fromFmt = date('h:i A', strtotime($fromTime));
                             $toFmt = date('h:i A', strtotime($toTime));
-                            echo htmlspecialchars($fromFmt . ' – ' . $toFmt);
+                            echo htmlspecialchars($fromFmt . ' â€“ ' . $toFmt);
                         } else {
                             echo 'Time not set';
                         }
@@ -197,3 +199,4 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 </html>
+

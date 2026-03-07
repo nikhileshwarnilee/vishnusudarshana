@@ -1,8 +1,11 @@
 <?php
+require_once (is_file(__DIR__ . '/includes/permissions.php') ? __DIR__ . '/includes/permissions.php' : dirname(__DIR__) . '/includes/permissions.php');
+admin_enforce_mapped_permission('auto');
 // admin/settings/password.php
 require_once __DIR__ . '/../../config/db.php';
-session_start();
-
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 // Dummy user id for demo (replace with session user id in real use)
 $userId = $_SESSION['user_id'] ?? 1;
 
@@ -93,3 +96,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 </div>
 </body>
 </html>
+
+
+

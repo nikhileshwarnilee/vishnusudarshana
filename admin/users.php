@@ -1,5 +1,9 @@
 <?php
-session_start();
+require_once (is_file(__DIR__ . '/includes/permissions.php') ? __DIR__ . '/includes/permissions.php' : dirname(__DIR__) . '/includes/permissions.php');
+admin_enforce_mapped_permission('auto');
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 if (!isset($_SESSION['user_id']) || $_SESSION['user_id'] != 1) {
     header('Location: index.php');
     exit;
@@ -70,6 +74,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax'])) {
                         }
                     }
                 }
+                if (function_exists('vs_admin_clear_permissions_cache')) {
+                    vs_admin_clear_permissions_cache((int)$user_id);
+                }
                 echo json_encode(['success' => true, 'msg' => 'User added successfully!']);
             } else {
                 echo json_encode(['success' => false, 'msg' => 'Email already exists!']);
@@ -81,7 +88,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax'])) {
     }
     if ($_POST['ajax'] === 'get_permissions' && isset($_POST['id'])) {
         $id = (int)$_POST['id'];
-        $perms = $pdo->query("SELECT menu, submenu, action FROM user_permissions WHERE user_id = $id")->fetchAll(PDO::FETCH_ASSOC);
+        $permStmt = $pdo->prepare('SELECT menu, submenu, action FROM user_permissions WHERE user_id = ?');
+        $permStmt->execute([$id]);
+        $perms = $permStmt->fetchAll(PDO::FETCH_ASSOC);
         $result = [];
         foreach ($perms as $p) {
             $result[$p['menu']][$p['submenu']][$p['action']] = true;
@@ -121,6 +130,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax'])) {
                         }
                     }
                 }
+            }
+            if (function_exists('vs_admin_clear_permissions_cache')) {
+                vs_admin_clear_permissions_cache($id);
             }
             echo json_encode(['success' => true, 'msg' => 'User updated!']);
         } else {
@@ -418,3 +430,6 @@ $(function() {
 </script>
 </body>
 </html>
+
+
+

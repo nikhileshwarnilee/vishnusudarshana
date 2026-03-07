@@ -1,4 +1,6 @@
 <?php
+require_once (is_file(__DIR__ . '/includes/permissions.php') ? __DIR__ . '/includes/permissions.php' : dirname(__DIR__) . '/includes/permissions.php');
+admin_enforce_mapped_permission('auto');
 /**
  * admin/services/accepted-appointments.php
  *
@@ -260,7 +262,7 @@ h1 { color: #800000; margin-bottom: 18px; }
         <?php foreach ($appointmentsByDate as $date => $appointments): ?>
             <?php $dobj = DateTime::createFromFormat('Y-m-d', $date); $disp = $dobj ? $dobj->format('d-M-Y') : $date; ?>
             <h2 style="margin-top:32px;color:#800000;font-size:1.3em;">
-                <?= htmlspecialchars($disp) ?> — <?= count($appointments) ?> Accepted
+                <?= htmlspecialchars($disp) ?> â€” <?= count($appointments) ?> Accepted
             </h2>
             <div class="action-bar" id="actionBar-<?= htmlspecialchars($date) ?>">
                 <span id="selectedCount-<?= htmlspecialchars($date) ?>">0</span> selected
@@ -292,7 +294,7 @@ h1 { color: #800000; margin-bottom: 18px; }
                         $fd = json_decode($a['form_data'], true) ?? [];
                         $notes = isset($fd['notes']) ? htmlspecialchars($fd['notes']) : '';
                         $preferredDate = $fd['preferred_date'] ?? '';
-                        $preferredDisplay = $preferredDate ? (DateTime::createFromFormat('Y-m-d', $preferredDate)?->format('d-M-Y') ?: $preferredDate) : '—';
+                        $preferredDisplay = $preferredDate ? (DateTime::createFromFormat('Y-m-d', $preferredDate)?->format('d-M-Y') ?: $preferredDate) : 'â€”';
                         $updatedDisplay = '';
                         if (!empty($a['updated_at'])) {
                             $uo = new DateTime($a['updated_at']);
@@ -327,7 +329,7 @@ h1 { color: #800000; margin-bottom: 18px; }
                                         if ($name !== '') {
                                             $label = $name . ' x' . $qty;
                                             if ($price !== '') {
-                                                $label .= ' (₹' . number_format((float)$price, 2) . ')';
+                                                $label .= ' (â‚¹' . number_format((float)$price, 2) . ')';
                                             }
                                             $productDetails[] = $label;
                                         }
@@ -505,3 +507,4 @@ document.getElementById('messageModal')?.addEventListener('click', (e) => {
 
 </body>
 </html>
+

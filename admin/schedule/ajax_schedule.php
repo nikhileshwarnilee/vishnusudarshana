@@ -1,7 +1,11 @@
 <?php
+require_once (is_file(__DIR__ . '/includes/permissions.php') ? __DIR__ . '/includes/permissions.php' : dirname(__DIR__) . '/includes/permissions.php');
+admin_enforce_mapped_permission('auto');
 require_once __DIR__ . '/../../config/db.php';
 require_once __DIR__ . '/../../helpers/send_whatsapp.php';
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 $user_id = $_SESSION['user_id'] ?? 0;
 $isAdmin = ($user_id == 1);
 
@@ -26,7 +30,7 @@ if ($action === 'fetch') {
                         ($row['start_time'] === '00:00:00' && $row['end_time'] === '24:00:00');
             $event = [
                 'id' => $row['id'],
-                'title' => $row['assigned_user_name'] . ' – ' . $row['title'] . ' (' . ucfirst($row['status']) . ')',
+                'title' => $row['assigned_user_name'] . ' â€“ ' . $row['title'] . ' (' . ucfirst($row['status']) . ')',
                 'start' => $row['schedule_date'] . 'T' . $row['start_time'],
                 'end' => $endDate . 'T' . $row['end_time'],
                 'color' => $color,
@@ -211,3 +215,6 @@ if ($action === 'delete') {
 
 echo json_encode(['success' => false, 'msg' => 'Invalid request.']);
 exit;
+
+
+

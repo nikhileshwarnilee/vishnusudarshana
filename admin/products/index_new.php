@@ -1,4 +1,6 @@
 <?php
+require_once (is_file(__DIR__ . '/includes/permissions.php') ? __DIR__ . '/includes/permissions.php' : dirname(__DIR__) . '/includes/permissions.php');
+admin_enforce_mapped_permission('auto');
 // No DB logic here, all handled via AJAX
 ?>
 <!DOCTYPE html>
@@ -135,7 +137,7 @@
     
     <!-- Category Filter -->
     <div class="filter-bar">
-        <label for="categoryFilter">📁 Filter by Category:</label>
+        <label for="categoryFilter">ðŸ“ Filter by Category:</label>
         <select id="categoryFilter">
             <option value="">All Categories</option>
             <option value="birth-child">Birth & Child Services</option>
@@ -310,3 +312,4 @@ document.addEventListener('change', function(e) {
 </script>
 </body>
 </html>
+

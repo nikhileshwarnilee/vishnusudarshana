@@ -1,4 +1,6 @@
 <?php
+require_once (is_file(__DIR__ . '/includes/permissions.php') ? __DIR__ . '/includes/permissions.php' : dirname(__DIR__) . '/includes/permissions.php');
+admin_enforce_mapped_permission('auto');
 require_once __DIR__ . '/../includes/top-menu.php';
 ?>
 <!DOCTYPE html>
@@ -240,3 +242,4 @@ loadVisitorsLog();
 </script>
 </body>
 </html>
+

@@ -1,4 +1,10 @@
 <?php
+require_once (is_file(__DIR__ . '/includes/permissions.php') ? __DIR__ . '/includes/permissions.php' : dirname(__DIR__) . '/includes/permissions.php');
+admin_enforce_mapped_permission('auto');
+if (!isset($_SESSION['user_id']) || (int)$_SESSION['user_id'] !== 1) {
+    header('Location: index.php');
+    exit;
+}
 require_once __DIR__ . '/../config/db.php';
 $user_id = isset($_GET['user_id']) ? (int)$_GET['user_id'] : 0;
 if (!$user_id) { die('Invalid user.'); }
@@ -31,6 +37,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             }
         }
+    }
+    if (function_exists('vs_admin_clear_permissions_cache')) {
+        vs_admin_clear_permissions_cache((int)$user_id);
     }
     header('Location: users.php');
     exit;
@@ -104,3 +113,4 @@ $excludeMenus = include __DIR__ . '/permissions-exclude.php';
 </div>
 </body>
 </html>
+

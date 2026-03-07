@@ -1,4 +1,6 @@
 <?php
+require_once (is_file(__DIR__ . '/includes/permissions.php') ? __DIR__ . '/includes/permissions.php' : dirname(__DIR__) . '/includes/permissions.php');
+admin_enforce_mapped_permission('auto');
 // Handle token management form submission
 require_once __DIR__ . '/../../config/db.php';
 header('Content-Type: application/json');
@@ -24,3 +26,4 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 echo json_encode(['success' => false]);
 exit;
+

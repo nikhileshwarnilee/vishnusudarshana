@@ -1,4 +1,6 @@
 <?php
+require_once (is_file(__DIR__ . '/includes/permissions.php') ? __DIR__ . '/includes/permissions.php' : dirname(__DIR__) . '/includes/permissions.php');
+admin_enforce_mapped_permission('auto');
 // admin/cif/clients.php
 require_once __DIR__ . '/../../config/db.php';
 
@@ -290,3 +292,4 @@ function toggleEditClient(id) {
 <script src="../includes/responsive-tables.js"></script>
 </body>
 </html>
+

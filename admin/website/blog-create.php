@@ -1,6 +1,10 @@
 <?php
+require_once (is_file(__DIR__ . '/includes/permissions.php') ? __DIR__ . '/includes/permissions.php' : dirname(__DIR__) . '/includes/permissions.php');
+admin_enforce_mapped_permission('auto');
 date_default_timezone_set('Asia/Kolkata');
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 if (!isset($_SESSION['user_id'])) {
     header('Location: ../login.php');
     exit;
@@ -358,7 +362,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <div class="admin-container">
     <div class="page-header">
         <h1>Create Blog</h1>
-        <a class="back-link" href="blogs-management.php">← Back to Blogs Management</a>
+        <a class="back-link" href="blogs-management.php">â† Back to Blogs Management</a>
     </div>
 
     <div class="content-card">
@@ -608,6 +612,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 </body>
 </html>
+
+
+
 
 
 

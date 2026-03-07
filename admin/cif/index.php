@@ -1,4 +1,6 @@
 <?php
+require_once (is_file(__DIR__ . '/includes/permissions.php') ? __DIR__ . '/includes/permissions.php' : dirname(__DIR__) . '/includes/permissions.php');
+admin_enforce_mapped_permission('auto');
 // AJAX: live search for client name
 if (isset($_GET['ajax_search_client']) && isset($_GET['name'])) {
     require_once __DIR__ . '/../../config/db.php';
@@ -631,3 +633,4 @@ $(function() {
 
 </body>
 </html>
+

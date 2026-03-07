@@ -1,6 +1,10 @@
 <?php
+require_once (is_file(__DIR__ . '/includes/permissions.php') ? __DIR__ . '/includes/permissions.php' : dirname(__DIR__) . '/includes/permissions.php');
+admin_enforce_mapped_permission('auto');
 date_default_timezone_set('Asia/Kolkata');
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 if (!isset($_SESSION['user_id'])) {
     header('Location: login.php');
     exit;
@@ -292,11 +296,11 @@ $recentRows = $recentStmt->fetchAll(PDO::FETCH_ASSOC);
         <div class="stat-group" style="background:#f0f7ff;">
             <h3 style="color:#007bff;">Payments (Today)</h3>
             <div class="summary-card" style="background:#e5f0ff; border:2px solid #007bff; margin-bottom:10px;">
-                <div class="summary-count" style="color:#007bff;">₹<?php echo number_format($todays_offline,2); ?></div>
+                <div class="summary-count" style="color:#007bff;">â‚¹<?php echo number_format($todays_offline,2); ?></div>
                 <div class="summary-label">Offline Collection</div>
             </div>
             <div class="summary-card" style="background:#e5f0ff; border:2px solid #007bff;">
-                <div class="summary-count" style="color:#007bff;">₹<?php echo number_format($todays_razorpay,2); ?></div>
+                <div class="summary-count" style="color:#007bff;">â‚¹<?php echo number_format($todays_razorpay,2); ?></div>
                 <div class="summary-label">Razorpay Collection</div>
             </div>
         </div>
@@ -322,15 +326,15 @@ $recentRows = $recentStmt->fetchAll(PDO::FETCH_ASSOC);
     <!-- QUICK ACCESS CARDS -->
     <div class="summary-cards">
         <div class="summary-card quick-access-card" onclick="window.location.href='cif/index.php'">
-            <div class="summary-count" style="color:#0056b3;"><span style="font-size:1.2em;">📄</span></div>
+            <div class="summary-count" style="color:#0056b3;"><span style="font-size:1.2em;">ðŸ“„</span></div>
             <div class="summary-label" style="color:#0056b3;">CIF Home</div>
         </div>
         <div class="summary-card quick-access-card" onclick="window.location.href='services/service-request-list.php'">
-            <div class="summary-count" style="color:#b36b00;"><span style="font-size:1.2em;">🛠️</span></div>
+            <div class="summary-count" style="color:#b36b00;"><span style="font-size:1.2em;">ðŸ› ï¸</span></div>
             <div class="summary-label" style="color:#b36b00;">Service Request List</div>
         </div>
         <div class="summary-card quick-access-card" onclick="window.location.href='services/accepted-appointments.php'">
-            <div class="summary-count" style="color:#1a8917;"><span style="font-size:1.2em;">✅</span></div>
+            <div class="summary-count" style="color:#1a8917;"><span style="font-size:1.2em;">âœ…</span></div>
             <div class="summary-label" style="color:#1a8917;">Accepted Appointments</div>
         </div>
     </div>
@@ -439,3 +443,6 @@ document.getElementById('searchInput').addEventListener('keyup', function() {
 </script>
 </body>
 </html>
+
+
+

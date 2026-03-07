@@ -1,5 +1,9 @@
 <?php
-session_start();
+require_once (is_file(__DIR__ . '/includes/permissions.php') ? __DIR__ . '/includes/permissions.php' : dirname(__DIR__) . '/includes/permissions.php');
+admin_enforce_mapped_permission('auto');
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 require_once __DIR__ . '/../../config/db.php';
 
 // Handle delete action
@@ -251,7 +255,7 @@ h1 {
 .btn-submit:hover {
     background: #600000;
 }
-/* PHASE 4 – Dropdown Styling */
+/* PHASE 4 â€“ Dropdown Styling */
 #appointmentDateSelect {
     padding: 8px 12px;
     border-radius: 6px;
@@ -331,7 +335,7 @@ h1 {
                         if ($name !== '') {
                             $label = $name . ' x' . $qty;
                             if ($price !== '') {
-                                $label .= ' (₹' . number_format((float)$price, 2) . ')';
+                                $label .= ' (â‚¹' . number_format((float)$price, 2) . ')';
                             }
                             $productDetails[] = $label;
                         }
@@ -343,7 +347,7 @@ h1 {
                 $customerName = $customerDetails['full_name'] ?? ($formData['full_name'] ?? '');
                 $mobile = $customerDetails['mobile'] ?? ($formData['mobile'] ?? '');
                 $preferredDate = $customerDetails['preferred_date'] ?? ($formData['preferred_date'] ?? '');
-                $preferredDisplay = $preferredDate ? (DateTime::createFromFormat('Y-m-d', $preferredDate)?->format('d-M-Y') ?: $preferredDate) : '—';
+                $preferredDisplay = $preferredDate ? (DateTime::createFromFormat('Y-m-d', $preferredDate)?->format('d-M-Y') ?: $preferredDate) : 'â€”';
                 $createdDisplay = '';
                 if (!empty($a['created_at'])) {
                     $co = new DateTime($a['created_at']);
@@ -378,7 +382,7 @@ h1 {
 
 </div>
 
-<!-- PHASE 3 – ACCEPT APPOINTMENT MODAL -->
+<!-- PHASE 3 â€“ ACCEPT APPOINTMENT MODAL -->
 <div class="modal" id="acceptModal">
     <div class="modal-content">
         <div class="modal-header">
@@ -517,3 +521,6 @@ setTimeout(function() {
 
 </body>
 </html>
+
+
+

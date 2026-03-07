@@ -1,4 +1,6 @@
 <?php
+require_once (is_file(__DIR__ . '/includes/permissions.php') ? __DIR__ . '/includes/permissions.php' : dirname(__DIR__) . '/includes/permissions.php');
+admin_enforce_mapped_permission('auto');
 /**
  * admin/schedule/setup-schedule.php
  *
@@ -8,7 +10,9 @@
 
 require_once __DIR__ . '/../../config/db.php';
 if (session_status() === PHP_SESSION_NONE) {
-    session_start();
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
 }
 // Handle delete BEFORE any output
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_id'])) {
@@ -324,3 +328,6 @@ $entries = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 </body>
 </html>
+
+
+

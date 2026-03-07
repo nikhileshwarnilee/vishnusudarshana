@@ -1,4 +1,6 @@
 <?php
+require_once (is_file(__DIR__ . '/includes/permissions.php') ? __DIR__ . '/includes/permissions.php' : dirname(__DIR__) . '/includes/permissions.php');
+admin_enforce_mapped_permission('auto');
 // Token Management Page
 // Add your token management logic here
 
@@ -462,3 +464,4 @@ include '../includes/top-menu.php';
 </div>
 </body>
 </html>
+

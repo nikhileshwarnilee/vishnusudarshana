@@ -1,8 +1,12 @@
 <?php
+require_once (is_file(__DIR__ . '/includes/permissions.php') ? __DIR__ . '/includes/permissions.php' : dirname(__DIR__) . '/includes/permissions.php');
+admin_enforce_mapped_permission('auto');
 // blog-edit.php: Edit an existing blog post
 
 date_default_timezone_set('Asia/Kolkata');
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 if (!isset($_SESSION['user_id'])) {
     header('Location: ../login.php');
     exit;
@@ -561,3 +565,6 @@ $canShowCoverImage = $coverImageUrl !== '' && ($coverImageFsPath === '' || file_
 
 </body>
 </html>
+
+
+

@@ -1,4 +1,6 @@
 <?php
+require_once (is_file(__DIR__ . '/includes/permissions.php') ? __DIR__ . '/includes/permissions.php' : dirname(__DIR__) . '/includes/permissions.php');
+admin_enforce_mapped_permission('auto');
 require_once __DIR__ . '/../../config/db.php';
 require_once __DIR__ . '/../../helpers/send_whatsapp.php';
 
@@ -365,7 +367,7 @@ $adminNotes = $stmt->fetchAll(PDO::FETCH_ASSOC);
             $cat = $request['category_slug'];
             echo isset($categoryTitles[$cat]) ? $categoryTitles[$cat] : htmlspecialchars($cat);
         ?></td></tr>
-        <tr><th>Total Amount</th><td>₹<?php echo number_format($request['total_amount'], 2); ?></td></tr>
+        <tr><th>Total Amount</th><td>â‚¹<?php echo number_format($request['total_amount'], 2); ?></td></tr>
         <?php
         // Check actual payment status from payments table
         // Use payment_status field from service_requests for payment status
@@ -373,8 +375,8 @@ $adminNotes = $stmt->fetchAll(PDO::FETCH_ASSOC);
         $discount = isset($request['discount']) ? (float)$request['discount'] : 0;
         $totalPaid = $request['total_amount'] - $discount;
         ?>
-        <tr><th>Discount Given</th><td>₹<?php echo number_format($discount, 2); ?></td></tr>
-        <tr><th>Total Paid</th><td style="color:#1a8917;font-weight:600;">₹<?php echo number_format($totalPaid, 2); ?></td></tr>
+        <tr><th>Discount Given</th><td>â‚¹<?php echo number_format($discount, 2); ?></td></tr>
+        <tr><th>Total Paid</th><td style="color:#1a8917;font-weight:600;">â‚¹<?php echo number_format($totalPaid, 2); ?></td></tr>
         <tr><th>Payment Status</th><td><span class="status-badge status-<?php echo $actualPaid ? 'paid' : 'unpaid'; ?>"><?php echo $actualPaid ? 'Paid' : 'Unpaid'; ?></span></td></tr>
         <tr><th>Service Status</th><td><span class="status-badge status-<?php echo strtolower(str_replace(' ', '-', $request['service_status'])); ?>"><?php echo htmlspecialchars($request['service_status']); ?></span></td></tr>
         <tr><th>Created Date</th><td><?php echo date('d-m-Y', strtotime($request['created_at'])); ?></td></tr>
@@ -384,28 +386,28 @@ $adminNotes = $stmt->fetchAll(PDO::FETCH_ASSOC);
         <?php
         // Standard field order and icons
         $fieldOrder = [
-            'boy_name' => ['label' => 'Men Name', 'icon' => '👨'],
-            'boy_dob' => ['label' => 'Men Date of Birth', 'icon' => '📅'],
-            'boy_tob' => ['label' => 'Men Time of Birth', 'icon' => '⏰'],
-            'boy_pob' => ['label' => 'Men Place of Birth', 'icon' => '📍'],
-            'girl_name' => ['label' => 'Women Name', 'icon' => '👩'],
-            'girl_dob' => ['label' => 'Women Date of Birth', 'icon' => '📅'],
-            'girl_tob' => ['label' => 'Women Time of Birth', 'icon' => '⏰'],
-            'girl_pob' => ['label' => 'Women Place of Birth', 'icon' => '📍'],
-            'dob' => ['label' => 'Date of Birth', 'icon' => '📅'],
-            'time_of_birth' => ['label' => 'Time of Birth', 'icon' => '⏰'],
-            'place_of_birth' => ['label' => 'Place of Birth', 'icon' => '📍'],
-            'father_name' => ['label' => "Father's Name", 'icon' => '👨'],
-            'mother_name' => ['label' => "Mother's Name", 'icon' => '👩'],
-            'spouse_name' => ['label' => "Spouse's Name", 'icon' => '💍'],
-            'child_name' => ['label' => "Child's Name", 'icon' => '👶'],
-            'query' => ['label' => 'Query/Details', 'icon' => '📝'],
-            'gender' => ['label' => 'Gender', 'icon' => '⚧'],
-            'occupation' => ['label' => 'Occupation', 'icon' => '💼'],
-            'address' => ['label' => 'Address', 'icon' => '🏠'],
-            'state' => ['label' => 'State', 'icon' => '🏞️'],
-            'country' => ['label' => 'Country', 'icon' => '🌏'],
-            'notes' => ['label' => 'Notes', 'icon' => '🗒️'],
+            'boy_name' => ['label' => 'Men Name', 'icon' => 'ðŸ‘¨'],
+            'boy_dob' => ['label' => 'Men Date of Birth', 'icon' => 'ðŸ“…'],
+            'boy_tob' => ['label' => 'Men Time of Birth', 'icon' => 'â°'],
+            'boy_pob' => ['label' => 'Men Place of Birth', 'icon' => 'ðŸ“'],
+            'girl_name' => ['label' => 'Women Name', 'icon' => 'ðŸ‘©'],
+            'girl_dob' => ['label' => 'Women Date of Birth', 'icon' => 'ðŸ“…'],
+            'girl_tob' => ['label' => 'Women Time of Birth', 'icon' => 'â°'],
+            'girl_pob' => ['label' => 'Women Place of Birth', 'icon' => 'ðŸ“'],
+            'dob' => ['label' => 'Date of Birth', 'icon' => 'ðŸ“…'],
+            'time_of_birth' => ['label' => 'Time of Birth', 'icon' => 'â°'],
+            'place_of_birth' => ['label' => 'Place of Birth', 'icon' => 'ðŸ“'],
+            'father_name' => ['label' => "Father's Name", 'icon' => 'ðŸ‘¨'],
+            'mother_name' => ['label' => "Mother's Name", 'icon' => 'ðŸ‘©'],
+            'spouse_name' => ['label' => "Spouse's Name", 'icon' => 'ðŸ’'],
+            'child_name' => ['label' => "Child's Name", 'icon' => 'ðŸ‘¶'],
+            'query' => ['label' => 'Query/Details', 'icon' => 'ðŸ“'],
+            'gender' => ['label' => 'Gender', 'icon' => 'âš§'],
+            'occupation' => ['label' => 'Occupation', 'icon' => 'ðŸ’¼'],
+            'address' => ['label' => 'Address', 'icon' => 'ðŸ '],
+            'state' => ['label' => 'State', 'icon' => 'ðŸžï¸'],
+            'country' => ['label' => 'Country', 'icon' => 'ðŸŒ'],
+            'notes' => ['label' => 'Notes', 'icon' => 'ðŸ—’ï¸'],
         ];
         // Hide internal/system fields that should not appear in customer-submitted details.
         $skipFields = ['product_ids', 'qty', 'make_payment', 'mobile', 'email', 'category', 'category_slug', 'full_name', 'name', 'city', 'country_code', 'custom_country_code'];
@@ -453,8 +455,8 @@ $adminNotes = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     <tr>
                         <th>Product Name</th>
                         <th>Quantity</th>
-                        <th>Price (₹)</th>
-                        <th>Subtotal (₹)</th>
+                        <th>Price (â‚¹)</th>
+                        <th>Subtotal (â‚¹)</th>
                     </tr>
                     <?php
                     $grandTotal = 0;
@@ -483,13 +485,13 @@ $adminNotes = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     <tr>
                         <td><?php echo htmlspecialchars($name); ?></td>
                         <td><?php echo htmlspecialchars($qty); ?></td>
-                        <td>₹<?php echo number_format($price, 2); ?></td>
-                        <td>₹<?php echo number_format($subtotal, 2); ?></td>
+                        <td>â‚¹<?php echo number_format($price, 2); ?></td>
+                        <td>â‚¹<?php echo number_format($subtotal, 2); ?></td>
                     </tr>
                     <?php endforeach; ?>
                     <tr>
                         <th colspan="3" style="text-align:right;">Total Amount</th>
-                        <th>₹<?php echo number_format($grandTotal, 2); ?></th>
+                        <th>â‚¹<?php echo number_format($grandTotal, 2); ?></th>
                     </tr>
                 </table>
             <?php else: ?>
@@ -705,3 +707,4 @@ $adminNotes = $stmt->fetchAll(PDO::FETCH_ASSOC);
 </div>
 </body>
 </html>
+

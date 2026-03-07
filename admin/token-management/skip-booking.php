@@ -1,4 +1,6 @@
 <?php
+require_once (is_file(__DIR__ . '/includes/permissions.php') ? __DIR__ . '/includes/permissions.php' : dirname(__DIR__) . '/includes/permissions.php');
+admin_enforce_mapped_permission('auto');
 // skip-booking.php
 require_once __DIR__ . '/../../config/db.php';
 
@@ -20,3 +22,4 @@ if ($id && is_numeric($id)) {
 }
 header('Content-Type: application/json');
 echo json_encode($response);
+

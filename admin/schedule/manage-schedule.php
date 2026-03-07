@@ -1,8 +1,12 @@
 <?php
+require_once (is_file(__DIR__ . '/includes/permissions.php') ? __DIR__ . '/includes/permissions.php' : dirname(__DIR__) . '/includes/permissions.php');
+admin_enforce_mapped_permission('auto');
 require_once __DIR__ . '/../includes/top-menu.php';
 require_once __DIR__ . '/../../config/db.php';
 if (session_status() === PHP_SESSION_NONE) {
-    session_start();
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
 }
 $currentUserId = $_SESSION['user_id'] ?? 1;
 $isAdmin = ($currentUserId == 1);
@@ -511,3 +515,6 @@ $(function() {
 </script>
 </body>
 </html>
+
+
+

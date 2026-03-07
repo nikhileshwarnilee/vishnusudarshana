@@ -1,4 +1,6 @@
 <?php
+require_once (is_file(__DIR__ . '/includes/permissions.php') ? __DIR__ . '/includes/permissions.php' : dirname(__DIR__) . '/includes/permissions.php');
+admin_enforce_mapped_permission('auto');
 // admin/customers/crm/index.php
 
 // Handle AJAX custom message FIRST (before any output)
@@ -381,3 +383,4 @@ $('#bulkMsgForm').on('submit', function(e) {
 <script src="../includes/responsive-tables.js"></script>
 </body>
 </html>
+

@@ -1,5 +1,9 @@
 <?php
-session_start();
+require_once (is_file(__DIR__ . '/includes/permissions.php') ? __DIR__ . '/includes/permissions.php' : dirname(__DIR__) . '/includes/permissions.php');
+admin_enforce_mapped_permission('auto');
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 if (!isset($_SESSION['user_id'])) {
     header('Location: ../login.php');
     exit;
@@ -116,9 +120,9 @@ try {
             <button type="button" class="btn-main" style="padding:4px 10px;font-size:1em;" onclick="format('bold')"><b>B</b></button>
             <button type="button" class="btn-main" style="padding:4px 10px;font-size:1em;" onclick="format('italic')"><i>I</i></button>
             <button type="button" class="btn-main" style="padding:4px 10px;font-size:1em;" onclick="format('underline')"><u>U</u></button>
-            <button type="button" class="btn-main" style="padding:4px 10px;font-size:1em;" onclick="format('insertUnorderedList')">• List</button>
+            <button type="button" class="btn-main" style="padding:4px 10px;font-size:1em;" onclick="format('insertUnorderedList')">â€¢ List</button>
             <button type="button" class="btn-main" style="padding:4px 10px;font-size:1em;" onclick="format('insertOrderedList')">1. List</button>
-            <button type="button" class="btn-main" style="padding:4px 10px;font-size:1em;" onclick="insertLink()">🔗 Link</button>
+            <button type="button" class="btn-main" style="padding:4px 10px;font-size:1em;" onclick="insertLink()">ðŸ”— Link</button>
             <button type="button" class="btn-main" style="padding:4px 10px;font-size:1em;background:#b30000;" onclick="clearEditor()">Clear</button>
         </div>
         <div id="richMsg" contenteditable="true"><?php if ($editMsg) echo $editMsg; ?></div>
@@ -189,3 +193,6 @@ try {
 </div>
 </body>
 </html>
+
+
+

@@ -1,4 +1,6 @@
 <?php
+require_once (is_file(__DIR__ . '/includes/permissions.php') ? __DIR__ . '/includes/permissions.php' : dirname(__DIR__) . '/includes/permissions.php');
+admin_enforce_mapped_permission('auto');
 // admin/cif/category.php
 // CIF Category page with add form and table
 require_once __DIR__ . '/../../config/db.php';
@@ -159,3 +161,4 @@ function toggleEditCat(id) {
 <script src="/assets/js/language.js"></script>
 </body>
 </html>
+

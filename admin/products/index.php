@@ -1,5 +1,9 @@
 <?php
-session_start();
+require_once (is_file(__DIR__ . '/includes/permissions.php') ? __DIR__ . '/includes/permissions.php' : dirname(__DIR__) . '/includes/permissions.php');
+admin_enforce_mapped_permission('auto');
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 // No DB logic here, all handled via AJAX
 ?>
 <!DOCTYPE html>
@@ -136,7 +140,7 @@ session_start();
     
     <!-- Category Filter -->
     <div class="filter-bar">
-        <label for="categoryFilter">📁 Filter by Category:</label>
+        <label for="categoryFilter">ðŸ“ Filter by Category:</label>
         <select id="categoryFilter">
             <option value="">All Categories</option>
             <option value="birth-child">Birth & Child Services</option>
@@ -379,4 +383,7 @@ categorySections.addEventListener('click', function(e) {
 </script>
 </body>
 </html>
+
+
+
 
