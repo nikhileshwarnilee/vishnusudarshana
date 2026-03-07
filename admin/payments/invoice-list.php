@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 require_once (is_file(__DIR__ . '/includes/permissions.php') ? __DIR__ . '/includes/permissions.php' : dirname(__DIR__) . '/includes/permissions.php');
 admin_enforce_mapped_permission('auto');
 // invoice-list.php
