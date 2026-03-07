@@ -174,7 +174,7 @@ $receiptLocationLabel = $locationLabel;
         </section>
     </main>
 
-    <script charset="UTF-8" src="js/announcement-helper.js?v=20260307a1"></script>
-    <script charset="UTF-8" src="js/tablet-token.js?v=20260307a8"></script>
+    <script charset="UTF-8" src="js/announcement-helper.js?v=<?= (int) @filemtime(__DIR__ . '/js/announcement-helper.js'); ?>"></script>
+    <script charset="UTF-8" src="js/tablet-token.js?v=<?= (int) @filemtime(__DIR__ . '/js/tablet-token.js'); ?>"></script>
 </body>
 </html>

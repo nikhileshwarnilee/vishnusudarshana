@@ -32,6 +32,7 @@ include '../includes/top-menu.php';
         .language-save-btn { padding: 8px 14px; border-radius: 9px; border: 0; background: #800000; color: #fff; font-weight: 700; cursor: pointer; }
         .language-save-btn:hover { background: #640000; }
         .language-msg { min-height: 1.3em; font-weight: 700; color: #6b0000; }
+        .settings-desc { margin: 0 0 10px; color: #5c3b00; font-size: 0.95em; }
         table { width: 100%; border-collapse: collapse; background: #fff; box-shadow: 0 2px 12px #e0bebe22; border-radius: 12px; table-layout: auto; font-size: 0.85em; }
         table th, table td { padding: 8px 6px; text-align: left; border-bottom: 1px solid #f3caca; white-space: nowrap; }
         table thead { background: #f9eaea; color: #800000; font-size: 0.9em; font-weight: 600; }
@@ -113,6 +114,18 @@ include '../includes/top-menu.php';
             <span id="tabletWhatsAppSaveMsg" class="language-msg"></span>
         </div>
     </section>
+    <section class="settings-card" aria-label="Same-Day Online Booking Cutoff">
+        <h2 class="settings-title">Same-Day Online Booking Stop Time</h2>
+        <p class="settings-desc">Public website same-day booking will stop after this time.</p>
+        <div class="language-actions">
+            <label for="sameDayCutoffTime" class="form-label" style="margin:0;">
+                Cutoff Time
+                <input type="time" id="sameDayCutoffTime" class="form-input" style="max-width:180px;">
+            </label>
+            <button type="button" id="saveSameDayCutoffBtn" class="language-save-btn">Save Stop Time</button>
+            <span id="sameDayCutoffSaveMsg" class="language-msg"></span>
+        </div>
+    </section>
     <div style="max-width:900px;margin:18px auto 0 auto;display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
         <label for="cityTableFilter" style="font-weight:600;color:#6b0000;">Filter by City:</label>
         <select id="cityTableFilter" class="form-select" style="min-width:180px;">
@@ -163,6 +176,36 @@ include '../includes/top-menu.php';
         msg.style.color = isError ? '#a0001b' : '#176b1a';
     }
 
+    function normalizeCutoffTime(value) {
+        const raw = String(value || '').trim();
+        if (/^([01]\d|2[0-3]):([0-5]\d)$/.test(raw)) {
+            return raw;
+        }
+        if (/^([01]\d|2[0-3]):([0-5]\d):([0-5]\d)$/.test(raw)) {
+            return raw.slice(0, 5);
+        }
+        return '09:00';
+    }
+
+    function getSameDayCutoffTimeValue() {
+        const input = document.getElementById('sameDayCutoffTime');
+        if (!input) return '09:00';
+        return normalizeCutoffTime(input.value);
+    }
+
+    function setSameDayCutoffTimeValue(value) {
+        const input = document.getElementById('sameDayCutoffTime');
+        if (!input) return;
+        input.value = normalizeCutoffTime(value);
+    }
+
+    function setSameDayCutoffMessage(message, isError) {
+        const msg = document.getElementById('sameDayCutoffSaveMsg');
+        if (!msg) return;
+        msg.textContent = message || '';
+        msg.style.color = isError ? '#a0001b' : '#176b1a';
+    }
+
     function loadAnnouncementLanguage() {
         fetch('../../api/get-settings.php', { cache: 'no-store' })
             .then(res => res.json())
@@ -170,14 +213,17 @@ include '../includes/top-menu.php';
                 if (data && data.success) {
                     setSelectedAnnouncementLanguage(data.announcement_language || 'marathi');
                     setSelectedTabletTokenWhatsappEnabled(data.tablet_token_whatsapp_enabled ? '1' : '0');
+                    setSameDayCutoffTimeValue(data.same_day_online_booking_cutoff_time || '09:00');
                 } else {
                     setSelectedAnnouncementLanguage('marathi');
                     setSelectedTabletTokenWhatsappEnabled('1');
+                    setSameDayCutoffTimeValue('09:00');
                 }
             })
             .catch(() => {
                 setSelectedAnnouncementLanguage('marathi');
                 setSelectedTabletTokenWhatsappEnabled('1');
+                setSameDayCutoffTimeValue('09:00');
             });
     }
 
@@ -231,6 +277,33 @@ include '../includes/top-menu.php';
         })
         .catch(() => {
             setTabletWhatsAppMessage('Error while saving tablet WhatsApp setting.', true);
+        });
+    }
+
+    function saveSameDayCutoffSetting() {
+        const cutoffTime = getSameDayCutoffTimeValue();
+        const body = new URLSearchParams();
+        body.set('same_day_online_booking_cutoff_time', cutoffTime);
+
+        setSameDayCutoffMessage('Saving...', false);
+        fetch('../../api/save-settings.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
+            },
+            body: body.toString()
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data && data.success) {
+                setSameDayCutoffTimeValue(data.same_day_online_booking_cutoff_time || cutoffTime);
+                setSameDayCutoffMessage('Same-day cutoff time saved.', false);
+            } else {
+                setSameDayCutoffMessage('Failed to save same-day cutoff time.', true);
+            }
+        })
+        .catch(() => {
+            setSameDayCutoffMessage('Error while saving same-day cutoff time.', true);
         });
     }
 
@@ -453,6 +526,10 @@ include '../includes/top-menu.php';
         const saveTabletWhatsAppBtn = document.getElementById('saveTabletWhatsAppBtn');
         if (saveTabletWhatsAppBtn) {
             saveTabletWhatsAppBtn.addEventListener('click', saveTabletTokenWhatsAppSetting);
+        }
+        const saveSameDayCutoffBtn = document.getElementById('saveSameDayCutoffBtn');
+        if (saveSameDayCutoffBtn) {
+            saveSameDayCutoffBtn.addEventListener('click', saveSameDayCutoffSetting);
         }
         fetchTokens();
         const cityFilter = document.getElementById('cityTableFilter');

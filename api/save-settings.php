@@ -38,6 +38,25 @@ function normalizeTabletWhatsAppEnabled($value): int
     return in_array($normalized, ['1', 'true', 'yes', 'on', 'enabled'], true) ? 1 : 0;
 }
 
+function normalizeSameDayOnlineBookingCutoffTime($value): string
+{
+    $raw = trim((string) $value);
+    if ($raw === '') {
+        return '09:00';
+    }
+
+    if (preg_match('/^([01]\d|2[0-3]):([0-5]\d)(?::[0-5]\d)?$/', $raw, $matches)) {
+        return $matches[1] . ':' . $matches[2];
+    }
+
+    $timestamp = strtotime($raw);
+    if ($timestamp !== false) {
+        return date('H:i', $timestamp);
+    }
+
+    return '09:00';
+}
+
 function upsertSetting(PDO $pdo, string $key, string $value): void
 {
     $stmt = $pdo->prepare(
@@ -62,8 +81,9 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 $hasLanguage = array_key_exists('announcement_language', $_POST);
 $hasTabletWhatsApp = array_key_exists('tablet_token_whatsapp_enabled', $_POST);
+$hasSameDayCutoff = array_key_exists('same_day_online_booking_cutoff_time', $_POST);
 
-if (!$hasLanguage && !$hasTabletWhatsApp) {
+if (!$hasLanguage && !$hasTabletWhatsApp && !$hasSameDayCutoff) {
     respond([
         'success' => false,
         'message' => 'No supported setting provided.'
@@ -81,14 +101,20 @@ try {
         $tabletWhatsAppEnabled = normalizeTabletWhatsAppEnabled($_POST['tablet_token_whatsapp_enabled'] ?? null);
         upsertSetting($pdo, 'tablet_token_whatsapp_enabled', (string) $tabletWhatsAppEnabled);
     }
+    if ($hasSameDayCutoff) {
+        $sameDayCutoffTime = normalizeSameDayOnlineBookingCutoffTime($_POST['same_day_online_booking_cutoff_time'] ?? null);
+        upsertSetting($pdo, 'same_day_online_booking_cutoff_time', $sameDayCutoffTime);
+    }
 
     $savedLanguage = normalizeAnnouncementLanguage(getSettingValue($pdo, 'announcement_language'));
     $savedTabletWhatsAppEnabled = normalizeTabletWhatsAppEnabled(getSettingValue($pdo, 'tablet_token_whatsapp_enabled') ?? '1');
+    $savedSameDayCutoffTime = normalizeSameDayOnlineBookingCutoffTime(getSettingValue($pdo, 'same_day_online_booking_cutoff_time'));
 
     respond([
         'success' => true,
         'announcement_language' => $savedLanguage,
         'tablet_token_whatsapp_enabled' => $savedTabletWhatsAppEnabled === 1,
+        'same_day_online_booking_cutoff_time' => $savedSameDayCutoffTime,
         'message' => 'Settings saved.'
     ]);
 } catch (Throwable $e) {

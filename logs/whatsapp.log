@@ -44,3 +44,5 @@
 [2026-03-07 18:25:39] TO: 919595744266 | TEMPLATE: Schedule Manager Marathi | STATUS: CURL_ERROR | DETAILS: Could not resolve host: backend.aisensy.com
 [2026-03-07 18:25:39] TO: 918888955848 | TEMPLATE: Schedule Manager Marathi | STATUS: CURL_ERROR | DETAILS: Could not resolve host: backend.aisensy.com
 [2026-03-07 18:25:39] TO: 919158787872 | TEMPLATE: Schedule Manager Marathi | STATUS: CURL_ERROR | DETAILS: Could not resolve host: backend.aisensy.com
+[2026-03-08 01:34:35] TO: 919999999990 | TEMPLATE: Token Update Marathi | STATUS: SUCCESS | DETAILS: {"success":"true","submitted_message_id":"894e0223-a437-4a96-88c4-257d3cbc867e"}
+[2026-03-08 03:01:08] TO: 912222222222 | TEMPLATE: Token Update Marathi | STATUS: SUCCESS | DETAILS: {"success":"true","submitted_message_id":"34a0e2ed-6098-4515-8980-59ddacaaee52"}

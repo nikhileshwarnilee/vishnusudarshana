@@ -35,6 +35,25 @@ function normalizeTabletWhatsAppEnabled($value): int
     return in_array($normalized, ['1', 'true', 'yes', 'on', 'enabled'], true) ? 1 : 0;
 }
 
+function normalizeSameDayOnlineBookingCutoffTime($value): string
+{
+    $raw = trim((string) $value);
+    if ($raw === '') {
+        return '09:00';
+    }
+
+    if (preg_match('/^([01]\d|2[0-3]):([0-5]\d)(?::[0-5]\d)?$/', $raw, $matches)) {
+        return $matches[1] . ':' . $matches[2];
+    }
+
+    $timestamp = strtotime($raw);
+    if ($timestamp !== false) {
+        return date('H:i', $timestamp);
+    }
+
+    return '09:00';
+}
+
 function getSettingValue(PDO $pdo, string $key): ?string
 {
     $stmt = $pdo->prepare('SELECT setting_value FROM system_settings WHERE setting_key = ? LIMIT 1');
@@ -58,9 +77,11 @@ try {
 
     $languageRaw = getSettingValue($pdo, 'announcement_language');
     $tabletWhatsAppRaw = getSettingValue($pdo, 'tablet_token_whatsapp_enabled');
+    $sameDayCutoffRaw = getSettingValue($pdo, 'same_day_online_booking_cutoff_time');
 
     $language = normalizeAnnouncementLanguage($languageRaw);
     $tabletWhatsAppEnabled = normalizeTabletWhatsAppEnabled($tabletWhatsAppRaw ?? '1');
+    $sameDayCutoffTime = normalizeSameDayOnlineBookingCutoffTime($sameDayCutoffRaw);
 
     // Ensure persistent defaults exist.
     if ($languageRaw === null) {
@@ -69,17 +90,22 @@ try {
     if ($tabletWhatsAppRaw === null) {
         upsertSetting($pdo, 'tablet_token_whatsapp_enabled', (string) $tabletWhatsAppEnabled);
     }
+    if ($sameDayCutoffRaw === null) {
+        upsertSetting($pdo, 'same_day_online_booking_cutoff_time', $sameDayCutoffTime);
+    }
 
     respond([
         'success' => true,
         'announcement_language' => $language,
         'tablet_token_whatsapp_enabled' => $tabletWhatsAppEnabled === 1,
+        'same_day_online_booking_cutoff_time' => $sameDayCutoffTime,
     ]);
 } catch (Throwable $e) {
     respond([
         'success' => false,
         'announcement_language' => 'marathi',
         'tablet_token_whatsapp_enabled' => true,
+        'same_day_online_booking_cutoff_time' => '09:00',
         'message' => 'Unable to load settings right now.'
     ], 500);
 }

@@ -489,42 +489,70 @@
 
     function buildUnifiedReceiptModel(details) {
         var serviceTimeText = String(details.serviceTime || '').trim();
+        var estimatedServiceTimeText = String(details.estimatedServiceSlot || '').trim();
+        var bookingTimeText = toAsciiDigits(details.time || '');
         var rows = [
-            { label: '\u092e\u094b\u092c\u093e\u0908\u0932', value: toAsciiDigits(details.phone) },
-            { label: '\u0915\u0947\u0902\u0926\u094d\u0930', value: String(details.location || defaultLocationLabel || 'Solapur') },
-            { label: '\u0926\u093f\u0928\u093e\u0902\u0915', value: toAsciiDigits(details.date) },
-            { label: '\u0935\u0947\u0933', value: toAsciiDigits(details.time) }
+            { label: '\u092e\u094b\u092c\u093e\u0908\u0932', value: toAsciiDigits(details.phone), layout: 'inline' },
+            { label: '\u0915\u0947\u0902\u0926\u094d\u0930', value: String(details.location || defaultLocationLabel || 'Solapur'), layout: 'inline' },
+            { label: '\u0926\u093f\u0928\u093e\u0902\u0915', value: toAsciiDigits(details.date), layout: 'inline' }
         ];
 
         if (serviceTimeText) {
-            rows.push({ label: '\u0938\u0947\u0935\u093e \u0935\u0947\u0933', value: serviceTimeText });
+            rows.push({ label: '\u0915\u093e\u0930\u094d\u092f\u093e\u0932\u092f\u0940\u0928 \u0935\u0947\u0933', value: serviceTimeText, layout: 'inline' });
         }
 
         return {
-            brand: 'VISHNUSUDARSHANA.COM',
+            brand: 'www.vishnusudarshana.com',
             title: '\u092a\u094d\u0930\u0924\u094d\u092f\u0915\u094d\u0937 \u0915\u093e\u0930\u094d\u092f\u093e\u0932\u092f \u092d\u0947\u091f \u091f\u094b\u0915\u0928 \u092a\u093e\u0935\u0924\u0940',
-            tokenLabel: '\u0906\u092a\u0932\u0947 \u091f\u094b\u0915\u0928',
-            tokenText: '#' + toAsciiDigits(details.token),
+            tokenLabel: '\u0906\u092a\u0932\u0947 \u091f\u094b\u0915\u0928 \u0915\u094d\u0930\u092e\u093e\u0902\u0915',
+            tokenText: toAsciiDigits(details.token),
+            estimatedServiceLabel: '\u0905\u0902\u0926\u093e\u091c\u093f\u0924 \u0938\u0947\u0935\u0947\u091a\u0940 \u0935\u0947\u0933',
+            estimatedServiceValue: estimatedServiceTimeText || '-',
             rows: rows,
             notes: [
                 '\u0915\u0943\u092a\u092f\u093e \u0939\u0940 \u092a\u093e\u0935\u0924\u0940 \u091c\u092a\u0942\u0928 \u0920\u0947\u0935\u093e.',
-                '\u0915\u0943\u092a\u092f\u093e live \u0938\u094d\u0915\u094d\u0930\u0940\u0928\u0935\u0930 \u091a\u093e\u0932\u0942 \u091f\u094b\u0915\u0928 \u092a\u093e\u0939\u0924 \u0930\u0939\u093e.'
-            ]
+                '\u0915\u0943\u092a\u092f\u093e LIVE \u0938\u094d\u0915\u094d\u0930\u0940\u0928\u0935\u0930 \u091a\u093e\u0932\u0942 \u091f\u094b\u0915\u0928 \u092a\u093e\u0939\u0924 \u0930\u0939\u093e.',
+                '\u0938\u0942\u091a\u0928\u093e - \u0905\u0902\u0926\u093e\u091c\u093f\u0924 \u0935\u0947\u0933\u0947\u092e\u0927\u094d\u092f\u0947 \u0905\u0930\u094d\u0927\u093e \u0924\u0947 \u090f\u0915 \u0924\u093e\u0938 \u092a\u0941\u0922\u0947-\u092e\u093e\u0917\u0947 \u0939\u094b\u090a \u0936\u0915\u0924\u094b. \u0924\u0930\u0940\u0939\u0940 WhatsApp \u0935\u0930 \u0905\u0902\u0926\u093e\u091c\u093f\u0924 \u0935\u0947\u0933 \u0915\u0933\u0935\u0932\u0940 \u091c\u093e\u0908\u0932.'
+            ],
+            footerBookingTime: bookingTimeText ? ('\u092c\u0941\u0915\u093f\u0902\u0917 \u0935\u0947\u0933: ' + bookingTimeText) : ''
         };
     }
 
     function buildRawBtReceiptText(details) {
         var receipt = buildUnifiedReceiptModel(details);
-        var lines = [receipt.brand, receipt.title, '----------------------', receipt.tokenLabel + ' : ' + receipt.tokenText, '----------------------'];
+        var lines = [
+            receipt.brand,
+            receipt.title,
+            '----------------------',
+            receipt.tokenLabel,
+            receipt.tokenText,
+            receipt.estimatedServiceLabel,
+            receipt.estimatedServiceValue,
+            '----------------------'
+        ];
 
         receipt.rows.forEach(function (row) {
-            lines.push(row.label + ' : ' + row.value);
+            var layout = String(row.layout || 'inline').toLowerCase();
+            var labelLines = String(row.label || '').split('\n').filter(Boolean);
+            if (layout === 'stacked') {
+                labelLines.forEach(function (labelLine) {
+                    lines.push(labelLine);
+                });
+                lines.push(String(row.value || '-'));
+                lines.push('');
+                return;
+            }
+            lines.push(labelLines.join(' ') + ' : ' + String(row.value || ''));
         });
 
         lines.push('----------------------');
         receipt.notes.forEach(function (note) {
             lines.push(note);
         });
+        if (receipt.footerBookingTime) {
+            lines.push('----------------------');
+            lines.push(receipt.footerBookingTime);
+        }
         lines.push('');
         lines.push('');
         lines.push('');
@@ -533,10 +561,15 @@
     }
 
     function getRawBtCanvasHeight(receipt) {
-        var baseHeight = 560;
-        var rowsHeight = receipt.rows.length * 36;
-        var notesHeight = receipt.notes.length * 30;
-        return Math.max(640, baseHeight + rowsHeight + notesHeight);
+        var baseHeight = 470;
+        var estimatedHeight = 42;
+        var rowsHeight = receipt.rows.reduce(function (sum, row) {
+            var layout = String((row && row.layout) || 'inline').toLowerCase();
+            return sum + (layout === 'stacked' ? 78 : 28);
+        }, 0);
+        var notesHeight = receipt.notes.length * 48;
+        var footerHeight = receipt.footerBookingTime ? 22 : 0;
+        return Math.max(680, baseHeight + estimatedHeight + rowsHeight + notesHeight + footerHeight);
     }
 
     function loadImageForRawBt(src) {
@@ -583,20 +616,84 @@
                 ctx.lineTo(width - padding, y);
                 ctx.stroke();
                 ctx.setLineDash([]);
-                y += 18;
+                y += 12;
             }
 
             function drawLabelValue(label, value) {
-                ctx.font = '700 20px "Noto Sans Devanagari", sans-serif';
+                var safeValue = String(value || '');
+                var labelLines = String(label || '').split('\n').filter(function (line) {
+                    return line !== '';
+                });
+                if (!labelLines.length) {
+                    labelLines = [''];
+                }
+                var labelLineHeight = 17;
+                ctx.font = '700 17px "Noto Sans Devanagari", sans-serif';
                 ctx.fillStyle = '#000000';
                 ctx.textAlign = 'left';
-                ctx.fillText(label, padding, y);
+                labelLines.forEach(function (lineText, idx) {
+                    ctx.fillText(lineText, padding, y + (idx * labelLineHeight));
+                });
                 ctx.textAlign = 'right';
-                ctx.font = String(value).length > 18
-                    ? '500 16px "Noto Sans Devanagari", sans-serif'
-                    : '500 20px "Noto Sans Devanagari", sans-serif';
-                ctx.fillText(value, width - padding, y);
-                y += 34;
+                ctx.font = safeValue.length > 18
+                    ? '500 13px "Noto Sans Devanagari", sans-serif'
+                    : '500 17px "Noto Sans Devanagari", sans-serif';
+                ctx.fillText(safeValue, width - padding, y + ((labelLines.length - 1) * labelLineHeight));
+                y += Math.max(24, (labelLines.length * labelLineHeight) + 6);
+            }
+
+            function drawStackedLabelValue(label, value) {
+                var labelLines = String(label || '').split('\n').filter(Boolean);
+                if (!labelLines.length) {
+                    labelLines = [''];
+                }
+                ctx.textAlign = 'left';
+                ctx.fillStyle = '#000000';
+                ctx.font = '700 17px "Noto Sans Devanagari", sans-serif';
+                labelLines.forEach(function (lineText) {
+                    ctx.fillText(lineText, padding, y + 16);
+                    y += 16;
+                });
+
+                ctx.font = String(value || '').length > 22
+                    ? '600 14px "Noto Sans Devanagari", sans-serif'
+                    : '600 16px "Noto Sans Devanagari", sans-serif';
+                ctx.fillText(String(value || '-'), padding, y + 16);
+                y += 22;
+            }
+
+            function drawWrappedCenterText(text, font, lineHeight) {
+                var safeText = String(text || '').trim();
+                if (!safeText) {
+                    return;
+                }
+
+                ctx.font = font;
+                ctx.textAlign = 'center';
+                ctx.fillStyle = '#000000';
+
+                var words = safeText.split(/\s+/);
+                var lines = [];
+                var line = '';
+                var maxWidth = contentWidth;
+
+                words.forEach(function (word) {
+                    var candidate = line ? (line + ' ' + word) : word;
+                    if (!line || ctx.measureText(candidate).width <= maxWidth) {
+                        line = candidate;
+                    } else {
+                        lines.push(line);
+                        line = word;
+                    }
+                });
+                if (line) {
+                    lines.push(line);
+                }
+
+                lines.forEach(function (lineText) {
+                    ctx.fillText(lineText, width / 2, y + lineHeight);
+                    y += lineHeight;
+                });
             }
 
             function finalize() {
@@ -630,32 +727,53 @@
 
                 ctx.textAlign = 'center';
                 ctx.fillStyle = '#000000';
-                ctx.font = '700 21px "Noto Sans Devanagari", sans-serif';
-                ctx.fillText(receipt.title, width / 2, y + 20);
-                y += 36;
+                ctx.font = '700 19px "Noto Sans Devanagari", sans-serif';
+                ctx.fillText(receipt.title, width / 2, y + 18);
+                y += 28;
 
                 drawSeparator();
 
-                ctx.font = '700 20px "Noto Sans Devanagari", sans-serif';
-                ctx.fillText(receipt.tokenLabel, width / 2, y + 20);
-                y += 28;
+                ctx.font = '700 18px "Noto Sans Devanagari", sans-serif';
+                ctx.fillText(receipt.tokenLabel, width / 2, y + 17);
+                y += 22;
 
-                ctx.font = '700 66px monospace';
-                ctx.fillText(receipt.tokenText, width / 2, y + 66);
-                y += 84;
+                ctx.font = '700 58px monospace';
+                ctx.fillText(receipt.tokenText, width / 2, y + 56);
+                y += 68;
+
+                ctx.font = '700 16px "Noto Sans Devanagari", sans-serif';
+                ctx.fillText(receipt.estimatedServiceLabel, width / 2, y + 15);
+                y += 20;
+
+                ctx.font = '600 16px "Noto Sans Devanagari", sans-serif';
+                ctx.fillText(receipt.estimatedServiceValue, width / 2, y + 16);
+                y += 22;
 
                 drawSeparator();
                 receipt.rows.forEach(function (row) {
-                    drawLabelValue(row.label, row.value);
+                    var layout = String((row && row.layout) || 'inline').toLowerCase();
+                    if (layout === 'stacked') {
+                        drawStackedLabelValue(row.label, row.value);
+                    } else {
+                        drawLabelValue(row.label, row.value);
+                    }
                 });
 
                 drawSeparator();
                 ctx.textAlign = 'center';
-                ctx.font = '500 19px "Noto Sans Devanagari", sans-serif';
                 receipt.notes.forEach(function (note) {
-                    ctx.fillText(note, width / 2, y + 20);
-                    y += 30;
+                    drawWrappedCenterText(note, '500 15px "Noto Sans Devanagari", sans-serif', 20);
+                    y += 2;
                 });
+
+                if (receipt.footerBookingTime) {
+                    drawSeparator();
+                    ctx.textAlign = 'left';
+                    ctx.fillStyle = '#000000';
+                    ctx.font = '500 12px "Noto Sans Devanagari", sans-serif';
+                    ctx.fillText(receipt.footerBookingTime, padding, y + 12);
+                    y += 16;
+                }
 
                 finalize();
             }
@@ -719,12 +837,23 @@
     function buildThermalReceiptHtml(details) {
         var receipt = buildUnifiedReceiptModel(details);
         var logoUrl = resolveAssetUrl('assets/images/logo/logomain.png');
+        var estimatedHtml = '<div class="center estimate-label">' + escapeHtml(receipt.estimatedServiceLabel) + '</div>' +
+            '<div class="center estimate-value">' + escapeHtml(receipt.estimatedServiceValue) + '</div>';
         var rowsHtml = receipt.rows.map(function (row) {
-            return '<div class="row"><span class="label">' + escapeHtml(row.label) + '</span><span>' + escapeHtml(row.value) + '</span></div>';
+            var labelHtml = escapeHtml(row.label).replace(/\n/g, '<br>');
+            var layout = String((row && row.layout) || 'inline').toLowerCase();
+            var isOfficeTimeRow = String(row.label || '') === '\u0915\u093e\u0930\u094d\u092f\u093e\u0932\u092f\u0940\u0928 \u0935\u0947\u0933';
+            if (layout === 'stacked') {
+                return '<div class="row row-stacked"><span class="label">' + labelHtml + '</span><span class="value">' + escapeHtml(row.value) + '</span></div>';
+            }
+            return '<div class="row row-inline' + (isOfficeTimeRow ? ' row-inline-office' : '') + '"><span class="label">' + labelHtml + '</span><span class="value">' + escapeHtml(row.value) + '</span></div>';
         }).join('');
         var notesHtml = receipt.notes.map(function (note) {
             return '<div class="note center">' + escapeHtml(note) + '</div>';
         }).join('');
+        var footerHtml = receipt.footerBookingTime
+            ? ('<div class="line"></div><div class="footer-time">' + escapeHtml(receipt.footerBookingTime) + '</div>')
+            : '';
 
         return '<!DOCTYPE html>' +
             '<html><head><meta charset="UTF-8">' +
@@ -733,16 +862,27 @@
             '<style>' +
             '@page{size:' + THERMAL_RECEIPT_WIDTH_MM + 'mm auto;margin:0;}' +
             'html,body{margin:0;padding:0;width:' + THERMAL_RECEIPT_WIDTH_MM + 'mm;background:#fff;color:#000;}' +
-            'body{font-family:"Noto Sans Devanagari",sans-serif;font-size:12px;line-height:1.35;padding:4mm 3mm;box-sizing:border-box;}' +
+            'body{font-family:"Noto Sans Devanagari",sans-serif;font-size:11px;line-height:1.22;padding:2.5mm 2.2mm;box-sizing:border-box;}' +
             '.center{text-align:center;}' +
-            '.logo{display:block;width:100%;height:auto;margin:0 auto 1.5mm auto;}' +
-            '.brand{font-weight:700;font-size:13px;letter-spacing:0.2px;}' +
-            '.title{font-weight:700;margin-top:2mm;font-size:12px;}' +
-            '.line{border-top:1px dashed #000;margin:2mm 0;}' +
-            '.token{font-size:26px;font-weight:700;line-height:1.05;margin:1mm 0 2mm 0;}' +
-            '.row{display:flex;justify-content:space-between;gap:4px;white-space:nowrap;}' +
-            '.row .label{font-weight:700;}' +
-            '.note{margin-top:2mm;font-size:11px;}' +
+            '.logo{display:block;width:100%;height:auto;margin:0 auto 1mm auto;}' +
+            '.brand{font-weight:700;font-size:11.5px;letter-spacing:0.15px;}' +
+            '.title{font-weight:700;margin-top:1mm;font-size:11.5px;}' +
+            '.line{border-top:1px dashed #000;margin:1.2mm 0;}' +
+            '.token{font-size:24px;font-weight:700;line-height:1.02;margin:0.4mm 0 1mm 0;}' +
+            '.estimate-label{font-size:11px;font-weight:700;line-height:1.1;margin-top:0.2mm;}' +
+            '.estimate-value{font-size:12px;font-weight:700;line-height:1.12;margin-top:0.2mm;}' +
+            '.row{margin-top:0.4mm;}' +
+            '.row-inline{display:flex;justify-content:space-between;align-items:flex-start;gap:3px;}' +
+            '.row-inline .label{font-weight:700;white-space:normal;max-width:56%;}' +
+            '.row-inline .value{white-space:nowrap;text-align:right;max-width:42%;}' +
+            '.row-inline-office{justify-content:space-between;gap:1.5mm;}' +
+            '.row-inline-office .label{max-width:none;white-space:nowrap;flex:1;min-width:0;}' +
+            '.row-inline-office .value{max-width:none;white-space:nowrap;text-align:right;flex-shrink:0;}' +
+            '.row-stacked{display:block;}' +
+            '.row-stacked .label{display:block;font-weight:700;line-height:1.12;white-space:normal;}' +
+            '.row-stacked .value{display:block;margin-top:0.4mm;font-weight:700;white-space:nowrap;}' +
+            '.note{margin-top:1.1mm;font-size:10px;line-height:1.18;}' +
+            '.footer-time{margin-top:1mm;font-size:9px;color:#444;line-height:1.2;}' +
             '</style></head><body>' +
             '<img class="logo" src="' + escapeHtml(logoUrl) + '" alt="Vishnusudarshana Logo">' +
             '<div class="center brand">' + escapeHtml(receipt.brand) + '</div>' +
@@ -750,10 +890,12 @@
             '<div class="line"></div>' +
             '<div class="center">' + escapeHtml(receipt.tokenLabel) + '</div>' +
             '<div class="center token">' + escapeHtml(receipt.tokenText) + '</div>' +
+            estimatedHtml +
             '<div class="line"></div>' +
             rowsHtml +
             '<div class="line"></div>' +
             notesHtml +
+            footerHtml +
             '</body></html>';
     }
 
@@ -1505,7 +1647,8 @@
                     location: toLocationLabel(data.location || location),
                     date: getFormattedDate(now),
                     time: getFormattedTime(now),
-                    serviceTime: data.service_time || ''
+                    serviceTime: data.service_time || '',
+                    estimatedServiceSlot: data.estimated_service_slot || ''
                 };
 
                 applyReceiptDetails(details);

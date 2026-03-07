@@ -36,6 +36,84 @@ function to12Hour(string $timeValue): string
     return date('g:i A', $timestamp);
 }
 
+function minsToTime(int $mins): string
+{
+    $hours24 = (int) floor($mins / 60);
+    $minutes = (int) ($mins % 60);
+    if ($minutes < 0) {
+        $minutes += 60;
+        $hours24 -= 1;
+    }
+
+    $ampm = $hours24 >= 12 ? 'PM' : 'AM';
+    $hours12 = $hours24 % 12;
+    if ($hours12 === 0) {
+        $hours12 = 12;
+    }
+
+    return sprintf('%02d:%02d %s', $hours12, $minutes, $ampm);
+}
+
+function timeToMinutes(string $timeValue): ?int
+{
+    $timeValue = trim($timeValue);
+    if ($timeValue === '') {
+        return null;
+    }
+
+    $parts = explode(':', $timeValue);
+    if (count($parts) < 2) {
+        return null;
+    }
+
+    $hours = (int) $parts[0];
+    $minutes = (int) $parts[1];
+    if ($hours < 0 || $hours > 23 || $minutes < 0 || $minutes > 59) {
+        return null;
+    }
+
+    return ($hours * 60) + $minutes;
+}
+
+function calculateEstimatedServiceSlot(PDO $pdo, string $tokenDate, string $location, int $tokenNo, array $slot): string
+{
+    if ($tokenNo <= 0) {
+        return '-';
+    }
+
+    $fromMins = timeToMinutes((string) ($slot['from_time'] ?? ''));
+    $toMins = timeToMinutes((string) ($slot['to_time'] ?? ''));
+    $totalTokens = (int) ($slot['total_tokens'] ?? 0);
+
+    if ($fromMins === null || $toMins === null || $toMins <= $fromMins || $totalTokens <= 0) {
+        return '-';
+    }
+
+    $diffMins = $toMins - $fromMins;
+    $perTokenMins = (int) floor($diffMins / $totalTokens);
+    if ($perTokenMins <= 0) {
+        return '-';
+    }
+
+    $rowIndexStmt = $pdo->prepare(
+        'SELECT COUNT(*) 
+         FROM token_bookings
+         WHERE token_date = ?
+         AND LOWER(TRIM(location)) = LOWER(TRIM(?))
+         AND CAST(token_no AS UNSIGNED) < ?'
+    );
+    $rowIndexStmt->execute([$tokenDate, $location, $tokenNo]);
+    $rowIndex = (int) $rowIndexStmt->fetchColumn();
+    if ($rowIndex < 0) {
+        $rowIndex = 0;
+    }
+
+    $startMins = $fromMins + ($rowIndex * $perTokenMins);
+    $endMins = $fromMins + (($rowIndex + 1) * $perTokenMins);
+
+    return minsToTime($startMins) . ' - ' . minsToTime($endMins);
+}
+
 function isTabletTokenWhatsAppEnabled(PDO $pdo): bool
 {
     try {
@@ -146,6 +224,8 @@ try {
     );
     $insertStmt->execute([$location, $defaultName, $mobileNumber, $tokenDate, $serviceTime, $nextTokenNo]);
 
+    $estimatedServiceSlot = calculateEstimatedServiceSlot($pdo, $tokenDate, $location, $nextTokenNo, $slot);
+
     $decrementStmt = $pdo->prepare(
         'UPDATE token_management
          SET unbooked_tokens = unbooked_tokens - 1
@@ -198,6 +278,7 @@ try {
         'token_no' => $nextTokenNo,
         'token_date' => $tokenDate,
         'service_time' => $serviceTime,
+        'estimated_service_slot' => $estimatedServiceSlot,
         'location' => $location,
         'phone_number' => $mobileNumber,
         'cooldown_seconds' => $cooldownSeconds,
