@@ -107,7 +107,12 @@ h1 { color: #800000; margin-bottom: 18px; }
             <?php foreach ($appointments as $a):
                 $formData = json_decode($a['form_data'], true) ?? [];
                 $preferredDate = $formData['preferred_date'] ?? '';
-                $preferredDisplay = $preferredDate ? (DateTime::createFromFormat('Y-m-d', $preferredDate)?->format('d-M-Y') ?: $preferredDate) : 'â€”';
+                if ($preferredDate) {
+                    $preferredDateObj = DateTime::createFromFormat('Y-m-d', $preferredDate);
+                    $preferredDisplay = $preferredDateObj ? $preferredDateObj->format('d-M-Y') : $preferredDate;
+                } else {
+                    $preferredDisplay = '--';
+                }
                 $fromTime = $formData['assigned_from_time'] ?? ($formData['time_from'] ?? '');
                 $toTime = $formData['assigned_to_time'] ?? ($formData['time_to'] ?? '');
                 $updatedDisplay = '';
@@ -169,7 +174,7 @@ h1 { color: #800000; margin-bottom: 18px; }
                         if ($fromTime && $toTime) {
                             $fromFmt = date('h:i A', strtotime($fromTime));
                             $toFmt = date('h:i A', strtotime($toTime));
-                            echo htmlspecialchars($fromFmt . ' â€“ ' . $toFmt);
+                            echo htmlspecialchars($fromFmt . ' - ' . $toFmt);
                         } else {
                             echo 'Time not set';
                         }

@@ -270,7 +270,7 @@ document.addEventListener('DOMContentLoaded', function() {
 						   <input type="number" name="product_amount[]" class="product-amount" placeholder="Amount" min="0" step="0.01" style="width:120px;">
 						   <button type="button" class="addProductRowBtn">+</button>
 						   <!-- X button for deleting extra rows, hidden for first row by default -->
-						   <button type="button" class="removeProductRowBtn xRemoveBtn" title="Delete Row" style="display:none; background:#dc3545; color:#fff; border:none; border-radius:4px; padding:8px 14px; font-size:1.2em; font-weight:700; cursor:pointer;">Ã—</button>
+						   <button type="button" class="removeProductRowBtn xRemoveBtn" title="Delete Row" style="display:none; background:#dc3545; color:#fff; border:none; border-radius:4px; padding:8px 14px; font-size:1.2em; font-weight:700; cursor:pointer;">&times;</button>
 					   </div>
 				</div>
 				<div id="productTotals">

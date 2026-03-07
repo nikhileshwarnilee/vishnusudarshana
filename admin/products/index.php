@@ -140,7 +140,7 @@ if (session_status() === PHP_SESSION_NONE) {
     
     <!-- Category Filter -->
     <div class="filter-bar">
-        <label for="categoryFilter">ðŸ“ Filter by Category:</label>
+        <label for="categoryFilter">&#128193; Filter by Category:</label>
         <select id="categoryFilter">
             <option value="">All Categories</option>
             <option value="birth-child">Birth & Child Services</option>

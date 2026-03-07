@@ -328,7 +328,7 @@ $blogs = $stmt->fetchAll();
     <div class="content-card">
         <?php if (empty($filteredBlogs)): ?>
             <div class="empty-state">
-                <div class="empty-state-icon">ðŸ“</div>
+                <div class="empty-state-icon">&#128221;</div>
                 <h3>No Blogs Found</h3>
                 <p>Add a new blog to get started or adjust your filters.</p>
             </div>

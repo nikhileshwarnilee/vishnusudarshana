@@ -255,7 +255,7 @@ h1 {
 .btn-submit:hover {
     background: #600000;
 }
-/* PHASE 4 â€“ Dropdown Styling */
+/* PHASE 4 - Dropdown Styling */
 #appointmentDateSelect {
     padding: 8px 12px;
     border-radius: 6px;
@@ -347,7 +347,12 @@ h1 {
                 $customerName = $customerDetails['full_name'] ?? ($formData['full_name'] ?? '');
                 $mobile = $customerDetails['mobile'] ?? ($formData['mobile'] ?? '');
                 $preferredDate = $customerDetails['preferred_date'] ?? ($formData['preferred_date'] ?? '');
-                $preferredDisplay = $preferredDate ? (DateTime::createFromFormat('Y-m-d', $preferredDate)?->format('d-M-Y') ?: $preferredDate) : 'â€”';
+                if ($preferredDate) {
+                    $preferredDateObj = DateTime::createFromFormat('Y-m-d', $preferredDate);
+                    $preferredDisplay = $preferredDateObj ? $preferredDateObj->format('d-M-Y') : $preferredDate;
+                } else {
+                    $preferredDisplay = '--';
+                }
                 $createdDisplay = '';
                 if (!empty($a['created_at'])) {
                     $co = new DateTime($a['created_at']);
@@ -382,7 +387,7 @@ h1 {
 
 </div>
 
-<!-- PHASE 3 â€“ ACCEPT APPOINTMENT MODAL -->
+<!-- PHASE 3 - ACCEPT APPOINTMENT MODAL -->
 <div class="modal" id="acceptModal">
     <div class="modal-content">
         <div class="modal-header">

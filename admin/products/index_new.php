@@ -137,7 +137,7 @@ admin_enforce_mapped_permission('auto');
     
     <!-- Category Filter -->
     <div class="filter-bar">
-        <label for="categoryFilter">ðŸ“ Filter by Category:</label>
+        <label for="categoryFilter">&#128193; Filter by Category:</label>
         <select id="categoryFilter">
             <option value="">All Categories</option>
             <option value="birth-child">Birth & Child Services</option>

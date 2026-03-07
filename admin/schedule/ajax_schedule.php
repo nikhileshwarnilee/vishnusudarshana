@@ -30,7 +30,7 @@ if ($action === 'fetch') {
                         ($row['start_time'] === '00:00:00' && $row['end_time'] === '24:00:00');
             $event = [
                 'id' => $row['id'],
-                'title' => $row['assigned_user_name'] . ' â€“ ' . $row['title'] . ' (' . ucfirst($row['status']) . ')',
+                'title' => $row['assigned_user_name'] . ' - ' . $row['title'] . ' (' . ucfirst($row['status']) . ')',
                 'start' => $row['schedule_date'] . 'T' . $row['start_time'],
                 'end' => $endDate . 'T' . $row['end_time'],
                 'color' => $color,

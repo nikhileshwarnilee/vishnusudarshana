@@ -269,7 +269,7 @@ $categories = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     <?php if (!empty($cat['logo'])): ?>
                         <img src="/assets/images/logo/<?php echo htmlspecialchars($cat['logo']); ?>" class="cat-logo" alt="Logo">
                     <?php else: ?>
-                        <span style="color:#aaa;">â€”</span>
+                        <span style="color:#aaa;">--</span>
                     <?php endif; ?>
                 </td>
                 <td><?php echo htmlspecialchars($cat['category_name']); ?></td>

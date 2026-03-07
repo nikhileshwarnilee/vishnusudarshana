@@ -6,7 +6,7 @@ admin_enforce_mapped_permission('auto');
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Admin â€“ Service Requests</title>
+<title>Admin - Service Requests</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="stylesheet" href="/assets/css/style.css">
 <style>

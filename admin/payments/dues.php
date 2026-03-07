@@ -205,7 +205,7 @@ $queryStr = http_build_query(array_diff_key($_GET, ['page' => '']));
 	</form>
 	<div style="margin-bottom:18px; display:flex; gap:10px; align-items:center;">
 		<button type="button" onclick="sendReminderToAll()" style="background:#25D366;color:#fff;border:none;border-radius:8px;padding:10px 20px;font-weight:600;cursor:pointer;font-size:0.98em;">
-			<span class="remind-all-text">ðŸ“² Send Reminder to All</span>
+			<span class="remind-all-text">&#128242; Send Reminder to All</span>
 		</button>
 		<span id="remindAllStatus" style="font-size:0.9em; color:#888; display:none;"></span>
 	</div>
@@ -481,7 +481,7 @@ function sendDueReminder(customerId, customerName, mobile, dueAmount, btn) {
 	.then(res => res.json())
 	.then(data => {
 		if (data.success) {
-			btnText.textContent = 'âœ“ Sent';
+			btnText.textContent = 'Sent';
 			btn.style.background = '#1a8917';
 			setTimeout(() => {
 				btnText.textContent = originalText;
@@ -490,7 +490,7 @@ function sendDueReminder(customerId, customerName, mobile, dueAmount, btn) {
 				btn.style.background = '#25D366';
 			}, 3000);
 		} else {
-			btnText.textContent = 'âœ— Failed';
+			btnText.textContent = 'Failed';
 			btn.style.background = '#c00';
 			setTimeout(() => {
 				btnText.textContent = originalText;
@@ -503,7 +503,7 @@ function sendDueReminder(customerId, customerName, mobile, dueAmount, btn) {
 	})
 	.catch(err => {
 		console.error(err);
-		btnText.textContent = 'âœ— Error';
+		btnText.textContent = 'Error';
 		btn.style.background = '#c00';
 		setTimeout(() => {
 			btnText.textContent = originalText;
@@ -526,7 +526,7 @@ function sendReminderToAll() {
 	const statusEl = document.getElementById('remindAllStatus');
 	const originalText = btnText.textContent;
 	
-	btnText.textContent = 'â³ Sending to all...';
+	btnText.textContent = 'Sending to all...';
 	statusEl.textContent = 'Processing...';
 	statusEl.style.display = 'inline';
 	btn.disabled = true;
@@ -540,7 +540,7 @@ function sendReminderToAll() {
 	.then(res => res.json())
 	.then(data => {
 		if (data.success) {
-			btnText.textContent = 'âœ“ Sent to All';
+			btnText.textContent = 'Sent to All';
 			statusEl.textContent = `Successfully sent to ${data.count} customer(s)`;
 			statusEl.style.color = '#1a8917';
 			btn.style.background = '#1a8917';
@@ -552,7 +552,7 @@ function sendReminderToAll() {
 				statusEl.style.display = 'none';
 			}, 4000);
 		} else {
-			btnText.textContent = 'âœ— Failed';
+			btnText.textContent = 'Failed';
 			statusEl.textContent = data.message || 'Failed to send reminders';
 			statusEl.style.color = '#c00';
 			btn.style.background = '#c00';
@@ -567,7 +567,7 @@ function sendReminderToAll() {
 	})
 	.catch(err => {
 		console.error(err);
-		btnText.textContent = 'âœ— Error';
+		btnText.textContent = 'Error';
 		statusEl.textContent = 'Error processing request';
 		statusEl.style.color = '#c00';
 		btn.style.background = '#c00';

@@ -362,7 +362,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <div class="admin-container">
     <div class="page-header">
         <h1>Create Blog</h1>
-        <a class="back-link" href="blogs-management.php">â† Back to Blogs Management</a>
+        <a class="back-link" href="blogs-management.php">&larr; Back to Blogs Management</a>
     </div>
 
     <div class="content-card">

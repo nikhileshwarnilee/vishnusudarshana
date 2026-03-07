@@ -120,9 +120,9 @@ try {
             <button type="button" class="btn-main" style="padding:4px 10px;font-size:1em;" onclick="format('bold')"><b>B</b></button>
             <button type="button" class="btn-main" style="padding:4px 10px;font-size:1em;" onclick="format('italic')"><i>I</i></button>
             <button type="button" class="btn-main" style="padding:4px 10px;font-size:1em;" onclick="format('underline')"><u>U</u></button>
-            <button type="button" class="btn-main" style="padding:4px 10px;font-size:1em;" onclick="format('insertUnorderedList')">â€¢ List</button>
+            <button type="button" class="btn-main" style="padding:4px 10px;font-size:1em;" onclick="format('insertUnorderedList')">&bull; List</button>
             <button type="button" class="btn-main" style="padding:4px 10px;font-size:1em;" onclick="format('insertOrderedList')">1. List</button>
-            <button type="button" class="btn-main" style="padding:4px 10px;font-size:1em;" onclick="insertLink()">ðŸ”— Link</button>
+            <button type="button" class="btn-main" style="padding:4px 10px;font-size:1em;" onclick="insertLink()">&#128279; Link</button>
             <button type="button" class="btn-main" style="padding:4px 10px;font-size:1em;background:#b30000;" onclick="clearEditor()">Clear</button>
         </div>
         <div id="richMsg" contenteditable="true"><?php if ($editMsg) echo $editMsg; ?></div>
