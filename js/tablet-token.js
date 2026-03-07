@@ -445,32 +445,44 @@
         return /android/i.test(String(window.navigator.userAgent || ''));
     }
 
-    function buildRawBtReceiptText(details) {
-        var tokenText = toAsciiDigits(details.token);
-        var phoneText = toAsciiDigits(details.phone);
-        var dateText = toAsciiDigits(details.date);
-        var timeText = toAsciiDigits(details.time);
-        var locationText = String(details.location || defaultLocationLabel || 'Solapur');
+    function buildUnifiedReceiptModel(details) {
         var serviceTimeText = String(details.serviceTime || '').trim();
-
-        var lines = [
-            'VISHNUSUDARSHANA',
-            '\u092a\u094d\u0930\u0924\u094d\u092f\u0915\u094d\u0937 \u0915\u093e\u0930\u094d\u092f\u093e\u0932\u092f \u092d\u0947\u091f \u091f\u094b\u0915\u0928',
-            '----------------------',
-            'Token Number : ' + tokenText,
-            'Mobile       : ' + phoneText,
-            'Location     : ' + locationText,
-            'Date         : ' + dateText,
-            'Time         : ' + timeText
+        var rows = [
+            { label: '\u092e\u094b\u092c\u093e\u0908\u0932', value: toAsciiDigits(details.phone) },
+            { label: '\u0915\u0947\u0902\u0926\u094d\u0930', value: String(details.location || defaultLocationLabel || 'Solapur') },
+            { label: '\u0926\u093f\u0928\u093e\u0902\u0915', value: toAsciiDigits(details.date) },
+            { label: '\u0935\u0947\u0933', value: toAsciiDigits(details.time) }
         ];
 
         if (serviceTimeText) {
-            lines.push('Slot         : ' + serviceTimeText);
+            rows.push({ label: '\u0938\u0947\u0935\u093e \u0935\u0947\u0933', value: serviceTimeText });
         }
 
+        return {
+            brand: 'VISHNUSUDARSHANA.COM',
+            title: '\u092a\u094d\u0930\u0924\u094d\u092f\u0915\u094d\u0937 \u0915\u093e\u0930\u094d\u092f\u093e\u0932\u092f \u092d\u0947\u091f \u091f\u094b\u0915\u0928 \u092a\u093e\u0935\u0924\u0940',
+            tokenLabel: '\u0906\u092a\u0932\u0947 \u091f\u094b\u0915\u0928',
+            tokenText: '#' + toAsciiDigits(details.token),
+            rows: rows,
+            notes: [
+                '\u0915\u0943\u092a\u092f\u093e \u0939\u0940 \u092a\u093e\u0935\u0924\u0940 \u091c\u092a\u0942\u0928 \u0920\u0947\u0935\u093e.',
+                '\u0915\u0943\u092a\u092f\u093e live \u0938\u094d\u0915\u094d\u0930\u0940\u0928\u0935\u0930 \u091a\u093e\u0932\u0942 \u091f\u094b\u0915\u0928 \u092a\u093e\u0939\u0924 \u0930\u0939\u093e.'
+            ]
+        };
+    }
+
+    function buildRawBtReceiptText(details) {
+        var receipt = buildUnifiedReceiptModel(details);
+        var lines = [receipt.brand, receipt.title, '----------------------', receipt.tokenLabel + ' : ' + receipt.tokenText, '----------------------'];
+
+        receipt.rows.forEach(function (row) {
+            lines.push(row.label + ' : ' + row.value);
+        });
+
         lines.push('----------------------');
-        lines.push('\u0915\u0943\u092a\u092f\u093e \u0938\u094d\u0915\u094d\u0930\u0940\u0928\u0935\u0930 \u091a\u093e\u0932\u0942 \u091f\u094b\u0915\u0928 \u092a\u093e\u0939\u093e');
-        lines.push('\u0927\u0928\u094d\u092f\u0935\u093e\u0926');
+        receipt.notes.forEach(function (note) {
+            lines.push(note);
+        });
         lines.push('');
         lines.push('');
         lines.push('');
@@ -478,12 +490,11 @@
         return lines.join('\n');
     }
 
-    function getRawBtCanvasHeight(details) {
-        var baseHeight = 640;
-        if (details && details.serviceTime) {
-            return baseHeight + 30;
-        }
-        return baseHeight;
+    function getRawBtCanvasHeight(receipt) {
+        var baseHeight = 560;
+        var rowsHeight = receipt.rows.length * 36;
+        var notesHeight = receipt.notes.length * 30;
+        return Math.max(640, baseHeight + rowsHeight + notesHeight);
     }
 
     function loadImageForRawBt(src) {
@@ -502,12 +513,13 @@
 
     function renderRawBtReceiptImage(details) {
         return new Promise(function (resolve, reject) {
+            var receipt = buildUnifiedReceiptModel(details);
             var canvas = document.createElement('canvas');
             var width = RAWBT_RECEIPT_IMAGE_WIDTH_PX;
-            var height = getRawBtCanvasHeight(details);
+            var height = getRawBtCanvasHeight(receipt);
             var padding = RAWBT_RECEIPT_IMAGE_PADDING_PX;
             var contentWidth = width - (padding * 2);
-            var y = padding;
+            var y = 0;
 
             canvas.width = width;
             canvas.height = height;
@@ -518,12 +530,6 @@
                 return;
             }
 
-            var tokenText = '#' + toAsciiDigits(details.token);
-            var phoneText = toAsciiDigits(details.phone);
-            var locationText = String(details.location || defaultLocationLabel || 'Solapur');
-            var dateText = toAsciiDigits(details.date);
-            var timeText = toAsciiDigits(details.time);
-            var serviceTimeText = String(details.serviceTime || '').trim();
             var logoUrl = resolveAssetUrl('assets/images/logo/logomain.png');
 
             function drawSeparator() {
@@ -539,12 +545,14 @@
             }
 
             function drawLabelValue(label, value) {
-                ctx.font = '700 23px monospace';
+                ctx.font = '700 20px "Noto Sans Devanagari", sans-serif';
                 ctx.fillStyle = '#000000';
                 ctx.textAlign = 'left';
                 ctx.fillText(label, padding, y);
                 ctx.textAlign = 'right';
-                ctx.font = '500 23px monospace';
+                ctx.font = String(value).length > 18
+                    ? '500 16px "Noto Sans Devanagari", sans-serif'
+                    : '500 20px "Noto Sans Devanagari", sans-serif';
                 ctx.fillText(value, width - padding, y);
                 y += 34;
             }
@@ -559,94 +567,61 @@
                 resolve(dataUrl.slice(base64Index + 7));
             }
 
-            function drawWithoutLogo() {
+            function drawBody(logoImage) {
+                y = padding;
                 ctx.fillStyle = '#ffffff';
                 ctx.fillRect(0, 0, width, height);
 
-                ctx.fillStyle = '#000000';
-                ctx.textAlign = 'center';
-                ctx.font = '700 26px monospace';
-                ctx.fillText('VISHNUSUDARSHANA.COM', width / 2, y + 22);
-                y += 44;
-
-                ctx.font = '700 22px sans-serif';
-                ctx.fillText('\u092a\u094d\u0930\u0924\u094d\u092f\u0915\u094d\u0937 \u0915\u093e\u0930\u094d\u092f\u093e\u0932\u092f \u092d\u0947\u091f \u091f\u094b\u0915\u0928', width / 2, y + 20);
-                y += 34;
-
-                drawSeparator();
-
-                ctx.font = '700 20px monospace';
-                ctx.fillText('TOKEN NO', width / 2, y + 20);
-                y += 28;
-
-                ctx.font = '700 68px monospace';
-                ctx.fillText(tokenText, width / 2, y + 66);
-                y += 82;
-
-                drawSeparator();
-                drawLabelValue('Mobile', phoneText);
-                drawLabelValue('Location', locationText);
-                drawLabelValue('Date', dateText);
-                drawLabelValue('Time', timeText);
-                if (serviceTimeText) {
-                    drawLabelValue('Slot', serviceTimeText);
+                if (logoImage) {
+                    var logoRatio = logoImage.naturalWidth > 0 ? (logoImage.naturalHeight / logoImage.naturalWidth) : 0.3;
+                    var logoWidth = contentWidth;
+                    var logoHeight = Math.max(42, Math.round(logoWidth * logoRatio));
+                    ctx.drawImage(logoImage, padding, y, logoWidth, logoHeight);
+                    y += logoHeight + 10;
+                } else {
+                    ctx.fillStyle = '#000000';
+                    ctx.textAlign = 'center';
+                    ctx.font = '700 24px monospace';
+                    ctx.fillText(receipt.brand, width / 2, y + 24);
+                    y += 44;
                 }
 
+                ctx.textAlign = 'center';
+                ctx.fillStyle = '#000000';
+                ctx.font = '700 21px "Noto Sans Devanagari", sans-serif';
+                ctx.fillText(receipt.title, width / 2, y + 20);
+                y += 36;
+
+                drawSeparator();
+
+                ctx.font = '700 20px "Noto Sans Devanagari", sans-serif';
+                ctx.fillText(receipt.tokenLabel, width / 2, y + 20);
+                y += 28;
+
+                ctx.font = '700 66px monospace';
+                ctx.fillText(receipt.tokenText, width / 2, y + 66);
+                y += 84;
+
+                drawSeparator();
+                receipt.rows.forEach(function (row) {
+                    drawLabelValue(row.label, row.value);
+                });
+
                 drawSeparator();
                 ctx.textAlign = 'center';
-                ctx.font = '500 20px sans-serif';
-                ctx.fillText('Please keep this token slip safely.', width / 2, y + 20);
-                y += 30;
-                ctx.fillText('\u0915\u0943\u092a\u092f\u093e \u0938\u094d\u0915\u094d\u0930\u0940\u0928\u0935\u0930 \u091a\u093e\u0932\u0942 \u091f\u094b\u0915\u0928 \u092a\u093e\u0939\u093e', width / 2, y + 20);
+                ctx.font = '500 19px "Noto Sans Devanagari", sans-serif';
+                receipt.notes.forEach(function (note) {
+                    ctx.fillText(note, width / 2, y + 20);
+                    y += 30;
+                });
 
                 finalize();
             }
 
             loadImageForRawBt(logoUrl).then(function (logoImage) {
-                ctx.fillStyle = '#ffffff';
-                ctx.fillRect(0, 0, width, height);
-
-                var logoRatio = logoImage.naturalWidth > 0 ? (logoImage.naturalHeight / logoImage.naturalWidth) : 0.3;
-                var logoWidth = contentWidth;
-                var logoHeight = Math.max(42, Math.round(logoWidth * logoRatio));
-                ctx.drawImage(logoImage, padding, y, logoWidth, logoHeight);
-                y += logoHeight + 8;
-
-                ctx.fillStyle = '#000000';
-                ctx.textAlign = 'center';
-                ctx.font = '700 22px sans-serif';
-                ctx.fillText('\u092a\u094d\u0930\u0924\u094d\u092f\u0915\u094d\u0937 \u0915\u093e\u0930\u094d\u092f\u093e\u0932\u092f \u092d\u0947\u091f \u091f\u094b\u0915\u0928', width / 2, y + 20);
-                y += 34;
-
-                drawSeparator();
-
-                ctx.font = '700 20px monospace';
-                ctx.fillText('TOKEN NO', width / 2, y + 20);
-                y += 28;
-
-                ctx.font = '700 68px monospace';
-                ctx.fillText(tokenText, width / 2, y + 66);
-                y += 82;
-
-                drawSeparator();
-                drawLabelValue('Mobile', phoneText);
-                drawLabelValue('Location', locationText);
-                drawLabelValue('Date', dateText);
-                drawLabelValue('Time', timeText);
-                if (serviceTimeText) {
-                    drawLabelValue('Slot', serviceTimeText);
-                }
-
-                drawSeparator();
-                ctx.textAlign = 'center';
-                ctx.font = '500 20px sans-serif';
-                ctx.fillText('Please keep this token slip safely.', width / 2, y + 20);
-                y += 30;
-                ctx.fillText('\u0915\u0943\u092a\u092f\u093e \u0938\u094d\u0915\u094d\u0930\u0940\u0928\u0935\u0930 \u091a\u093e\u0932\u0942 \u091f\u094b\u0915\u0928 \u092a\u093e\u0939\u093e', width / 2, y + 20);
-
-                finalize();
+                drawBody(logoImage);
             }).catch(function () {
-                drawWithoutLogo();
+                drawBody(null);
             });
         });
     }
@@ -700,13 +675,14 @@
     }
 
     function buildThermalReceiptHtml(details) {
+        var receipt = buildUnifiedReceiptModel(details);
         var logoUrl = resolveAssetUrl('assets/images/logo/logomain.png');
-        var tokenText = '#' + toAsciiDigits(details.token);
-        var phoneText = toAsciiDigits(details.phone);
-        var locationText = details.location || defaultLocationLabel || 'Solapur';
-        var dateText = toAsciiDigits(details.date);
-        var timeText = toAsciiDigits(details.time);
-        var serviceTimeText = details.serviceTime || '';
+        var rowsHtml = receipt.rows.map(function (row) {
+            return '<div class="row"><span class="label">' + escapeHtml(row.label) + '</span><span>' + escapeHtml(row.value) + '</span></div>';
+        }).join('');
+        var notesHtml = receipt.notes.map(function (note) {
+            return '<div class="note center">' + escapeHtml(note) + '</div>';
+        }).join('');
 
         return '<!DOCTYPE html>' +
             '<html><head><meta charset="UTF-8">' +
@@ -715,7 +691,7 @@
             '<style>' +
             '@page{size:' + THERMAL_RECEIPT_WIDTH_MM + 'mm auto;margin:0;}' +
             'html,body{margin:0;padding:0;width:' + THERMAL_RECEIPT_WIDTH_MM + 'mm;background:#fff;color:#000;}' +
-            'body{font-family:monospace;font-size:12px;line-height:1.35;padding:4mm 3mm;box-sizing:border-box;}' +
+            'body{font-family:"Noto Sans Devanagari",sans-serif;font-size:12px;line-height:1.35;padding:4mm 3mm;box-sizing:border-box;}' +
             '.center{text-align:center;}' +
             '.logo{display:block;width:100%;height:auto;margin:0 auto 1.5mm auto;}' +
             '.brand{font-weight:700;font-size:13px;letter-spacing:0.2px;}' +
@@ -727,19 +703,15 @@
             '.note{margin-top:2mm;font-size:11px;}' +
             '</style></head><body>' +
             '<img class="logo" src="' + escapeHtml(logoUrl) + '" alt="Vishnusudarshana Logo">' +
-            '<div class="center brand">VISHNUSUDARSHANA.COM</div>' +
-            '<div class="center title">OFFICE VISIT TOKEN</div>' +
+            '<div class="center brand">' + escapeHtml(receipt.brand) + '</div>' +
+            '<div class="center title">' + escapeHtml(receipt.title) + '</div>' +
             '<div class="line"></div>' +
-            '<div class="center">TOKEN NO</div>' +
-            '<div class="center token">' + escapeHtml(tokenText) + '</div>' +
+            '<div class="center">' + escapeHtml(receipt.tokenLabel) + '</div>' +
+            '<div class="center token">' + escapeHtml(receipt.tokenText) + '</div>' +
             '<div class="line"></div>' +
-            '<div class="row"><span class="label">Mobile</span><span>' + escapeHtml(phoneText) + '</span></div>' +
-            '<div class="row"><span class="label">Location</span><span>' + escapeHtml(locationText) + '</span></div>' +
-            '<div class="row"><span class="label">Date</span><span>' + escapeHtml(dateText) + '</span></div>' +
-            '<div class="row"><span class="label">Time</span><span>' + escapeHtml(timeText) + '</span></div>' +
-            (serviceTimeText ? '<div class="row"><span class="label">Slot</span><span>' + escapeHtml(serviceTimeText) + '</span></div>' : '') +
+            rowsHtml +
             '<div class="line"></div>' +
-            '<div class="note center">Please keep this token slip safely.</div>' +
+            notesHtml +
             '</body></html>';
     }
 
