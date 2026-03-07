@@ -460,6 +460,7 @@
     }
 
     function buildThermalReceiptHtml(details) {
+        var logoUrl = resolveAssetUrl('assets/images/logo/logomain.png');
         var tokenText = '#' + toAsciiDigits(details.token);
         var phoneText = toAsciiDigits(details.phone);
         var locationText = details.location || defaultLocationLabel || 'Solapur';
@@ -476,6 +477,7 @@
             'html,body{margin:0;padding:0;width:' + THERMAL_RECEIPT_WIDTH_MM + 'mm;background:#fff;color:#000;}' +
             'body{font-family:monospace;font-size:12px;line-height:1.35;padding:4mm 3mm;box-sizing:border-box;}' +
             '.center{text-align:center;}' +
+            '.logo{display:block;width:100%;height:auto;margin:0 auto 1.5mm auto;}' +
             '.brand{font-weight:700;font-size:13px;letter-spacing:0.2px;}' +
             '.title{font-weight:700;margin-top:2mm;font-size:12px;}' +
             '.line{border-top:1px dashed #000;margin:2mm 0;}' +
@@ -484,6 +486,7 @@
             '.row .label{font-weight:700;}' +
             '.note{margin-top:2mm;font-size:11px;}' +
             '</style></head><body>' +
+            '<img class="logo" src="' + escapeHtml(logoUrl) + '" alt="Vishnusudarshana Logo">' +
             '<div class="center brand">VISHNUSUDARSHANA.COM</div>' +
             '<div class="center title">OFFICE VISIT TOKEN</div>' +
             '<div class="line"></div>' +
