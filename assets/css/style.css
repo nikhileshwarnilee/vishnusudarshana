@@ -3841,7 +3841,6 @@ p, .detail-description, .form-subtitle {
     }
 
     .mobile-nav .nav-link.is-active,
-    .mobile-nav .nav-link:hover,
     .mobile-nav .nav-link:active {
         background: linear-gradient(180deg, #8B1538 0%, #6B0E2E 100%) !important;
         color: #fff !important;
@@ -3850,11 +3849,24 @@ p, .detail-description, .form-subtitle {
     }
 
     .mobile-nav .nav-link.is-active .nav-icon,
-    .mobile-nav .nav-link:hover .nav-icon,
     .mobile-nav .nav-link:active .nav-icon,
     .mobile-nav .nav-link.is-active span,
-    .mobile-nav .nav-link:hover span,
     .mobile-nav .nav-link:active span {
+        color: #fff !important;
+    }
+}
+
+/* Apply hover color only on true hover-capable devices (not touch). */
+@media (max-width: 1200px) and (hover: hover) and (pointer: fine) {
+    .mobile-nav .nav-link:hover {
+        background: linear-gradient(180deg, #8B1538 0%, #6B0E2E 100%) !important;
+        color: #fff !important;
+        box-shadow: 0 7px 14px rgba(107, 14, 46, 0.28);
+        transform: translateY(-1px);
+    }
+
+    .mobile-nav .nav-link:hover .nav-icon,
+    .mobile-nav .nav-link:hover span {
         color: #fff !important;
     }
 }
