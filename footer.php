@@ -88,3 +88,26 @@ $isActiveMobileNav = static function (array $pages) use ($mobileCurrentPage) {
         </ul>
     </nav>
 
+<script>
+(function() {
+    // Defensive cleanup in case an old cached footer still contains About Us nav item.
+    var removeLegacyAboutItem = function() {
+        var links = document.querySelectorAll('.mobile-nav a[href$="about-us.php"], .mobile-nav a[href*="/about-us.php"]');
+        links.forEach(function(link) {
+            var item = link.closest('li');
+            if (item) {
+                item.remove();
+            } else {
+                link.remove();
+            }
+        });
+    };
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', removeLegacyAboutItem);
+    } else {
+        removeLegacyAboutItem();
+    }
+})();
+</script>
+
