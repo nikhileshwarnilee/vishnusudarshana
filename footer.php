@@ -8,6 +8,12 @@ $faviconConfig = [
     'icon192' => $faviconBasePrefix . '/assets/images/logo/logo-iconpwa192.png',
     'apple' => $faviconBasePrefix . '/assets/images/logo/logo-iconpwa512.png',
 ];
+$navPrefix = isset($assetPrefix) ? $assetPrefix : '';
+$mobileCurrentPath = parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH);
+$mobileCurrentPage = basename($mobileCurrentPath ?: ($_SERVER['PHP_SELF'] ?? ''));
+$isActiveMobileNav = static function (array $pages) use ($mobileCurrentPage) {
+    return in_array($mobileCurrentPage, $pages, true);
+};
 ?>
 <script>
 (function() {
@@ -50,47 +56,35 @@ $faviconConfig = [
     <nav class="mobile-nav">
         <ul>
             <li>
-                <a href="index.php" class="nav-link">
+                <a href="<?php echo htmlspecialchars($navPrefix . 'index.php', ENT_QUOTES, 'UTF-8'); ?>" class="nav-link<?php echo $isActiveMobileNav(['index.php', '']) ? ' is-active' : ''; ?>">
                     <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
                         <span>Home</span>
                 </a>
             </li>
             <li>
-                <a href="services.php" class="nav-link">
+                <a href="<?php echo htmlspecialchars($navPrefix . 'services.php', ENT_QUOTES, 'UTF-8'); ?>" class="nav-link<?php echo $isActiveMobileNav(['services.php', 'category.php', 'service-form.php', 'service-review.php', 'service-review2.php', 'payment-init.php', 'payment-success.php', 'payment-failed.php']) ? ' is-active' : ''; ?>">
                     <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15 15 0 0 1 4 10 15 15 0 0 1-4 10 15 15 0 0 1-4-10 15 15 0 0 1 4-10z"></path></svg>
-                        <span>Online Services</span>
+                        <span class="nav-label nav-label-long">Online Services</span>
                 </a>
             </li>
             <li>
-                <a href="offlineservices.php" class="nav-link">
+                <a href="<?php echo htmlspecialchars($navPrefix . 'offlineservices.php', ENT_QUOTES, 'UTF-8'); ?>" class="nav-link<?php echo $isActiveMobileNav(['offlineservices.php', 'book-token.php', 'live-token.php']) ? ' is-active' : ''; ?>">
                     <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 22h18"></path><path d="M5 22V7l7-4 7 4v15"></path><rect x="9" y="10" width="2" height="2"></rect><rect x="13" y="10" width="2" height="2"></rect><path d="M10 22v-5h4v5"></path></svg>
-                        <span>Offline Services</span>
+                        <span class="nav-label nav-label-long">Offline Services</span>
                 </a>
             </li>
             <li>
-                <a href="blogs.php" class="nav-link">
+                <a href="<?php echo htmlspecialchars($navPrefix . 'blogs.php', ENT_QUOTES, 'UTF-8'); ?>" class="nav-link<?php echo $isActiveMobileNav(['blogs.php', 'blog-detail.php']) ? ' is-active' : ''; ?>">
                     <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="8" y1="8" x2="16" y2="8"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="8" y1="16" x2="12" y2="16"/></svg>
                         <span>Articles</span>
                 </a>
             </li>
             <li>
-                <a href="track.php" class="nav-link">
+                <a href="<?php echo htmlspecialchars($navPrefix . 'track.php', ENT_QUOTES, 'UTF-8'); ?>" class="nav-link<?php echo $isActiveMobileNav(['track.php']) ? ' is-active' : ''; ?>">
                     <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
                         <span>Track</span>
-                </a>
-            </li>
-            <li>
-                <a href="about-us.php" class="nav-link">
-                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M6 20c0-2.5 3-4 6-4s6 1.5 6 4"/></svg>
-                        <span>About Us</span>
                 </a>
             </li>
         </ul>
     </nav>
 
-    <footer class="footer">
-        <div class="footer-content">
-            <p>&copy; <?php echo date('Y'); ?> Vishnusudarshana. All rights reserved.</p>
-            <p style="font-size:0.97em;color:#800000;margin-top:6px;">Designed and Developed by <a href="https://www.contysi.com" target="_blank" style="color:#800000;text-decoration:underline;">ContySi</a></p>
-        </div>
-    </footer>
