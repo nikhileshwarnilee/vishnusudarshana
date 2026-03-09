@@ -215,6 +215,7 @@ $isActiveTopNav = static function (array $pages) use ($currentPage) {
                         <li><a class="top-nav-link<?php echo $isActiveTopNav(['index.php', '']) ? ' is-active' : ''; ?>" href="index.php" data-i18n="nav_home">Home</a></li>
                         <li><a class="top-nav-link<?php echo $isActiveTopNav(['services.php', 'category.php', 'service-form.php', 'service-review.php', 'service-review2.php', 'payment-init.php', 'payment-success.php', 'payment-failed.php']) ? ' is-active' : ''; ?>" href="services.php">Online Services</a></li>
                         <li><a class="top-nav-link<?php echo $isActiveTopNav(['offlineservices.php', 'book-token.php', 'live-token.php']) ? ' is-active' : ''; ?>" href="offlineservices.php">Offline Services</a></li>
+                        <li><a class="top-nav-link<?php echo $isActiveTopNav(['events.php', 'event-detail.php', 'event-register.php', 'event-payment.php', 'event-booking-confirmation.php']) ? ' is-active' : ''; ?>" href="events.php">Events</a></li>
                         <li><a class="top-nav-link<?php echo $isActiveTopNav(['blogs.php', 'blog-detail.php']) ? ' is-active' : ''; ?>" href="blogs.php" data-i18n="nav_blogs">Knowledge Centre</a></li>
                         <li><a class="top-nav-link<?php echo $isActiveTopNav(['track.php']) ? ' is-active' : ''; ?>" href="track.php" data-i18n="nav_track">Track</a></li>
                     </ul>

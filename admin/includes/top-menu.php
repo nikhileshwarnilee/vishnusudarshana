@@ -74,6 +74,21 @@ $menu = [
         ]
     ],
 
+    'Events' => [
+        'icon' => '<svg width="20" height="20" fill="none" viewBox="0 0 24 24"><path d="M7 2v2H5a2 2 0 0 0-2 2v13a3 3 0 0 0 3 3h12a3 3 0 0 0 3-3V6a2 2 0 0 0-2-2h-2V2h-2v2H9V2H7zm12 7H5v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9z" fill="#495057"/></svg>',
+        'submenu' => [
+            'Dashboard' => $baseUrl . '/admin/events/dashboard.php',
+            'All Events' => $baseUrl . '/admin/events/all-events.php',
+            'Registrations' => $baseUrl . '/admin/events/registrations.php',
+            'Verifications' => $baseUrl . '/admin/events/verifications.php',
+            'Check-In' => $baseUrl . '/admin/events/checkin.php',
+            'Pending Payments' => $baseUrl . '/admin/events/pending-payments.php',
+            'Event Reports' => $baseUrl . '/admin/events/event-reports.php',
+            'Waitlist' => $baseUrl . '/admin/events/waitlist.php',
+            'Broadcast' => $baseUrl . '/admin/events/broadcast.php',
+        ]
+    ],
+
     // 'Reels' menu removed
 
     'Billing' => [

@@ -110,6 +110,25 @@ if (!function_exists('vs_admin_permission_map')) {
             'products/update_mandatory.php' => ['pairs' => [['Services', 'Products']], 'action' => 'edit'],
             'products/update_sequence.php' => ['pairs' => [['Services', 'Products']], 'action' => 'edit'],
 
+            // Events
+            'events/index.php' => ['pairs' => [['Events', 'Dashboard']]],
+            'events/dashboard.php' => ['pairs' => [['Events', 'Dashboard']]],
+            'events/all-events.php' => ['pairs' => [['Events', 'All Events']]],
+            'events/add-event.php' => ['pairs' => [['Events', 'Add Event']]],
+            'events/event-packages.php' => ['pairs' => [['Events', 'Event Packages']]],
+            'events/registrations.php' => ['pairs' => [['Events', 'Registrations']]],
+            'events/cancellations.php' => ['pairs' => [['Events', 'Cancellations']]],
+            'events/checkin.php' => ['pairs' => [['Events', 'Check-In']]],
+            'events/checkin-history.php' => ['pairs' => [['Events', 'Check-In'], ['Events', 'Check-In History']]],
+            'events/waitlist.php' => ['pairs' => [['Events', 'Waitlist']]],
+            'events/pending-payments.php' => ['pairs' => [['Events', 'Pending Payments']]],
+            'events/verifications.php' => ['pairs' => [['Events', 'Verifications'], ['Events', 'Payment Verification'], ['Events', 'Cancellations']]],
+            'events/payment-verification.php' => ['pairs' => [['Events', 'Payment Verification']]],
+            'events/event-reports.php' => ['pairs' => [['Events', 'Event Reports']]],
+            'events/export-registrations.php' => ['pairs' => [['Events', 'Event Reports']], 'action' => 'view'],
+            'events/export-pdf.php' => ['pairs' => [['Events', 'Event Reports']], 'action' => 'view'],
+            'events/broadcast.php' => ['pairs' => [['Events', 'Broadcast']]],
+
             // Billing
             'payments/create-invoice.php' => ['pairs' => [['Billing', 'Create Invoice']]],
             'payments/save_invoice.php' => ['pairs' => [['Billing', 'Create Invoice']], 'action' => 'edit'],

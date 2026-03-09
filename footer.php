@@ -74,6 +74,12 @@ $isActiveMobileNav = static function (array $pages) use ($mobileCurrentPage) {
                 </a>
             </li>
             <li>
+                <a href="<?php echo htmlspecialchars($navPrefix . 'events.php', ENT_QUOTES, 'UTF-8'); ?>" class="nav-link<?php echo $isActiveMobileNav(['events.php', 'event-detail.php', 'event-register.php', 'event-payment.php', 'event-booking-confirmation.php']) ? ' is-active' : ''; ?>">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"></rect><line x1="16" y1="3" x2="16" y2="7"></line><line x1="8" y1="3" x2="8" y2="7"></line><line x1="3" y1="11" x2="21" y2="11"></line></svg>
+                        <span>Events</span>
+                </a>
+            </li>
+            <li>
                 <a href="<?php echo htmlspecialchars($navPrefix . 'blogs.php', ENT_QUOTES, 'UTF-8'); ?>" class="nav-link<?php echo $isActiveMobileNav(['blogs.php', 'blog-detail.php']) ? ' is-active' : ''; ?>">
                     <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="8" y1="8" x2="16" y2="8"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="8" y1="16" x2="12" y2="16"/></svg>
                         <span>Articles</span>

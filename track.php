@@ -721,6 +721,19 @@ elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </form>
     </section>
 
+    <section class="track-form-section">
+        <h3 style="margin:0 0 8px;color:var(--maroon);font-size:1.4rem;font-weight:900;">Track Event Booking</h3>
+        <p style="margin:0 0 14px;color:#bfa100;font-size:1.05rem;">Enter mobile number or booking reference and verify OTP on WhatsApp.</p>
+        <form class="track-form" id="eventTrackInlineForm" autocomplete="off">
+            <div class="form-group track-form-card">
+                <input type="text" id="event_track_input_inline" maxlength="30" placeholder="Enter Mobile Number or Booking Reference" required>
+            </div>
+            <div class="track-btn-wrap">
+                <button type="submit" class="track-btn redesigned-cta-btn" id="eventTrackGetOtpBtn">Get OTP</button>
+            </div>
+        </form>
+    </section>
+
     <section class="track-status-section">
         <?php if ($searched): ?>
             <?php if ($errorMsg): ?>
@@ -913,6 +926,44 @@ elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </section>
 </main>
 
+
+<!-- Event Track OTP Modal -->
+<div id="eventTrackOtpModalInline" class="otp-modal">
+    <div class="otp-modal-content">
+        <div class="otp-modal-header">Verify Event OTP</div>
+        <div class="otp-modal-subtitle">
+            We've sent a 4-digit OTP to your WhatsApp number. Enter it below to view event bookings.
+        </div>
+
+        <div class="otp-error" id="eventTrackOtpErrorInline"></div>
+        <div class="otp-success" id="eventTrackOtpSuccessInline"></div>
+
+        <form id="eventTrackOtpFormInline" autocomplete="off">
+            <div class="otp-input-group">
+                <input
+                    type="text"
+                    id="eventTrackOtpCodeInline"
+                    class="otp-input"
+                    placeholder="Enter 4-digit OTP"
+                    maxlength="4"
+                    inputmode="numeric"
+                    autocomplete="off"
+                    required
+                >
+            </div>
+
+            <div class="otp-button-group">
+                <button type="submit" class="otp-modal-btn otp-submit-btn" id="eventTrackVerifyBtnInline">Verify</button>
+                <button type="button" class="otp-modal-btn otp-cancel-btn" id="eventTrackCancelBtnInline">Cancel</button>
+            </div>
+
+            <div class="otp-resend">
+                <span>Didn't receive OTP? </span>
+                <button type="button" class="otp-resend-btn" id="eventTrackResendBtnInline">Resend</button>
+            </div>
+        </form>
+    </div>
+</div>
 
 <!-- OTP Verification Modal -->
 <div id="otpModal" class="otp-modal">
@@ -1197,6 +1248,190 @@ window.onclick = function(event) {
         closeOTPModal();
     }
 }
+</script>
+
+<script>
+(function () {
+    var form = document.getElementById('eventTrackInlineForm');
+    var trackInputEl = document.getElementById('event_track_input_inline');
+    var submitBtn = document.getElementById('eventTrackGetOtpBtn');
+    var modal = document.getElementById('eventTrackOtpModalInline');
+    var otpForm = document.getElementById('eventTrackOtpFormInline');
+    var otpInput = document.getElementById('eventTrackOtpCodeInline');
+    var otpError = document.getElementById('eventTrackOtpErrorInline');
+    var otpSuccess = document.getElementById('eventTrackOtpSuccessInline');
+    var verifyBtn = document.getElementById('eventTrackVerifyBtnInline');
+    var cancelBtn = document.getElementById('eventTrackCancelBtnInline');
+    var resendBtn = document.getElementById('eventTrackResendBtnInline');
+    var currentTrackInput = '';
+
+    if (!form || !trackInputEl) {
+        return;
+    }
+
+    function showError(message) {
+        if (!otpError) {
+            return;
+        }
+        otpError.textContent = message || '';
+        if (message) {
+            otpError.classList.add('show');
+        } else {
+            otpError.classList.remove('show');
+        }
+    }
+
+    function showSuccess(message) {
+        if (!otpSuccess) {
+            return;
+        }
+        otpSuccess.textContent = message || '';
+        if (message) {
+            otpSuccess.classList.add('show');
+        } else {
+            otpSuccess.classList.remove('show');
+        }
+    }
+
+    function openModal() {
+        if (!modal) {
+            return;
+        }
+        modal.style.display = 'block';
+        showError('');
+        showSuccess('');
+        if (otpInput) {
+            otpInput.value = '';
+            otpInput.focus();
+        }
+    }
+
+    function closeModal() {
+        if (!modal) {
+            return;
+        }
+        modal.style.display = 'none';
+        showError('');
+        showSuccess('');
+    }
+
+    function postOtpApi(payload) {
+        var body = new URLSearchParams(payload);
+        return fetch('api/verify_event_track_otp.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: body.toString()
+        }).then(function (res) { return res.json(); });
+    }
+
+    form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        currentTrackInput = String(trackInputEl.value || '').trim();
+        if (currentTrackInput === '') {
+            alert('Please enter mobile number or booking reference.');
+            return;
+        }
+
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Sending OTP...';
+        }
+
+        postOtpApi({
+            action: 'send_otp',
+            track_input: currentTrackInput
+        }).then(function (data) {
+            if (!data || !data.success) {
+                throw new Error((data && data.message) ? data.message : 'Unable to send OTP.');
+            }
+            openModal();
+            showSuccess(data.message || 'OTP sent successfully.');
+        }).catch(function (err) {
+            alert(err.message || 'Unable to send OTP.');
+        }).finally(function () {
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Get OTP';
+            }
+        });
+    });
+
+    if (otpForm) {
+        otpForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+            var otp = otpInput ? String(otpInput.value || '').trim() : '';
+            if (otp.length !== 4) {
+                showError('Please enter valid 4-digit OTP.');
+                return;
+            }
+
+            showError('');
+            showSuccess('');
+            if (verifyBtn) {
+                verifyBtn.disabled = true;
+                verifyBtn.textContent = 'Verifying...';
+            }
+
+            postOtpApi({
+                action: 'verify_otp',
+                track_input: currentTrackInput,
+                otp: otp
+            }).then(function (data) {
+                if (!data || !data.success) {
+                    throw new Error((data && data.message) ? data.message : 'OTP verification failed.');
+                }
+                var token = (data.data && data.data.track_token) ? data.data.track_token : '';
+                if (!token) {
+                    throw new Error('Invalid OTP verification response.');
+                }
+                window.location.href = 'event-track.php?track_input=' + encodeURIComponent(currentTrackInput) + '&track_token=' + encodeURIComponent(token);
+            }).catch(function (err) {
+                showError(err.message || 'OTP verification failed.');
+            }).finally(function () {
+                if (verifyBtn) {
+                    verifyBtn.disabled = false;
+                    verifyBtn.textContent = 'Verify';
+                }
+            });
+        });
+    }
+
+    if (cancelBtn) {
+        cancelBtn.addEventListener('click', function () {
+            closeModal();
+        });
+    }
+
+    if (resendBtn) {
+        resendBtn.addEventListener('click', function () {
+            if (!currentTrackInput) {
+                return;
+            }
+            resendBtn.disabled = true;
+            resendBtn.textContent = 'Resending...';
+            postOtpApi({
+                action: 'send_otp',
+                track_input: currentTrackInput
+            }).then(function (data) {
+                if (!data || !data.success) {
+                    throw new Error((data && data.message) ? data.message : 'Unable to resend OTP.');
+                }
+                showSuccess(data.message || 'OTP resent successfully.');
+            }).catch(function (err) {
+                showError(err.message || 'Unable to resend OTP.');
+            }).finally(function () {
+                resendBtn.disabled = false;
+                resendBtn.textContent = 'Resend';
+            });
+        });
+    }
+
+    window.addEventListener('click', function (event) {
+        if (event.target === modal) {
+            closeModal();
+        }
+    });
+})();
 </script>
 
 <?php include 'footer.php'; ?>
