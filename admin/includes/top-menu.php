@@ -161,84 +161,267 @@ if (!isset($pdo)) {
     require_once __DIR__ . '/../../config/db.php';
 }
 
-// --- Menu notification dots (Appointments / Services) ---
+// --- Menu notification dots (submenu-aware for Appointments/Services/Reception/Events) ---
 if (!isset($_SESSION['menu_notif_seen']) || !is_array($_SESSION['menu_notif_seen'])) {
     $_SESSION['menu_notif_seen'] = [];
 }
+if (!isset($_SESSION['menu_notif_seen_submenus']) || !is_array($_SESSION['menu_notif_seen_submenus'])) {
+    $_SESSION['menu_notif_seen_submenus'] = [];
+}
 
 $requestPath = parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH) ?? '';
-$isPendingAppointmentsPage = (bool)preg_match('#/admin/services/appointments\.php$#', $requestPath);
-$isServiceRequestListPage = (bool)preg_match('#/admin/services/service-request-list\.php$#', $requestPath);
+$normalizeMenuPath = static function (string $path): string {
+    $parsed = (string)(parse_url($path, PHP_URL_PATH) ?? '');
+    $parsed = trim($parsed);
+    return $parsed === '' ? '' : rtrim($parsed, '/');
+};
+$normalizedRequestPath = $normalizeMenuPath($requestPath);
 
-// Mark as seen when admin opens the relevant page.
-if ($isPendingAppointmentsPage) {
-    $seenAppointmentsStmt = $pdo->query("
-        SELECT COALESCE(MAX(created_at), NOW())
-        FROM service_requests
-        WHERE category_slug = 'appointment'
-          AND payment_status IN ('Paid', 'Free')
-          AND service_status IN ('Received', 'Pending')
-          AND JSON_UNQUOTE(JSON_EXTRACT(form_data, '$.preferred_date')) = CURDATE()
-    ");
-    $_SESSION['menu_notif_seen']['appointments'] = (string)$seenAppointmentsStmt->fetchColumn();
+$eventGlobalSources = [
+    ['table' => 'events', 'column' => 'created_at'],
+    ['table' => 'event_dates', 'column' => 'created_at'],
+    ['table' => 'event_packages', 'column' => 'created_at'],
+    ['table' => 'event_registrations', 'column' => 'created_at'],
+    ['table' => 'event_registrations', 'column' => 'checkin_time'],
+    ['table' => 'event_payments', 'column' => 'created_at'],
+    ['table' => 'event_payments', 'column' => 'updated_at'],
+    ['table' => 'event_waitlist', 'column' => 'created_at'],
+    ['table' => 'event_cancellation_requests', 'column' => 'requested_at'],
+    ['table' => 'event_cancellation_requests', 'column' => 'decided_at'],
+    ['table' => 'event_cancellations', 'column' => 'cancelled_at'],
+];
+
+$submenuNotificationSourceMap = [
+    'Appointments' => [
+        'Pending Appointments' => [
+            ['table' => 'service_requests', 'column' => 'created_at', 'where' => "category_slug = 'appointment' AND payment_status IN ('Paid', 'Free') AND service_status IN ('Received', 'Pending')"],
+            ['table' => 'service_requests', 'column' => 'updated_at', 'where' => "category_slug = 'appointment' AND payment_status IN ('Paid', 'Free') AND service_status IN ('Received', 'Pending')"],
+        ],
+        'Accepted Appointments' => [
+            ['table' => 'service_requests', 'column' => 'created_at', 'where' => "category_slug = 'appointment' AND payment_status IN ('Paid', 'Free') AND service_status = 'Accepted'"],
+            ['table' => 'service_requests', 'column' => 'updated_at', 'where' => "category_slug = 'appointment' AND payment_status IN ('Paid', 'Free') AND service_status = 'Accepted'"],
+        ],
+        'Completed Appointments' => [
+            ['table' => 'service_requests', 'column' => 'created_at', 'where' => "category_slug = 'appointment' AND payment_status IN ('Paid', 'Free') AND service_status = 'Completed'"],
+            ['table' => 'service_requests', 'column' => 'updated_at', 'where' => "category_slug = 'appointment' AND payment_status IN ('Paid', 'Free') AND service_status = 'Completed'"],
+        ],
+        'Booking Slots' => [
+            ['table' => 'blocked_appointment_slots', 'column' => 'created_at'],
+            ['table' => 'blocked_appointment_slots', 'column' => 'updated_at'],
+            ['table' => 'letterpad_titles', 'column' => 'created_at', 'where' => "source = 'msgs'"],
+        ],
+        'Failed Appointments' => [
+            ['table' => 'pending_payments', 'column' => 'created_at', 'where' => "category = 'appointment'"],
+            ['table' => 'pending_payments', 'column' => 'updated_at', 'where' => "category = 'appointment'"],
+        ],
+    ],
+    'Services' => [
+        'Service Request List' => [
+            ['table' => 'service_requests', 'column' => 'created_at', 'where' => "category_slug != 'appointment'"],
+            ['table' => 'service_requests', 'column' => 'updated_at', 'where' => "category_slug != 'appointment'"],
+        ],
+        'Offline Service Request' => [
+            ['table' => 'service_requests', 'column' => 'created_at', 'where' => "category_slug != 'appointment' AND COALESCE(tracking_id, '') LIKE 'SR%'"],
+            ['table' => 'service_requests', 'column' => 'updated_at', 'where' => "category_slug != 'appointment' AND COALESCE(tracking_id, '') LIKE 'SR%'"],
+        ],
+        'Service Payments' => [
+            ['table' => 'service_requests', 'column' => 'payment_date', 'where' => "category_slug != 'appointment' AND payment_status = 'Paid' AND total_amount > 0"],
+            ['table' => 'service_requests', 'column' => 'updated_at', 'where' => "category_slug != 'appointment' AND payment_status = 'Paid' AND total_amount > 0"],
+            ['table' => 'service_requests', 'column' => 'created_at', 'where' => "category_slug != 'appointment' AND payment_status = 'Paid' AND total_amount > 0"],
+        ],
+        'Products' => [
+            ['table' => 'products', 'column' => 'created_at'],
+            ['table' => 'products', 'column' => 'updated_at'],
+        ],
+        'Service Categories' => [
+            ['table' => 'service_categories', 'column' => 'created_at'],
+            ['table' => 'service_categories', 'column' => 'updated_at'],
+        ],
+    ],
+    'Reception' => [
+        'Booked Tokens' => [
+            ['table' => 'token_bookings', 'column' => 'created_at', 'where' => "LOWER(TRIM(COALESCE(status, ''))) <> 'completed'"],
+            ['table' => 'token_bookings', 'column' => 'updated_at', 'where' => "LOWER(TRIM(COALESCE(status, ''))) <> 'completed'"],
+        ],
+        'Token Management' => [
+            ['table' => 'token_management', 'column' => 'created_at'],
+            ['table' => 'token_management', 'column' => 'updated_at'],
+        ],
+        'Book Token' => [
+            ['table' => 'token_bookings', 'column' => 'created_at'],
+            ['table' => 'token_bookings', 'column' => 'updated_at'],
+        ],
+        'Visitors Log' => [
+            ['table' => 'visitor_tickets', 'column' => 'in_time', 'where' => "status = 'open'"],
+            ['table' => 'visitor_tickets', 'column' => 'created_at', 'where' => "status = 'open'"],
+            ['table' => 'visitor_tickets', 'column' => 'updated_at', 'where' => "status = 'open'"],
+        ],
+        'Closed Visitors Log' => [
+            ['table' => 'visitor_tickets', 'column' => 'out_time', 'where' => "status = 'closed'"],
+            ['table' => 'visitor_tickets', 'column' => 'updated_at', 'where' => "status = 'closed'"],
+            ['table' => 'visitor_tickets', 'column' => 'created_at', 'where' => "status = 'closed'"],
+        ],
+    ],
+    'Events' => [
+        'Dashboard' => $eventGlobalSources,
+        'All Events' => [
+            ['table' => 'events', 'column' => 'created_at'],
+            ['table' => 'event_dates', 'column' => 'created_at'],
+            ['table' => 'event_packages', 'column' => 'created_at'],
+        ],
+        'Registrations' => [
+            ['table' => 'event_registrations', 'column' => 'created_at'],
+            ['table' => 'event_registrations', 'column' => 'checkin_time'],
+            ['table' => 'event_payments', 'column' => 'updated_at'],
+            ['table' => 'event_cancellation_requests', 'column' => 'requested_at'],
+            ['table' => 'event_cancellation_requests', 'column' => 'decided_at'],
+            ['table' => 'event_cancellations', 'column' => 'cancelled_at'],
+        ],
+        'Verifications' => [
+            ['table' => 'event_payments', 'column' => 'created_at'],
+            ['table' => 'event_payments', 'column' => 'updated_at'],
+            ['table' => 'event_cancellations', 'column' => 'cancelled_at'],
+        ],
+        'Check-In' => [
+            ['table' => 'event_registrations', 'column' => 'checkin_time'],
+            ['table' => 'event_registrations', 'column' => 'created_at'],
+        ],
+        'Pending Payments' => [
+            ['table' => 'event_payments', 'column' => 'created_at'],
+            ['table' => 'event_payments', 'column' => 'updated_at'],
+            ['table' => 'event_registrations', 'column' => 'created_at'],
+        ],
+        'Event Reports' => $eventGlobalSources,
+        'Waitlist' => [
+            ['table' => 'event_waitlist', 'column' => 'created_at'],
+            ['table' => 'event_registrations', 'column' => 'created_at'],
+        ],
+        'Broadcast' => [
+            ['table' => 'event_registrations', 'column' => 'created_at'],
+            ['table' => 'event_registrations', 'column' => 'checkin_time'],
+        ],
+    ],
+];
+
+$submenuNotificationDotsByLabel = [];
+$menuNotificationDotsByLabel = [];
+
+try {
+    $tableNames = [];
+    $columnNames = [];
+    foreach ($submenuNotificationSourceMap as $submenuMap) {
+        foreach ($submenuMap as $sources) {
+            foreach ($sources as $source) {
+                $table = trim((string)($source['table'] ?? ''));
+                $column = trim((string)($source['column'] ?? ''));
+                if ($table !== '' && $column !== '') {
+                    $tableNames[$table] = true;
+                    $columnNames[$column] = true;
+                }
+            }
+        }
+    }
+
+    $availableColumns = [];
+    if (!empty($tableNames) && !empty($columnNames)) {
+        $tableValues = array_keys($tableNames);
+        $columnValues = array_keys($columnNames);
+        $tablePlaceholders = implode(',', array_fill(0, count($tableValues), '?'));
+        $columnPlaceholders = implode(',', array_fill(0, count($columnValues), '?'));
+        $metaStmt = $pdo->prepare("
+            SELECT table_name, column_name
+            FROM information_schema.columns
+            WHERE table_schema = DATABASE()
+              AND table_name IN ($tablePlaceholders)
+              AND column_name IN ($columnPlaceholders)
+        ");
+        $metaStmt->execute(array_merge($tableValues, $columnValues));
+        while ($metaRow = $metaStmt->fetch(PDO::FETCH_ASSOC)) {
+            $table = trim((string)($metaRow['table_name'] ?? ''));
+            $column = trim((string)($metaRow['column_name'] ?? ''));
+            if ($table === '' || $column === '') {
+                continue;
+            }
+            $availableColumns[$table . '.' . $column] = true;
+        }
+    }
+
+    $resolvedActivityCache = [];
+    $resolveLatestActivityAt = static function (PDO $pdo, array $sources) use (&$availableColumns, &$resolvedActivityCache): ?string {
+        $cacheKey = md5(json_encode($sources));
+        if (array_key_exists($cacheKey, $resolvedActivityCache)) {
+            return $resolvedActivityCache[$cacheKey];
+        }
+
+        $latest = null;
+        foreach ($sources as $source) {
+            $table = trim((string)($source['table'] ?? ''));
+            $column = trim((string)($source['column'] ?? ''));
+            if ($table === '' || $column === '') {
+                continue;
+            }
+            if (!isset($availableColumns[$table . '.' . $column])) {
+                continue;
+            }
+            $where = trim((string)($source['where'] ?? ''));
+            $sql = "SELECT MAX(`{$column}`) FROM `{$table}`";
+            if ($where !== '') {
+                $sql .= " WHERE {$where}";
+            }
+            $params = isset($source['params']) && is_array($source['params']) ? $source['params'] : [];
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute($params);
+            $value = $stmt->fetchColumn();
+            $text = trim((string)$value);
+            if ($text === '') {
+                continue;
+            }
+            if ($latest === null || strcmp($text, $latest) > 0) {
+                $latest = $text;
+            }
+        }
+        $resolvedActivityCache[$cacheKey] = $latest;
+        return $latest;
+    };
+
+    $dbNow = static function (PDO $pdo): string {
+        $stmt = $pdo->query("SELECT NOW()");
+        $now = trim((string)($stmt ? $stmt->fetchColumn() : ''));
+        if ($now !== '') {
+            return $now;
+        }
+        return date('Y-m-d H:i:s');
+    };
+
+    foreach ($submenuNotificationSourceMap as $menuLabel => $submenuMap) {
+        $menuHasDot = false;
+        foreach ($submenuMap as $subLabel => $sources) {
+            $subUrl = (string)($menu[$menuLabel]['submenu'][$subLabel] ?? '');
+            $subPath = $normalizeMenuPath($subUrl);
+            if ($subPath === '') {
+                $submenuNotificationDotsByLabel[$menuLabel][$subLabel] = false;
+                continue;
+            }
+
+            $seenKey = strtolower($menuLabel . '::' . $subLabel);
+            $latestAt = $resolveLatestActivityAt($pdo, $sources);
+            if ($subPath === $normalizedRequestPath) {
+                $_SESSION['menu_notif_seen_submenus'][$seenKey] = $latestAt ?? $dbNow($pdo);
+            }
+
+            $seenAt = trim((string)($_SESSION['menu_notif_seen_submenus'][$seenKey] ?? ''));
+            $showSubmenuDot = ($latestAt !== null) && ($seenAt === '' || strcmp($latestAt, $seenAt) > 0);
+            $submenuNotificationDotsByLabel[$menuLabel][$subLabel] = $showSubmenuDot;
+            if ($showSubmenuDot) {
+                $menuHasDot = true;
+            }
+        }
+        $menuNotificationDotsByLabel[$menuLabel] = $menuHasDot;
+    }
+} catch (Throwable $e) {
+    $submenuNotificationDotsByLabel = [];
+    $menuNotificationDotsByLabel = [];
 }
-
-if ($isServiceRequestListPage) {
-    $seenServicesStmt = $pdo->query("
-        SELECT COALESCE(MAX(created_at), NOW())
-        FROM service_requests
-        WHERE category_slug != 'appointment'
-          AND DATE(created_at) = CURDATE()
-    ");
-    $_SESSION['menu_notif_seen']['services'] = (string)$seenServicesStmt->fetchColumn();
-}
-
-$appointmentsSeenAt = $_SESSION['menu_notif_seen']['appointments'] ?? null;
-$servicesSeenAt = $_SESSION['menu_notif_seen']['services'] ?? null;
-
-if ($appointmentsSeenAt) {
-    $appointmentsDotStmt = $pdo->prepare("
-        SELECT COUNT(*)
-        FROM service_requests
-        WHERE category_slug = 'appointment'
-          AND payment_status IN ('Paid', 'Free')
-          AND service_status IN ('Received', 'Pending')
-          AND JSON_UNQUOTE(JSON_EXTRACT(form_data, '$.preferred_date')) = CURDATE()
-          AND created_at > ?
-    ");
-    $appointmentsDotStmt->execute([$appointmentsSeenAt]);
-} else {
-    $appointmentsDotStmt = $pdo->prepare("
-        SELECT COUNT(*)
-        FROM service_requests
-        WHERE category_slug = 'appointment'
-          AND payment_status IN ('Paid', 'Free')
-          AND service_status IN ('Received', 'Pending')
-          AND JSON_UNQUOTE(JSON_EXTRACT(form_data, '$.preferred_date')) = CURDATE()
-    ");
-    $appointmentsDotStmt->execute();
-}
-$showAppointmentsNotificationDot = ((int)$appointmentsDotStmt->fetchColumn()) > 0;
-
-if ($servicesSeenAt) {
-    $servicesDotStmt = $pdo->prepare("
-        SELECT COUNT(*)
-        FROM service_requests
-        WHERE category_slug != 'appointment'
-          AND DATE(created_at) = CURDATE()
-          AND created_at > ?
-    ");
-    $servicesDotStmt->execute([$servicesSeenAt]);
-} else {
-    $servicesDotStmt = $pdo->prepare("
-        SELECT COUNT(*)
-        FROM service_requests
-        WHERE category_slug != 'appointment'
-          AND DATE(created_at) = CURDATE()
-    ");
-    $servicesDotStmt->execute();
-}
-$showServicesNotificationDot = ((int)$servicesDotStmt->fetchColumn()) > 0;
 
 // --- Current route action visibility (UI layer) ---
 $vsCanEditCurrentRoute = true;
@@ -589,7 +772,10 @@ body {
 }
 
 .admin-top-menu-dropdown li a {
-    display: block;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
     padding: 10px 16px;
     color: #333;
     text-decoration: none;
@@ -598,6 +784,17 @@ body {
     transition: all 0.15s ease;
     position: relative;
     border-left: 3px solid transparent;
+}
+
+.admin-top-menu-dropdown li a .submenu-label {
+    display: inline-block;
+    min-width: 0;
+}
+
+.submenu-notification-dot {
+    width: 8px;
+    height: 8px;
+    margin-left: 8px;
 }
 
 .admin-top-menu-dropdown li a::before {
@@ -816,7 +1013,10 @@ body {
         border-bottom: none;
     }
     .admin-top-menu-dropdown li a {
-        display: block;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
         padding: 14px 20px 14px 56px;
         background: #f5f5f5;
         color: #555555;
@@ -898,6 +1098,10 @@ body {
         font-size: 14px;
     }
     .admin-top-menu-dropdown li a {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
         padding: 12px 16px 12px 48px;
         font-size: 13px;
     }
@@ -925,6 +1129,10 @@ body {
         height: 20px;
     }
     .admin-top-menu-dropdown li a {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
         padding: 11px 12px 11px 44px;
         font-size: 12px;
     }
@@ -950,9 +1158,18 @@ body {
                 $hasSubmenu = isset($item['submenu']);
                 $isActive = false;
                 $activeSub = null;
-                $showMenuNotificationDot =
-                    (($label === 'Appointments') && $showAppointmentsNotificationDot) ||
-                    (($label === 'Services') && $showServicesNotificationDot);
+                $submenuDotMap = $submenuNotificationDotsByLabel[$label] ?? [];
+                $showMenuNotificationDot = false;
+                if ($hasSubmenu) {
+                    foreach ($item['submenu'] as $subLabel => $subUrl) {
+                        if (!empty($submenuDotMap[$subLabel])) {
+                            $showMenuNotificationDot = true;
+                            break;
+                        }
+                    }
+                } else {
+                    $showMenuNotificationDot = !empty($menuNotificationDotsByLabel[$label]);
+                }
                 if ($hasSubmenu) {
                     foreach ($item['submenu'] as $subLabel => $subUrl) {
                         if (isActivePage($subUrl, $currentPage)) {
@@ -982,9 +1199,13 @@ body {
 
                         <ul class="admin-top-menu-dropdown">
                             <?php foreach ($item['submenu'] as $subLabel => $subUrl): ?>
+                                <?php $showSubmenuNotificationDot = !empty($submenuDotMap[$subLabel]); ?>
                                 <li class="<?= ($activeSub === $subLabel) ? 'active' : '' ?>">
                                     <a href="<?= htmlspecialchars($subUrl) ?>">
-                                        <?= htmlspecialchars($subLabel) ?>
+                                        <span class="submenu-label"><?= htmlspecialchars($subLabel) ?></span>
+                                        <?php if ($showSubmenuNotificationDot): ?>
+                                            <span class="menu-notification-dot submenu-notification-dot" title="New updates"></span>
+                                        <?php endif; ?>
                                     </a>
                                 </li>
                             <?php endforeach; ?>
