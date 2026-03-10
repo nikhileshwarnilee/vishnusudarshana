@@ -181,6 +181,61 @@ $computeAmounts = static function (array $row): array {
     return ['total' => $total, 'paid' => $paid, 'remaining' => $remaining];
 };
 
+$computeDisplayAmounts = static function (array $row, array $baseAmounts): array {
+    $total = round(max((float)($baseAmounts['total'] ?? 0), 0), 2);
+    $paid = round(max((float)($baseAmounts['paid'] ?? 0), 0), 2);
+    if ($paid > $total && $total > 0) {
+        $paid = $total;
+    }
+    $remaining = round(max((float)($baseAmounts['remaining'] ?? 0), 0), 2);
+
+    $paymentMethod = strtolower(trim((string)($row['payment_method'] ?? '')));
+    $paymentStatus = strtolower(trim((string)($row['payment_status'] ?? '')));
+    $verificationStatus = strtolower(trim((string)($row['verification_status'] ?? '')));
+    $paymentRecordStatus = strtolower(trim((string)($row['payment_record_status'] ?? '')));
+    $submittedAmount = round(max((float)($row['payment_amount'] ?? 0), 0), 2);
+
+    $isManualOrCash = in_array($paymentMethod, ['manual upi', 'cash'], true);
+    $isPendingVerification = $isManualOrCash && (
+        in_array($paymentStatus, ['pending', 'pending verification'], true) ||
+        in_array($verificationStatus, ['pending', 'pending verification'], true) ||
+        in_array($paymentRecordStatus, ['pending', 'pending verification'], true)
+    );
+    $isRejectedVerification = $isManualOrCash && (
+        in_array($verificationStatus, ['rejected'], true) ||
+        in_array($paymentRecordStatus, ['rejected'], true) ||
+        in_array($paymentStatus, ['failed', 'rejected'], true)
+    );
+
+    $displayPaid = $paid;
+    $displayRemaining = $remaining;
+    $note = '';
+
+    if ($isPendingVerification && $submittedAmount > 0) {
+        $displayPaid = round(min($total, $paid + $submittedAmount), 2);
+        $displayRemaining = round(max($total - $displayPaid, 0), 2);
+        $note = 'Submitted amount is pending verification.';
+    } elseif ($isRejectedVerification) {
+        $displayPaid = $paid;
+        if ($displayPaid > $total && $total > 0) {
+            $displayPaid = $total;
+        }
+        $displayRemaining = round(max($total - $displayPaid, 0), 2);
+        $note = ($displayPaid <= 0)
+            ? 'Previous payment was rejected. Paid amount is Rs 0.'
+            : 'Previous payment was rejected. Only verified amount is counted.';
+    }
+
+    return [
+        'paid' => $displayPaid,
+        'remaining' => $displayRemaining,
+        'submitted_amount' => $submittedAmount,
+        'is_pending_submission' => ($isPendingVerification && $submittedAmount > 0),
+        'is_rejected_submission' => $isRejectedVerification,
+        'note' => $note,
+    ];
+};
+
 $formatMoney = static function (float $amount): string {
     return number_format($amount, 2, '.', '');
 };
@@ -882,12 +937,19 @@ $currentListUrl = $buildListUrl();
         .action-wrap { display:flex; flex-wrap:wrap; gap:6px; }
         .action-link { display:inline-block; padding:5px 8px; border-radius:6px; color:#fff; text-decoration:none; font-weight:700; font-size:0.82em; }
         .action-view { background:#17a2b8; }
-        .action-collect { background:#b36b00; }
         .action-verify { background:#6f42c1; }
         .action-mark { background:#1a8917; }
         .action-print { background:#444; }
         .action-refund { background:#dc3545; }
-        .action-request { background:#8a6000; }
+        .action-request { background:#c92a2a; box-shadow:0 0 0 1px #ffffff55 inset; }
+        .row-cancel-request td { background:#fff7f7; }
+        .row-cancel-request td:first-child { border-left:4px solid #c92a2a; }
+        .cancel-request-alert { margin-top:2px; padding:8px 9px; border:1px solid #f1b0b7; border-left:4px solid #c92a2a; border-radius:8px; background:linear-gradient(135deg,#fff5f5,#ffe3e3); }
+        .cancel-request-title { color:#a4161a; font-size:0.82em; font-weight:800; letter-spacing:0.02em; text-transform:uppercase; display:flex; align-items:center; gap:6px; }
+        .cancel-request-icon { width:16px; height:16px; border-radius:50%; background:#c92a2a; color:#fff; display:inline-flex; align-items:center; justify-content:center; font-size:0.74em; line-height:1; }
+        .cancel-request-meta { margin-top:4px; color:#6a1b1b; font-size:0.82em; font-weight:600; }
+        .cancel-request-link { display:inline-block; margin-top:6px; padding:3px 8px; border-radius:999px; background:#c92a2a; color:#fff; text-decoration:none; font-size:0.78em; font-weight:700; }
+        .cancel-request-link:hover { background:#a61e1e; color:#fff; text-decoration:none; }
         .amount-cell { white-space:nowrap; font-weight:700; }
         .quick-row td { background:#fffdf5; }
         .quick-panel { border:1px solid #f0d8a8; border-radius:10px; padding:12px; background:#fff8e8; }
@@ -1025,6 +1087,14 @@ $currentListUrl = $buildListUrl();
                 $paidAmount = (float)$amounts['paid'];
                 $pendingAmount = (float)$amounts['remaining'];
 
+                $displayAmounts = $computeDisplayAmounts($row, $amounts);
+                $paidAmountDisplay = (float)$displayAmounts['paid'];
+                $pendingAmountDisplay = (float)$displayAmounts['remaining'];
+                $pendingSubmittedAmount = (float)$displayAmounts['submitted_amount'];
+                $hasPendingSubmittedAmount = (bool)$displayAmounts['is_pending_submission'];
+                $hasRejectedSubmittedAmount = (bool)$displayAmounts['is_rejected_submission'];
+                $paymentAmountNote = (string)$displayAmounts['note'];
+
                 $hasPendingVerification = (
                     $paymentStatusLower === 'pending verification' &&
                     in_array($paymentRecordStatusLower, ['pending', 'pending verification'], true) &&
@@ -1089,8 +1159,17 @@ $currentListUrl = $buildListUrl();
                 $paymentRecordText = trim((string)($row['payment_record_status'] ?? ''));
                 $paymentMethodText = trim((string)($row['payment_method'] ?? ''));
                 $transactionIdText = trim((string)($row['transaction_id'] ?? ''));
+                $pendingRequestTypeText = ucfirst(strtolower(trim((string)($row['pending_request_type'] ?? 'full'))));
+                if ($pendingRequestTypeText === '') {
+                    $pendingRequestTypeText = 'Full';
+                }
+                $pendingRequestedPersons = (int)($row['pending_requested_persons'] ?? 0);
+                if ($pendingRequestedPersons <= 0) {
+                    $pendingRequestedPersons = max((int)($row['persons'] ?? 1), 1);
+                }
+                $pendingRequestedAtText = trim((string)($row['pending_requested_at'] ?? ''));
                 ?>
-                <tr id="reg-<?php echo $registrationId; ?>">
+                <tr id="reg-<?php echo $registrationId; ?>"<?php echo $hasPendingCancelRequest ? ' class="row-cancel-request"' : ''; ?>>
                     <td><?php echo $registrationId; ?></td>
                     <td><strong><?php echo htmlspecialchars($bookingRef); ?></strong></td>
                     <td>
@@ -1125,7 +1204,11 @@ $currentListUrl = $buildListUrl();
                         <?php if ($paymentRecordText !== ''): ?><br><span class="small">Payment Rec: <?php echo htmlspecialchars($paymentRecordText); ?></span><?php endif; ?>
                     </td>
                     <td class="amount-cell">Rs <?php echo htmlspecialchars($formatMoney($totalAmount)); ?></td>
-                    <td class="amount-cell">Rs <?php echo htmlspecialchars($formatMoney($paidAmount)); ?></td>
+                    <td class="amount-cell">
+                        Rs <?php echo htmlspecialchars($formatMoney($paidAmountDisplay)); ?>
+                        <?php if ($hasPendingSubmittedAmount): ?><br><span class="small">Pending verification</span><?php endif; ?>
+                        <?php if ($hasRejectedSubmittedAmount && $paidAmountDisplay <= 0): ?><br><span class="small" style="color:#b00020;">Previous payment rejected</span><?php endif; ?>
+                    </td>
                     <td>
                         <?php if ($isCancelled): ?>
                             <?php if ($paidAmount > 0): ?>
@@ -1146,17 +1229,41 @@ $currentListUrl = $buildListUrl();
                             <?php endif; ?>
                         <?php else: ?>
                             <?php if ($hasPendingCancelRequest): ?>
-                                <span class="small"><strong>Cancel Req:</strong> Pending</span><br>
-                                <span class="small">
-                                    <?php echo htmlspecialchars(ucfirst((string)($row['pending_request_type'] ?? 'full'))); ?>
-                                    (<?php echo (int)($row['pending_requested_persons'] ?? 0); ?>)
-                                </span>
+                                <div class="cancel-request-alert">
+                                    <div class="cancel-request-title">
+                                        <span class="cancel-request-icon">!</span>
+                                        <span>Cancel Request Pending</span>
+                                    </div>
+                                    <div class="cancel-request-meta">Type: <?php echo htmlspecialchars($pendingRequestTypeText); ?></div>
+                                    <div class="cancel-request-meta">Persons: <?php echo (int)$pendingRequestedPersons; ?></div>
+                                    <?php if ($pendingRequestedAtText !== ''): ?>
+                                        <div class="cancel-request-meta">Requested: <?php echo htmlspecialchars($pendingRequestedAtText); ?></div>
+                                    <?php endif; ?>
+                                    <a class="cancel-request-link" href="<?php echo htmlspecialchars($pendingRequestReviewUrl); ?>">Review Request</a>
+                                </div>
+                            <?php elseif ($hasPendingVerification && $hasPendingSubmittedAmount): ?>
+                                <a class="money-link" href="<?php echo htmlspecialchars($quickVerifyUrl); ?>">
+                                    Rs <?php echo htmlspecialchars($formatMoney($pendingSubmittedAmount)); ?>
+                                </a>
+                                <br><span class="small">Recently submitted (pending verification)</span>
+                            <?php elseif ($hasRejectedSubmittedAmount && $paidAmountDisplay <= 0): ?>
+                                <span class="small" style="color:#b00020;"><strong>Previous payment rejected.</strong></span><br>
+                                <?php if ($pendingAmount > 0 && $canCollect): ?>
+                                    <a class="money-link" href="<?php echo htmlspecialchars($quickCollectUrl); ?>">
+                                        Pay again: Rs <?php echo htmlspecialchars($formatMoney($pendingAmount)); ?>
+                                    </a>
+                                <?php else: ?>
+                                    <span class="amount-cell">Rs <?php echo htmlspecialchars($formatMoney($pendingAmountDisplay)); ?></span>
+                                <?php endif; ?>
                             <?php elseif ($pendingAmount > 0 && $canCollect): ?>
                                 <a class="money-link" href="<?php echo htmlspecialchars($quickCollectUrl); ?>">
                                     Rs <?php echo htmlspecialchars($formatMoney($pendingAmount)); ?>
                                 </a>
                             <?php else: ?>
-                                <span class="amount-cell">Rs <?php echo htmlspecialchars($formatMoney($pendingAmount)); ?></span>
+                                <span class="amount-cell">Rs <?php echo htmlspecialchars($formatMoney($pendingAmountDisplay)); ?></span>
+                            <?php endif; ?>
+                            <?php if ($paymentAmountNote !== '' && !($hasPendingVerification && $hasPendingSubmittedAmount) && !($hasRejectedSubmittedAmount && $paidAmountDisplay <= 0)): ?>
+                                <br><span class="small"><?php echo htmlspecialchars($paymentAmountNote); ?></span>
                             <?php endif; ?>
                         <?php endif; ?>
                     </td>
@@ -1174,9 +1281,6 @@ $currentListUrl = $buildListUrl();
                     <td>
                         <div class="action-wrap">
                             <a class="action-link action-view" href="registration-view.php?id=<?php echo $registrationId; ?>&return=<?php echo urlencode($currentListUrl); ?>">View</a>
-                            <?php if ($canCollect): ?>
-                                <a class="action-link action-collect" href="<?php echo htmlspecialchars($quickCollectUrl); ?>">Collect</a>
-                            <?php endif; ?>
                             <?php if ($hasPendingVerification): ?>
                                 <a class="action-link action-verify" href="<?php echo htmlspecialchars($quickVerifyUrl); ?>">Verify</a>
                             <?php endif; ?>
@@ -1184,13 +1288,13 @@ $currentListUrl = $buildListUrl();
                                 <a class="action-link action-mark" href="<?php echo htmlspecialchars($quickMarkPaidUrl); ?>">Mark Paid</a>
                             <?php endif; ?>
                             <?php if ($hasPendingCancelRequest): ?>
-                                <a class="action-link action-request" href="<?php echo htmlspecialchars($pendingRequestReviewUrl); ?>">Req Pending</a>
+                                <a class="action-link action-request" href="<?php echo htmlspecialchars($pendingRequestReviewUrl); ?>">Review Cancel</a>
                             <?php endif; ?>
                             <?php if ($latestCancelId > 0 && $latestRefundStatus === 'pending' && $isCancelled): ?>
                                 <a class="action-link action-refund" href="<?php echo htmlspecialchars($quickRefundUrl); ?>">Refund</a>
                             <?php endif; ?>
                             <?php if ($paymentStatusLower === 'paid'): ?>
-                                <a class="action-link action-print" href="../../event-qr-ticket.php?registration_id=<?php echo $registrationId; ?>&ref=<?php echo urlencode($bookingRef); ?>" target="_blank">Print</a>
+                                <a class="action-link action-print" href="../../event-booking-confirmation.php?registration_id=<?php echo $registrationId; ?>&auto_print=1" target="_blank">Print</a>
                             <?php endif; ?>
                         </div>
                     </td>

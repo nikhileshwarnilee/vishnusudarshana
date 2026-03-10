@@ -90,6 +90,7 @@ if (!function_exists('vs_event_ensure_tables')) {
                 field_name VARCHAR(120) NOT NULL,
                 field_type VARCHAR(50) NOT NULL,
                 field_options TEXT NULL,
+                field_placeholder VARCHAR(255) NULL,
                 required TINYINT(1) NOT NULL DEFAULT 0,
                 created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 KEY idx_event_form_fields_event_id (event_id),
@@ -116,7 +117,7 @@ if (!function_exists('vs_event_ensure_tables')) {
                 checkin_by_user_name VARCHAR(255) DEFAULT NULL,
                 created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 UNIQUE KEY uniq_event_booking_reference (booking_reference),
-                UNIQUE KEY uniq_event_package_phone (package_id, phone),
+                KEY idx_event_registrations_package_phone (package_id, phone),
                 KEY idx_event_registrations_event_id (event_id),
                 KEY idx_event_registrations_package_id (package_id),
                 KEY idx_event_registrations_event_date_id (event_date_id),
@@ -259,6 +260,9 @@ if (!function_exists('vs_event_ensure_tables')) {
         }
         if (!$hasColumn('events', 'send_whatsapp_notifications')) {
             $pdo->exec("ALTER TABLE events ADD COLUMN send_whatsapp_notifications TINYINT(1) NOT NULL DEFAULT 1 AFTER status");
+        }
+        if (!$hasColumn('event_form_fields', 'field_placeholder')) {
+            $pdo->exec("ALTER TABLE event_form_fields ADD COLUMN field_placeholder VARCHAR(255) NULL AFTER field_options");
         }
         $pdo->exec("UPDATE events
             SET short_description = CASE
@@ -436,27 +440,11 @@ if (!function_exists('vs_event_ensure_tables')) {
             $pdo->exec("ALTER TABLE event_registrations ADD UNIQUE KEY uniq_event_booking_reference (booking_reference)");
         }
 
-        $phoneIndexCheckStmt = $pdo->prepare("SELECT COUNT(*)
-            FROM information_schema.statistics
-            WHERE table_schema = DATABASE()
-              AND table_name = 'event_registrations'
-              AND index_name = 'uniq_event_package_phone'");
-        $phoneIndexCheckStmt->execute();
-        $hasPackagePhoneUniqueIndex = ((int)$phoneIndexCheckStmt->fetchColumn()) > 0;
-        if (!$hasPackagePhoneUniqueIndex) {
-            $duplicatePackagePhoneCount = (int)$pdo->query("SELECT COUNT(*) FROM (
-                    SELECT package_id, phone
-                    FROM event_registrations
-                    WHERE COALESCE(phone, '') <> ''
-                    GROUP BY package_id, phone
-                    HAVING COUNT(*) > 1
-                ) dup")->fetchColumn();
-
-            if ($duplicatePackagePhoneCount === 0) {
-                $pdo->exec("ALTER TABLE event_registrations ADD UNIQUE KEY uniq_event_package_phone (package_id, phone)");
-            } else {
-                error_log('Event module: skipped uniq_event_package_phone index due to duplicate existing records.');
-            }
+        if ($hasIndex('event_registrations', 'uniq_event_package_phone')) {
+            $pdo->exec("ALTER TABLE event_registrations DROP INDEX uniq_event_package_phone");
+        }
+        if (!$hasIndex('event_registrations', 'idx_event_registrations_package_phone')) {
+            $pdo->exec("ALTER TABLE event_registrations ADD KEY idx_event_registrations_package_phone (package_id, phone)");
         }
 
         $qrColumnCheckStmt = $pdo->prepare("SELECT COUNT(*)

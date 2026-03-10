@@ -403,6 +403,84 @@ if ($remainingAmount <= 0 && $paymentStatusLower !== 'cancelled') {
     $remainingAmount = round(max($totalAmount - $paidSoFar, 0), 2);
 }
 
+$isCancelledBooking = ($paymentStatusLower === 'cancelled' || $verificationStatusLower === 'cancelled');
+$paymentMethodLower = strtolower(trim((string)($registration['payment_method'] ?? '')));
+$paymentRecordStatusLower = strtolower(trim((string)($registration['payment_record_status'] ?? '')));
+$submittedManualAmount = round(max((float)($registration['payment_amount'] ?? 0), 0), 2);
+$isManualOrCash = in_array($paymentMethodLower, ['manual upi', 'cash'], true);
+$isPendingManualVerification = $isManualOrCash && (
+    in_array($paymentStatusLower, ['pending', 'pending verification'], true) ||
+    in_array($verificationStatusLower, ['pending', 'pending verification'], true) ||
+    in_array($paymentRecordStatusLower, ['pending', 'pending verification'], true)
+);
+$isRejectedManualVerification = $isManualOrCash && (
+    in_array($verificationStatusLower, ['rejected'], true) ||
+    in_array($paymentRecordStatusLower, ['rejected'], true) ||
+    in_array($paymentStatusLower, ['failed', 'rejected'], true)
+);
+$isApprovedPayment = (
+    in_array($verificationStatusLower, ['approved', 'auto verified'], true) ||
+    in_array($paymentRecordStatusLower, ['approved', 'paid', 'success', 'successful'], true) ||
+    in_array($paymentStatusLower, ['paid', 'partial paid'], true)
+);
+
+$verifiedPaidAmount = round(max($paidSoFar, 0), 2);
+if ($verifiedPaidAmount > $totalAmount && $totalAmount > 0) {
+    $verifiedPaidAmount = $totalAmount;
+}
+$pendingSubmittedAmount = (!$isCancelledBooking && $isPendingManualVerification && !$isRejectedManualVerification && $submittedManualAmount > 0)
+    ? $submittedManualAmount
+    : 0.0;
+$rejectedSubmittedAmount = (!$isCancelledBooking && $isRejectedManualVerification && $submittedManualAmount > 0)
+    ? $submittedManualAmount
+    : 0.0;
+
+$displayPaidSoFar = $verifiedPaidAmount;
+$displayRemainingAmount = $remainingAmount;
+if (!$isCancelledBooking && $pendingSubmittedAmount > 0) {
+    $displayPaidSoFar = round(min($totalAmount, $verifiedPaidAmount + $pendingSubmittedAmount), 2);
+    $displayRemainingAmount = round(max($totalAmount - $displayPaidSoFar, 0), 2);
+} elseif (!$isCancelledBooking && $isRejectedManualVerification) {
+    $displayPaidSoFar = $verifiedPaidAmount;
+    $displayRemainingAmount = round(max($totalAmount - $displayPaidSoFar, 0), 2);
+}
+
+$paymentVisualState = 'neutral';
+$paymentVisualIcon = '&#9432;';
+$paymentVisualTitle = 'Awaiting Payment Verification';
+$paymentVisualMessage = 'Payment is not yet verified for this booking.';
+if ($isCancelledBooking) {
+    $paymentVisualState = 'neutral';
+    $paymentVisualIcon = '&#9888;';
+    $paymentVisualTitle = 'Booking Cancelled';
+    $paymentVisualMessage = 'Payment status is locked because this booking is cancelled.';
+} elseif ($isPendingManualVerification && !$isRejectedManualVerification) {
+    $paymentVisualState = 'pending';
+    $paymentVisualIcon = '&#9203;';
+    $paymentVisualTitle = 'Under Verification';
+    $paymentVisualMessage = 'Manual payment proof is submitted and waiting for admin approval.';
+} elseif ($isRejectedManualVerification) {
+    $paymentVisualState = 'rejected';
+    $paymentVisualIcon = '&#10006;';
+    $paymentVisualTitle = 'Verification Rejected';
+    $paymentVisualMessage = 'Previous submitted payment was rejected. Customer needs to pay again.';
+} elseif ($isApprovedPayment) {
+    $paymentVisualState = 'approved';
+    $paymentVisualIcon = '&#10004;';
+    $paymentVisualTitle = 'Payment Verified';
+    $paymentVisualMessage = 'Amount is verified and counted in confirmed paid value.';
+}
+
+$paymentDisplayNote = '';
+if ($pendingSubmittedAmount > 0) {
+    $paymentDisplayNote = 'Displayed paid amount includes pending verification submission.';
+} elseif ($isRejectedManualVerification && $displayPaidSoFar <= 0) {
+    $paymentDisplayNote = 'Previous payment verification was rejected. Paid amount is Rs 0.';
+}
+$paymentVisualStatClass = in_array($paymentVisualState, ['pending', 'approved', 'rejected'], true)
+    ? ('stat-' . $paymentVisualState)
+    : '';
+
 $canCollectRemaining = ($paymentStatusLower === 'partial paid' && $remainingAmount > 0);
 
 $detailUpiAccount = trim((string)($registration['upi_id_used'] ?? ''));
@@ -571,10 +649,85 @@ $pageTitle = 'Registration View';
         .notice { margin-bottom: 12px; border-radius: 12px; padding: 10px 12px; font-size: 0.9rem; font-weight: 700; border: 1px solid transparent; }
         .notice.ok { background: #e7f7ed; border-color: #c6e8d4; color: #1a6e3f; }
         .notice.err { background: #ffecee; border-color: #f8c2ca; color: #9f1f2e; }
+        .payment-spotlight {
+            padding: 12px 14px;
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 10px;
+            margin-bottom: 12px;
+            border: 1px solid #ddd;
+            border-radius: 14px;
+        }
+        .payment-spotlight-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            font-weight: 700;
+            line-height: 1;
+        }
+        .payment-spotlight-copy { display: flex; flex-direction: column; gap: 3px; }
+        .payment-spotlight-copy strong { color: #3a2020; font-size: 0.98rem; }
+        .payment-spotlight-copy span { color: #4c586c; font-size: 0.86rem; line-height: 1.35; }
+        .payment-spotlight-amounts {
+            grid-column: 1 / -1;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+            gap: 8px;
+            margin-top: 2px;
+        }
+        .payment-spotlight-amount {
+            background: #fff;
+            border: 1px solid #e4d8d9;
+            border-radius: 10px;
+            padding: 8px 9px;
+        }
+        .payment-spotlight-amount span {
+            display: block;
+            font-size: 0.74rem;
+            color: #6b6f7b;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            font-weight: 700;
+        }
+        .payment-spotlight-amount strong {
+            display: block;
+            margin-top: 3px;
+            font-size: 1.05rem;
+            color: #2a303b;
+            line-height: 1.2;
+        }
+        .payment-spotlight-pending { background: #fff8e8; border-color: #f2ddad; }
+        .payment-spotlight-pending .payment-spotlight-icon { background: #f7d98d; color: #6d4b00; }
+        .payment-spotlight-approved { background: #eef9f1; border-color: #cee7d5; }
+        .payment-spotlight-approved .payment-spotlight-icon { background: #bde4c8; color: #14653a; }
+        .payment-spotlight-rejected { background: #ffeff1; border-color: #f1c2cb; }
+        .payment-spotlight-rejected .payment-spotlight-icon { background: #f3b3be; color: #992333; }
+        .payment-spotlight-neutral { background: #f4f6fb; border-color: #d8dfeb; }
+        .payment-spotlight-neutral .payment-spotlight-icon { background: #dbe1eb; color: #485566; }
+        .payment-spotlight-note {
+            grid-column: 1 / -1;
+            margin: 0;
+            font-size: 0.82rem;
+            line-height: 1.32;
+        }
+        .payment-spotlight-pending .payment-spotlight-note { color: #8a5f00; }
+        .payment-spotlight-rejected .payment-spotlight-note { color: #9f1f2e; }
+        .payment-spotlight-approved .payment-spotlight-note { color: #156734; }
+        .payment-spotlight-neutral .payment-spotlight-note { color: #485566; }
         .stats-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(175px,1fr)); gap: 10px; margin-bottom: 12px; }
         .stat-card { padding: 12px; }
         .stat-label { margin: 0; color: #6f7584; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.07em; font-weight: 700; }
         .stat-value { margin: 6px 0 0; font-size: 1.22rem; font-weight: 800; color: #2a303b; line-height: 1.15; }
+        .stat-card.stat-pending { background: #fff8e8; border-color: #f2ddad; }
+        .stat-card.stat-pending .stat-value { color: #8a5f00; }
+        .stat-card.stat-approved { background: #eef9f1; border-color: #cee7d5; }
+        .stat-card.stat-approved .stat-value { color: #156734; }
+        .stat-card.stat-rejected { background: #ffeff1; border-color: #f1c2cb; }
+        .stat-card.stat-rejected .stat-value { color: #9f1f2e; }
         .details-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
         .panel { padding: 15px; margin-bottom: 12px; }
         .panel h3 { margin: 0 0 10px; color: var(--maroon); font-size: 1rem; }
@@ -653,18 +806,59 @@ $pageTitle = 'Registration View';
         <div class="notice <?php echo ($messageType === 'ok') ? 'ok' : 'err'; ?>"><?php echo htmlspecialchars($message); ?></div>
     <?php endif; ?>
 
+    <div class="surface payment-spotlight payment-spotlight-<?php echo htmlspecialchars($paymentVisualState); ?>">
+        <span class="payment-spotlight-icon" aria-hidden="true"><?php echo $paymentVisualIcon; ?></span>
+        <div class="payment-spotlight-copy">
+            <strong><?php echo htmlspecialchars($paymentVisualTitle); ?></strong>
+            <span><?php echo htmlspecialchars($paymentVisualMessage); ?></span>
+        </div>
+        <div class="payment-spotlight-amounts">
+            <div class="payment-spotlight-amount">
+                <span>Total Amount</span>
+                <strong>Rs <?php echo number_format($totalAmount, 0, '.', ''); ?></strong>
+            </div>
+            <div class="payment-spotlight-amount">
+                <span>Paid Amount (Shown)</span>
+                <strong>Rs <?php echo number_format($displayPaidSoFar, 0, '.', ''); ?></strong>
+            </div>
+            <div class="payment-spotlight-amount">
+                <span>Remaining Amount</span>
+                <strong>Rs <?php echo number_format($displayRemainingAmount, 0, '.', ''); ?></strong>
+            </div>
+            <?php if ($pendingSubmittedAmount > 0): ?>
+                <div class="payment-spotlight-amount">
+                    <span>Submitted For Verification</span>
+                    <strong>Rs <?php echo number_format($pendingSubmittedAmount, 0, '.', ''); ?></strong>
+                </div>
+                <div class="payment-spotlight-amount">
+                    <span>Confirmed Paid (Verified)</span>
+                    <strong>Rs <?php echo number_format($verifiedPaidAmount, 0, '.', ''); ?></strong>
+                </div>
+            <?php endif; ?>
+            <?php if ($rejectedSubmittedAmount > 0): ?>
+                <div class="payment-spotlight-amount">
+                    <span>Previous Rejected Submission</span>
+                    <strong>Rs <?php echo number_format($rejectedSubmittedAmount, 0, '.', ''); ?></strong>
+                </div>
+            <?php endif; ?>
+        </div>
+        <?php if ($paymentDisplayNote !== ''): ?>
+            <p class="payment-spotlight-note"><?php echo htmlspecialchars($paymentDisplayNote); ?></p>
+        <?php endif; ?>
+    </div>
+
     <div class="stats-grid">
         <div class="surface stat-card">
             <p class="stat-label">Total Amount</p>
             <p class="stat-value">Rs <?php echo number_format($totalAmount, 0, '.', ''); ?></p>
         </div>
-        <div class="surface stat-card">
+        <div class="surface stat-card <?php echo htmlspecialchars($paymentVisualStatClass); ?>">
             <p class="stat-label">Paid So Far</p>
-            <p class="stat-value">Rs <?php echo number_format($paidSoFar, 0, '.', ''); ?></p>
+            <p class="stat-value">Rs <?php echo number_format($displayPaidSoFar, 0, '.', ''); ?></p>
         </div>
-        <div class="surface stat-card">
+        <div class="surface stat-card <?php echo htmlspecialchars($paymentVisualStatClass); ?>">
             <p class="stat-label">Remaining</p>
-            <p class="stat-value">Rs <?php echo number_format($remainingAmount, 0, '.', ''); ?></p>
+            <p class="stat-value">Rs <?php echo number_format($displayRemainingAmount, 0, '.', ''); ?></p>
         </div>
         <div class="surface stat-card">
             <p class="stat-label">Persons / Qty</p>
@@ -748,6 +942,36 @@ $pageTitle = 'Registration View';
                         <th>Current Payment Amount</th>
                         <td>Rs <?php echo number_format((float)($registration['payment_amount'] ?? 0), 0, '.', ''); ?></td>
                     </tr>
+                    <tr>
+                        <th>Paid Amount (Shown)</th>
+                        <td>Rs <?php echo number_format($displayPaidSoFar, 0, '.', ''); ?></td>
+                    </tr>
+                    <tr>
+                        <th>Remaining Amount (Shown)</th>
+                        <td>Rs <?php echo number_format($displayRemainingAmount, 0, '.', ''); ?></td>
+                    </tr>
+                    <?php if ($pendingSubmittedAmount > 0): ?>
+                        <tr>
+                            <th>Submitted For Verification</th>
+                            <td>Rs <?php echo number_format($pendingSubmittedAmount, 0, '.', ''); ?></td>
+                        </tr>
+                        <tr>
+                            <th>Confirmed Paid (Verified)</th>
+                            <td>Rs <?php echo number_format($verifiedPaidAmount, 0, '.', ''); ?></td>
+                        </tr>
+                    <?php endif; ?>
+                    <?php if ($rejectedSubmittedAmount > 0): ?>
+                        <tr>
+                            <th>Previous Rejected Submission</th>
+                            <td>Rs <?php echo number_format($rejectedSubmittedAmount, 0, '.', ''); ?></td>
+                        </tr>
+                    <?php endif; ?>
+                    <?php if ($paymentDisplayNote !== ''): ?>
+                        <tr>
+                            <th>Payment Note</th>
+                            <td><?php echo htmlspecialchars($paymentDisplayNote); ?></td>
+                        </tr>
+                    <?php endif; ?>
                     <tr>
                         <th>UPI Account Used</th>
                         <td><?php echo $detailUpiAccount !== '' ? htmlspecialchars($detailUpiAccount) : '-'; ?></td>

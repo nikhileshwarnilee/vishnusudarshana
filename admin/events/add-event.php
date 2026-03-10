@@ -92,7 +92,7 @@ if ($editId > 0) {
             $rangeStatus = ((string)($dateRows[0]['status'] ?? 'Active') === 'Inactive') ? 'Inactive' : 'Active';
         }
 
-        $fieldStmt = $pdo->prepare("SELECT field_name, field_type, field_options, required FROM event_form_fields WHERE event_id = ? ORDER BY id ASC");
+        $fieldStmt = $pdo->prepare("SELECT field_name, field_type, field_options, field_placeholder, required FROM event_form_fields WHERE event_id = ? ORDER BY id ASC");
         $fieldStmt->execute([$editId]);
         $formFields = $fieldStmt->fetchAll(PDO::FETCH_ASSOC);
     } else {
@@ -398,6 +398,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $fieldNames = isset($_POST['field_name']) && is_array($_POST['field_name']) ? $_POST['field_name'] : [];
     $fieldTypes = isset($_POST['field_type']) && is_array($_POST['field_type']) ? $_POST['field_type'] : [];
     $fieldOptions = isset($_POST['field_options']) && is_array($_POST['field_options']) ? $_POST['field_options'] : [];
+    $fieldPlaceholders = isset($_POST['field_placeholder']) && is_array($_POST['field_placeholder']) ? $_POST['field_placeholder'] : [];
     $fieldRequired = isset($_POST['field_required']) && is_array($_POST['field_required']) ? $_POST['field_required'] : [];
     $allowedTypes = ['text', 'phone', 'number', 'textarea', 'select', 'file', 'date'];
     $formFields = [];
@@ -416,6 +417,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'field_name' => $name,
             'field_type' => $type,
             'field_options' => trim((string)($fieldOptions[$i] ?? '')),
+            'field_placeholder' => trim((string)($fieldPlaceholders[$i] ?? '')),
             'required' => ((int)($fieldRequired[$i] ?? 0) === 1) ? 1 : 0,
         ];
     }
@@ -484,9 +486,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $pdo->prepare("DELETE FROM event_form_fields WHERE event_id = ?")->execute([$eventId]);
             if (!empty($formFields)) {
-                $insField = $pdo->prepare("INSERT INTO event_form_fields (event_id, field_name, field_type, field_options, required) VALUES (?, ?, ?, ?, ?)");
+                $insField = $pdo->prepare("INSERT INTO event_form_fields (event_id, field_name, field_type, field_options, field_placeholder, required) VALUES (?, ?, ?, ?, ?, ?)");
                 foreach ($formFields as $f) {
-                    $insField->execute([$eventId, $f['field_name'], $f['field_type'], $f['field_options'], $f['required']]);
+                    $insField->execute([$eventId, $f['field_name'], $f['field_type'], $f['field_options'], $f['field_placeholder'], $f['required']]);
                 }
             }
 
@@ -623,7 +625,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
         <div class="card">
             <div style="display:flex;align-items:center;justify-content:space-between"><h3 style="margin:0;color:#800000">Dynamic Registration Fields</h3><button type="button" class="add-field" id="addFieldBtn">+ Add Field</button></div>
-            <table class="field-table"><thead><tr><th>Field Name</th><th>Type</th><th>Options</th><th>Required</th><th>Action</th></tr></thead><tbody id="fieldRows"><?php foreach ($formFields as $f): ?><tr><td><input type="text" name="field_name[]" value="<?php echo htmlspecialchars((string)$f['field_name']); ?>"></td><td><select name="field_type[]"><?php foreach (['text','phone','number','textarea','select','file','date'] as $t): ?><option value="<?php echo $t; ?>" <?php echo ((string)$f['field_type'] === $t) ? 'selected' : ''; ?>><?php echo ucfirst($t); ?></option><?php endforeach; ?></select></td><td><input type="text" name="field_options[]" value="<?php echo htmlspecialchars((string)$f['field_options']); ?>"></td><td><select name="field_required[]"><option value="1" <?php echo ((int)$f['required'] === 1) ? 'selected' : ''; ?>>Yes</option><option value="0" <?php echo ((int)$f['required'] === 0) ? 'selected' : ''; ?>>No</option></select></td><td><button type="button" class="remove-field">X</button></td></tr><?php endforeach; ?></tbody></table>
+            <table class="field-table"><thead><tr><th>Field Name</th><th>Type</th><th>Options</th><th>Placeholder</th><th>Required</th><th>Action</th></tr></thead><tbody id="fieldRows"><?php foreach ($formFields as $f): ?><tr><td><input type="text" name="field_name[]" value="<?php echo htmlspecialchars((string)$f['field_name']); ?>"></td><td><select name="field_type[]"><?php foreach (['text','phone','number','textarea','select','file','date'] as $t): ?><option value="<?php echo $t; ?>" <?php echo ((string)$f['field_type'] === $t) ? 'selected' : ''; ?>><?php echo ucfirst($t); ?></option><?php endforeach; ?></select></td><td><input type="text" name="field_options[]" value="<?php echo htmlspecialchars((string)$f['field_options']); ?>"></td><td><input type="text" name="field_placeholder[]" value="<?php echo htmlspecialchars((string)($f['field_placeholder'] ?? '')); ?>"></td><td><select name="field_required[]"><option value="1" <?php echo ((int)$f['required'] === 1) ? 'selected' : ''; ?>>Yes</option><option value="0" <?php echo ((int)$f['required'] === 0) ? 'selected' : ''; ?>>No</option></select></td><td><button type="button" class="remove-field">X</button></td></tr><?php endforeach; ?></tbody></table>
         </div>
         <div class="btn-row"><button type="submit" class="btn-main"><?php echo $editId > 0 ? 'Update Event' : 'Create Event'; ?></button><a href="all-events.php" class="btn-main btn-alt">Back to All Events</a></div>
     </form>
@@ -685,7 +687,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (addFieldBtn && rows) {
         addFieldBtn.addEventListener('click', function () {
             const tr = document.createElement('tr');
-            tr.innerHTML = '<td><input type=\"text\" name=\"field_name[]\"></td><td><select name=\"field_type[]\"><option value=\"text\">Text</option><option value=\"phone\">Phone</option><option value=\"number\">Number</option><option value=\"textarea\">Textarea</option><option value=\"select\">Select</option><option value=\"file\">File</option><option value=\"date\">Date</option></select></td><td><input type=\"text\" name=\"field_options[]\"></td><td><select name=\"field_required[]\"><option value=\"1\">Yes</option><option value=\"0\" selected>No</option></select></td><td><button type=\"button\" class=\"remove-field\">X</button></td>';
+            tr.innerHTML = '<td><input type=\"text\" name=\"field_name[]\"></td><td><select name=\"field_type[]\"><option value=\"text\">Text</option><option value=\"phone\">Phone</option><option value=\"number\">Number</option><option value=\"textarea\">Textarea</option><option value=\"select\">Select</option><option value=\"file\">File</option><option value=\"date\">Date</option></select></td><td><input type=\"text\" name=\"field_options[]\"></td><td><input type=\"text\" name=\"field_placeholder[]\"></td><td><select name=\"field_required[]\"><option value=\"1\">Yes</option><option value=\"0\" selected>No</option></select></td><td><button type=\"button\" class=\"remove-field\">X</button></td>';
             rows.appendChild(tr);
             bindRemoveButtons(tr);
         });

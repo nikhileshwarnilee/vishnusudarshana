@@ -2,6 +2,10 @@
 require_once __DIR__ . '/config/db.php';
 require_once __DIR__ . '/helpers/event_module.php';
 
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
 $slug = trim((string)($_GET['slug'] ?? ''));
 if ($slug === '') {
     header('Location: events.php');
@@ -260,210 +264,79 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (empty($errors)) {
         try {
-            $pdo->beginTransaction();
-
-            $lockStmt = $pdo->prepare('SELECT p.id, p.event_id, p.package_name, p.is_paid, p.payment_methods, p.upi_id, p.upi_qr_image, p.price, p.price_total,
+            $validateStmt = $pdo->prepare('SELECT p.id, p.event_id, p.package_name, p.price, p.price_total,
                     COALESCE(pdp.price_total, (CASE WHEN p.price_total > 0 THEN p.price_total ELSE p.price END)) AS effective_price_total,
                     p.seat_limit, p.status, e.title AS event_title, e.registration_start, e.registration_end, e.status AS event_status
                 FROM event_packages p
                 LEFT JOIN event_package_date_prices pdp ON pdp.package_id = p.id AND pdp.event_date_id = ?
                 INNER JOIN events e ON e.id = p.event_id
-                WHERE p.id = ? AND p.event_id = ? LIMIT 1 FOR UPDATE');
-            $lockStmt->execute([$selectedDateId, $selectedPackageId, (int)$event['id']]);
-            $lockedPackage = $lockStmt->fetch(PDO::FETCH_ASSOC);
-            if ($lockedPackage) {
-                $lockedPrice = (float)($lockedPackage['effective_price_total'] ?? $lockedPackage['price_total'] ?? $lockedPackage['price'] ?? 0);
-                $lockedPackage['price_total'] = $lockedPrice;
-                $lockedPackage['price'] = $lockedPrice;
+                WHERE p.id = ? AND p.event_id = ? LIMIT 1');
+            $validateStmt->execute([$selectedDateId, $selectedPackageId, (int)$event['id']]);
+            $selectedPackageRow = $validateStmt->fetch(PDO::FETCH_ASSOC);
+            if ($selectedPackageRow) {
+                $selectedPackageRow['price_total'] = (float)($selectedPackageRow['effective_price_total'] ?? $selectedPackageRow['price_total'] ?? $selectedPackageRow['price'] ?? 0);
             }
 
-            if (!$lockedPackage || (string)$lockedPackage['status'] !== 'Active') {
+            if (!$selectedPackageRow || (string)$selectedPackageRow['status'] !== 'Active') {
                 throw new RuntimeException('Selected package is not available.');
             }
-            if ((string)$lockedPackage['event_status'] !== 'Active') {
+            if ((string)$selectedPackageRow['event_status'] !== 'Active') {
                 throw new RuntimeException('Event is currently closed.');
             }
+
             $today = date('Y-m-d');
-            if ($today < (string)$lockedPackage['registration_start'] || $today > (string)$lockedPackage['registration_end']) {
+            if ($today < (string)$selectedPackageRow['registration_start'] || $today > (string)$selectedPackageRow['registration_end']) {
                 throw new RuntimeException('Registration window is closed for this event.');
             }
 
-            $lockedDate = null;
             if (($eventType === 'single_day' || $eventType === 'multi_select_dates') && $selectedDateId > 0) {
-                $dateLockStmt = $pdo->prepare("SELECT id, event_date, seat_limit, status
+                $dateCheckStmt = $pdo->prepare("SELECT id, status
                     FROM event_dates
                     WHERE id = ? AND event_id = ?
-                    LIMIT 1
-                    FOR UPDATE");
-                $dateLockStmt->execute([$selectedDateId, (int)$event['id']]);
-                $lockedDate = $dateLockStmt->fetch(PDO::FETCH_ASSOC);
-                if (!$lockedDate || (string)$lockedDate['status'] !== 'Active') {
+                    LIMIT 1");
+                $dateCheckStmt->execute([$selectedDateId, (int)$event['id']]);
+                $selectedDateRow = $dateCheckStmt->fetch(PDO::FETCH_ASSOC);
+                if (!$selectedDateRow || (string)$selectedDateRow['status'] !== 'Active') {
                     throw new RuntimeException('Selected event date is not available.');
                 }
             }
 
-            $duplicateStmt = $pdo->prepare("SELECT id, booking_reference
-                FROM event_registrations
-                WHERE package_id = ?
-                  AND phone = ?
-                LIMIT 1
-                FOR UPDATE");
-            $duplicateStmt->execute([$selectedPackageId, $phone]);
-            $duplicateRow = $duplicateStmt->fetch(PDO::FETCH_ASSOC);
-            if ($duplicateRow) {
-                $dupRef = trim((string)($duplicateRow['booking_reference'] ?? ''));
-                if ($dupRef === '') {
-                    $dupRef = vs_event_assign_booking_reference($pdo, (int)$duplicateRow['id']);
-                }
-                throw new RuntimeException('This phone is already registered for the selected package. Booking reference: ' . $dupRef);
+            if (!isset($_SESSION['event_registration_drafts']) || !is_array($_SESSION['event_registration_drafts'])) {
+                $_SESSION['event_registration_drafts'] = [];
             }
-
-            $packageSeatLimit = isset($lockedPackage['seat_limit']) ? (int)$lockedPackage['seat_limit'] : 0;
-            if ($packageSeatLimit > 0) {
-                $usedStmt = $pdo->prepare("SELECT COALESCE(SUM(persons),0)
-                    FROM event_registrations
-                    WHERE package_id = ?
-                      AND verification_status IN ('Pending', 'Approved', 'Auto Verified')
-                      AND payment_status NOT IN ('Failed', 'Cancelled')
-                      AND (? = 0 OR event_date_id = ?)
-                    FOR UPDATE");
-                $usedStmt->execute([$selectedPackageId, $selectedDateId, $selectedDateId]);
-                $usedSeats = (int)$usedStmt->fetchColumn();
-                if (($usedSeats + $persons) > $packageSeatLimit) {
-                    throw new RuntimeException('Seats are full for the selected package and date.');
+            $expireBefore = time() - (3 * 60 * 60);
+            foreach ($_SESSION['event_registration_drafts'] as $k => $draftRow) {
+                $createdAt = (int)($draftRow['created_at'] ?? 0);
+                if ($createdAt > 0 && $createdAt < $expireBefore) {
+                    unset($_SESSION['event_registration_drafts'][$k]);
                 }
             }
 
-            if ($lockedDate && (int)($lockedDate['seat_limit'] ?? 0) > 0) {
-                $dateSeatLimit = (int)$lockedDate['seat_limit'];
-                $dateUsedStmt = $pdo->prepare("SELECT COALESCE(SUM(persons),0)
-                    FROM event_registrations
-                    WHERE event_id = ?
-                      AND event_date_id = ?
-                      AND verification_status IN ('Pending', 'Approved', 'Auto Verified')
-                      AND payment_status NOT IN ('Failed', 'Cancelled')
-                    FOR UPDATE");
-                $dateUsedStmt->execute([(int)$event['id'], $selectedDateId]);
-                $dateUsed = (int)$dateUsedStmt->fetchColumn();
-                if (($dateUsed + $persons) > $dateSeatLimit) {
-                    throw new RuntimeException('Selected date is fully booked. You can join waitlist.');
-                }
-            }
+            $draftToken = bin2hex(random_bytes(16));
+            $_SESSION['event_registration_drafts'][$draftToken] = [
+                'token' => $draftToken,
+                'created_at' => time(),
+                'event_id' => (int)$event['id'],
+                'event_slug' => (string)$event['slug'],
+                'event_type' => $eventType,
+                'event_date_id' => $selectedDateId > 0 ? $selectedDateId : 0,
+                'package_id' => $selectedPackageId,
+                'name' => $name,
+                'phone' => $phone,
+                'persons' => $persons,
+                'dynamic_values' => $dynamicValues,
+            ];
 
-            $lockedIsPaid = vs_event_is_package_paid($lockedPackage);
-            $registrationPaymentStatus = $lockedIsPaid ? 'Unpaid' : 'Paid';
-            $registrationVerificationStatus = $lockedIsPaid ? 'Pending' : 'Auto Verified';
-            $lockedPackageMethods = vs_event_payment_methods_from_csv((string)($lockedPackage['payment_methods'] ?? ''), $lockedIsPaid);
-            $registrationUpiIdSnapshot = null;
-            $registrationUpiQrSnapshot = null;
-            if ($lockedIsPaid && in_array('upi', $lockedPackageMethods, true)) {
-                $tmpUpiId = trim((string)($lockedPackage['upi_id'] ?? ''));
-                $tmpUpiQr = trim((string)($lockedPackage['upi_qr_image'] ?? ''));
-                $registrationUpiIdSnapshot = ($tmpUpiId !== '') ? $tmpUpiId : null;
-                $registrationUpiQrSnapshot = ($tmpUpiQr !== '') ? $tmpUpiQr : null;
-            }
-
-            $insertReg = $pdo->prepare('INSERT INTO event_registrations (event_id, package_id, event_date_id, package_upi_id_snapshot, package_upi_qr_snapshot, name, phone, persons, payment_status, verification_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
-            $insertReg->execute([
-                (int)$event['id'],
-                $selectedPackageId,
-                $selectedDateId > 0 ? $selectedDateId : null,
-                $registrationUpiIdSnapshot,
-                $registrationUpiQrSnapshot,
-                $name,
-                $phone,
-                $persons,
-                $registrationPaymentStatus,
-                $registrationVerificationStatus,
-            ]);
-            $registrationId = (int)$pdo->lastInsertId();
-            $bookingReference = vs_event_assign_booking_reference($pdo, $registrationId);
-
-            if (!$lockedIsPaid) {
-                $freePayment = $pdo->prepare("INSERT INTO event_payments (registration_id, amount, payment_type, amount_paid, remaining_amount, payment_method, transaction_id, screenshot, status)
-                    VALUES (?, 0, 'full', 0, 0, 'Free', 'FREE', '', 'Paid')
-                    ON DUPLICATE KEY UPDATE
-                        amount = VALUES(amount),
-                        payment_type = VALUES(payment_type),
-                        amount_paid = VALUES(amount_paid),
-                        remaining_amount = VALUES(remaining_amount),
-                        payment_method = VALUES(payment_method),
-                        transaction_id = VALUES(transaction_id),
-                        screenshot = VALUES(screenshot),
-                        status = VALUES(status)");
-                $freePayment->execute([$registrationId]);
-            }
-
-            $dataInsert = $pdo->prepare('INSERT INTO event_registration_data (registration_id, field_name, value) VALUES (?, ?, ?)');
-            $dataInsert->execute([$registrationId, 'Name', $name]);
-            $dataInsert->execute([$registrationId, 'Phone', $phone]);
-            $dataInsert->execute([$registrationId, 'Persons', (string)$persons]);
-            $dataInsert->execute([$registrationId, 'Booking Reference', $bookingReference]);
-            if ($lockedDate) {
-                $dataInsert->execute([$registrationId, 'Selected Event Date', (string)$lockedDate['event_date']]);
-            } elseif ($eventType === 'date_range') {
-                $dataInsert->execute([$registrationId, 'Selected Event Date', $rangeDateLabel]);
-            }
-            foreach ($dynamicValues as $dv) {
-                $dataInsert->execute([$registrationId, (string)$dv['field_name'], (string)$dv['value']]);
-            }
-
-            $packageAmount = (float)($lockedPackage['price_total'] ?? $lockedPackage['price'] ?? 0);
-            if ($eventType === 'date_range') {
-                $eventDateText = $rangeDateLabel;
-            } elseif ($lockedDate) {
-                $eventDateText = (string)$lockedDate['event_date'];
-            } else {
-                $eventDateText = (string)$event['event_date'];
-            }
-            if (vs_event_is_whatsapp_enabled($pdo, (int)$event['id'])) {
-                vs_event_send_whatsapp_notice('registration_received', $phone, [
-                    'name' => $name,
-                    'event_name' => (string)$lockedPackage['event_title'],
-                    'package_name' => (string)$lockedPackage['package_name'],
-                    'event_date' => $eventDateText,
-                    'amount' => (string)$packageAmount,
-                    'booking_reference' => $bookingReference,
-                    'event_id' => (int)$event['id'],
-                    'registration_id' => $registrationId,
-                ]);
-            }
-
-            if (!$lockedIsPaid) {
-                if (vs_event_is_whatsapp_enabled($pdo, (int)$event['id'])) {
-                    vs_event_send_whatsapp_notice('payment_successful', $phone, [
-                        'name' => $name,
-                        'event_name' => (string)$lockedPackage['event_title'],
-                        'package_name' => (string)$lockedPackage['package_name'],
-                        'event_date' => $eventDateText,
-                        'amount' => '0',
-                        'booking_reference' => $bookingReference,
-                        'event_id' => (int)$event['id'],
-                        'registration_id' => $registrationId,
-                    ]);
-                }
-            }
-
-            $pdo->commit();
-            if ($lockedIsPaid) {
-                header('Location: event-payment.php?registration_id=' . $registrationId);
-            } else {
-                header('Location: event-booking-confirmation.php?registration_id=' . $registrationId . '&status=paid');
-            }
+            header('Location: event-payment.php?draft_token=' . urlencode($draftToken));
             exit;
         } catch (Throwable $e) {
-            if ($pdo->inTransaction()) {
-                $pdo->rollBack();
-            }
             $msg = (string)$e->getMessage();
             if ($e instanceof RuntimeException) {
                 $errors[] = $msg;
-            } elseif (stripos($msg, 'uniq_event_package_phone') !== false) {
-                $errors[] = 'This phone is already registered for the selected package.';
             } else {
-                $errors[] = 'Unable to submit registration. Please try again.';
+                $errors[] = 'Unable to proceed to payment. Please try again.';
             }
-            error_log('Event registration failed: ' . $msg);
+            error_log('Event registration draft failed: ' . $msg);
         }
     }
 }
@@ -503,7 +376,6 @@ if ($selectedPackageId > 0 && isset($packageMap[$selectedPackageId])) {
     $selectedPackage = $packageMap[$selectedPackageId];
 }
 $selectedPackageIsPaid = $selectedPackage ? vs_event_is_package_paid($selectedPackage) : true;
-$selectedPackageMethods = $selectedPackage ? vs_event_payment_methods_from_csv((string)($selectedPackage['payment_methods'] ?? ''), $selectedPackageIsPaid) : [];
 $selectedPackageSeatMap = [];
 $selectedPackagePriceMap = [];
 if ($selectedPackage) {
@@ -606,28 +478,44 @@ require_once 'header.php';
                     <?php if ($hasPhoneField): ?>
                         <input type="hidden" name="phone" value="<?php echo htmlspecialchars((string)$old['phone']); ?>">
                     <?php else: ?>
-                        <div class="form-group"><label>Phone</label><input type="text" name="phone" value="<?php echo htmlspecialchars((string)$old['phone']); ?>" required></div>
+                        <div class="form-group">
+                            <label>WhatsApp Number</label>
+                            <input type="text" name="phone" value="<?php echo htmlspecialchars((string)$old['phone']); ?>" required>
+                            <small class="phone-note">Use your active WhatsApp number for further updates and communication.</small>
+                        </div>
                     <?php endif; ?>
                     <div class="form-group"><label>Persons/Qty</label><input type="number" id="persons_qty" name="persons" min="1" max="25" value="<?php echo htmlspecialchars((string)$old['persons']); ?>" required></div>
                 </div>
 
                 <?php if ($selectedPackage): ?>
                     <div class="package-summary">
-                        <h3 class="section-title">Selected Package</h3>
-                        <div class="package-summary-grid">
-                            <div><strong>Name:</strong> <?php echo htmlspecialchars((string)$selectedPackage['package_name']); ?></div>
-                            <div><strong>Package Type:</strong> <?php echo $selectedPackageIsPaid ? 'Paid' : 'Free'; ?></div>
-                            <div><strong>Payment Mode:</strong> <?php echo $selectedPackageIsPaid ? htmlspecialchars(ucfirst((string)($selectedPackage['payment_mode'] ?? 'full'))) : '-'; ?></div>
-                            <div><strong>Payment Methods:</strong> <?php echo $selectedPackageIsPaid ? htmlspecialchars(implode(', ', array_map('ucfirst', $selectedPackageMethods))) : 'No payment required'; ?></div>
-                            <div><strong>Package Price (Per Person):</strong> Rs. <span id="pkg_price_per_person"><?php echo number_format((float)$paymentPlan['price_total'], 0, '.', ''); ?></span></div>
-                            <div><strong>Advance (Per Person):</strong> Rs. <span id="pkg_advance_per_person"><?php echo number_format((float)$paymentPlan['advance_amount'], 0, '.', ''); ?></span></div>
-                            <div><strong>Total Seats:</strong> <span id="pkg_total_seats"><?php echo htmlspecialchars($seatLimitDisplay); ?></span></div>
-                            <div><strong>Available Now:</strong> <span id="pkg_available_seats"><?php echo htmlspecialchars($seatsLeftDisplay); ?></span></div>
-                            <div><strong>Total Amount:</strong> Rs. <span id="pkg_total_amount"><?php echo number_format((float)$paymentPlan['total_amount'], 0, '.', ''); ?></span></div>
-                            <div><strong>Advance Total:</strong> Rs. <span id="pkg_advance_total"><?php echo number_format((float)$paymentPlan['advance_total'], 0, '.', ''); ?></span></div>
-                            <div><strong>Pay Now:</strong> Rs. <span id="pkg_due_now"><?php echo number_format((float)$paymentPlan['due_now'], 0, '.', ''); ?></span></div>
-                            <div><strong>Remaining:</strong> Rs. <span id="pkg_remaining"><?php echo number_format((float)$paymentPlan['remaining_after_due'], 0, '.', ''); ?></span></div>
+                        <h3 class="section-title">Selected Package Details</h3>
+                        <div class="pkg-groups">
+                            <div class="pkg-group">
+                                <h4 class="pkg-group-title">Package Information</h4>
+                                <div class="package-summary-grid">
+                                    <div><strong>Package Name:</strong> <?php echo htmlspecialchars((string)$selectedPackage['package_name']); ?></div>
+                                    <div><strong>Package Type:</strong> <?php echo $selectedPackageIsPaid ? 'Paid' : 'Free'; ?></div>
+                                </div>
+                            </div>
+                            <div class="pkg-group">
+                                <h4 class="pkg-group-title">Seat Availability</h4>
+                                <div class="package-summary-grid">
+                                    <div><strong>Total Seats:</strong> <span id="pkg_total_seats"><?php echo htmlspecialchars($seatLimitDisplay); ?></span></div>
+                                    <div><strong>Available Seats:</strong> <span id="pkg_available_seats"><?php echo htmlspecialchars($seatsLeftDisplay); ?></span></div>
+                                </div>
+                            </div>
+                            <div class="pkg-group">
+                                <h4 class="pkg-group-title">Amount Summary</h4>
+                                <div class="package-summary-grid">
+                                    <div><strong>Package Price (Per Person):</strong> Rs. <span id="pkg_price_per_person"><?php echo number_format((float)$paymentPlan['price_total'], 0, '.', ''); ?></span></div>
+                                    <div><strong>Advance (Per Person):</strong> Rs. <span id="pkg_advance_per_person"><?php echo number_format((float)$paymentPlan['advance_amount'], 0, '.', ''); ?></span></div>
+                                    <div><strong>Total Amount:</strong> Rs. <span id="pkg_total_amount"><?php echo number_format((float)$paymentPlan['total_amount'], 0, '.', ''); ?></span></div>
+                                    <div><strong>Pay Advance Amount:</strong> Rs. <span id="pkg_advance_total"><?php echo number_format((float)$paymentPlan['advance_total'], 0, '.', ''); ?></span></div>
+                                </div>
+                            </div>
                         </div>
+                        <p class="pkg-note">Amounts above update automatically based on selected date and persons quantity.</p>
                         <?php if (trim((string)$selectedPackage['description']) !== ''): ?>
                             <p class="pkg-desc-block"><?php echo nl2br(htmlspecialchars((string)$selectedPackage['description'])); ?></p>
                         <?php endif; ?>
@@ -646,19 +534,33 @@ require_once 'header.php';
                             $ftype = strtolower((string)$field['field_type']);
                             $frequired = (int)$field['required'] === 1;
                             $saved = (string)($old['dynamic'][$fieldId] ?? '');
+                            $placeholder = trim((string)($field['field_placeholder'] ?? ''));
+                            $placeholderAttr = $placeholder !== '' ? ' placeholder="' . htmlspecialchars($placeholder) . '"' : '';
+                            $fieldNameKey = strtolower(preg_replace('/\s+/', ' ', trim($fname)));
+                            $isPhoneField = (
+                                in_array($ftype, ['phone', 'tel'], true)
+                                || strpos($fieldNameKey, 'phone') !== false
+                                || strpos($fieldNameKey, 'mobile') !== false
+                                || strpos($fieldNameKey, 'whatsapp') !== false
+                                || strpos($fieldNameKey, 'contact') !== false
+                            );
+                            $phoneLabelSuffix = ($isPhoneField && strpos($fieldNameKey, 'whatsapp') === false) ? ' (WhatsApp Number)' : '';
                             $options = array_filter(array_map('trim', preg_split('/[,\n\r]+/', (string)$field['field_options'])));
                             ?>
                             <div class="form-group">
-                                <label><?php echo htmlspecialchars($fname); ?><?php if ($frequired): ?> <span class="req">*</span><?php endif; ?></label>
+                                <label><?php echo htmlspecialchars($fname); ?><?php echo $phoneLabelSuffix; ?><?php if ($frequired): ?> <span class="req">*</span><?php endif; ?></label>
                                 <?php if ($ftype === 'textarea'): ?>
-                                    <textarea name="dynamic[<?php echo $fieldId; ?>]" <?php echo $frequired ? 'required' : ''; ?>><?php echo htmlspecialchars($saved); ?></textarea>
+                                    <textarea name="dynamic[<?php echo $fieldId; ?>]"<?php echo $placeholderAttr; ?> <?php echo $frequired ? 'required' : ''; ?>><?php echo htmlspecialchars($saved); ?></textarea>
                                 <?php elseif ($ftype === 'select'): ?>
-                                    <select name="dynamic[<?php echo $fieldId; ?>]" <?php echo $frequired ? 'required' : ''; ?>><option value="">-- Select --</option><?php foreach ($options as $opt): ?><option value="<?php echo htmlspecialchars($opt); ?>" <?php echo ($saved === $opt) ? 'selected' : ''; ?>><?php echo htmlspecialchars($opt); ?></option><?php endforeach; ?></select>
+                                    <select name="dynamic[<?php echo $fieldId; ?>]" <?php echo $frequired ? 'required' : ''; ?>><option value=""><?php echo htmlspecialchars($placeholder !== '' ? $placeholder : '-- Select --'); ?></option><?php foreach ($options as $opt): ?><option value="<?php echo htmlspecialchars($opt); ?>" <?php echo ($saved === $opt) ? 'selected' : ''; ?>><?php echo htmlspecialchars($opt); ?></option><?php endforeach; ?></select>
                                 <?php elseif ($ftype === 'file'): ?>
                                     <input type="file" name="dynamic_file_<?php echo $fieldId; ?>" <?php echo $frequired ? 'required' : ''; ?> accept=".jpg,.jpeg,.png,.webp,.pdf">
                                 <?php else: ?>
                                     <?php $inputType = ($ftype === 'phone') ? 'tel' : (($ftype === 'number') ? 'number' : (($ftype === 'date') ? 'date' : 'text')); ?>
-                                    <input type="<?php echo $inputType; ?>" name="dynamic[<?php echo $fieldId; ?>]" value="<?php echo htmlspecialchars($saved); ?>" <?php echo $frequired ? 'required' : ''; ?>>
+                                    <input type="<?php echo $inputType; ?>" name="dynamic[<?php echo $fieldId; ?>]" value="<?php echo htmlspecialchars($saved); ?>"<?php echo $placeholderAttr; ?> <?php echo $frequired ? 'required' : ''; ?>>
+                                <?php endif; ?>
+                                <?php if ($isPhoneField): ?>
+                                    <small class="phone-note">Use your active WhatsApp number for further updates and communication.</small>
                                 <?php endif; ?>
                             </div>
                         <?php endforeach; ?>
@@ -678,7 +580,6 @@ require_once 'header.php';
         return;
     }
 
-    const paymentMode = <?php echo json_encode((string)($paymentPlan['payment_mode'] ?? 'full')); ?>;
     const defaultPricePerPerson = <?php echo json_encode((float)($paymentPlan['price_total'] ?? 0)); ?>;
     const advancePerPerson = <?php echo json_encode((float)($paymentPlan['advance_amount'] ?? 0)); ?>;
     const seatMap = <?php echo json_encode($selectedPackageSeatMap); ?> || {};
@@ -689,8 +590,6 @@ require_once 'header.php';
     const pricePerPersonEl = document.getElementById('pkg_price_per_person');
     const totalAmountEl = document.getElementById('pkg_total_amount');
     const advanceTotalEl = document.getElementById('pkg_advance_total');
-    const dueNowEl = document.getElementById('pkg_due_now');
-    const remainingEl = document.getElementById('pkg_remaining');
 
     function asInt(value, fallback) {
         const parsed = parseInt(value, 10);
@@ -732,13 +631,6 @@ require_once 'header.php';
         const pricePerPerson = currentPricePerPerson();
         const totalAmount = pricePerPerson * qty;
         const advanceTotal = Math.min(advancePerPerson * qty, totalAmount);
-        let dueNow = totalAmount;
-
-        if (paymentMode === 'advance' && advanceTotal > 0 && advanceTotal < totalAmount) {
-            dueNow = advanceTotal;
-        }
-
-        const remaining = Math.max(totalAmount - dueNow, 0);
 
         if (pricePerPersonEl) {
             pricePerPersonEl.textContent = formatAmount(pricePerPerson);
@@ -749,12 +641,6 @@ require_once 'header.php';
         }
         if (advanceTotalEl) {
             advanceTotalEl.textContent = formatAmount(advanceTotal);
-        }
-        if (dueNowEl) {
-            dueNowEl.textContent = formatAmount(dueNow);
-        }
-        if (remainingEl) {
-            remainingEl.textContent = formatAmount(remaining);
         }
     }
 
@@ -772,6 +658,6 @@ require_once 'header.php';
 </script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Marcellus&display=swap');
-html,body{font-family:'Marcellus',serif!important}.event-register-main{min-height:100vh;padding:1.5rem 0 5rem}.event-register-wrap{max-width:980px;margin:0 auto;padding:0 14px}.back-link{display:inline-block;color:#800000;text-decoration:none;font-weight:700;margin-bottom:10px}.card{background:#fff;border:1px solid #ecd3d3;border-radius:14px;box-shadow:0 4px 14px rgba(128,0,0,.08);padding:14px}h1{margin:0 0 8px;color:#800000;font-size:1.6rem}.small{margin:4px 0;color:#555;font-size:.9rem}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;margin-top:10px}.form-group{display:flex;flex-direction:column;gap:6px}label{color:#800000;font-weight:700;font-size:.92rem}input,select,textarea{width:100%;box-sizing:border-box;border:1px solid #e0bebe;border-radius:8px;padding:9px 10px;font-size:.94rem;background:#fff}.package-summary{margin-top:12px;border:1px solid #f1d6d6;background:#fffaf8;border-radius:10px;padding:12px}.package-summary-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:8px 14px;color:#4a3f3f;font-size:.93rem}.pkg-desc-block{margin:10px 0 0;color:#444;line-height:1.45}.section-title{color:#800000;margin:14px 0 6px;font-size:1.1rem}.req{color:#b00020}.notice{margin:10px 0;padding:10px 12px;border-radius:8px;font-weight:600}.notice.err{background:#ffeaea;color:#b00020}textarea{min-height:90px;resize:vertical}.submit-btn{margin-top:14px;width:100%;border:none;border-radius:8px;background:#800000;color:#fff;font-weight:700;font-size:1rem;padding:11px 12px;cursor:pointer}.submit-btn:disabled{background:#999;cursor:not-allowed}
+html,body{font-family:'Marcellus',serif!important}.event-register-main{min-height:100vh;padding:1.5rem 0 5rem}.event-register-wrap{max-width:980px;margin:0 auto;padding:0 14px}.back-link{display:inline-block;color:#800000;text-decoration:none;font-weight:700;margin-bottom:10px}.card{background:#fff;border:1px solid #ecd3d3;border-radius:14px;box-shadow:0 4px 14px rgba(128,0,0,.08);padding:14px}h1{margin:0 0 8px;color:#800000;font-size:1.6rem}.small{margin:4px 0;color:#555;font-size:.9rem}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;margin-top:10px}.form-group{display:flex;flex-direction:column;gap:6px}label{color:#800000;font-weight:700;font-size:.92rem}input,select,textarea{width:100%;box-sizing:border-box;border:1px solid #e0bebe;border-radius:8px;padding:9px 10px;font-size:.94rem;background:#fff}.package-summary{margin-top:12px;border:1px solid #f1d6d6;background:#fffaf8;border-radius:10px;padding:12px}.package-summary-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:8px 14px;color:#4a3f3f;font-size:.93rem}.pkg-groups{display:flex;flex-direction:column;gap:10px}.pkg-group{background:#fff;border:1px solid #ecdede;border-radius:8px;padding:10px}.pkg-group-title{margin:0 0 8px;color:#7b1f1f;font-size:.94rem;letter-spacing:.2px}.pkg-note{margin:10px 0 0;font-size:.84rem;color:#6a5a5a}.pkg-desc-block{margin:10px 0 0;color:#444;line-height:1.45}.section-title{color:#800000;margin:14px 0 6px;font-size:1.1rem}.req{color:#b00020}.notice{margin:10px 0;padding:10px 12px;border-radius:8px;font-weight:600}.notice.err{background:#ffeaea;color:#b00020}textarea{min-height:90px;resize:vertical}.submit-btn{margin-top:14px;width:100%;border:none;border-radius:8px;background:#800000;color:#fff;font-weight:700;font-size:1rem;padding:11px 12px;cursor:pointer}.submit-btn:disabled{background:#999;cursor:not-allowed}.phone-note{margin-top:2px;color:#666;font-size:.82rem;line-height:1.35}
 </style>
 <?php require_once 'footer.php'; ?>
