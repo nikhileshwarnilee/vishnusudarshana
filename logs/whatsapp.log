@@ -109,3 +109,5 @@
 [2026-03-11 00:20:08] TO: 919595744266 | TEMPLATE: OTP for Download | STATUS: SUCCESS | DETAILS: {"success":"true","submitted_message_id":"bf77b208-9160-4b68-b8a3-e2db270ee497"}
 [2026-03-11 02:14:09] TO: 919595744266 | TEMPLATE: Admin Notes | STATUS: SUCCESS | DETAILS: {"success":"true","submitted_message_id":"b73cce05-47ce-496f-988f-c251a7de1889"}
 [2026-03-11 02:22:53] TO: 919595744266 | TEMPLATE: OTP for Download | STATUS: SUCCESS | DETAILS: {"success":"true","submitted_message_id":"670f48a5-67f8-48a2-9fef-9f745814d433"}
+[2026-03-11 03:11:11] TO: 911201201200 | TEMPLATE: Website Service Request Confirmation | STATUS: SUCCESS | DETAILS: {"success":"true","submitted_message_id":"e2e7e7b9-f661-40cd-b069-c3dd0dbb974f"}
+[2026-03-11 03:11:12] TO: 919850057444 | TEMPLATE: Admin Service Alert | STATUS: SUCCESS | DETAILS: {"success":"true","submitted_message_id":"965546b9-07ed-4c9a-9a79-a6b3913c9db7"}

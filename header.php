@@ -60,9 +60,186 @@ $isActiveTopNav = static function (array $pages) use ($currentPage) {
             font-family: 'Marcellus', serif !important;
         }
     </style>
+    <style>
+        body.vs-loader-lock {
+            overflow: hidden;
+        }
+
+        .vs-page-loader {
+            position: fixed;
+            inset: 0;
+            z-index: 20000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background:
+                radial-gradient(circle at 12% 18%, rgba(255, 215, 0, 0.2), transparent 40%),
+                radial-gradient(circle at 85% 6%, rgba(128, 0, 0, 0.2), transparent 45%),
+                rgba(255, 255, 255, 0.98);
+            transition: opacity 0.35s ease, visibility 0.35s ease;
+        }
+
+        .vs-page-loader.is-hidden {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
+
+        .vs-page-loader-card {
+            min-width: 230px;
+            max-width: 86vw;
+            border-radius: 16px;
+            padding: 16px 18px 14px;
+            text-align: center;
+            background: #fffdf6;
+            border: 1px solid rgba(128, 0, 0, 0.14);
+            box-shadow: 0 16px 34px rgba(128, 0, 0, 0.14);
+        }
+
+        .vs-page-loader-ring {
+            width: 52px;
+            height: 52px;
+            margin: 0 auto 10px;
+            border: 4px solid rgba(128, 0, 0, 0.2);
+            border-top-color: #800000;
+            border-radius: 50%;
+            animation: vsPageLoaderSpin 0.85s linear infinite;
+        }
+
+        .vs-page-loader-title {
+            margin: 0;
+            font-size: 1.05rem;
+            font-weight: 700;
+            color: #800000;
+        }
+
+        .vs-page-loader-subtitle {
+            margin: 4px 0 0;
+            font-size: 0.92rem;
+            color: #666;
+        }
+
+        @keyframes vsPageLoaderSpin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
 
 </head>
 <body class="body-homepage">
+        <div id="vsPageLoader" class="vs-page-loader" role="status" aria-live="polite" aria-label="Loading page">
+            <div class="vs-page-loader-card">
+                <div class="vs-page-loader-ring" aria-hidden="true"></div>
+                <p class="vs-page-loader-title" id="vsPageLoaderTitle">Loading...</p>
+                <p class="vs-page-loader-subtitle">Please wait while we prepare your page</p>
+            </div>
+        </div>
+        <script>
+        (function () {
+            var loader = document.getElementById('vsPageLoader');
+            var loaderTitle = document.getElementById('vsPageLoaderTitle');
+            if (!loader) {
+                return;
+            }
+
+            var body = document.body;
+            var HIDE_DELAY_MS = 120;
+
+            var hideLoader = function () {
+                loader.classList.add('is-hidden');
+                if (body) {
+                    body.classList.remove('vs-loader-lock');
+                }
+            };
+
+            var showLoader = function (title) {
+                if (typeof title === 'string' && title.trim() !== '' && loaderTitle) {
+                    loaderTitle.textContent = title.trim();
+                } else if (loaderTitle) {
+                    loaderTitle.textContent = 'Loading...';
+                }
+                loader.classList.remove('is-hidden');
+                if (body) {
+                    body.classList.add('vs-loader-lock');
+                }
+            };
+
+            window.vsShowGlobalLoader = showLoader;
+            window.vsHideGlobalLoader = hideLoader;
+
+            if (document.readyState === 'complete') {
+                setTimeout(hideLoader, HIDE_DELAY_MS);
+            } else {
+                window.addEventListener('load', function () {
+                    setTimeout(hideLoader, HIDE_DELAY_MS);
+                }, { once: true });
+            }
+
+            window.addEventListener('pageshow', function () {
+                hideLoader();
+            });
+
+            document.addEventListener('click', function (event) {
+                var link = event.target && event.target.closest ? event.target.closest('a[href]') : null;
+                if (!link) {
+                    return;
+                }
+                if (link.hasAttribute('data-no-loader')) {
+                    return;
+                }
+                if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+                    return;
+                }
+                var target = (link.getAttribute('target') || '').trim();
+                if (target !== '' && target.toLowerCase() !== '_self') {
+                    return;
+                }
+                if (link.hasAttribute('download')) {
+                    return;
+                }
+                var href = (link.getAttribute('href') || '').trim();
+                if (
+                    href === '' ||
+                    href.charAt(0) === '#' ||
+                    href.indexOf('javascript:') === 0 ||
+                    href.indexOf('tel:') === 0 ||
+                    href.indexOf('mailto:') === 0
+                ) {
+                    return;
+                }
+                try {
+                    var url = new URL(link.href, window.location.href);
+                    if (url.origin !== window.location.origin) {
+                        return;
+                    }
+                    if (url.href === window.location.href) {
+                        return;
+                    }
+                } catch (err) {
+                    return;
+                }
+                showLoader('Loading page...');
+            });
+
+            document.addEventListener('submit', function (event) {
+                var form = event.target;
+                if (!form || !form.tagName || form.tagName.toLowerCase() !== 'form') {
+                    return;
+                }
+                if (event.defaultPrevented) {
+                    return;
+                }
+                if (form.hasAttribute('data-no-loader')) {
+                    return;
+                }
+                var formTarget = (form.getAttribute('target') || '').trim();
+                if (formTarget !== '' && formTarget.toLowerCase() !== '_self') {
+                    return;
+                }
+                showLoader('Please wait...');
+            });
+        })();
+        </script>
         <script>
         // Register service worker (supports both root and subfolder installs)
         if ('serviceWorker' in navigator) {

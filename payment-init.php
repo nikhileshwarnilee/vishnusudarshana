@@ -109,6 +109,22 @@ $orderId = $razorpay_order_id;
 .sticky-total { position: sticky; bottom: 0; background: #fff; padding: 14px 0 0 0; text-align: right; font-size: 1.13em; border-top: 1px solid #e0bebe; box-shadow: 0 -2px 8px #e0bebe22; z-index: 10; }
 .pay-btn { width: 100%; background: #800000; color: #fff; border: none; border-radius: 8px; padding: 14px 0; font-size: 1.08em; font-weight: 600; margin-top: 10px; cursor: pointer; box-shadow: 0 2px 8px #80000022; transition: background 0.15s; }
 .pay-btn:disabled { background: #ccc; color: #fff; cursor: not-allowed; }
+.pay-btn.loading { background: #6a0000; color: #fff; }
+.pay-btn-spinner {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    margin-right: 8px;
+    border: 2px solid rgba(255, 255, 255, 0.55);
+    border-top-color: #fff;
+    border-radius: 50%;
+    vertical-align: -2px;
+    animation: payBtnSpin 0.8s linear infinite;
+}
+@keyframes payBtnSpin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
 .review-back-link { display:block;text-align:center;margin-top:18px;color:#1a8917;font-size:0.98em;text-decoration:none; }
 @media (max-width: 700px) { .main-content { padding: 8px 2px 16px 2px; border-radius: 0; } }
 
@@ -317,178 +333,24 @@ $description = ($paymentSource === 'appointment') ? 'Appointment Booking Fee' : 
 ?>
 <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 <script>
-const options = {
-    key: "<?php echo htmlspecialchars($razorpayKeyId); ?>",
-    amount: <?php echo $amount_in_paise; ?>,
-    currency: "INR",
-    name: "Vishnusudarshana Dharmik Sanskar Kendra",
-    description: "<?php echo $description; ?>",
-    order_id: "<?php echo $razorpay_order_id; ?>",
-    prefill: {
-        name: "<?php echo $name; ?>",
-        email: "<?php echo $email; ?>",
-        contact: "<?php echo $mobile; ?>"
-    },
-    theme: {
-        color: "#800000"
-    },
-    handler: function (response) {
-        // Show payment processing loader
-        var loader = document.getElementById('paymentLoader');
-        var spinner = document.getElementById('loaderSpinner');
-        var checkmark = document.getElementById('loaderCheckmark');
-        var loaderText = document.getElementById('loaderText');
-        var loaderSubtext = document.getElementById('loaderSubtext');
-        
-        loader.classList.add('active');
-        loaderText.textContent = 'Payment Successful!';
-        loaderSubtext.textContent = 'Verifying payment details...';
-        
-        // Razorpay payment successful - update database and redirect
-        var actualPaymentId = response.razorpay_payment_id;
-        var orderId = "<?php echo $orderId; ?>";
-        
-        // Update database to link orderId with actual Razorpay payment_id
-        fetch('payment-update.php', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: 'order_id=' + encodeURIComponent(orderId) + '&payment_id=' + encodeURIComponent(actualPaymentId)
-        }).then(function() {
-            // Show success checkmark briefly before redirect
-            spinner.style.display = 'none';
-            checkmark.style.display = 'block';
-            loaderText.textContent = 'Payment Verified!';
-            loaderSubtext.textContent = 'Redirecting to confirmation page...';
-            
-            setTimeout(function() {
-                window.location.href = "payment-success.php?payment_id=" + encodeURIComponent(actualPaymentId);
-            }, 800);
-        }).catch(function() {
-            // Even if DB update fails, proceed - data is safe with orderId in database
-            loaderSubtext.textContent = 'Completing transaction...';
-            setTimeout(function() {
-                window.location.href = "payment-success.php?payment_id=" + encodeURIComponent(actualPaymentId);
-            }, 500);
-        });
-    },
-    modal: {
-        ondismiss: function() {
-            window.location.href = "payment-failed.php";
-        }
+var paymentFailedUrl = "payment-failed.php?payment_id=<?php echo urlencode((string)$payment_id); ?>";
+var payBtn = document.getElementById('rzpPayBtn');
+var payBtnLabel = payBtn ? payBtn.textContent : 'Proceed to Secure Payment';
+
+function setPayButtonLoading(isLoading) {
+    if (!payBtn) {
+        return;
     }
-};
-document.getElementById('rzpPayBtn').onclick = function(e){
-    e.preventDefault();
-    var rzp = new Razorpay(options);
-    rzp.open();
-};
-</script>
-<?php require_once 'footer.php'; ?>
-<style>@import url('https://fonts.googleapis.com/css2?family=Marcellus&display=swap');html,body{font-family:'Marcellus',serif!important;}</style>
-<style>
-/* ...reuse review page styles for consistency... */
-.main-content { max-width: 480px; margin: 0 auto; background: #fff; border-radius: 18px; box-shadow: 0 4px 24px #e0bebe33; padding: 18px 12px 28px 12px; }
-.review-title { font-size: 1.18em; font-weight: bold; margin-bottom: 18px; text-align: center; color: #800000; }
-.review-card { background: #f9eaea; border-radius: 14px; box-shadow: 0 2px 8px #e0bebe33; padding: 16px; margin-bottom: 18px; }
-.section-title { font-size: 1.05em; color: #800000; margin-bottom: 10px; font-weight: 600; }
-.details-list { display: flex; flex-direction: column; gap: 8px; }
-.details-row { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px dashed #e0bebe; padding-bottom: 4px; }
-.details-label { color: #a03c3c; font-weight: 500; margin-right: 6px; }
-.details-value { color: #333; max-width: 60%; word-break: break-word; }
-.product-list { margin: 0; padding: 0; list-style: none; }
-.product-item { display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #f3caca; padding: 10px 0; }
-.product-item:last-child { border-bottom: none; }
-.product-info { flex: 1; }
-.product-name { font-weight: 600; color: #800000; font-size: 1em; }
-.product-desc { font-size: 0.95em; color: #555; margin: 2px 0 2px 0; }
-.qty-controls { display: flex; align-items: center; gap: 4px; }
-.line-total { font-size: 0.98em; color: #800000; font-weight: 600; min-width: 60px; text-align: right; }
-.sticky-total { position: sticky; bottom: 0; background: #fff; padding: 14px 0 0 0; text-align: right; font-size: 1.13em; border-top: 1px solid #e0bebe; box-shadow: 0 -2px 8px #e0bebe22; z-index: 10; }
-.pay-btn { width: 100%; background: #800000; color: #fff; border: none; border-radius: 8px; padding: 14px 0; font-size: 1.08em; font-weight: 600; margin-top: 10px; cursor: pointer; box-shadow: 0 2px 8px #80000022; transition: background 0.15s; }
-.pay-btn:disabled { background: #ccc; color: #fff; cursor: not-allowed; }
-.review-back-link { display:block;text-align:center;margin-top:18px;color:#1a8917;font-size:0.98em;text-decoration:none; }
-@media (max-width: 700px) { .main-content { padding: 8px 2px 16px 2px; border-radius: 0; } }
-
-/* Payment Processing Loader Overlay */
-.payment-loader-overlay {
-    display: none;
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(255, 255, 255, 0.98);
-    z-index: 9999;
-    justify-content: center;
-    align-items: center;
-    flex-direction: column;
+    if (isLoading) {
+        payBtn.disabled = true;
+        payBtn.classList.add('loading');
+        payBtn.innerHTML = '<span class="pay-btn-spinner"></span>Opening Secure Gateway...';
+    } else {
+        payBtn.disabled = false;
+        payBtn.classList.remove('loading');
+        payBtn.textContent = payBtnLabel;
+    }
 }
-.payment-loader-overlay.active {
-    display: flex;
-}
-.loader-content {
-    text-align: center;
-    padding: 20px;
-}
-.loader-spinner {
-    width: 60px;
-    height: 60px;
-    margin: 0 auto 20px;
-    border: 4px solid #f3caca;
-    border-top: 4px solid #800000;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-}
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-}
-.loader-checkmark {
-    display: none;
-    width: 60px;
-    height: 60px;
-    margin: 0 auto 20px;
-    border-radius: 50%;
-    background: #1a8917;
-    position: relative;
-}
-.loader-checkmark::after {
-    content: '✓';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    color: white;
-    font-size: 36px;
-    font-weight: bold;
-}
-.loader-text {
-    font-size: 1.2em;
-    color: #800000;
-    font-weight: 600;
-    margin-bottom: 10px;
-}
-.loader-subtext {
-    font-size: 0.95em;
-    color: #666;
-}
-</style>
-
-<!-- Only one payment summary and card UI should be rendered. Duplicate block removed. -->
-
-<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
-<script>
-<?php
-$amount_in_paise = (int)round($total_amount * 100);
-$name = isset($customer['full_name']) ? addslashes($customer['full_name']) : '';
-$email = isset($customer['email']) ? addslashes($customer['email']) : '';
-$cc = isset($customer['country_code']) ? $customer['country_code'] : '+91';
-if ($cc === 'other') {
-    $cc = isset($customer['custom_country_code']) ? $customer['custom_country_code'] : '';
-}
-$mobile = isset($customer['mobile']) ? addslashes(trim($cc . $customer['mobile'])) : '';
-$description = ($paymentSource === 'appointment') ? 'Appointment Booking Fee' : 'Service Payment';
-?>
 
 const options = {
     key: "<?php echo htmlspecialchars($razorpayKeyId); ?>",
@@ -546,14 +408,21 @@ const options = {
     },
     modal: {
         ondismiss: function() {
-            window.location.href = "payment-failed.php";
+            setPayButtonLoading(false);
+            window.location.href = paymentFailedUrl;
         }
     }
 };
 document.getElementById('rzpPayBtn').onclick = function(e){
     e.preventDefault();
-    var rzp = new Razorpay(options);
-    rzp.open();
+    setPayButtonLoading(true);
+    try {
+        var rzp = new Razorpay(options);
+        rzp.open();
+    } catch (error) {
+        setPayButtonLoading(false);
+        window.location.href = paymentFailedUrl;
+    }
 };
 </script>
 <?php require_once 'footer.php'; ?>
