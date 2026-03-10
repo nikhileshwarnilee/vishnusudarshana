@@ -641,7 +641,7 @@ $allowedMethodsText = implode(', ', array_map('ucfirst', $allowedPaymentMethods)
                             <input type="hidden" name="registration_id" value="<?php echo $registrationId; ?>">
                             <input type="hidden" id="cashPaymentChoice" name="payment_choice" value="<?php echo htmlspecialchars($paymentChoice); ?>">
                             <div class="form-group"><label>Cash Reference (optional)</label><input type="text" name="cash_reference" placeholder="Receipt no / note"></div>
-                            <button type="submit" class="btn-main">Submit Cash Request</button>
+                            <button type="submit" class="btn-main">Submit for Verification</button>
                         </form>
                     </div>
                 <?php endif; ?>
