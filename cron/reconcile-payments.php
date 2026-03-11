@@ -388,9 +388,15 @@ function vs_reconcile_finalize_from_pending(PDO $pdo, array $pendingRow, string 
         }
 
         $trackingId = vs_reconcile_insert_service_request($pdo, $lockedPending, $orderId, $paymentId);
-        vs_reconcile_update_pending($pdo, $orderId, $paymentId, 'confirmed');
-
         $pdo->commit();
+
+        // Keep pending status sync outside transaction to avoid interrupting commit flow.
+        try {
+            vs_reconcile_update_pending($pdo, $orderId, $paymentId, 'confirmed');
+        } catch (Throwable $syncError) {
+            vs_reconcile_log_line('Pending sync failed for order_id=' . $orderId . ': ' . $syncError->getMessage());
+        }
+
         vs_reconcile_send_recovery_notifications($lockedPending, $trackingId);
         return 'inserted:' . $trackingId;
     } catch (Throwable $e) {

@@ -436,9 +436,15 @@ function vs_rzp_recover_from_pending(PDO $pdo, string $orderId, string $paymentI
         }
 
         $trackingId = vs_rzp_insert_service_request_from_pending($pdo, $pendingRow, $orderId, $paymentId);
-        vs_rzp_update_pending($pdo, $orderId, $paymentId, 'confirmed');
-
         $pdo->commit();
+
+        // Keep pending status sync outside transaction to avoid interrupting commit flow.
+        try {
+            vs_rzp_update_pending($pdo, $orderId, $paymentId, 'confirmed');
+        } catch (Throwable $syncError) {
+            error_log('Razorpay webhook recovery pending sync failed for order_id=' . $orderId . ': ' . $syncError->getMessage());
+        }
+
         vs_rzp_send_recovery_notifications($pendingRow, $trackingId);
         error_log('Razorpay webhook recovery: service_request inserted for order_id=' . $orderId . ' tracking_id=' . $trackingId);
         return 'inserted:' . $trackingId;
