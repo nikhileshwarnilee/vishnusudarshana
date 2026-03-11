@@ -2,6 +2,7 @@
 // --- Handle Make Payment POST ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['make_payment'])) {
     require_once __DIR__ . '/config/db.php';
+    require_once __DIR__ . '/helpers/payment_link_map.php';
     $category = $_POST['category'] ?? '';
     $customer_details = $_POST;
     unset($customer_details['product_ids'], $customer_details['qty'], $customer_details['make_payment']);
@@ -46,6 +47,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['make_payment'])) {
         $category,
         $total_amount
     ]);
+    try {
+        // Preserve original ORD-* link for later recovery UX.
+        vs_paymap_upsert($pdo, (string)$payment_id, null, null, 'service', (string)$category);
+    } catch (Throwable $e) {
+        error_log('Payment link map upsert failed (service-review): ' . $e->getMessage());
+    }
     header('Location: payment-init.php?payment_id=' . urlencode($payment_id));
     exit;
 }

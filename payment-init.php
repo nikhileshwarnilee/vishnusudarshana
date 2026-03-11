@@ -3,6 +3,7 @@
 $pageTitle = 'Payment | Vishnusudarshana';
 require_once 'header.php';
 require_once __DIR__ . '/config/db.php';
+require_once __DIR__ . '/helpers/payment_link_map.php';
 
 // Load Razorpay keys
 $razorpayKeyId = getenv('RAZORPAY_KEY_ID');
@@ -37,15 +38,202 @@ if (!$payment_id) {
     exit;
 }
 
+/**
+ * Output-safe redirect helper for this page.
+ * header.php is loaded at the top, so HTTP header redirects can fail after output starts.
+ */
+if (!function_exists('vs_safe_redirect')) {
+    function vs_safe_redirect($url)
+    {
+        $safeUrl = htmlspecialchars((string)$url, ENT_QUOTES, 'UTF-8');
+        $jsUrl = json_encode((string)$url, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT);
+        echo '<script>window.location.href=' . $jsUrl . ';</script>';
+        echo '<noscript><meta http-equiv="refresh" content="0;url=' . $safeUrl . '"></noscript>';
+        echo '<p>If you are not redirected automatically, <a href="' . $safeUrl . '">continue here</a>.</p>';
+    }
+}
+
 $stmt = $pdo->prepare("SELECT * FROM pending_payments WHERE payment_id = ? LIMIT 1");
 $stmt->execute([$payment_id]);
 $pending = $stmt->fetch(PDO::FETCH_ASSOC);
 if (!$pending) {
+    $resolvedService = null;
+    $resolvedOrderId = null;
+    $payMapRow = null;
+
+    try {
+        // Prefer local map resolution (works even when ORD -> pay mapping already changed in DB).
+        $payMapRow = vs_paymap_find($pdo, (string)$payment_id);
+        if ($payMapRow) {
+            $mappedOrderId = trim((string)($payMapRow['razorpay_order_id'] ?? ''));
+            $mappedPayId = trim((string)($payMapRow['razorpay_payment_id'] ?? ''));
+
+            if ($mappedOrderId !== '') {
+                $resolvedOrderId = $mappedOrderId;
+
+                // If pending row still exists under updated pay_* id, redirect to valid payment-init URL.
+                $pendingOrderStmt = $pdo->prepare("SELECT payment_id FROM pending_payments WHERE razorpay_order_id = ? LIMIT 1");
+                $pendingOrderStmt->execute([$mappedOrderId]);
+                $pendingByOrder = $pendingOrderStmt->fetch(PDO::FETCH_ASSOC);
+                if ($pendingByOrder && !empty($pendingByOrder['payment_id']) && $pendingByOrder['payment_id'] !== $payment_id) {
+                    $redirectUrl = 'payment-init.php?payment_id=' . urlencode((string)$pendingByOrder['payment_id']);
+                    echo '<main class="main-content" style="background-color:var(--cream-bg);"><h2>Redirecting...</h2>';
+                    echo '<p>We found your latest payment link and are taking you there.</p>';
+                    vs_safe_redirect($redirectUrl);
+                    echo '</main>';
+                    require_once 'footer.php';
+                    exit;
+                }
+
+                $serviceOrderStmt = $pdo->prepare("
+                    SELECT id, tracking_id, category_slug, payment_id, razorpay_order_id, created_at
+                    FROM service_requests
+                    WHERE razorpay_order_id = ?
+                    ORDER BY id DESC
+                    LIMIT 1
+                ");
+                $serviceOrderStmt->execute([$mappedOrderId]);
+                $resolvedService = $serviceOrderStmt->fetch(PDO::FETCH_ASSOC);
+            }
+
+            if (!$resolvedService && $mappedPayId !== '' && $mappedPayId !== $payment_id) {
+                $serviceMappedPayStmt = $pdo->prepare("
+                    SELECT id, tracking_id, category_slug, payment_id, razorpay_order_id, created_at
+                    FROM service_requests
+                    WHERE payment_id = ? OR razorpay_payment_id = ?
+                    ORDER BY id DESC
+                    LIMIT 1
+                ");
+                $serviceMappedPayStmt->execute([$mappedPayId, $mappedPayId]);
+                $resolvedService = $serviceMappedPayStmt->fetch(PDO::FETCH_ASSOC);
+
+                if (!$resolvedService) {
+                    $pendingMappedPayStmt = $pdo->prepare("SELECT payment_id FROM pending_payments WHERE payment_id = ? LIMIT 1");
+                    $pendingMappedPayStmt->execute([$mappedPayId]);
+                    $pendingByMappedPay = $pendingMappedPayStmt->fetch(PDO::FETCH_ASSOC);
+                    if ($pendingByMappedPay) {
+                        $redirectUrl = 'payment-init.php?payment_id=' . urlencode($mappedPayId);
+                        echo '<main class="main-content" style="background-color:var(--cream-bg);"><h2>Redirecting...</h2>';
+                        echo '<p>We found your active payment link and are taking you there.</p>';
+                        vs_safe_redirect($redirectUrl);
+                        echo '</main>';
+                        require_once 'footer.php';
+                        exit;
+                    }
+                }
+            }
+        }
+
+        // First: direct lookup by payment id (covers active pay_* links).
+        if (!$resolvedService) {
+            $serviceStmt = $pdo->prepare("
+                SELECT id, tracking_id, category_slug, payment_id, razorpay_order_id, created_at
+                FROM service_requests
+                WHERE payment_id = ? OR razorpay_payment_id = ?
+                ORDER BY id DESC
+                LIMIT 1
+            ");
+            $serviceStmt->execute([$payment_id, $payment_id]);
+            $resolvedService = $serviceStmt->fetch(PDO::FETCH_ASSOC);
+        }
+
+        // Second: if old ORD link was replaced by pay_ id, resolve using Razorpay order receipt.
+        if (!$resolvedService && $resolvedOrderId === null && strpos((string)$payment_id, 'ORD-') === 0) {
+            require_once __DIR__ . '/vendor/autoload.php';
+            $rzApi = new \Razorpay\Api\Api($razorpayKeyId, $razorpayKeySecret);
+            $orders = $rzApi->order->all([
+                'receipt' => (string)$payment_id,
+                'count' => 1
+            ]);
+            $orderItems = (is_array($orders) && isset($orders['items']) && is_array($orders['items'])) ? $orders['items'] : [];
+            if (!empty($orderItems) && !empty($orderItems[0]['id'])) {
+                $resolvedOrderId = (string)$orderItems[0]['id'];
+                try {
+                    vs_paymap_upsert($pdo, (string)$payment_id, (string)$resolvedOrderId, null, null, null);
+                } catch (Throwable $mapE) {
+                    error_log('payment-init paymap upsert failed (receipt fallback): ' . $mapE->getMessage());
+                }
+
+                // If pending row still exists under updated pay_* id, redirect to valid payment-init URL.
+                $pendingOrderStmt = $pdo->prepare("SELECT payment_id FROM pending_payments WHERE razorpay_order_id = ? LIMIT 1");
+                $pendingOrderStmt->execute([$resolvedOrderId]);
+                $pendingByOrder = $pendingOrderStmt->fetch(PDO::FETCH_ASSOC);
+                if ($pendingByOrder && !empty($pendingByOrder['payment_id']) && $pendingByOrder['payment_id'] !== $payment_id) {
+                    $redirectUrl = 'payment-init.php?payment_id=' . urlencode((string)$pendingByOrder['payment_id']);
+                    echo '<main class="main-content" style="background-color:var(--cream-bg);"><h2>Redirecting...</h2>';
+                    echo '<p>We found your latest payment link and are taking you there.</p>';
+                    vs_safe_redirect($redirectUrl);
+                    echo '</main>';
+                    require_once 'footer.php';
+                    exit;
+                }
+
+                // If booking is already finalized, show a clear processed message with tracking link.
+                $serviceOrderStmt = $pdo->prepare("
+                    SELECT id, tracking_id, category_slug, payment_id, razorpay_order_id, created_at
+                    FROM service_requests
+                    WHERE razorpay_order_id = ?
+                    ORDER BY id DESC
+                    LIMIT 1
+                ");
+                $serviceOrderStmt->execute([$resolvedOrderId]);
+                $resolvedService = $serviceOrderStmt->fetch(PDO::FETCH_ASSOC);
+            }
+        }
+    } catch (Throwable $e) {
+        error_log('payment-init fallback lookup failed for payment_id=' . (string)$payment_id . ': ' . $e->getMessage());
+    }
+
+    if ($resolvedService) {
+        $trackingId = (string)($resolvedService['tracking_id'] ?? '');
+        $createdAt = (string)($resolvedService['created_at'] ?? '');
+        $categorySlug = (string)($resolvedService['category_slug'] ?? '');
+        $categoryLabel = $categorySlug !== '' ? ucwords(str_replace('-', ' ', $categorySlug)) : 'Service';
+
+        echo '<main class="main-content" style="background-color:var(--cream-bg);">';
+        echo '<h2>Payment Already Processed</h2>';
+        echo '<p>Your payment link was already completed earlier. No action is needed.</p>';
+        if ($trackingId !== '') {
+            echo '<p><strong>Tracking ID:</strong> ' . htmlspecialchars($trackingId, ENT_QUOTES, 'UTF-8') . '</p>';
+        }
+        if ($createdAt !== '') {
+            echo '<p><strong>Processed On:</strong> ' . htmlspecialchars(date('d-M-Y h:i A', strtotime($createdAt)), ENT_QUOTES, 'UTF-8') . '</p>';
+        }
+        echo '<p><strong>Category:</strong> ' . htmlspecialchars($categoryLabel, ENT_QUOTES, 'UTF-8') . '</p>';
+        if ($trackingId !== '') {
+            echo '<a href="track.php?id=' . urlencode($trackingId) . '" class="pay-btn" style="display:inline-block;text-decoration:none;">Track Your Request</a>';
+        } else {
+            echo '<a href="services.php" class="pay-btn" style="display:inline-block;text-decoration:none;">Back to Services</a>';
+        }
+        echo '<a href="services.php" class="review-back-link">&larr; Back to Services</a>';
+        echo '</main>';
+        require_once 'footer.php';
+        exit;
+    }
+
     echo '<main class="main-content" style="background-color:var(--cream-bg);"><h2>Payment not found</h2>';
-    echo '<p>Could not find payment details. Please try again.</p>';
+    echo '<p>Could not find payment details for this link. If payment was already completed, it may have been processed.</p>';
+    if ($resolvedOrderId) {
+        echo '<p><small>Order reference: ' . htmlspecialchars($resolvedOrderId, ENT_QUOTES, 'UTF-8') . '</small></p>';
+    }
     echo '<a href="services.php" class="review-back-link">&larr; Back to Services</a></main>';
     require_once 'footer.php';
     exit;
+}
+
+if (strpos((string)$payment_id, 'ORD-') === 0) {
+    try {
+        vs_paymap_upsert(
+            $pdo,
+            (string)$payment_id,
+            isset($pending['razorpay_order_id']) ? (string)$pending['razorpay_order_id'] : null,
+            null,
+            isset($pending['source']) ? (string)$pending['source'] : null,
+            isset($pending['category']) ? (string)$pending['category'] : null
+        );
+    } catch (Throwable $e) {
+        error_log('payment-init paymap upsert failed (pending hit): ' . $e->getMessage());
+    }
 }
 
 $customer = json_decode($pending['customer_details'] ?? '{}', true);
@@ -81,6 +269,20 @@ if (!$razorpay_order_id) {
     // Update DB with razorpay_order_id
     $updateStmt = $pdo->prepare("UPDATE pending_payments SET razorpay_order_id = ? WHERE payment_id = ?");
     $updateStmt->execute([$razorpay_order_id, $payment_id]);
+    if (strpos((string)$payment_id, 'ORD-') === 0) {
+        try {
+            vs_paymap_upsert(
+                $pdo,
+                (string)$payment_id,
+                (string)$razorpay_order_id,
+                null,
+                isset($pending['source']) ? (string)$pending['source'] : null,
+                isset($pending['category']) ? (string)$pending['category'] : null
+            );
+        } catch (Throwable $e) {
+            error_log('payment-init paymap upsert failed (order create): ' . $e->getMessage());
+        }
+    }
 }
 
 $orderId = $razorpay_order_id;

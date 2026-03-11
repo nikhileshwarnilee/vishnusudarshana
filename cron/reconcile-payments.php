@@ -3,6 +3,7 @@
 
 require_once __DIR__ . '/../config/db.php';
 require_once __DIR__ . '/../vendor/autoload.php';
+require_once __DIR__ . '/../helpers/payment_link_map.php';
 
 use Razorpay\Api\Api;
 
@@ -106,6 +107,15 @@ function vs_reconcile_update_pending(PDO $pdo, string $orderId, string $paymentI
         return;
     }
 
+    $preUpdatePending = null;
+    try {
+        $lookupStmt = $pdo->prepare('SELECT payment_id, source, category FROM pending_payments WHERE razorpay_order_id = ? LIMIT 1');
+        $lookupStmt->execute([$orderId]);
+        $preUpdatePending = $lookupStmt->fetch(PDO::FETCH_ASSOC) ?: null;
+    } catch (Throwable $e) {
+        vs_reconcile_log_line('Pending lookup failed for map sync: ' . $e->getMessage());
+    }
+
     $columns = vs_reconcile_pending_columns($pdo);
     $set = [];
     $params = [];
@@ -130,6 +140,34 @@ function vs_reconcile_update_pending(PDO $pdo, string $orderId, string $paymentI
     $params[] = $orderId;
     $sql = 'UPDATE pending_payments SET ' . implode(', ', $set) . ' WHERE razorpay_order_id = ?';
     $pdo->prepare($sql)->execute($params);
+
+    try {
+        $originalPaymentId = '';
+        $source = null;
+        $category = null;
+        if (is_array($preUpdatePending)) {
+            $source = isset($preUpdatePending['source']) ? (string)$preUpdatePending['source'] : null;
+            $category = isset($preUpdatePending['category']) ? (string)$preUpdatePending['category'] : null;
+            if (!empty($preUpdatePending['payment_id']) && strpos((string)$preUpdatePending['payment_id'], 'ORD-') === 0) {
+                $originalPaymentId = (string)$preUpdatePending['payment_id'];
+            }
+        }
+
+        if ($originalPaymentId === '') {
+            $mapRow = vs_paymap_find($pdo, (string)$orderId);
+            if ($mapRow && !empty($mapRow['original_payment_id'])) {
+                $originalPaymentId = (string)$mapRow['original_payment_id'];
+            }
+        }
+
+        if ($originalPaymentId !== '') {
+            vs_paymap_upsert($pdo, $originalPaymentId, (string)$orderId, $paymentId !== '' ? (string)$paymentId : null, $source, $category);
+        } else if ($paymentId !== '') {
+            vs_paymap_update_by_order($pdo, (string)$orderId, (string)$paymentId);
+        }
+    } catch (Throwable $e) {
+        vs_reconcile_log_line('Payment-link map sync failed: ' . $e->getMessage());
+    }
 }
 
 function vs_reconcile_json_array($value): array
