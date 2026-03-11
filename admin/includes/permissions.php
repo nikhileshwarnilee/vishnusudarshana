@@ -78,6 +78,7 @@ if (!function_exists('vs_admin_permission_map')) {
 
             // Services
             'services/service-request-list.php' => ['pairs' => [['Services', 'Service Request List']]],
+            'services/failed-service-requests.php' => ['pairs' => [['Services', 'Failed Service Requests']]],
             'services/offlineservicerequest.php' => ['pairs' => [['Services', 'Offline Service Request']]],
             'services/servicepayments.php' => ['pairs' => [['Services', 'Service Payments']]],
             'services/category.php' => ['pairs' => [['Services', 'Service Categories']]],

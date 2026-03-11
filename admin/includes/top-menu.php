@@ -67,6 +67,7 @@ $menu = [
         'submenu' => [
             // 'Service Requests'   => $baseUrl . '/admin/services/index.php',
             'Service Request List' => $baseUrl . '/admin/services/service-request-list.php',
+            'Failed Service Requests' => $baseUrl . '/admin/services/failed-service-requests.php',
             'Offline Service Request' => $baseUrl . '/admin/services/offlineservicerequest.php',
             'Service Payments' => $baseUrl . '/admin/services/servicepayments.php',
             'Products'           => $baseUrl . '/admin/products/index.php',
@@ -219,6 +220,12 @@ $submenuNotificationSourceMap = [
         'Service Request List' => [
             ['table' => 'service_requests', 'column' => 'created_at', 'where' => "category_slug != 'appointment'"],
             ['table' => 'service_requests', 'column' => 'updated_at', 'where' => "category_slug != 'appointment'"],
+        ],
+        'Failed Service Requests' => [
+            ['table' => 'service_requests', 'column' => 'created_at', 'where' => "category_slug != 'appointment' AND LOWER(TRIM(COALESCE(payment_status, ''))) = 'failed'"],
+            ['table' => 'service_requests', 'column' => 'updated_at', 'where' => "category_slug != 'appointment' AND LOWER(TRIM(COALESCE(payment_status, ''))) = 'failed'"],
+            ['table' => 'pending_payments', 'column' => 'created_at', 'where' => "category != 'appointment'"],
+            ['table' => 'pending_payments', 'column' => 'updated_at', 'where' => "category != 'appointment'"],
         ],
         'Offline Service Request' => [
             ['table' => 'service_requests', 'column' => 'created_at', 'where' => "category_slug != 'appointment' AND COALESCE(tracking_id, '') LIKE 'SR%'"],

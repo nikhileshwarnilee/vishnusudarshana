@@ -141,6 +141,108 @@ function vs_reconcile_json_array($value): array
     return is_array($decoded) ? $decoded : [];
 }
 
+function vs_reconcile_products_list(array $products, string $category): string
+{
+    $names = [];
+    foreach ($products as $product) {
+        if (!is_array($product)) {
+            continue;
+        }
+        if (!empty($product['name'])) {
+            $names[] = (string)$product['name'];
+            continue;
+        }
+        if (!empty($product['product_name'])) {
+            $names[] = (string)$product['product_name'];
+            continue;
+        }
+    }
+
+    if (!empty($names)) {
+        return implode(', ', $names);
+    }
+
+    return ucwords(str_replace('-', ' ', $category));
+}
+
+/**
+ * Additive notification path for Scenario C (cron recovery), keeps A-flow untouched.
+ */
+function vs_reconcile_send_recovery_notifications(array $pendingRow, string $trackingId): void
+{
+    try {
+        require_once __DIR__ . '/../helpers/send_whatsapp.php';
+        require_once __DIR__ . '/../config/admin_config.php';
+
+        $customerDetails = vs_reconcile_json_array($pendingRow['customer_details'] ?? '');
+        $formData = vs_reconcile_json_array($pendingRow['form_data'] ?? '');
+        if (empty($formData)) {
+            $formData = vs_reconcile_json_array($pendingRow['appointment_form'] ?? '');
+        }
+        $products = vs_reconcile_json_array($pendingRow['selected_products'] ?? '');
+
+        $category = trim((string)($pendingRow['category'] ?? ''));
+        if ($category === '') {
+            $category = 'unknown-service';
+        }
+
+        $customerName = (string)($customerDetails['full_name'] ?? ($formData['full_name'] ?? 'Customer'));
+        $mobile = (string)($customerDetails['mobile'] ?? ($formData['mobile'] ?? ''));
+        if ($mobile === '') {
+            vs_reconcile_log_line('Recovery WhatsApp skipped: missing mobile for tracking_id=' . $trackingId);
+            return;
+        }
+
+        $productsList = vs_reconcile_products_list($products, $category);
+        $adminMobile = defined('ADMIN_WHATSAPP')
+            ? ADMIN_WHATSAPP
+            : (defined('WHATSAPP_BUSINESS_PHONE') ? WHATSAPP_BUSINESS_PHONE : '918975224444');
+
+        if ($category === 'appointment') {
+            $customerResult = sendWhatsAppNotification('appointment_booked_payment_success', [
+                'mobile' => $mobile,
+                'name' => $customerName,
+                'category' => 'Appointment',
+                'products_list' => $productsList,
+                'tracking_url' => $trackingId
+            ]);
+            sendWhatsAppNotification('admin_services_alert', [
+                'admin_mobile' => $adminMobile,
+                'customer_name' => $customerName,
+                'customer_mobile' => $mobile,
+                'category' => 'Appointment',
+                'products_list' => $productsList,
+                'tracking_id' => $trackingId
+            ]);
+            if (!$customerResult['success']) {
+                vs_reconcile_log_line('Recovery WhatsApp failed (appointment) tracking_id=' . $trackingId . ': ' . ($customerResult['message'] ?? 'unknown'));
+            }
+        } else {
+            $serviceCategoryDisplay = ucwords(str_replace('-', ' ', $category));
+            $customerResult = sendWhatsAppNotification('service_received', [
+                'mobile' => $mobile,
+                'name' => $customerName,
+                'category' => $serviceCategoryDisplay,
+                'products_list' => $productsList,
+                'tracking_url' => $trackingId
+            ]);
+            sendWhatsAppNotification('admin_services_alert', [
+                'admin_mobile' => $adminMobile,
+                'customer_name' => $customerName,
+                'customer_mobile' => $mobile,
+                'category' => $serviceCategoryDisplay,
+                'products_list' => $productsList,
+                'tracking_id' => $trackingId
+            ]);
+            if (!$customerResult['success']) {
+                vs_reconcile_log_line('Recovery WhatsApp failed (service) tracking_id=' . $trackingId . ': ' . ($customerResult['message'] ?? 'unknown'));
+            }
+        }
+    } catch (Throwable $e) {
+        vs_reconcile_log_line('Recovery notification error tracking_id=' . $trackingId . ': ' . $e->getMessage());
+    }
+}
+
 function vs_reconcile_generate_tracking_id(PDO $pdo): string
 {
     $checkStmt = $pdo->prepare('SELECT id FROM service_requests WHERE tracking_id = ? LIMIT 1');
@@ -251,6 +353,7 @@ function vs_reconcile_finalize_from_pending(PDO $pdo, array $pendingRow, string 
         vs_reconcile_update_pending($pdo, $orderId, $paymentId, 'confirmed');
 
         $pdo->commit();
+        vs_reconcile_send_recovery_notifications($lockedPending, $trackingId);
         return 'inserted:' . $trackingId;
     } catch (Throwable $e) {
         if ($pdo->inTransaction()) {
@@ -394,4 +497,3 @@ vs_reconcile_log_line(
     . ' failed=' . $stats['failed']
     . ' errors=' . $stats['errors']
 );
-

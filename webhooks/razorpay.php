@@ -182,6 +182,108 @@ function vs_rzp_json_array($value): array
     return is_array($decoded) ? $decoded : [];
 }
 
+function vs_rzp_products_list(array $products, string $category): string
+{
+    $names = [];
+    foreach ($products as $product) {
+        if (!is_array($product)) {
+            continue;
+        }
+        if (!empty($product['name'])) {
+            $names[] = (string)$product['name'];
+            continue;
+        }
+        if (!empty($product['product_name'])) {
+            $names[] = (string)$product['product_name'];
+            continue;
+        }
+    }
+
+    if (!empty($names)) {
+        return implode(', ', $names);
+    }
+
+    return ucwords(str_replace('-', ' ', $category));
+}
+
+/**
+ * Additive notification path for Scenario B (webhook recovery), keeps A-flow untouched.
+ */
+function vs_rzp_send_recovery_notifications(array $pendingRow, string $trackingId): void
+{
+    try {
+        require_once __DIR__ . '/../helpers/send_whatsapp.php';
+        require_once __DIR__ . '/../config/admin_config.php';
+
+        $customerDetails = vs_rzp_json_array($pendingRow['customer_details'] ?? '');
+        $formData = vs_rzp_json_array($pendingRow['form_data'] ?? '');
+        if (empty($formData)) {
+            $formData = vs_rzp_json_array($pendingRow['appointment_form'] ?? '');
+        }
+        $products = vs_rzp_json_array($pendingRow['selected_products'] ?? '');
+
+        $category = trim((string)($pendingRow['category'] ?? ''));
+        if ($category === '') {
+            $category = 'unknown-service';
+        }
+
+        $customerName = (string)($customerDetails['full_name'] ?? ($formData['full_name'] ?? 'Customer'));
+        $mobile = (string)($customerDetails['mobile'] ?? ($formData['mobile'] ?? ''));
+        if ($mobile === '') {
+            error_log('Razorpay webhook recovery notification skipped: missing mobile for tracking_id=' . $trackingId);
+            return;
+        }
+
+        $productsList = vs_rzp_products_list($products, $category);
+        $adminMobile = defined('ADMIN_WHATSAPP')
+            ? ADMIN_WHATSAPP
+            : (defined('WHATSAPP_BUSINESS_PHONE') ? WHATSAPP_BUSINESS_PHONE : '918975224444');
+
+        if ($category === 'appointment') {
+            $customerResult = sendWhatsAppNotification('appointment_booked_payment_success', [
+                'mobile' => $mobile,
+                'name' => $customerName,
+                'category' => 'Appointment',
+                'products_list' => $productsList,
+                'tracking_url' => $trackingId
+            ]);
+            sendWhatsAppNotification('admin_services_alert', [
+                'admin_mobile' => $adminMobile,
+                'customer_name' => $customerName,
+                'customer_mobile' => $mobile,
+                'category' => 'Appointment',
+                'products_list' => $productsList,
+                'tracking_id' => $trackingId
+            ]);
+            if (!$customerResult['success']) {
+                error_log('Razorpay webhook recovery WhatsApp failed (appointment) tracking_id=' . $trackingId . ': ' . ($customerResult['message'] ?? 'unknown'));
+            }
+        } else {
+            $serviceCategoryDisplay = ucwords(str_replace('-', ' ', $category));
+            $customerResult = sendWhatsAppNotification('service_received', [
+                'mobile' => $mobile,
+                'name' => $customerName,
+                'category' => $serviceCategoryDisplay,
+                'products_list' => $productsList,
+                'tracking_url' => $trackingId
+            ]);
+            sendWhatsAppNotification('admin_services_alert', [
+                'admin_mobile' => $adminMobile,
+                'customer_name' => $customerName,
+                'customer_mobile' => $mobile,
+                'category' => $serviceCategoryDisplay,
+                'products_list' => $productsList,
+                'tracking_id' => $trackingId
+            ]);
+            if (!$customerResult['success']) {
+                error_log('Razorpay webhook recovery WhatsApp failed (service) tracking_id=' . $trackingId . ': ' . ($customerResult['message'] ?? 'unknown'));
+            }
+        }
+    } catch (Throwable $e) {
+        error_log('Razorpay webhook recovery notification error tracking_id=' . $trackingId . ': ' . $e->getMessage());
+    }
+}
+
 /**
  * Match payment-success.php tracking id pattern and uniqueness.
  */
@@ -299,8 +401,9 @@ function vs_rzp_recover_from_pending(PDO $pdo, string $orderId, string $paymentI
         vs_rzp_update_pending($pdo, $orderId, $paymentId, 'confirmed');
 
         $pdo->commit();
+        vs_rzp_send_recovery_notifications($pendingRow, $trackingId);
         error_log('Razorpay webhook recovery: service_request inserted for order_id=' . $orderId . ' tracking_id=' . $trackingId);
-        return 'inserted';
+        return 'inserted:' . $trackingId;
     } catch (Throwable $e) {
         if ($pdo->inTransaction()) {
             $pdo->rollBack();
