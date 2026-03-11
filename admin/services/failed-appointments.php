@@ -6,6 +6,14 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 require_once __DIR__ . '/../../config/db.php';
 
+$hasWebhookLogsTable = false;
+try {
+    $tableCheck = $pdo->query("SHOW TABLES LIKE 'razorpay_webhook_logs'");
+    $hasWebhookLogsTable = (bool)$tableCheck->fetchColumn();
+} catch (Throwable $e) {
+    $hasWebhookLogsTable = false;
+}
+
 // Handle delete action
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_id'])) {
     $deleteId = (int)$_POST['delete_id'];
@@ -16,11 +24,51 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_id'])) {
 }
 
 
-// Fetch all failed appointments from pending_payments table
-
-$stmt = $pdo->prepare("SELECT * FROM pending_payments WHERE category = 'appointment' ORDER BY created_at DESC");
+// Show only unresolved redirect-miss rows. Recovered rows are excluded.
+$stmt = $pdo->prepare("
+    SELECT p.*
+    FROM pending_payments p
+    LEFT JOIN service_requests s ON s.razorpay_order_id = p.razorpay_order_id
+    WHERE p.category = 'appointment'
+      AND s.id IS NULL
+    ORDER BY p.created_at DESC
+");
 $stmt->execute();
 $failedAppointments = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+$latestWebhookEventsByOrder = [];
+if ($hasWebhookLogsTable && !empty($failedAppointments)) {
+    $orderIds = [];
+    foreach ($failedAppointments as $row) {
+        $orderId = trim((string)($row['razorpay_order_id'] ?? ''));
+        if ($orderId !== '') {
+            $orderIds[$orderId] = true;
+        }
+    }
+
+    if (!empty($orderIds)) {
+        $orderIds = array_keys($orderIds);
+        $placeholders = implode(',', array_fill(0, count($orderIds), '?'));
+        $sql = "
+            SELECT l.razorpay_order_id, l.event_type
+            FROM razorpay_webhook_logs l
+            INNER JOIN (
+                SELECT razorpay_order_id, MAX(id) AS max_id
+                FROM razorpay_webhook_logs
+                WHERE razorpay_order_id IN ($placeholders)
+                GROUP BY razorpay_order_id
+            ) x ON x.max_id = l.id
+        ";
+        $evStmt = $pdo->prepare($sql);
+        $evStmt->execute($orderIds);
+        while ($ev = $evStmt->fetch(PDO::FETCH_ASSOC)) {
+            $oid = trim((string)($ev['razorpay_order_id'] ?? ''));
+            if ($oid !== '') {
+                $latestWebhookEventsByOrder[$oid] = strtolower(trim((string)($ev['event_type'] ?? '')));
+            }
+        }
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -108,6 +156,8 @@ h1 {
 }
 .status-received { background: #e5f0ff; color: #0056b3; }
 .payment-paid { background: #e5ffe5; color: #1a8917; }
+.payment-pending { background: #fff8e5; color: #8a5b00; }
+.payment-failed { background: #ffeaea; color: #c00; }
 .badge-overdue {
     background: #ff4444;
     color: #fff;
@@ -292,13 +342,13 @@ h1 {
 <div class="summary-cards">
     <div class="summary-card">
         <div class="summary-count"><?= count($failedAppointments) ?></div>
-        <div class="summary-label">Failed</div>
+        <div class="summary-label">Pending / Failed</div>
     </div>
 </div>
 
 <?php if (empty($failedAppointments)): ?>
     <div class="no-data" style="font-size:1.2em;color:#800000;font-weight:600;">
-        No failed appointments found.
+        No pending confirmation appointments found.
     </div>
 <?php else: ?>
     <table class="service-table">
@@ -359,6 +409,13 @@ h1 {
                     $createdDisplay = $co->format('d-M-Y h:i A');
                 }
                 $notes = $customerDetails['notes'] ?? ($formData['notes'] ?? '');
+                $orderId = trim((string)($a['razorpay_order_id'] ?? ''));
+                $paymentBadgeClass = 'payment-pending';
+                $paymentBadgeText = 'Pending Confirmation';
+                if ($orderId !== '' && isset($latestWebhookEventsByOrder[$orderId]) && $latestWebhookEventsByOrder[$orderId] === 'payment.failed') {
+                    $paymentBadgeClass = 'payment-failed';
+                    $paymentBadgeText = 'Failed';
+                }
                 ?>
                 <tr>
                     <td><?= htmlspecialchars($customerName) ?></td>
@@ -370,11 +427,11 @@ h1 {
                     <td><?= $products ?></td>
                     <td><?= (int)$a['id'] ?></td>
                     <td><?= htmlspecialchars($trackingId) ?></td>
-                    <td><span class="status-badge payment-paid">Failed</span></td>
+                    <td><span class="status-badge <?= htmlspecialchars($paymentBadgeClass) ?>"><?= htmlspecialchars($paymentBadgeText) ?></span></td>
                     <td><span class="status-badge status-received">Unaccepted</span></td>
                     <td><?= htmlspecialchars($notes) ?></td>
                     <td>
-                        <form method="POST" onsubmit="return confirm('Are you sure you want to delete this failed appointment?');" style="display:inline;">
+                        <form method="POST" onsubmit="return confirm('Are you sure you want to delete this appointment entry?');" style="display:inline;">
                             <input type="hidden" name="delete_id" value="<?= (int)$a['id'] ?>">
                             <button type="submit" class="action-btn btn-accept" style="background:#dc3545; color:#fff; border:none; padding:6px 14px; border-radius:6px; font-weight:600;">Delete</button>
                         </form>
