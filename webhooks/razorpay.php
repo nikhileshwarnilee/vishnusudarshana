@@ -41,6 +41,31 @@ function vs_rzp_env(string $key, string $default = ''): string
 }
 
 /**
+ * Append invalid webhook attempts to a local log file for security auditing.
+ */
+function vs_rzp_log_invalid_attempt(string $reason, string $signature, string $payload): void
+{
+    try {
+        $logDir = dirname(__DIR__) . '/logs';
+        if (!is_dir($logDir)) {
+            @mkdir($logDir, 0775, true);
+        }
+        $logFile = $logDir . '/webhook_invalid.log';
+        $line = sprintf(
+            "[%s] ip=%s reason=%s signature=%s payload_sha256=%s\n",
+            date('Y-m-d H:i:s'),
+            (string)($_SERVER['REMOTE_ADDR'] ?? 'unknown'),
+            $reason,
+            $signature !== '' ? $signature : 'empty',
+            hash('sha256', $payload)
+        );
+        @file_put_contents($logFile, $line, FILE_APPEND | LOCK_EX);
+    } catch (Throwable $e) {
+        // Ignore logging failures; webhook should still terminate safely.
+    }
+}
+
+/**
  * Best-effort creation of webhook logs table.
  */
 function vs_rzp_ensure_logs_table(PDO $pdo): void
@@ -287,18 +312,27 @@ function vs_rzp_recover_from_pending(PDO $pdo, string $orderId, string $paymentI
 $payload = file_get_contents('php://input');
 $signature = $_SERVER['HTTP_X_RAZORPAY_SIGNATURE'] ?? '';
 
-$secret = vs_rzp_env('RAZORPAY_WEBHOOK_SECRET', '');
-if ($secret === '') {
-    $secret = vs_rzp_env('RAZORPAY_WEBHOOK_SECRET_KEY', 'YOUR_WEBHOOK_SECRET_HERE');
+// Security check 1: webhook secret must come from configuration only (no dummy fallback).
+$webhook_secret = vs_rzp_env('RAZORPAY_WEBHOOK_SECRET', '');
+if ($webhook_secret === '') {
+    $webhook_secret = vs_rzp_env('RAZORPAY_WEBHOOK_SECRET_KEY', '');
+}
+if ($webhook_secret === '') {
+    vs_rzp_log_invalid_attempt('webhook_secret_not_configured', $signature, $payload);
+    error_log('Razorpay webhook rejected: webhook secret is not configured.');
+    http_response_code(500);
+    exit('Webhook secret not configured');
 }
 
-// Verify signature
-$expectedSignature = hash_hmac('sha256', $payload, $secret);
+// Security check 2: compute HMAC using the configured webhook secret.
+$expected_signature = hash_hmac('sha256', $payload, $webhook_secret);
 
-if ($signature === '' || !hash_equals($expectedSignature, $signature)) {
-    error_log('Razorpay webhook: invalid signature');
+// Security check 3: constant-time signature compare; reject immediately on mismatch.
+if ($signature === '' || !hash_equals($expected_signature, $signature)) {
+    vs_rzp_log_invalid_attempt('invalid_signature', $signature, $payload);
+    error_log('Razorpay webhook rejected: invalid signature.');
     http_response_code(400);
-    exit('Invalid signature');
+    exit('Invalid webhook signature');
 }
 
 $data = json_decode($payload, true);
