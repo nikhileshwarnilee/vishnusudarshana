@@ -53,9 +53,86 @@ if (!function_exists('vs_safe_redirect')) {
     }
 }
 
+if (!function_exists('vs_render_processed_payment_page')) {
+    function vs_render_processed_payment_page(array $serviceRow): void
+    {
+        $trackingId = (string)($serviceRow['tracking_id'] ?? '');
+        $createdAt = (string)($serviceRow['created_at'] ?? '');
+        $categorySlug = (string)($serviceRow['category_slug'] ?? '');
+        $categoryLabel = $categorySlug !== '' ? ucwords(str_replace('-', ' ', $categorySlug)) : 'Service';
+
+        echo '<main class="main-content" style="background-color:var(--cream-bg);">';
+        echo '<h2>Payment Already Processed</h2>';
+        echo '<p>Your payment link was already completed earlier. No action is needed.</p>';
+        if ($trackingId !== '') {
+            echo '<p><strong>Tracking ID:</strong> ' . htmlspecialchars($trackingId, ENT_QUOTES, 'UTF-8') . '</p>';
+        }
+        if ($createdAt !== '') {
+            echo '<p><strong>Processed On:</strong> ' . htmlspecialchars(date('d-M-Y h:i A', strtotime($createdAt)), ENT_QUOTES, 'UTF-8') . '</p>';
+        }
+        echo '<p><strong>Category:</strong> ' . htmlspecialchars($categoryLabel, ENT_QUOTES, 'UTF-8') . '</p>';
+        if ($trackingId !== '') {
+            echo '<a href="track.php?id=' . urlencode($trackingId) . '" class="pay-btn" style="display:inline-block;text-decoration:none;">Track Your Request</a>';
+        } else {
+            echo '<a href="services.php" class="pay-btn" style="display:inline-block;text-decoration:none;">Back to Services</a>';
+        }
+        echo '<a href="services.php" class="review-back-link">&larr; Back to Services</a>';
+        echo '</main>';
+        require_once 'footer.php';
+        exit;
+    }
+}
+
 $stmt = $pdo->prepare("SELECT * FROM pending_payments WHERE payment_id = ? LIMIT 1");
 $stmt->execute([$payment_id]);
 $pending = $stmt->fetch(PDO::FETCH_ASSOC);
+
+if ($pending) {
+    try {
+        $pendingOrderId = trim((string)($pending['razorpay_order_id'] ?? ''));
+        $pendingPaymentId = trim((string)($pending['payment_id'] ?? ''));
+        $clauses = [];
+        $params = [];
+
+        if ($pendingOrderId !== '') {
+            $clauses[] = 'razorpay_order_id = ?';
+            $params[] = $pendingOrderId;
+        }
+
+        $tokens = [];
+        if ((string)$payment_id !== '') {
+            $tokens[] = (string)$payment_id;
+        }
+        if ($pendingPaymentId !== '' && $pendingPaymentId !== (string)$payment_id) {
+            $tokens[] = $pendingPaymentId;
+        }
+
+        foreach ($tokens as $token) {
+            $clauses[] = '(payment_id = ? OR razorpay_payment_id = ?)';
+            $params[] = $token;
+            $params[] = $token;
+        }
+
+        if (!empty($clauses)) {
+            $sql = "
+                SELECT id, tracking_id, category_slug, payment_id, razorpay_order_id, created_at
+                FROM service_requests
+                WHERE " . implode(' OR ', $clauses) . "
+                ORDER BY id DESC
+                LIMIT 1
+            ";
+            $existingStmt = $pdo->prepare($sql);
+            $existingStmt->execute($params);
+            $existingRow = $existingStmt->fetch(PDO::FETCH_ASSOC);
+            if ($existingRow) {
+                vs_render_processed_payment_page($existingRow);
+            }
+        }
+    } catch (Throwable $e) {
+        error_log('payment-init existing booking precheck failed for payment_id=' . (string)$payment_id . ': ' . $e->getMessage());
+    }
+}
+
 if (!$pending) {
     $resolvedService = null;
     $resolvedOrderId = null;
@@ -185,30 +262,7 @@ if (!$pending) {
     }
 
     if ($resolvedService) {
-        $trackingId = (string)($resolvedService['tracking_id'] ?? '');
-        $createdAt = (string)($resolvedService['created_at'] ?? '');
-        $categorySlug = (string)($resolvedService['category_slug'] ?? '');
-        $categoryLabel = $categorySlug !== '' ? ucwords(str_replace('-', ' ', $categorySlug)) : 'Service';
-
-        echo '<main class="main-content" style="background-color:var(--cream-bg);">';
-        echo '<h2>Payment Already Processed</h2>';
-        echo '<p>Your payment link was already completed earlier. No action is needed.</p>';
-        if ($trackingId !== '') {
-            echo '<p><strong>Tracking ID:</strong> ' . htmlspecialchars($trackingId, ENT_QUOTES, 'UTF-8') . '</p>';
-        }
-        if ($createdAt !== '') {
-            echo '<p><strong>Processed On:</strong> ' . htmlspecialchars(date('d-M-Y h:i A', strtotime($createdAt)), ENT_QUOTES, 'UTF-8') . '</p>';
-        }
-        echo '<p><strong>Category:</strong> ' . htmlspecialchars($categoryLabel, ENT_QUOTES, 'UTF-8') . '</p>';
-        if ($trackingId !== '') {
-            echo '<a href="track.php?id=' . urlencode($trackingId) . '" class="pay-btn" style="display:inline-block;text-decoration:none;">Track Your Request</a>';
-        } else {
-            echo '<a href="services.php" class="pay-btn" style="display:inline-block;text-decoration:none;">Back to Services</a>';
-        }
-        echo '<a href="services.php" class="review-back-link">&larr; Back to Services</a>';
-        echo '</main>';
-        require_once 'footer.php';
-        exit;
+        vs_render_processed_payment_page($resolvedService);
     }
 
     echo '<main class="main-content" style="background-color:var(--cream-bg);"><h2>Payment not found</h2>';

@@ -29,6 +29,130 @@ $pageTitle = 'Payment Success | Vishnusudarshana';
 // Session is already started in header.php — DO NOT start here
 require_once __DIR__ . '/config/db.php';
 
+/**
+ * Find an existing finalized booking by payment/order identifiers.
+ * Used to keep payment-success idempotent when users revisit links.
+ */
+function vs_ps_find_existing_request(PDO $pdo, string $paymentId = '', string $orderId = '', string $razorpayPaymentId = ''): ?array
+{
+    $paymentId = trim($paymentId);
+    $orderId = trim($orderId);
+    $razorpayPaymentId = trim($razorpayPaymentId);
+
+    $where = [];
+    $params = [];
+
+    if ($paymentId !== '') {
+        $where[] = 'payment_id = ?';
+        $params[] = $paymentId;
+        $where[] = 'razorpay_payment_id = ?';
+        $params[] = $paymentId;
+    }
+
+    if ($razorpayPaymentId !== '' && $razorpayPaymentId !== $paymentId) {
+        $where[] = 'payment_id = ?';
+        $params[] = $razorpayPaymentId;
+        $where[] = 'razorpay_payment_id = ?';
+        $params[] = $razorpayPaymentId;
+    }
+
+    if ($orderId !== '') {
+        $where[] = 'razorpay_order_id = ?';
+        $params[] = $orderId;
+    }
+
+    if (empty($where)) {
+        return null;
+    }
+
+    $sql = 'SELECT id, tracking_id, category_slug, created_at
+            FROM service_requests
+            WHERE ' . implode(' OR ', $where) . '
+            ORDER BY id DESC
+            LIMIT 1';
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($params);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    return $row ?: null;
+}
+
+/**
+ * Clean stale pending rows once a booking is confirmed.
+ */
+function vs_ps_cleanup_pending(PDO $pdo, string $paymentId = '', string $orderId = ''): void
+{
+    $paymentId = trim($paymentId);
+    $orderId = trim($orderId);
+
+    $where = [];
+    $params = [];
+    if ($paymentId !== '') {
+        $where[] = 'payment_id = ?';
+        $params[] = $paymentId;
+    }
+    if ($orderId !== '') {
+        $where[] = 'razorpay_order_id = ?';
+        $params[] = $orderId;
+    }
+    if (empty($where)) {
+        return;
+    }
+
+    $sql = 'DELETE FROM pending_payments WHERE ' . implode(' OR ', $where);
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($params);
+}
+
+/**
+ * Reused success UI for already-processed payment revisits.
+ */
+function vs_ps_render_processed_page(array $existingRequest): void
+{
+    $trackingId = (string)($existingRequest['tracking_id'] ?? '');
+    $categorySlug = (string)($existingRequest['category_slug'] ?? '');
+    $categoryLabel = $categorySlug !== '' ? ucwords(str_replace('-', ' ', $categorySlug)) : 'Service';
+    $createdAt = (string)($existingRequest['created_at'] ?? '');
+
+    require_once 'header.php';
+    ?>
+    <main class="main-content">
+        <h1 class="review-title">Payment Already Processed</h1>
+        <div class="review-card">
+            <h2 class="section-title">Your Booking Is Confirmed</h2>
+            <p class="success-text">
+                This payment was already finalized earlier.<br>
+                No duplicate booking has been created.
+            </p>
+            <?php if ($trackingId !== ''): ?>
+                <p class="success-text"><strong>Tracking ID:</strong> <?= htmlspecialchars($trackingId) ?></p>
+            <?php endif; ?>
+            <?php if ($createdAt !== ''): ?>
+                <p class="success-text"><strong>Booked On:</strong> <?= htmlspecialchars(date('d-M-Y h:i A', strtotime($createdAt))) ?></p>
+            <?php endif; ?>
+            <p class="success-text"><strong>Category:</strong> <?= htmlspecialchars($categoryLabel) ?></p>
+            <?php if ($trackingId !== ''): ?>
+                <a href="track.php?id=<?= urlencode($trackingId) ?>" class="pay-btn">Track Your Service</a>
+            <?php else: ?>
+                <a href="services.php" class="pay-btn">Back to Services</a>
+            <?php endif; ?>
+        </div>
+    </main>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Marcellus&display=swap');
+        html,body{font-family:'Marcellus',serif!important;}
+        .main-content { max-width:480px;margin:0 auto;padding:18px; }
+        .review-title { text-align:center;font-size:1.2em;margin-bottom:16px; }
+        .review-card { background:#f9eaea;border-radius:14px;padding:16px;text-align:center; }
+        .section-title { color:#800000;font-weight:600;margin-bottom:10px; }
+        .success-text { color:#333;margin-bottom:12px; }
+        .pay-btn { display:inline-block;background:#800000;color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:600; }
+    </style>
+    <?php
+    require_once 'footer.php';
+    exit;
+}
+
 // Always define $payment_id for paid flow
 $payment_id = isset($_GET['payment_id']) ? trim($_GET['payment_id']) : '';
 // Handle free (₹0.00) service requests (no payment_id)
@@ -113,6 +237,25 @@ if ($payment_id !== '') {
     $dbRecord = false;
 }
 
+// Capture identifiers early for idempotent checks.
+$incoming_razorpay_payment_id = isset($_GET['razorpay_payment_id']) ? trim((string)$_GET['razorpay_payment_id']) : '';
+$razorpay_order_id = isset($dbRecord['razorpay_order_id']) ? (string)$dbRecord['razorpay_order_id'] : '';
+
+// If this payment/order is already finalized, show existing booking instead of inserting again.
+try {
+    $existingRequest = vs_ps_find_existing_request($pdo, (string)$payment_id, (string)$razorpay_order_id, (string)$incoming_razorpay_payment_id);
+    if ($existingRequest) {
+        try {
+            vs_ps_cleanup_pending($pdo, (string)$payment_id, (string)$razorpay_order_id);
+        } catch (Throwable $cleanupError) {
+            error_log('payment-success pending cleanup skipped: ' . $cleanupError->getMessage());
+        }
+        vs_ps_render_processed_page($existingRequest);
+    }
+} catch (Throwable $idempotencyError) {
+    error_log('payment-success idempotency precheck failed: ' . $idempotencyError->getMessage());
+}
+
 // Reconstruct pending payment data from database
 $pending = [];
 if ($dbRecord) {
@@ -167,7 +310,7 @@ if ($payment_id !== '' && empty($pending)) {
 }
 
 // Extract Razorpay order ID from pending_payments if available
-$razorpay_order_id = $dbRecord['razorpay_order_id'] ?? null;
+$razorpay_order_id = $dbRecord['razorpay_order_id'] ?? $razorpay_order_id ?? null;
 
 /* ======================
    UNIFIED SERVICE FLOW
@@ -218,18 +361,26 @@ $email        = $pending['customer_details']['email'] ?? $formData['email'] ?? '
 $city         = $pending['customer_details']['city'] ?? $formData['city'] ?? '';
 $products     = $pending['products'] ?? [];
 $totalAmount  = $pending['total_amount'] ?? 0;
+$alreadyProcessedInInsert = false;
+$razorpay_payment_id = $incoming_razorpay_payment_id;
 
 // Insert service request (log errors but continue - data is still in pending_payments table)
 try {
     $createdAt = date('Y-m-d H:i:s');
     $razorpay_payment_id = isset($_GET['razorpay_payment_id']) ? $_GET['razorpay_payment_id'] : (isset($dbRecord['razorpay_payment_id']) ? $dbRecord['razorpay_payment_id'] : '');
-    $stmt = $pdo->prepare("INSERT INTO service_requests (
+
+    $existingDuringInsert = vs_ps_find_existing_request($pdo, (string)$payment_id, (string)$razorpay_order_id, (string)$razorpay_payment_id);
+    if ($existingDuringInsert) {
+        $tracking_id = (string)($existingDuringInsert['tracking_id'] ?? $tracking_id);
+        $alreadyProcessedInInsert = true;
+    } else {
+        $stmt = $pdo->prepare("INSERT INTO service_requests (
         tracking_id, category_slug, customer_name, mobile, email, city,
         form_data, selected_products, total_amount, payment_id, razorpay_order_id, razorpay_payment_id, payment_status, service_status, created_at
     ) VALUES (
         ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Paid', 'Received', ?
     )");
-    $stmt->execute([
+        $stmt->execute([
         $tracking_id,
         $category,
         $customerName ?: 'N/A',
@@ -243,112 +394,113 @@ try {
         $razorpay_order_id,
         $razorpay_payment_id,
         $createdAt
-    ]);
+        ]);
 
-    // Format products list for WhatsApp message
-    $productsList = '';
-    if (!empty($products) && is_array($products)) {
-        $productNames = [];
-        foreach ($products as $product) {
-            // Prefer already-available names to avoid extra queries
-            if (!empty($product['name'])) {
-                $productNames[] = $product['name'];
-                continue;
-            }
-            if (!empty($product['product_name'])) {
-                $productNames[] = $product['product_name'];
-                continue;
-            }
-            // Fallback: fetch by ID if present
-            $productId = $product['id'] ?? $product['product_id'] ?? null;
-            if ($productId) {
-                try {
-                    $prodStmt = $pdo->prepare('SELECT product_name FROM products WHERE id = ? LIMIT 1');
-                    $prodStmt->execute([$productId]);
-                    $prodName = $prodStmt->fetchColumn();
-                    if ($prodName) {
-                        $productNames[] = $prodName;
-                    } else {
-                        error_log('Product name not found for ID: ' . $productId);
+        // Format products list for WhatsApp message
+        $productsList = '';
+        if (!empty($products) && is_array($products)) {
+            $productNames = [];
+            foreach ($products as $product) {
+                // Prefer already-available names to avoid extra queries
+                if (!empty($product['name'])) {
+                    $productNames[] = $product['name'];
+                    continue;
+                }
+                if (!empty($product['product_name'])) {
+                    $productNames[] = $product['product_name'];
+                    continue;
+                }
+                // Fallback: fetch by ID if present
+                $productId = $product['id'] ?? $product['product_id'] ?? null;
+                if ($productId) {
+                    try {
+                        $prodStmt = $pdo->prepare('SELECT product_name FROM products WHERE id = ? LIMIT 1');
+                        $prodStmt->execute([$productId]);
+                        $prodName = $prodStmt->fetchColumn();
+                        if ($prodName) {
+                            $productNames[] = $prodName;
+                        } else {
+                            error_log('Product name not found for ID: ' . $productId);
+                            $productNames[] = 'Service Item';
+                        }
+                    } catch (Exception $e) {
+                        error_log('Product lookup failed for ID ' . $productId . ': ' . $e->getMessage());
                         $productNames[] = 'Service Item';
                     }
-                } catch (Exception $e) {
-                    error_log('Product lookup failed for ID ' . $productId . ': ' . $e->getMessage());
-                    $productNames[] = 'Service Item';
                 }
             }
+            // Join with comma and space
+            $productsList = implode(', ', $productNames);
         }
-        // Join with comma and space
-        $productsList = implode(', ', $productNames);
-    }
-    if (empty($productsList)) {
-        $productsList = ucwords(str_replace('-', ' ', $category));
-    }
+        if (empty($productsList)) {
+            $productsList = ucwords(str_replace('-', ' ', $category));
+        }
 
-    // WhatsApp: Appointment Booked + Payment Successful (only for appointments)
-    if ($category === 'appointment') {
-        require_once __DIR__ . '/helpers/send_whatsapp.php';
-        try {
-            // Send automatic WhatsApp notification to customer
-            $whatsappResult = sendWhatsAppNotification('appointment_booked_payment_success', [
-                'mobile' => $mobile,
-                'name' => $customerName ?: 'Customer',
-                'category' => 'Appointment',
-                'products_list' => $productsList,
-                'tracking_url' => $tracking_id  // Ensure tracking_id is passed
-            ]);
-                // Send WhatsApp alert to admin
-                // Use ADMIN_WHATSAPP from config/admin_config.php
-                require_once __DIR__ . '/config/admin_config.php';
-                $adminMobile = defined('ADMIN_WHATSAPP') ? ADMIN_WHATSAPP : (defined('WHATSAPP_BUSINESS_PHONE') ? WHATSAPP_BUSINESS_PHONE : '918975224444');
-                sendWhatsAppNotification('admin_services_alert', [
-                    'admin_mobile' => $adminMobile,
-                    'customer_name' => $customerName ?: 'Customer',
-                    'customer_mobile' => $mobile,
+        // WhatsApp: Appointment Booked + Payment Successful (only for appointments)
+        if ($category === 'appointment') {
+            require_once __DIR__ . '/helpers/send_whatsapp.php';
+            try {
+                // Send automatic WhatsApp notification to customer
+                $whatsappResult = sendWhatsAppNotification('appointment_booked_payment_success', [
+                    'mobile' => $mobile,
+                    'name' => $customerName ?: 'Customer',
                     'category' => 'Appointment',
                     'products_list' => $productsList,
-                    'tracking_id' => $tracking_id
+                    'tracking_url' => $tracking_id  // Ensure tracking_id is passed
                 ]);
-            
-            if (!$whatsappResult['success']) {
-                error_log('WhatsApp notification failed for appointment ' . $tracking_id . ': ' . $whatsappResult['message']);
-            } else {
-                error_log('WhatsApp notification sent for appointment ' . $tracking_id);
+                    // Send WhatsApp alert to admin
+                    // Use ADMIN_WHATSAPP from config/admin_config.php
+                    require_once __DIR__ . '/config/admin_config.php';
+                    $adminMobile = defined('ADMIN_WHATSAPP') ? ADMIN_WHATSAPP : (defined('WHATSAPP_BUSINESS_PHONE') ? WHATSAPP_BUSINESS_PHONE : '918975224444');
+                    sendWhatsAppNotification('admin_services_alert', [
+                        'admin_mobile' => $adminMobile,
+                        'customer_name' => $customerName ?: 'Customer',
+                        'customer_mobile' => $mobile,
+                        'category' => 'Appointment',
+                        'products_list' => $productsList,
+                        'tracking_id' => $tracking_id
+                    ]);
+
+                if (!$whatsappResult['success']) {
+                    error_log('WhatsApp notification failed for appointment ' . $tracking_id . ': ' . $whatsappResult['message']);
+                } else {
+                    error_log('WhatsApp notification sent for appointment ' . $tracking_id);
+                }
+            } catch (Exception $e) {
+                error_log('WhatsApp error for appointment ' . $tracking_id . ': ' . $e->getMessage());
             }
-        } catch (Exception $e) {
-            error_log('WhatsApp error for appointment ' . $tracking_id . ': ' . $e->getMessage());
-        }
-    } else if ($category !== 'appointment') {
-        // For other services (Birth & Child, Marriage, Astrology, Muhurat, Pooja, Vastu)
-        require_once __DIR__ . '/helpers/send_whatsapp.php';
-        try {
-            $serviceCategoryDisplay = ucwords(str_replace('-', ' ', $category));
-            $whatsappResult = sendWhatsAppNotification('service_received', [
-                'mobile' => $mobile,
-                'name' => $customerName ?: 'Customer',
-                'category' => $serviceCategoryDisplay,
-                'products_list' => $productsList,
-                'tracking_url' => $tracking_id  // Ensure tracking_id is passed
-            ]);
-                // Send WhatsApp alert to admin
-                require_once __DIR__ . '/config/admin_config.php';
-                $adminMobile = defined('ADMIN_WHATSAPP') ? ADMIN_WHATSAPP : (defined('WHATSAPP_BUSINESS_PHONE') ? WHATSAPP_BUSINESS_PHONE : '918975224444');
-                sendWhatsAppNotification('admin_services_alert', [
-                    'admin_mobile' => $adminMobile,
-                    'customer_name' => $customerName ?: 'Customer',
-                    'customer_mobile' => $mobile,
+        } else if ($category !== 'appointment') {
+            // For other services (Birth & Child, Marriage, Astrology, Muhurat, Pooja, Vastu)
+            require_once __DIR__ . '/helpers/send_whatsapp.php';
+            try {
+                $serviceCategoryDisplay = ucwords(str_replace('-', ' ', $category));
+                $whatsappResult = sendWhatsAppNotification('service_received', [
+                    'mobile' => $mobile,
+                    'name' => $customerName ?: 'Customer',
                     'category' => $serviceCategoryDisplay,
                     'products_list' => $productsList,
-                    'tracking_id' => $tracking_id
+                    'tracking_url' => $tracking_id  // Ensure tracking_id is passed
                 ]);
-            
-            if (!$whatsappResult['success']) {
-                error_log('WhatsApp notification failed for service ' . $tracking_id . ': ' . $whatsappResult['message']);
-            } else {
-                error_log('WhatsApp notification sent for service ' . $tracking_id);
+                    // Send WhatsApp alert to admin
+                    require_once __DIR__ . '/config/admin_config.php';
+                    $adminMobile = defined('ADMIN_WHATSAPP') ? ADMIN_WHATSAPP : (defined('WHATSAPP_BUSINESS_PHONE') ? WHATSAPP_BUSINESS_PHONE : '918975224444');
+                    sendWhatsAppNotification('admin_services_alert', [
+                        'admin_mobile' => $adminMobile,
+                        'customer_name' => $customerName ?: 'Customer',
+                        'customer_mobile' => $mobile,
+                        'category' => $serviceCategoryDisplay,
+                        'products_list' => $productsList,
+                        'tracking_id' => $tracking_id
+                    ]);
+
+                if (!$whatsappResult['success']) {
+                    error_log('WhatsApp notification failed for service ' . $tracking_id . ': ' . $whatsappResult['message']);
+                } else {
+                    error_log('WhatsApp notification sent for service ' . $tracking_id);
+                }
+            } catch (Exception $e) {
+                error_log('WhatsApp error for service ' . $tracking_id . ': ' . $e->getMessage());
             }
-        } catch (Exception $e) {
-            error_log('WhatsApp error for service ' . $tracking_id . ': ' . $e->getMessage());
         }
     }
     
@@ -371,12 +523,31 @@ try {
     */
 } catch (Throwable $e) {
     error_log('Service request insert failed: ' . $e->getMessage() . ' (payment_id=' . $payment_id . ', tracking_id=' . $tracking_id . ')');
-    echo '<main class="main-content" style="background-color:var(--cream-bg);"><h2>Payment Received</h2>';
-    echo '<p>There was an error saving your request. Please contact support with your payment ID: '.htmlspecialchars($payment_id).'</p>';
-    echo '<a href="services.php" class="pay-btn">Back to Services</a></main>';
-    require_once 'footer.php';
-    exit;
+    try {
+        $existingAfterError = vs_ps_find_existing_request($pdo, (string)$payment_id, (string)$razorpay_order_id, (string)$razorpay_payment_id);
+        if ($existingAfterError) {
+            $tracking_id = (string)($existingAfterError['tracking_id'] ?? $tracking_id);
+            $alreadyProcessedInInsert = true;
+        } else {
+            echo '<main class="main-content" style="background-color:var(--cream-bg);"><h2>Payment Received</h2>';
+            echo '<p>There was an error saving your request. Please contact support with your payment ID: '.htmlspecialchars($payment_id).'</p>';
+            echo '<a href="services.php" class="pay-btn">Back to Services</a></main>';
+            require_once 'footer.php';
+            exit;
+        }
+    } catch (Throwable $fallbackError) {
+        error_log('Service request fallback lookup failed: ' . $fallbackError->getMessage());
+        echo '<main class="main-content" style="background-color:var(--cream-bg);"><h2>Payment Received</h2>';
+        echo '<p>There was an error saving your request. Please contact support with your payment ID: '.htmlspecialchars($payment_id).'</p>';
+        echo '<a href="services.php" class="pay-btn">Back to Services</a></main>';
+        require_once 'footer.php';
+        exit;
+    }
 }
+
+$successStatusMessage = $alreadyProcessedInInsert
+    ? 'This payment was already finalized earlier. Your booking remains confirmed.'
+    : 'Our team will contact you shortly.<br>Keep your tracking ID for reference.';
 
 /* ======================
    RENDER SERVICE UI
@@ -392,8 +563,7 @@ require_once 'header.php';
             <?= htmlspecialchars($tracking_id) ?>
         </div>
         <p id="payment-status-msg" class="success-text">
-            Our team will contact you shortly.<br>
-            Keep your tracking ID for reference.
+            <?= $successStatusMessage ?>
         </p>
         <a href="track.php?id=<?= urlencode($tracking_id) ?>" class="pay-btn">
             Track Your Service
@@ -450,8 +620,7 @@ unset($_SESSION['appointment_products']);
 
 // DELETE from pending_payments after successful insertion/confirmation
 try {
-    $deleteStmt = $pdo->prepare("DELETE FROM pending_payments WHERE payment_id = ?");
-    $deleteStmt->execute([$payment_id]);
+    vs_ps_cleanup_pending($pdo, (string)$payment_id, (string)$razorpay_order_id);
 } catch (Throwable $e) {
     error_log('Failed to delete pending_payments record for payment_id=' . $payment_id . '. Error: ' . $e->getMessage());
 }

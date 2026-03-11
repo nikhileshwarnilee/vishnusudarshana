@@ -136,6 +136,29 @@ function vs_rzp_pending_columns(PDO $pdo): array
 }
 
 /**
+ * Cache service_requests columns so webhook updates are schema-safe.
+ */
+function vs_rzp_service_columns(PDO $pdo): array
+{
+    static $columns = null;
+    if ($columns !== null) {
+        return $columns;
+    }
+
+    $columns = [];
+    try {
+        $stmt = $pdo->query('SHOW COLUMNS FROM service_requests');
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            $columns[strtolower((string)$row['Field'])] = true;
+        }
+    } catch (Throwable $e) {
+        error_log('Failed to inspect service_requests columns: ' . $e->getMessage());
+    }
+
+    return $columns;
+}
+
+/**
  * Update pending_payments with captured/failed state without assuming extra columns.
  */
 function vs_rzp_update_pending(PDO $pdo, string $orderId, string $paymentId = '', string $status = ''): void
@@ -323,6 +346,70 @@ function vs_rzp_send_recovery_notifications(array $pendingRow, string $trackingI
 }
 
 /**
+ * For rows that already exist but were not confirmed yet, send the same WhatsApp payload once.
+ */
+function vs_rzp_send_notifications_for_existing_row(PDO $pdo, string $orderId): void
+{
+    $orderId = trim($orderId);
+    if ($orderId === '') {
+        return;
+    }
+
+    try {
+        $serviceStmt = $pdo->prepare('SELECT tracking_id FROM service_requests WHERE razorpay_order_id = ? ORDER BY id DESC LIMIT 1');
+        $serviceStmt->execute([$orderId]);
+        $serviceRow = $serviceStmt->fetch(PDO::FETCH_ASSOC);
+        if (!$serviceRow || empty($serviceRow['tracking_id'])) {
+            return;
+        }
+
+        $pendingStmt = $pdo->prepare('SELECT * FROM pending_payments WHERE razorpay_order_id = ? ORDER BY id DESC LIMIT 1');
+        $pendingStmt->execute([$orderId]);
+        $pendingRow = $pendingStmt->fetch(PDO::FETCH_ASSOC);
+        if (!$pendingRow) {
+            return;
+        }
+
+        vs_rzp_send_recovery_notifications($pendingRow, (string)$serviceRow['tracking_id']);
+    } catch (Throwable $e) {
+        error_log('Razorpay webhook existing-row notification error for order_id=' . $orderId . ': ' . $e->getMessage());
+    }
+}
+
+/**
+ * Fallback resolver when event payload misses payment id but has order id.
+ */
+function vs_rzp_resolve_captured_payment_id_from_order(string $orderId): string
+{
+    $orderId = trim($orderId);
+    if ($orderId === '') {
+        return '';
+    }
+
+    $keyId = vs_rzp_env('RAZORPAY_KEY_ID', '');
+    $keySecret = vs_rzp_env('RAZORPAY_KEY_SECRET', '');
+    if ($keyId === '' || $keySecret === '') {
+        return '';
+    }
+
+    try {
+        $api = new \Razorpay\Api\Api($keyId, $keySecret);
+        $payments = $api->order->fetch($orderId)->payments();
+        $items = isset($payments['items']) && is_array($payments['items']) ? $payments['items'] : [];
+        foreach ($items as $item) {
+            $status = strtolower((string)($item['status'] ?? ''));
+            if ($status === 'captured' && !empty($item['id'])) {
+                return (string)$item['id'];
+            }
+        }
+    } catch (Throwable $e) {
+        error_log('Razorpay webhook payment id fallback failed for order_id=' . $orderId . ': ' . $e->getMessage());
+    }
+
+    return '';
+}
+
+/**
  * Match payment-success.php tracking id pattern and uniqueness.
  */
 function vs_rzp_generate_tracking_id(PDO $pdo): string
@@ -492,6 +579,13 @@ if (!is_array($data) || !isset($data['event'])) {
 $paymentEntity = $data['payload']['payment']['entity'] ?? [];
 $razorpayPaymentId = isset($paymentEntity['id']) ? (string)$paymentEntity['id'] : '';
 $razorpayOrderId = isset($paymentEntity['order_id']) ? (string)$paymentEntity['order_id'] : '';
+$orderEntity = $data['payload']['order']['entity'] ?? [];
+if ($razorpayOrderId === '' && isset($orderEntity['id'])) {
+    $razorpayOrderId = (string)$orderEntity['id'];
+}
+if ($razorpayPaymentId === '' && $razorpayOrderId !== '') {
+    $razorpayPaymentId = vs_rzp_resolve_captured_payment_id_from_order($razorpayOrderId);
+}
 $paymentStatus = isset($paymentEntity['status']) ? (string)$paymentEntity['status'] : '';
 $amount = isset($paymentEntity['amount']) ? (int)$paymentEntity['amount'] : 0;
 $currency = isset($paymentEntity['currency']) ? (string)$paymentEntity['currency'] : '';
@@ -511,32 +605,62 @@ error_log(
 switch ($data['event']) {
 
     case 'payment.captured':
+    case 'order.paid':
         try {
             error_log('Razorpay webhook order_id: ' . ($razorpayOrderId !== '' ? $razorpayOrderId : 'not set'));
 
             if ($razorpayOrderId !== '' && $razorpayPaymentId !== '') {
+                $serviceColumns = vs_rzp_service_columns($pdo);
+                $hasPaymentStatus = isset($serviceColumns['payment_status']);
+                $hasBookingStatus = isset($serviceColumns['booking_status']);
+                $hasRazorpayPaymentColumn = isset($serviceColumns['razorpay_payment_id']);
+
                 // Find appointment/service request by razorpay_order_id
-                $stmt = $pdo->prepare("SELECT payment_status, booking_status FROM service_requests WHERE razorpay_order_id = ? LIMIT 1");
+                $selectCols = ['id'];
+                if ($hasPaymentStatus) {
+                    $selectCols[] = 'payment_status';
+                }
+                if ($hasBookingStatus) {
+                    $selectCols[] = 'booking_status';
+                }
+                $stmt = $pdo->prepare('SELECT ' . implode(', ', $selectCols) . ' FROM service_requests WHERE razorpay_order_id = ? LIMIT 1');
                 $stmt->execute([$razorpayOrderId]);
                 $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
                 // Only update if not already paid/confirmed
-                if ($row && strtolower((string)$row['payment_status']) !== 'paid' && strtolower((string)$row['booking_status']) !== 'confirmed') {
-                    $updateStmt = $pdo->prepare(
-                        "UPDATE service_requests SET payment_status = ?, booking_status = ?, razorpay_payment_id = ? WHERE razorpay_order_id = ?"
-                    );
-                    $updateStmt->execute([
-                        'paid',
-                        'confirmed',
-                        $razorpayPaymentId,
-                        $razorpayOrderId
-                    ]);
+                $isPaid = $hasPaymentStatus ? (strtolower(trim((string)($row['payment_status'] ?? ''))) === 'paid') : false;
+                $isConfirmed = $hasBookingStatus ? (strtolower(trim((string)($row['booking_status'] ?? ''))) === 'confirmed') : false;
+
+                if ($row && (!$isPaid || ($hasBookingStatus && !$isConfirmed))) {
+                    $set = [];
+                    $params = [];
+                    if ($hasPaymentStatus) {
+                        $set[] = 'payment_status = ?';
+                        $params[] = 'paid';
+                    }
+                    if ($hasBookingStatus) {
+                        $set[] = 'booking_status = ?';
+                        $params[] = 'confirmed';
+                    }
+                    if ($hasRazorpayPaymentColumn) {
+                        $set[] = 'razorpay_payment_id = ?';
+                        $params[] = $razorpayPaymentId;
+                    }
+
+                    if (!empty($set)) {
+                        $params[] = $razorpayOrderId;
+                        $updateSql = 'UPDATE service_requests SET ' . implode(', ', $set) . ' WHERE razorpay_order_id = ?';
+                        $updateStmt = $pdo->prepare($updateSql);
+                        $updateStmt->execute($params);
+                    }
+
                     error_log('Razorpay webhook: payment confirmation success for order_id ' . $razorpayOrderId);
-                } else if ($row && strtolower((string)$row['payment_status']) === 'paid' && strtolower((string)$row['booking_status']) === 'confirmed') {
+                    vs_rzp_send_notifications_for_existing_row($pdo, $razorpayOrderId);
+                } else if ($row && $isPaid && (!$hasBookingStatus || $isConfirmed)) {
                     error_log('Razorpay webhook: already paid and confirmed for order_id ' . $razorpayOrderId);
-                } else if ($row && strtolower((string)$row['payment_status']) === 'paid') {
+                } else if ($row && $isPaid) {
                     error_log('Razorpay webhook: already paid for order_id ' . $razorpayOrderId);
-                } else if ($row && strtolower((string)$row['booking_status']) === 'confirmed') {
+                } else if ($row && $hasBookingStatus && $isConfirmed) {
                     error_log('Razorpay webhook: already confirmed for order_id ' . $razorpayOrderId);
                 } else {
                     $recoveryStatus = vs_rzp_recover_from_pending($pdo, $razorpayOrderId, $razorpayPaymentId);
@@ -562,18 +686,36 @@ switch ($data['event']) {
                 : null;
             error_log('Razorpay webhook order_id: ' . ($razorpayOrderId ?: 'not set'));
             if ($razorpayOrderId) {
-                $stmt = $pdo->prepare("SELECT payment_status FROM service_requests WHERE razorpay_order_id = ? LIMIT 1");
+                $serviceColumns = vs_rzp_service_columns($pdo);
+                $hasPaymentStatus = isset($serviceColumns['payment_status']);
+                $hasBookingStatus = isset($serviceColumns['booking_status']);
+
+                $selectCols = ['id'];
+                if ($hasPaymentStatus) {
+                    $selectCols[] = 'payment_status';
+                }
+                $stmt = $pdo->prepare('SELECT ' . implode(', ', $selectCols) . ' FROM service_requests WHERE razorpay_order_id = ? LIMIT 1');
                 $stmt->execute([$razorpayOrderId]);
                 $row = $stmt->fetch(PDO::FETCH_ASSOC);
                 if ($row) {
-                    $updateStmt = $pdo->prepare(
-                        "UPDATE service_requests SET payment_status = ?, booking_status = ? WHERE razorpay_order_id = ?"
-                    );
-                    $updateStmt->execute([
-                        'failed',
-                        'cancelled',
-                        $razorpayOrderId
-                    ]);
+                    $set = [];
+                    $params = [];
+                    if ($hasPaymentStatus) {
+                        $set[] = 'payment_status = ?';
+                        $params[] = 'failed';
+                    }
+                    if ($hasBookingStatus) {
+                        $set[] = 'booking_status = ?';
+                        $params[] = 'cancelled';
+                    }
+
+                    if (!empty($set)) {
+                        $params[] = $razorpayOrderId;
+                        $updateSql = 'UPDATE service_requests SET ' . implode(', ', $set) . ' WHERE razorpay_order_id = ?';
+                        $updateStmt = $pdo->prepare($updateSql);
+                        $updateStmt->execute($params);
+                    }
+
                     error_log('Razorpay webhook: payment failed/cancelled for order_id ' . $razorpayOrderId);
                 } else {
                     error_log('Razorpay webhook: appointment/service request not found for order_id ' . $razorpayOrderId);
