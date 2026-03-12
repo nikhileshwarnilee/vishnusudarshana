@@ -1915,6 +1915,191 @@ if (!function_exists('vs_event_review_cancellation_request')) {
     }
 }
 
+if (!function_exists('vs_event_evaluate_registration_delete_eligibility')) {
+    function vs_event_evaluate_registration_delete_eligibility(array $row): array
+    {
+        $persons = max((int)($row['persons'] ?? 1), 1);
+        $paymentStatus = strtolower(trim((string)($row['payment_status'] ?? '')));
+        $verificationStatus = strtolower(trim((string)($row['verification_status'] ?? '')));
+        $paymentRecordStatus = strtolower(trim((string)($row['payment_record_status'] ?? '')));
+        $isCheckedIn = ((int)($row['checkin_status'] ?? 0) === 1);
+
+        $amountPaid = round(max((float)($row['amount_paid'] ?? 0), 0), 2);
+        $hasPaidStatus = in_array($paymentStatus, ['paid', 'partial paid'], true);
+        $hasPaidAmount = ($amountPaid > 0.0) || $hasPaidStatus;
+
+        $cancelledPersonsTotal = (int)($row['cancelled_persons_total'] ?? 0);
+        if ($cancelledPersonsTotal <= 0) {
+            $cancelledPersonsTotal = (int)($row['latest_cancelled_persons'] ?? 0);
+        }
+        $isCancelled = ($paymentStatus === 'cancelled' || $verificationStatus === 'cancelled');
+        $isFullyCancelled = ($isCancelled && $cancelledPersonsTotal > 0 && $cancelledPersonsTotal >= $persons);
+
+        $isVerificationPending = in_array($verificationStatus, ['pending', 'pending verification'], true)
+            || in_array($paymentRecordStatus, ['pending', 'pending verification'], true);
+
+        $hasVerificationHistory = ((int)($row['payment_id'] ?? 0) > 0)
+            || in_array($paymentStatus, ['pending verification', 'failed', 'rejected', 'paid', 'partial paid'], true)
+            || in_array($paymentRecordStatus, ['pending', 'pending verification', 'approved', 'rejected', 'failed', 'paid', 'cancelled'], true);
+
+        $verificationHistoryValid = true;
+        if ($hasVerificationHistory) {
+            $verificationHistoryValid = in_array($verificationStatus, ['rejected', 'cancelled'], true)
+                || in_array($paymentRecordStatus, ['rejected', 'failed', 'cancelled'], true);
+        }
+
+        $eligible = false;
+        $reason = '';
+        if (!$isFullyCancelled) {
+            $reason = 'Delete is allowed only after full cancellation for all booked persons.';
+        } elseif ($hasPaidAmount) {
+            $reason = 'Delete is blocked because paid amount is not zero.';
+        } elseif ($isCheckedIn) {
+            $reason = 'Checked-in registration cannot be deleted.';
+        } elseif ($isVerificationPending) {
+            $reason = 'Delete is blocked while verification is pending.';
+        } elseif (!$verificationHistoryValid) {
+            $reason = 'If payment verification was submitted earlier, it must be rejected before delete.';
+        } else {
+            $eligible = true;
+        }
+
+        return [
+            'eligible' => $eligible,
+            'reason' => $reason,
+            'persons' => $persons,
+            'cancelled_persons_total' => $cancelledPersonsTotal,
+            'has_paid_amount' => $hasPaidAmount,
+            'is_checked_in' => $isCheckedIn,
+            'is_fully_cancelled' => $isFullyCancelled,
+            'is_verification_pending' => $isVerificationPending,
+            'verification_history_valid' => $verificationHistoryValid,
+        ];
+    }
+}
+
+if (!function_exists('vs_event_get_registration_delete_eligibility')) {
+    function vs_event_get_registration_delete_eligibility(PDO $pdo, int $registrationId, bool $forUpdate = false): array
+    {
+        $registrationId = max($registrationId, 0);
+        if ($registrationId <= 0) {
+            return [
+                'exists' => false,
+                'eligible' => false,
+                'reason' => 'Invalid registration selected.',
+                'row' => null,
+            ];
+        }
+
+        $sql = "SELECT
+                r.id,
+                r.event_id,
+                r.persons,
+                r.payment_status,
+                r.verification_status,
+                r.checkin_status,
+                COALESCE(ep.id, 0) AS payment_id,
+                COALESCE(ep.amount_paid, 0) AS amount_paid,
+                COALESCE(ep.status, '') AS payment_record_status,
+                COALESCE(ep.transaction_id, '') AS transaction_id,
+                COALESCE(c_tot.cancelled_persons_total, 0) AS cancelled_persons_total,
+                COALESCE(c_last.cancelled_persons, 0) AS latest_cancelled_persons
+            FROM event_registrations r
+            LEFT JOIN event_payments ep ON ep.registration_id = r.id
+            LEFT JOIN (
+                SELECT registration_id, SUM(cancelled_persons) AS cancelled_persons_total
+                FROM event_cancellations
+                GROUP BY registration_id
+            ) c_tot ON c_tot.registration_id = r.id
+            LEFT JOIN (
+                SELECT c1.registration_id, c1.cancelled_persons
+                FROM event_cancellations c1
+                INNER JOIN (
+                    SELECT registration_id, MAX(id) AS latest_id
+                    FROM event_cancellations
+                    GROUP BY registration_id
+                ) c2 ON c2.latest_id = c1.id
+            ) c_last ON c_last.registration_id = r.id
+            WHERE r.id = ?
+            LIMIT 1";
+        if ($forUpdate) {
+            $sql .= " FOR UPDATE";
+        }
+
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([$registrationId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$row) {
+            return [
+                'exists' => false,
+                'eligible' => false,
+                'reason' => 'Registration not found.',
+                'row' => null,
+            ];
+        }
+
+        $evaluation = vs_event_evaluate_registration_delete_eligibility($row);
+
+        return array_merge(
+            [
+                'exists' => true,
+                'row' => $row,
+            ],
+            $evaluation
+        );
+    }
+}
+
+if (!function_exists('vs_event_delete_registration_if_eligible')) {
+    function vs_event_delete_registration_if_eligible(PDO $pdo, int $registrationId): array
+    {
+        $registrationId = max($registrationId, 0);
+        if ($registrationId <= 0) {
+            throw new RuntimeException('Invalid registration selected.');
+        }
+
+        $startedTx = false;
+        if (!$pdo->inTransaction()) {
+            $pdo->beginTransaction();
+            $startedTx = true;
+        }
+
+        try {
+            $eligibility = vs_event_get_registration_delete_eligibility($pdo, $registrationId, true);
+            if (!$eligibility['exists']) {
+                throw new RuntimeException('Registration not found.');
+            }
+            if (empty($eligibility['eligible'])) {
+                throw new RuntimeException((string)($eligibility['reason'] ?? 'Registration is not eligible for delete.'));
+            }
+
+            $deleteStmt = $pdo->prepare("DELETE FROM event_registrations WHERE id = ? LIMIT 1");
+            $deleteStmt->execute([$registrationId]);
+            if ($deleteStmt->rowCount() <= 0) {
+                throw new RuntimeException('Unable to delete registration right now.');
+            }
+
+            if ($startedTx && $pdo->inTransaction()) {
+                $pdo->commit();
+            }
+
+            return [
+                'registration_id' => $registrationId,
+                'event_id' => (int)(($eligibility['row']['event_id'] ?? 0)),
+                'deleted' => true,
+            ];
+        } catch (Throwable $e) {
+            if ($startedTx && $pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            if ($e instanceof RuntimeException) {
+                throw $e;
+            }
+            throw new RuntimeException('Unable to delete registration right now.');
+        }
+    }
+}
+
 if (!function_exists('vs_event_get_youtube_embed_url')) {
     function vs_event_get_youtube_embed_url(string $url): string
     {

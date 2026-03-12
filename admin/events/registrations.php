@@ -778,6 +778,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['quick_refund_action']
     ]);
 }
 
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_registration'], $_POST['registration_id'])) {
+    $registrationId = (int)$_POST['registration_id'];
+    try {
+        vs_event_delete_registration_if_eligible($pdo, $registrationId);
+        $redirectList('Registration deleted permanently.', 'ok');
+    } catch (Throwable $e) {
+        $errMessage = $e instanceof RuntimeException ? $e->getMessage() : 'Unable to delete registration right now.';
+        $redirectList($errMessage, 'err', [
+            'quick_registration_id' => $registrationId,
+        ]);
+    }
+}
+
 $where = [];
 $params = [];
 if ($eventId > 0) {
@@ -941,6 +954,8 @@ $currentListUrl = $buildListUrl();
         .action-mark { background:#1a8917; }
         .action-print { background:#444; }
         .action-refund { background:#dc3545; }
+        .action-delete { background:#8b0000; }
+        .action-btn { border:none; cursor:pointer; font-family:inherit; }
         .action-request { background:#c92a2a; box-shadow:0 0 0 1px #ffffff55 inset; }
         .row-cancel-request td { background:#fff7f7; }
         .row-cancel-request td:first-child { border-left:4px solid #c92a2a; }
@@ -1155,6 +1170,20 @@ $currentListUrl = $buildListUrl();
                     $latestRefundStatus = 'pending';
                 }
                 $latestCancelId = (int)($row['latest_cancel_id'] ?? 0);
+                $deleteEligibility = vs_event_evaluate_registration_delete_eligibility([
+                    'persons' => (int)($row['persons'] ?? 1),
+                    'payment_status' => (string)($row['payment_status'] ?? ''),
+                    'verification_status' => (string)($row['verification_status'] ?? ''),
+                    'checkin_status' => (int)($row['checkin_status'] ?? 0),
+                    'payment_id' => (int)($row['payment_id'] ?? 0),
+                    'amount_paid' => (float)($row['amount_paid'] ?? 0),
+                    'payment_record_status' => (string)($row['payment_record_status'] ?? ''),
+                    'transaction_id' => (string)($row['transaction_id'] ?? ''),
+                    'cancelled_persons_total' => (int)($row['cancelled_persons_total'] ?? 0),
+                    'latest_cancelled_persons' => (int)($row['latest_cancelled_persons'] ?? 0),
+                ]);
+                $canDeleteRegistration = (bool)($deleteEligibility['eligible'] ?? false);
+                $deleteEligibilityReason = (string)($deleteEligibility['reason'] ?? '');
 
                 $paymentRecordText = trim((string)($row['payment_record_status'] ?? ''));
                 $paymentMethodText = trim((string)($row['payment_method'] ?? ''));
@@ -1295,6 +1324,17 @@ $currentListUrl = $buildListUrl();
                             <?php endif; ?>
                             <?php if ($paymentStatusLower === 'paid'): ?>
                                 <a class="action-link action-print" href="../../event-booking-confirmation.php?registration_id=<?php echo $registrationId; ?>&auto_print=1" target="_blank">Print</a>
+                            <?php endif; ?>
+                            <?php if ($canDeleteRegistration): ?>
+                                <form method="post" style="display:inline;" onsubmit="return confirm('Delete this registration permanently? This action cannot be undone.');">
+                                    <?php echo $buildFilterHiddenInputs(); ?>
+                                    <input type="hidden" name="action" value="delete">
+                                    <input type="hidden" name="delete_registration" value="1">
+                                    <input type="hidden" name="registration_id" value="<?php echo $registrationId; ?>">
+                                    <button type="submit" class="action-link action-delete action-btn">Delete</button>
+                                </form>
+                            <?php elseif ($isCancelled): ?>
+                                <span class="small" title="<?php echo htmlspecialchars($deleteEligibilityReason); ?>">Delete Locked</span>
                             <?php endif; ?>
                         </div>
                     </td>

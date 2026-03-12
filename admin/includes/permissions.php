@@ -119,6 +119,7 @@ if (!function_exists('vs_admin_permission_map')) {
             'events/event-packages.php' => ['pairs' => [['Events', 'Event Packages']]],
             'events/update-package-order.php' => ['pairs' => [['Events', 'Event Packages']], 'action' => 'edit'],
             'events/registrations.php' => ['pairs' => [['Events', 'Registrations']]],
+            'events/registration-view.php' => ['pairs' => [['Events', 'Registrations']]],
             'events/cancellations.php' => ['pairs' => [['Events', 'Cancellations']]],
             'events/checkin.php' => ['pairs' => [['Events', 'Check-In']]],
             'events/checkin-history.php' => ['pairs' => [['Events', 'Check-In'], ['Events', 'Check-In History']]],

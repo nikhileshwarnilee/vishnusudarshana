@@ -46,6 +46,25 @@ $redirectSelf = static function (int $id, string $return, string $msg, string $m
     exit;
 };
 
+$redirectReturn = static function (string $return, string $msg, string $msgType): void {
+    $return = trim($return);
+    if ($return === '') {
+        $return = 'registrations.php';
+    }
+    $fragment = '';
+    $hashPos = strpos($return, '#');
+    if ($hashPos !== false) {
+        $fragment = substr($return, $hashPos);
+        $return = substr($return, 0, $hashPos);
+    }
+    $separator = (strpos($return, '?') === false) ? '?' : '&';
+    header('Location: ' . $return . $separator . http_build_query([
+        'msg' => $msg,
+        'msg_type' => $msgType,
+    ]) . $fragment);
+    exit;
+};
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['review_cancel_request'], $_POST['request_id'], $_POST['request_action'])) {
     $requestId = (int)($_POST['request_id'] ?? 0);
     $requestAction = strtolower(trim((string)($_POST['request_action'] ?? '')));
@@ -90,6 +109,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['admin_cancel_booking'
         $redirectSelf($registrationId, $returnUrl, $okMessage, 'ok');
     } catch (Throwable $e) {
         $errMessage = $e instanceof RuntimeException ? $e->getMessage() : 'Unable to cancel booking.';
+        $redirectSelf($registrationId, $returnUrl, $errMessage, 'err');
+    }
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_registration'])) {
+    try {
+        vs_event_delete_registration_if_eligible($pdo, $registrationId);
+        $redirectReturn($returnUrl, 'Registration deleted permanently.', 'ok');
+    } catch (Throwable $e) {
+        $errMessage = $e instanceof RuntimeException ? $e->getMessage() : 'Unable to delete registration right now.';
         $redirectSelf($registrationId, $returnUrl, $errMessage, 'err');
     }
 }
@@ -385,6 +414,9 @@ foreach ($cancelRequestHistory as $requestRow) {
 
 $paymentStatusLower = strtolower(trim((string)($registration['payment_status'] ?? '')));
 $verificationStatusLower = strtolower(trim((string)($registration['verification_status'] ?? '')));
+$deleteEligibility = vs_event_get_registration_delete_eligibility($pdo, $registrationId, false);
+$viewCanDeleteRegistration = !empty($deleteEligibility['exists']) && !empty($deleteEligibility['eligible']);
+$viewDeleteBlockedReason = trim((string)($deleteEligibility['reason'] ?? ''));
 $viewCanCancel = (
     $paymentStatusLower !== 'cancelled' &&
     (int)($registration['checkin_status'] ?? 0) !== 1 &&
@@ -1124,6 +1156,27 @@ $pageTitle = 'Registration View';
             </form>
         <?php else: ?>
             <p class="small-note">This booking cannot be cancelled (already cancelled or checked in).</p>
+        <?php endif; ?>
+    </section>
+
+    <section class="surface panel" style="border-color:#f0d6d6;background:#fffafb;">
+        <h3>Delete Registration</h3>
+        <?php if ($viewCanDeleteRegistration): ?>
+            <p class="help">This registration meets delete policy: fully cancelled, zero paid amount, not checked-in, and no pending verification.</p>
+            <form method="post" autocomplete="off" onsubmit="return confirm('Delete this registration permanently? This action cannot be undone.');">
+                <input type="hidden" name="action" value="delete">
+                <input type="hidden" name="registration_id" value="<?php echo (int)$registration['id']; ?>">
+                <input type="hidden" name="return" value="<?php echo htmlspecialchars($returnUrl); ?>">
+                <input type="hidden" name="delete_registration" value="1">
+                <button type="submit" class="btn btn-danger">Delete Registration Permanently</button>
+            </form>
+        <?php else: ?>
+            <p class="small-note">
+                Delete is locked for this booking.
+                <?php if ($viewDeleteBlockedReason !== ''): ?>
+                    <br><?php echo htmlspecialchars($viewDeleteBlockedReason); ?>
+                <?php endif; ?>
+            </p>
         <?php endif; ?>
     </section>
 
