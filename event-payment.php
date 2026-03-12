@@ -34,69 +34,14 @@ $formatUpiAmount = static function (float $amount): string {
     return $formatted !== '' ? $formatted : '0';
 };
 
-$buildUniqueUpiReference = static function (string $seedPrefix = 'EVT'): string {
-    $seedPrefix = strtoupper(preg_replace('/[^A-Z0-9]/', '', $seedPrefix));
-    if ($seedPrefix === '') {
-        $seedPrefix = 'EVT';
-    }
-    $seedPrefix = substr($seedPrefix, 0, 8);
-
-    $randomPart = '';
-    try {
-        $randomPart = strtoupper(bin2hex(random_bytes(4)));
-    } catch (Throwable $e) {
-        $randomPart = strtoupper(substr(sha1(uniqid((string)mt_rand(), true)), 0, 8));
-    }
-
-    return $seedPrefix . date('YmdHis') . $randomPart;
-};
-
-$buildUpiIntentLink = static function (array $baseParams, float $amount) use ($formatUpiAmount): string {
-    if (empty($baseParams['pa'])) {
-        return '';
-    }
-    $pa = preg_replace('/\s+/', '', (string)($baseParams['pa'] ?? ''));
-    $pn = trim((string)($baseParams['pn'] ?? 'VISHNUSUDARSHANA DHARMIK SANSKAR KENDRA'));
-    $tn = trim((string)($baseParams['tn'] ?? 'Verified Merchant'));
+$buildUpiIntentLink = static function (string $upiId, float $amount) use ($formatUpiAmount): string {
+    $pa = preg_replace('/\s+/', '', $upiId);
     $am = $formatUpiAmount($amount);
     if ($pa === '') {
         return '';
     }
 
-    $values = [
-        'pa' => $pa,
-        'pn' => $pn,
-        'mc' => trim((string)($baseParams['mc'] ?? '')),
-        'tn' => $tn,
-        'am' => $am,
-        'cu' => 'INR',
-        'url' => trim((string)($baseParams['url'] ?? '')),
-        'mode' => trim((string)($baseParams['mode'] ?? '')),
-        'orgid' => trim((string)($baseParams['orgid'] ?? '')),
-        'mid' => trim((string)($baseParams['mid'] ?? '')),
-        'msid' => trim((string)($baseParams['msid'] ?? '')),
-        'mtid' => trim((string)($baseParams['mtid'] ?? '')),
-        'sign' => trim((string)($baseParams['sign'] ?? '')),
-    ];
-    $paramOrder = ['pa', 'pn', 'mc', 'tn', 'am', 'cu', 'url', 'mode', 'orgid', 'mid', 'msid', 'mtid', 'sign'];
-    $queryParts = [];
-    foreach ($paramOrder as $key) {
-        $rawValue = (string)($values[$key] ?? '');
-        if ($rawValue === '') {
-            continue;
-        }
-        if ($key === 'pa') {
-            // Keep UPI address readable with '@' (no %40).
-            $queryParts[] = 'pa=' . $rawValue;
-            continue;
-        }
-        $queryParts[] = $key . '=' . rawurlencode($rawValue);
-    }
-    if (empty($queryParts)) {
-        return '';
-    }
-
-    return 'upi://pay?' . implode('&', $queryParts);
+    return 'upi://pay?pa=' . $pa . '&am=' . rawurlencode($am) . '&cu=INR';
 };
 
 $loadRegistrationById = static function (PDO $pdo, int $regId): ?array {
@@ -1040,19 +985,10 @@ $displayNowAmount = round($dueNow, 2);
 $upiIntentBaseParams = [];
 $initialUpiIntentLink = '';
 if ($upiId !== '') {
-    $signedMerchantUpi = 'vish98500574879@barodampay';
-    $signatureValue = (strcasecmp($upiId, $signedMerchantUpi) === 0)
-        ? 'MEYCIQDtxVt8bWil73OnmyG+oTpjeaCFO3hDNNdGUjnaPXUHxAIhAOXAfLCQINa67sbltmr2l4410volR4zMK5Z4TFyD06w/'
-        : '';
     $upiIntentBaseParams = [
         'pa' => $upiId,
-        'pn' => 'VISHNUSUDARSHANA DHARMIK SANSKAR KENDRA',
-        'tn' => 'Verified Merchant',
-        'mode' => '02',
-        'orgid' => '159012',
-        'sign' => $signatureValue,
     ];
-    $initialUpiIntentLink = $buildUpiIntentLink($upiIntentBaseParams, $displayNowAmount);
+    $initialUpiIntentLink = $buildUpiIntentLink($upiId, $displayNowAmount);
 }
 $isPaid = ((string)$registration['payment_status'] === 'Paid');
 $showChoiceSelector = ((string)$packageData['payment_mode'] === 'optional' && !$isRemainingStage && !$isPaid);
@@ -1283,39 +1219,8 @@ $methodLabelMap = [
         if (!pa) {
             return '';
         }
-        const values = {
-            pa: pa,
-            pn: String(upiIntentBaseParams.pn || 'VISHNUSUDARSHANA DHARMIK SANSKAR KENDRA'),
-            mc: String(upiIntentBaseParams.mc || ''),
-            tn: String(upiIntentBaseParams.tn || 'Verified Merchant'),
-            am: formatAmount(amount),
-            cu: 'INR',
-            url: String(upiIntentBaseParams.url || ''),
-            mode: String(upiIntentBaseParams.mode || ''),
-            orgid: String(upiIntentBaseParams.orgid || ''),
-            mid: String(upiIntentBaseParams.mid || ''),
-            msid: String(upiIntentBaseParams.msid || ''),
-            mtid: String(upiIntentBaseParams.mtid || ''),
-            sign: String(upiIntentBaseParams.sign || '')
-        };
-        const order = ['pa', 'pn', 'mc', 'tn', 'am', 'cu', 'url', 'mode', 'orgid', 'mid', 'msid', 'mtid', 'sign'];
-        const parts = [];
-        order.forEach(function (key) {
-            const rawValue = String(values[key] || '');
-            if (rawValue === '') {
-                return;
-            }
-            if (key === 'pa') {
-                // Keep pa readable with '@' and avoid %40.
-                parts.push('pa=' + rawValue);
-                return;
-            }
-            parts.push(key + '=' + encodeURIComponent(rawValue));
-        });
-        if (parts.length === 0) {
-            return '';
-        }
-        return 'upi://pay?' + parts.join('&');
+        const am = formatAmount(amount);
+        return 'upi://pay?pa=' + pa + '&am=' + encodeURIComponent(am) + '&cu=INR';
     }
 
     function refreshAmounts() {
