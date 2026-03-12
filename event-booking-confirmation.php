@@ -109,7 +109,7 @@ $buildBookingTimeline = static function (array $ctx): array {
     if ($isCancelled) {
         if ($cancelLatest) {
             $refundStatus = strtolower(trim((string)($cancelLatest['refund_status'] ?? 'pending')));
-            $refundAmount = (float)($cancelLatest['refund_amount'] ?? 0);
+            $refundAmount = (float)($cancelLatest['display_refund_amount'] ?? ($cancelLatest['refund_amount'] ?? 0));
             $cancelType = ucfirst((string)($cancelLatest['cancellation_type'] ?? 'full'));
             $cancelPersons = (int)($cancelLatest['cancelled_persons'] ?? 0);
             $cancelStepState = ($refundStatus === 'pending') ? 'current' : (($refundStatus === 'rejected') ? 'info' : 'done');
@@ -224,7 +224,7 @@ $buildBookingTimeline = static function (array $ctx): array {
     foreach ($cancelHistory as $cancelRow) {
         $cancelType = ucfirst((string)($cancelRow['cancellation_type'] ?? 'full'));
         $cancelPersons = (int)($cancelRow['cancelled_persons'] ?? 0);
-        $refundAmount = (float)($cancelRow['refund_amount'] ?? 0);
+        $refundAmount = (float)($cancelRow['display_refund_amount'] ?? ($cancelRow['refund_amount'] ?? 0));
         $refundStatus = strtolower(trim((string)($cancelRow['refund_status'] ?? 'pending')));
         $cancelState = 'info';
         if ($refundStatus === 'pending') {
@@ -395,12 +395,25 @@ if ($remainingAmount <= 0 && strtolower((string)$row['payment_status']) !== 'can
     $remainingAmount = round(max($totalAmount - $amountPaid, 0), 2);
 }
 
+$cancelRefundContext = [
+    'payment_status' => (string)($row['payment_status'] ?? ''),
+    'verification_status' => (string)($row['verification_status'] ?? ''),
+    'paid_amount' => $amountPaid,
+];
+if (is_array($cancelInfo)) {
+    $cancelInfo['display_refund_amount'] = vs_event_resolve_refund_amount(array_merge($cancelInfo, $cancelRefundContext));
+}
+foreach ($cancelHistory as &$cancelHistoryRow) {
+    $cancelHistoryRow['display_refund_amount'] = vs_event_resolve_refund_amount(array_merge($cancelHistoryRow, $cancelRefundContext));
+}
+unset($cancelHistoryRow);
+
 $paymentStatus = strtolower(trim((string)($row['payment_status'] ?? '')));
 $verificationStatus = strtolower(trim((string)($row['verification_status'] ?? '')));
 $paymentMethod = strtolower(trim((string)($row['payment_method'] ?? '')));
 $paymentRecordStatus = strtolower(trim((string)($row['payment_record_status'] ?? '')));
 
-$isCancelled = ($paymentStatus === 'cancelled');
+$isCancelled = ($paymentStatus === 'cancelled' || $verificationStatus === 'cancelled');
 $isPaid = ($paymentStatus === 'paid');
 $isPartialPaid = ($paymentStatus === 'partial paid');
 $isManualOrCash = in_array($paymentMethod, ['manual upi', 'cash'], true);
@@ -548,7 +561,11 @@ if (in_array($status, ['paid', 'success', 'successful'], true) || strtolower((st
     $messageTitle = 'Booking Updated';
     $messageBody = 'Booking was partially cancelled successfully.';
     $statusClass = 'pending';
-} elseif (in_array($status, ['cancelled'], true) || strtolower((string)$row['payment_status']) === 'cancelled') {
+} elseif (
+    in_array($status, ['cancelled'], true) ||
+    strtolower((string)$row['payment_status']) === 'cancelled' ||
+    strtolower((string)$row['verification_status']) === 'cancelled'
+) {
     $messageTitle = 'Booking Cancelled';
     if (strtolower((string)($cancelInfo['refund_status'] ?? '')) === 'processed') {
         $messageBody = 'Cancellation approved and refund marked as processed.';
@@ -572,6 +589,7 @@ $isCancellationAllowed = ((int)($row['cancellation_allowed'] ?? 1) === 1);
 $canCancel = (
     $isCancellationAllowed &&
     strtolower((string)$row['payment_status']) !== 'cancelled' &&
+    strtolower((string)$row['verification_status']) !== 'cancelled' &&
     (int)($row['checkin_status'] ?? 0) !== 1 &&
     !$hasPendingCancelRequest
 );
@@ -787,7 +805,7 @@ $bookingTimeline = $buildBookingTimeline([
                 <div class="detail-list">
                     <div><span>Type</span><strong><?php echo htmlspecialchars((string)($cancelInfo['cancellation_type'] ?? 'full')); ?></strong></div>
                     <div><span>Cancelled Persons</span><strong><?php echo (int)($cancelInfo['cancelled_persons'] ?? 0); ?></strong></div>
-                    <div><span>Refund Amount</span><strong>Rs. <?php echo number_format((float)$cancelInfo['refund_amount'], 0, '.', ''); ?></strong></div>
+                    <div><span>Refund Amount</span><strong>Rs. <?php echo number_format((float)($cancelInfo['display_refund_amount'] ?? $cancelInfo['refund_amount'] ?? 0), 0, '.', ''); ?></strong></div>
                     <div><span>Refund Status</span><strong><?php echo htmlspecialchars((string)$cancelInfo['refund_status']); ?></strong></div>
                     <div><span>Reason</span><strong><?php echo nl2br(htmlspecialchars((string)$cancelInfo['cancel_reason'])); ?></strong></div>
                 </div>
@@ -948,7 +966,7 @@ $bookingTimeline = $buildBookingTimeline([
                 <h3>Cancellation / Refund</h3>
                 <table class="print-table">
                     <tr><th>Type</th><td><?php echo htmlspecialchars((string)($cancelInfo['cancellation_type'] ?? 'full')); ?></td><th>Cancelled Persons</th><td><?php echo (int)($cancelInfo['cancelled_persons'] ?? 0); ?></td></tr>
-                    <tr><th>Refund Amount</th><td>Rs. <?php echo number_format((float)$cancelInfo['refund_amount'], 0, '.', ''); ?></td><th>Refund Status</th><td><?php echo htmlspecialchars((string)$cancelInfo['refund_status']); ?></td></tr>
+                    <tr><th>Refund Amount</th><td>Rs. <?php echo number_format((float)($cancelInfo['display_refund_amount'] ?? $cancelInfo['refund_amount'] ?? 0), 0, '.', ''); ?></td><th>Refund Status</th><td><?php echo htmlspecialchars((string)$cancelInfo['refund_status']); ?></td></tr>
                     <tr><th>Reason</th><td colspan="3"><?php echo nl2br(htmlspecialchars((string)$cancelInfo['cancel_reason'])); ?></td></tr>
                 </table>
             </div>

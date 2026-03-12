@@ -159,7 +159,7 @@ $buildBookingTimeline = static function (array $ctx): array {
     if ($isCancelled) {
         if ($cancelLatest) {
             $refundStatus = strtolower(trim((string)($cancelLatest['refund_status'] ?? 'pending')));
-            $refundAmount = (float)($cancelLatest['refund_amount'] ?? 0);
+            $refundAmount = (float)($cancelLatest['display_refund_amount'] ?? ($cancelLatest['refund_amount'] ?? 0));
             $cancelType = ucfirst((string)($cancelLatest['cancellation_type'] ?? 'full'));
             $cancelPersons = (int)($cancelLatest['cancelled_persons'] ?? 0);
             $cancelStepState = ($refundStatus === 'pending') ? 'current' : (($refundStatus === 'rejected') ? 'info' : 'done');
@@ -274,7 +274,7 @@ $buildBookingTimeline = static function (array $ctx): array {
     foreach ($cancelHistory as $cancelRow) {
         $cancelType = ucfirst((string)($cancelRow['cancellation_type'] ?? 'full'));
         $cancelPersons = (int)($cancelRow['cancelled_persons'] ?? 0);
-        $refundAmount = (float)($cancelRow['refund_amount'] ?? 0);
+        $refundAmount = (float)($cancelRow['display_refund_amount'] ?? ($cancelRow['refund_amount'] ?? 0));
         $refundStatus = strtolower(trim((string)($cancelRow['refund_status'] ?? 'pending')));
         $cancelState = 'info';
         if ($refundStatus === 'pending') {
@@ -404,6 +404,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 $rows = [];
 $cancellationMap = [];
 $cancellationRequestMap = [];
+$registrationRefundContext = [];
 if ($verifiedContext) {
     [$whereSql, $whereParams] = $buildTrackWhereClause($verifiedContext);
     if ($whereSql === '') {
@@ -473,7 +474,7 @@ if ($verifiedContext) {
             $paymentMethod = strtolower(trim((string)($row['payment_method'] ?? '')));
             $paymentRecordStatus = strtolower(trim((string)($row['payment_record_status'] ?? '')));
 
-            $isCancelled = ($paymentStatus === 'cancelled');
+            $isCancelled = ($paymentStatus === 'cancelled' || $verificationStatus === 'cancelled');
             $isPaid = ($paymentStatus === 'paid');
             $isPartialPaid = ($paymentStatus === 'partial paid');
             $isManualOrCash = in_array($paymentMethod, ['manual upi', 'cash'], true);
@@ -590,6 +591,12 @@ if ($verifiedContext) {
             $row['show_make_payment_button'] = $showMakePaymentButton ? 1 : 0;
             $row['show_remaining_payment_button'] = $showRemainingPaymentButton ? 1 : 0;
             $row['can_cancel'] = (((int)($row['cancellation_allowed'] ?? 1) === 1) && !$isCancelled && (int)($row['checkin_status'] ?? 0) !== 1) ? 1 : 0;
+
+            $registrationRefundContext[(int)($row['id'] ?? 0)] = [
+                'payment_status' => (string)($row['payment_status'] ?? ''),
+                'verification_status' => (string)($row['verification_status'] ?? ''),
+                'paid_amount' => (float)$verifiedPaidAmount,
+            ];
         }
         unset($row);
 
@@ -615,6 +622,8 @@ if ($verifiedContext) {
                     if ($regId <= 0) {
                         continue;
                     }
+                    $refundContext = $registrationRefundContext[$regId] ?? [];
+                    $cancelRow['display_refund_amount'] = vs_event_resolve_refund_amount(array_merge($cancelRow, $refundContext));
                     if (!isset($cancellationMap[$regId])) {
                         $cancellationMap[$regId] = [];
                     }
@@ -685,7 +694,10 @@ require_once 'header.php';
                         <?php foreach ($rows as $row): ?>
                             <?php
                             $registrationId = (int)$row['id'];
-                            $isCancelled = (strtolower((string)($row['payment_status'] ?? '')) === 'cancelled');
+                            $isCancelled = (
+                                strtolower((string)($row['payment_status'] ?? '')) === 'cancelled' ||
+                                strtolower((string)($row['verification_status'] ?? '')) === 'cancelled'
+                            );
                             $cancelHistory = $cancellationMap[$registrationId] ?? [];
                             $cancelRequestHistory = $cancellationRequestMap[$registrationId] ?? [];
                             $pendingCancelRequest = null;
@@ -941,7 +953,7 @@ require_once 'header.php';
                                                     <tr>
                                                         <td><?php echo htmlspecialchars(ucfirst((string)($cancelItem['cancellation_type'] ?? 'full'))); ?></td>
                                                         <td><?php echo (int)($cancelItem['cancelled_persons'] ?? 0); ?></td>
-                                                        <td>Rs. <?php echo number_format((float)($cancelItem['refund_amount'] ?? 0), 0, '.', ''); ?></td>
+                                                        <td>Rs. <?php echo number_format((float)($cancelItem['display_refund_amount'] ?? $cancelItem['refund_amount'] ?? 0), 0, '.', ''); ?></td>
                                                         <td><?php echo htmlspecialchars((string)($cancelItem['refund_status'] ?? 'pending')); ?></td>
                                                         <td><?php echo htmlspecialchars((string)($cancelItem['cancelled_at'] ?? '')); ?></td>
                                                     </tr>

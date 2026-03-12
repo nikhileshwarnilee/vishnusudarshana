@@ -780,6 +780,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['quick_refund_action']
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_registration'], $_POST['registration_id'])) {
     $registrationId = (int)$_POST['registration_id'];
+    admin_enforce_mapped_permission('delete');
     try {
         vs_event_delete_registration_if_eligible($pdo, $registrationId);
         $redirectList('Registration deleted permanently.', 'ok');
@@ -1161,10 +1162,16 @@ $currentListUrl = $buildListUrl();
                     $cancelledPersonsTotal = max((int)($row['persons'] ?? 1), 1);
                 }
                 $cancelAmount = round($cancelledPersonsTotal * (float)($row['package_price_total'] ?? 0), 2);
-                $refundAmount = round((float)($row['refund_amount_total'] ?? 0), 2);
-                if ($refundAmount <= 0) {
-                    $refundAmount = round((float)($row['latest_refund_amount'] ?? 0), 2);
+                $rawRefundAmount = round((float)($row['refund_amount_total'] ?? 0), 2);
+                if ($rawRefundAmount <= 0) {
+                    $rawRefundAmount = round((float)($row['latest_refund_amount'] ?? 0), 2);
                 }
+                $refundAmount = vs_event_resolve_refund_amount([
+                    'payment_status' => (string)($row['payment_status'] ?? ''),
+                    'verification_status' => (string)($row['verification_status'] ?? ''),
+                    'paid_amount' => $paidAmount,
+                    'refund_amount' => $rawRefundAmount,
+                ]);
                 $latestRefundStatus = strtolower(trim((string)($row['latest_refund_status'] ?? '')));
                 if ($latestRefundStatus === '') {
                     $latestRefundStatus = 'pending';
@@ -1240,21 +1247,20 @@ $currentListUrl = $buildListUrl();
                     </td>
                     <td>
                         <?php if ($isCancelled): ?>
-                            <?php if ($paidAmount > 0): ?>
-                                <div class="small"><strong>Cancel Amt:</strong> Rs <?php echo htmlspecialchars($formatMoney($cancelAmount)); ?></div>
-                                <div class="small"><strong>Refund:</strong> Rs <?php echo htmlspecialchars($formatMoney($refundAmount)); ?></div>
-                                <div class="small">
-                                    <span class="chip <?php echo htmlspecialchars($latestRefundStatus); ?>">
-                                        <?php echo htmlspecialchars(ucfirst($latestRefundStatus)); ?>
-                                    </span>
+                            <div class="small"><strong>Cancel Amt:</strong> Rs <?php echo htmlspecialchars($formatMoney($cancelAmount)); ?></div>
+                            <div class="small"><strong>Refund:</strong> Rs <?php echo htmlspecialchars($formatMoney($refundAmount)); ?></div>
+                            <?php if ($paidAmount <= 0): ?>
+                                <div class="small"><strong>Paid:</strong> Rs <?php echo htmlspecialchars($formatMoney(0)); ?></div>
+                            <?php endif; ?>
+                            <div class="small">
+                                <span class="chip <?php echo htmlspecialchars($latestRefundStatus); ?>">
+                                    <?php echo htmlspecialchars(ucfirst($latestRefundStatus)); ?>
+                                </span>
+                            </div>
+                            <?php if ($latestCancelId > 0 && $latestRefundStatus === 'pending'): ?>
+                                <div class="small" style="margin-top:4px;">
+                                    <a class="money-link" href="<?php echo htmlspecialchars($quickRefundUrl); ?>">Update Refund</a>
                                 </div>
-                                <?php if ($latestCancelId > 0 && $latestRefundStatus === 'pending'): ?>
-                                    <div class="small" style="margin-top:4px;">
-                                        <a class="money-link" href="<?php echo htmlspecialchars($quickRefundUrl); ?>">Update Refund</a>
-                                    </div>
-                                <?php endif; ?>
-                            <?php else: ?>
-                                <span class="small"><strong>Unpaid</strong></span>
                             <?php endif; ?>
                         <?php else: ?>
                             <?php if ($hasPendingCancelRequest): ?>

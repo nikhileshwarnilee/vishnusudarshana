@@ -283,11 +283,21 @@ if ($eventId > 0 && $selectedEvent !== null) {
         LEFT JOIN event_package_date_prices pdp ON pdp.package_id = p.id AND pdp.event_date_id = r.event_date_id
         LEFT JOIN event_payments ep ON ep.registration_id = r.id
         LEFT JOIN (
-            SELECT registration_id,
-                SUM(cancelled_persons) AS cancelled_persons_total,
-                SUM(refund_amount) AS refund_amount_total
-            FROM event_cancellations
-            GROUP BY registration_id
+            SELECT
+                c.registration_id,
+                SUM(c.cancelled_persons) AS cancelled_persons_total,
+                SUM(
+                    CASE
+                        WHEN (LOWER(COALESCE(r2.payment_status, '')) = 'cancelled' OR LOWER(COALESCE(r2.verification_status, '')) = 'cancelled')
+                             AND LOWER(COALESCE(c.cancellation_type, '')) = 'full'
+                        THEN GREATEST(COALESCE(ep2.amount_paid, ep2.amount, 0), 0)
+                        ELSE GREATEST(COALESCE(c.refund_amount, 0), 0)
+                    END
+                ) AS refund_amount_total
+            FROM event_cancellations c
+            INNER JOIN event_registrations r2 ON r2.id = c.registration_id
+            LEFT JOIN event_payments ep2 ON ep2.registration_id = c.registration_id
+            GROUP BY c.registration_id
         ) c_tot ON c_tot.registration_id = r.id
         LEFT JOIN (
             SELECT registration_id,
@@ -304,15 +314,56 @@ if ($eventId > 0 && $selectedEvent !== null) {
     $cancelSummarySql = "SELECT
             COUNT(*) AS cancellation_records,
             COALESCE(SUM(c.cancelled_persons), 0) AS cancelled_persons_total,
-            COALESCE(SUM(c.refund_amount), 0) AS refund_amount_total,
+            COALESCE(SUM(
+                CASE
+                    WHEN (LOWER(COALESCE(r.payment_status, '')) = 'cancelled' OR LOWER(COALESCE(r.verification_status, '')) = 'cancelled')
+                         AND LOWER(COALESCE(c.cancellation_type, '')) = 'full'
+                    THEN GREATEST(COALESCE(ep.amount_paid, ep.amount, 0), 0)
+                    ELSE GREATEST(COALESCE(c.refund_amount, 0), 0)
+                END
+            ), 0) AS refund_amount_total,
             SUM(CASE WHEN c.refund_status = 'pending' THEN 1 ELSE 0 END) AS refund_pending_count,
-            COALESCE(SUM(CASE WHEN c.refund_status = 'pending' THEN c.refund_amount ELSE 0 END), 0) AS refund_pending_amount,
+            COALESCE(SUM(
+                CASE
+                    WHEN c.refund_status = 'pending' THEN
+                        CASE
+                            WHEN (LOWER(COALESCE(r.payment_status, '')) = 'cancelled' OR LOWER(COALESCE(r.verification_status, '')) = 'cancelled')
+                                 AND LOWER(COALESCE(c.cancellation_type, '')) = 'full'
+                            THEN GREATEST(COALESCE(ep.amount_paid, ep.amount, 0), 0)
+                            ELSE GREATEST(COALESCE(c.refund_amount, 0), 0)
+                        END
+                    ELSE 0
+                END
+            ), 0) AS refund_pending_amount,
             SUM(CASE WHEN c.refund_status = 'processed' THEN 1 ELSE 0 END) AS refund_processed_count,
-            COALESCE(SUM(CASE WHEN c.refund_status = 'processed' THEN c.refund_amount ELSE 0 END), 0) AS refund_processed_amount,
+            COALESCE(SUM(
+                CASE
+                    WHEN c.refund_status = 'processed' THEN
+                        CASE
+                            WHEN (LOWER(COALESCE(r.payment_status, '')) = 'cancelled' OR LOWER(COALESCE(r.verification_status, '')) = 'cancelled')
+                                 AND LOWER(COALESCE(c.cancellation_type, '')) = 'full'
+                            THEN GREATEST(COALESCE(ep.amount_paid, ep.amount, 0), 0)
+                            ELSE GREATEST(COALESCE(c.refund_amount, 0), 0)
+                        END
+                    ELSE 0
+                END
+            ), 0) AS refund_processed_amount,
             SUM(CASE WHEN c.refund_status = 'rejected' THEN 1 ELSE 0 END) AS refund_rejected_count,
-            COALESCE(SUM(CASE WHEN c.refund_status = 'rejected' THEN c.refund_amount ELSE 0 END), 0) AS refund_rejected_amount
+            COALESCE(SUM(
+                CASE
+                    WHEN c.refund_status = 'rejected' THEN
+                        CASE
+                            WHEN (LOWER(COALESCE(r.payment_status, '')) = 'cancelled' OR LOWER(COALESCE(r.verification_status, '')) = 'cancelled')
+                                 AND LOWER(COALESCE(c.cancellation_type, '')) = 'full'
+                            THEN GREATEST(COALESCE(ep.amount_paid, ep.amount, 0), 0)
+                            ELSE GREATEST(COALESCE(c.refund_amount, 0), 0)
+                        END
+                    ELSE 0
+                END
+            ), 0) AS refund_rejected_amount
         FROM event_cancellations c
         INNER JOIN event_registrations r ON r.id = c.registration_id
+        LEFT JOIN event_payments ep ON ep.registration_id = c.registration_id
         $detailWhereSql";
     $cancelSummaryStmt = $pdo->prepare($cancelSummarySql);
     $cancelSummaryStmt->execute($detailParams);

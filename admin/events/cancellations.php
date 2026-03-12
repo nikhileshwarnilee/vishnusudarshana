@@ -128,6 +128,7 @@ $stmt = $pdo->prepare("SELECT
         r.phone,
         r.persons,
         r.payment_status,
+        r.verification_status,
         e.title AS event_title,
         e.event_type,
         COALESCE(d.event_date, e.event_date) AS event_date,
@@ -254,6 +255,7 @@ unset($row);
             <?php else: ?>
                 <?php foreach ($rows as $row): ?>
                     <?php $statusClass = (string)$row['refund_status']; if (!in_array($statusClass, ['pending','processed','rejected'], true)) { $statusClass = 'pending'; } ?>
+                    <?php $displayRefundAmount = vs_event_resolve_refund_amount($row); ?>
                     <tr>
                         <td><?php echo (int)$row['id']; ?></td>
                         <td><?php echo htmlspecialchars((string)$row['booking_reference']); ?></td>
@@ -264,7 +266,7 @@ unset($row);
                         <td><?php echo (int)($row['cancelled_persons'] ?? 0); ?></td>
                         <td><?php echo (int)$row['persons']; ?></td>
                         <td>Rs <?php echo number_format((float)$row['paid_amount'], 2); ?></td>
-                        <td>Rs <?php echo number_format((float)$row['refund_amount'], 2); ?></td>
+                        <td>Rs <?php echo number_format($displayRefundAmount, 2); ?></td>
                         <td><?php echo nl2br(htmlspecialchars((string)$row['cancel_reason'])); ?></td>
                         <td><span class="tag <?php echo $statusClass; ?>"><?php echo htmlspecialchars((string)$row['refund_status']); ?></span></td>
                         <td><?php echo htmlspecialchars((string)$row['cancelled_at']); ?></td>

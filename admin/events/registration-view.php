@@ -114,6 +114,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['admin_cancel_booking'
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_registration'])) {
+    admin_enforce_mapped_permission('delete');
     try {
         vs_event_delete_registration_if_eligible($pdo, $registrationId);
         $redirectReturn($returnUrl, 'Registration deleted permanently.', 'ok');
@@ -1198,12 +1199,20 @@ $pageTitle = 'Registration View';
                     </thead>
                     <tbody>
                     <?php foreach ($cancelHistory as $cancelRow): ?>
+                        <?php
+                        $displayRefundAmount = vs_event_resolve_refund_amount([
+                            'payment_status' => (string)($registration['payment_status'] ?? ''),
+                            'verification_status' => (string)($registration['verification_status'] ?? ''),
+                            'paid_amount' => (float)$paidSoFar,
+                            'refund_amount' => (float)($cancelRow['refund_amount'] ?? 0),
+                        ]);
+                        ?>
                         <tr>
                             <td><?php echo (int)($cancelRow['id'] ?? 0); ?></td>
                             <td><?php echo htmlspecialchars((string)($cancelRow['cancellation_type'] ?? 'full')); ?></td>
                             <td><?php echo (int)($cancelRow['cancelled_persons'] ?? 0); ?></td>
                             <td><?php echo nl2br(htmlspecialchars((string)($cancelRow['cancel_reason'] ?? '-'))); ?></td>
-                            <td>Rs <?php echo number_format((float)($cancelRow['refund_amount'] ?? 0), 0, '.', ''); ?></td>
+                            <td>Rs <?php echo number_format($displayRefundAmount, 0, '.', ''); ?></td>
                             <td><?php echo htmlspecialchars((string)($cancelRow['refund_status'] ?? 'pending')); ?></td>
                             <td><?php echo htmlspecialchars((string)($cancelRow['cancelled_at'] ?? '-')); ?></td>
                         </tr>

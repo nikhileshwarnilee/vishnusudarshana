@@ -1434,6 +1434,30 @@ if (!function_exists('vs_event_phone_last10')) {
     }
 }
 
+if (!function_exists('vs_event_resolve_refund_amount')) {
+    function vs_event_resolve_refund_amount(array $row): float
+    {
+        $refundAmount = round(max((float)($row['refund_amount'] ?? 0), 0), 2);
+
+        $paymentStatus = strtolower(trim((string)($row['payment_status'] ?? '')));
+        $verificationStatus = strtolower(trim((string)($row['verification_status'] ?? '')));
+        $isCancelledBooking = ($paymentStatus === 'cancelled' || $verificationStatus === 'cancelled');
+        if (!$isCancelledBooking) {
+            return $refundAmount;
+        }
+
+        $paidAmount = (float)($row['paid_amount'] ?? ($row['amount_paid'] ?? 0));
+        if ($paidAmount <= 0) {
+            $paidAmount = (float)($row['payment_amount'] ?? 0);
+        }
+        if ($paidAmount < 0) {
+            $paidAmount = 0;
+        }
+
+        return round($paidAmount, 2);
+    }
+}
+
 if (!function_exists('vs_event_cancel_registration')) {
     function vs_event_cancel_registration(
         PDO $pdo,
@@ -1550,7 +1574,11 @@ if (!function_exists('vs_event_cancel_registration')) {
             }
 
             $refundAllowed = ((int)($row['refund_allowed'] ?? 1) === 1) || $adminOverride;
-            $refundAmount = $refundAllowed ? round(min($amountPaid, $perPersonPaid * $cancelPersons), 2) : 0.0;
+            if ($isFullCancellation) {
+                $refundAmount = round(max($amountPaid, 0), 2);
+            } else {
+                $refundAmount = $refundAllowed ? round(min($amountPaid, $perPersonPaid * $cancelPersons), 2) : 0.0;
+            }
             $refundStatus = ($refundAllowed && $refundAmount > 0) ? 'pending' : 'rejected';
             if ($forcedRefundStatus !== '') {
                 $refundStatus = $forcedRefundStatus;
