@@ -1213,7 +1213,7 @@ if (!function_exists('vs_event_normalize_payment_methods')) {
             return [];
         }
 
-        $allowed = ['razorpay', 'upi', 'cash'];
+        $allowed = ['razorpay', 'upi', 'cash', 'pay_later'];
         $raw = [];
         if (is_array($methods)) {
             $raw = $methods;

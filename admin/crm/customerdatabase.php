@@ -212,7 +212,7 @@ $customers = $stmt->fetchAll();
                         <?= htmlspecialchars($c['name']) ?>
                     </a>
                 </td>
-                <td><?= htmlspecialchars($c['mobile']) ?></td>
+                <td><?= htmlspecialchars(vs_format_mobile_for_display($c['mobile'] ?? '')) ?></td>
                 <td><?= htmlspecialchars($c['address_city']) ?></td>
                 <td>
                     <button class="action-btn" style="background:#25D366;color:#fff;padding:6px 12px;border:none;border-radius:4px;font-weight:600;cursor:pointer;font-size:0.9em;" onclick="openCustMsgModal('<?= htmlspecialchars(addslashes($c['name'])) ?>', '<?= htmlspecialchars($c['mobile']) ?>')">Send Msg</button>

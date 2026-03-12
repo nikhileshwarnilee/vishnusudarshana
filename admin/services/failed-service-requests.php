@@ -94,6 +94,7 @@ foreach ($pendingRows as $row) {
         'tracking_id' => (string)($row['payment_id'] ?? ''),
         'customer_name' => (string)($customerDetails['full_name'] ?? ($formData['full_name'] ?? '')),
         'mobile' => (string)($customerDetails['mobile'] ?? ($formData['mobile'] ?? '')),
+        'mobile_context' => !empty($customerDetails) ? $customerDetails : $formData,
         'category_slug' => (string)($row['category'] ?? ''),
         'created_at' => (string)($row['created_at'] ?? ''),
         'selected_products' => (string)($row['selected_products'] ?? ''),
@@ -119,6 +120,7 @@ foreach ($failedServiceRequests as $row) {
         'tracking_id' => (string)($row['tracking_id'] ?? ''),
         'customer_name' => (string)($row['customer_name'] ?? ''),
         'mobile' => (string)($row['mobile'] ?? ''),
+        'mobile_context' => $formData,
         'category_slug' => (string)($row['category_slug'] ?? ''),
         'created_at' => (string)($row['created_at'] ?? ''),
         'selected_products' => (string)($row['selected_products'] ?? ''),
@@ -349,7 +351,7 @@ h1 {
                 ?>
                 <tr>
                     <td><?= htmlspecialchars((string)$row['customer_name']) ?></td>
-                    <td><?= htmlspecialchars((string)$row['mobile']) ?></td>
+                    <td><?= htmlspecialchars(vs_format_mobile_from_form_data((string)($row['mobile'] ?? ''), $row['mobile_context'] ?? null)) ?></td>
                     <td><?= htmlspecialchars($categoryDisplay) ?></td>
                     <td><?= htmlspecialchars($createdDisplay) ?></td>
                     <td><?= $products ?></td>

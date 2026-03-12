@@ -69,7 +69,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_package'])) {
     $paymentMethods = [];
     foreach ($paymentMethodsInput as $method) {
         $method = strtolower(trim((string)$method));
-        if (!in_array($method, ['razorpay', 'upi', 'cash'], true)) {
+        if (!in_array($method, ['razorpay', 'upi', 'cash', 'pay_later'], true)) {
             continue;
         }
         if (!in_array($method, $paymentMethods, true)) {
@@ -388,7 +388,7 @@ if (!$formIsPaid) {
     $formPaymentMethods = [];
     foreach ($postedMethods as $method) {
         $method = strtolower(trim((string)$method));
-        if (!in_array($method, ['razorpay', 'upi', 'cash'], true)) {
+        if (!in_array($method, ['razorpay', 'upi', 'cash', 'pay_later'], true)) {
             continue;
         }
         if (!in_array($method, $formPaymentMethods, true)) {
@@ -591,7 +591,8 @@ if ($selectedEventId > 0) {
                     $hasRazorpay = in_array('razorpay', $formPaymentMethods, true);
                     $hasUpi = in_array('upi', $formPaymentMethods, true);
                     $hasCash = in_array('cash', $formPaymentMethods, true);
-                    $hasAllMethods = ($hasRazorpay && $hasUpi && $hasCash);
+                    $hasPayLater = in_array('pay_later', $formPaymentMethods, true);
+                    $hasAllMethods = ($hasRazorpay && $hasUpi && $hasCash && $hasPayLater);
                     ?>
                     <label>Payment Methods</label>
                     <div style="display:flex;gap:16px;flex-wrap:wrap;">
@@ -599,6 +600,7 @@ if ($selectedEventId > 0) {
                         <label style="font-weight:600;color:#333;"><input type="checkbox" class="payment-method-item" name="payment_methods[]" value="razorpay" <?php echo $hasRazorpay ? 'checked' : ''; ?>> Razorpay</label>
                         <label style="font-weight:600;color:#333;"><input type="checkbox" class="payment-method-item" name="payment_methods[]" value="upi" <?php echo $hasUpi ? 'checked' : ''; ?>> UPI</label>
                         <label style="font-weight:600;color:#333;"><input type="checkbox" class="payment-method-item" name="payment_methods[]" value="cash" <?php echo $hasCash ? 'checked' : ''; ?>> Cash</label>
+                        <label style="font-weight:600;color:#333;"><input type="checkbox" class="payment-method-item" name="payment_methods[]" value="pay_later" <?php echo $hasPayLater ? 'checked' : ''; ?>> Pay Later</label>
                     </div>
                     <input type="hidden" id="payment_method_all_state" value="<?php echo $hasAllMethods ? '1' : '0'; ?>">
                 </div>
@@ -708,13 +710,24 @@ if ($selectedEventId > 0) {
                             <?php
                             $pkgPaid = vs_event_is_package_paid($pkg);
                             $pkgMethods = vs_event_payment_methods_from_csv((string)($pkg['payment_methods'] ?? ''), $pkgPaid);
+                            $pkgMethodLabelMap = [
+                                'razorpay' => 'Razorpay',
+                                'upi' => 'UPI',
+                                'cash' => 'Cash',
+                                'pay_later' => 'Pay Later',
+                            ];
+                            $pkgMethodLabels = [];
+                            foreach ($pkgMethods as $pkgMethod) {
+                                $pkgMethodKey = strtolower((string)$pkgMethod);
+                                $pkgMethodLabels[] = $pkgMethodLabelMap[$pkgMethodKey] ?? ucwords(str_replace('_', ' ', $pkgMethodKey));
+                            }
                             ?>
                             <td><?php echo $pkgPaid ? 'Paid' : 'Free'; ?></td>
                             <td><?php echo $pkgPaid ? ('Rs ' . number_format((float)($pkg['price_total'] ?? $pkg['price']), 2)) : 'Free'; ?></td>
                             <td><?php echo $pkgPaid ? ('Rs ' . number_format((float)($pkg['advance_amount'] ?? 0), 2)) : '-'; ?></td>
                             <td><?php echo $pkgPaid ? htmlspecialchars(ucfirst((string)($pkg['payment_mode'] ?? 'full'))) : '-'; ?></td>
                             <td>
-                                <?php echo $pkgPaid ? htmlspecialchars(implode(', ', array_map('ucfirst', $pkgMethods))) : '-'; ?>
+                                <?php echo $pkgPaid ? htmlspecialchars(implode(', ', $pkgMethodLabels)) : '-'; ?>
                                 <?php if ($pkgPaid && in_array('upi', $pkgMethods, true)): ?>
                                     <br><span class="small">UPI: <?php echo htmlspecialchars((string)($pkg['upi_id'] ?? '')); ?></span>
                                 <?php endif; ?>

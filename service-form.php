@@ -26,7 +26,6 @@ $commonFields = [
     ['label' => 'Full Name', 'name' => 'full_name', 'type' => 'text', 'required' => true],
     ['label' => 'Mobile Number', 'name' => 'mobile', 'type' => 'tel', 'required' => true],
     ['label' => 'Email', 'name' => 'email', 'type' => 'email', 'required' => false],
-    ['label' => 'City / Location', 'name' => 'city', 'type' => 'text', 'required' => true],
 ];
 
 $categoryFields = [
@@ -36,7 +35,7 @@ $categoryFields = [
         ['label' => 'Topic', 'name' => 'topic', 'type' => 'select', 'options' => ['Astrology', 'Vastu', 'Rituals', 'General Guidance', 'Other'], 'required' => true],
     ],
     'birth-child' => [
-        ['label' => 'Child Name', 'name' => 'child_name', 'type' => 'text', 'required' => false],
+        ['label' => 'Child Name (if any) or leave blank', 'name' => 'child_name', 'type' => 'text', 'required' => false],
         ['label' => 'Date of Birth', 'name' => 'dob', 'type' => 'date', 'required' => true],
         ['label' => 'Time of Birth', 'name' => 'tob', 'type' => 'time', 'required' => true],
         ['label' => 'Place of Birth', 'name' => 'pob', 'type' => 'text', 'required' => true],
@@ -53,26 +52,21 @@ $categoryFields = [
         ['label' => 'Women Place of Birth', 'name' => 'girl_pob', 'type' => 'text', 'required' => true],
     ],
     'astrology-consultation' => [
+        ['label' => 'Person Name', 'name' => 'person_name', 'type' => 'text', 'required' => false],
         ['label' => 'Date of Birth', 'name' => 'dob', 'type' => 'date', 'required' => false],
         ['label' => 'Time of Birth', 'name' => 'tob', 'type' => 'time', 'required' => false],
         ['label' => 'Place of Birth', 'name' => 'pob', 'type' => 'text', 'required' => false],
     ],
     'muhurat-event' => [
-        ['label' => 'Event Type', 'name' => 'event_type', 'type' => 'select', 'options' => ['Marriage', 'Griha Pravesh', 'Vehicle Purchase', 'Business Start', 'Other'], 'required' => true],
-        ['label' => 'Preferred Date or Month', 'name' => 'preferred_date', 'type' => 'text', 'required' => false],
-        ['label' => 'City', 'name' => 'event_city', 'type' => 'text', 'required' => false],
     ],
     'pooja-vastu-enquiry' => [
-        ['label' => 'Service Topic', 'name' => 'service_topic', 'type' => 'select', 'options' => ['Pooja & Ritual', 'Shanti & Dosh Nivaran', 'Yagya & Havan', 'Vastu Consultation', 'Other'], 'required' => true],
-        ['label' => 'Problem Description', 'name' => 'problem_desc', 'type' => 'textarea', 'required' => false],
-        // City field removed as requested
     ],
 ];
 
-// Add Describe your questions textarea to all categories
+// Add common detailed question textarea to all categories
 foreach ($categoryFields as $catKey => &$fields) {
     $fields[] = [
-        'label' => 'Additional Questions / Details',
+        'label' => 'Describe Your Question in Detail',
         'name' => 'questions',
         'type' => 'textarea',
         'required' => false,

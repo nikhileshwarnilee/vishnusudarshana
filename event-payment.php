@@ -221,6 +221,7 @@ $allowedPaymentMethods = vs_event_payment_methods_from_csv((string)($registratio
 $allowRazorpay = in_array('razorpay', $allowedPaymentMethods, true);
 $allowUpi = in_array('upi', $allowedPaymentMethods, true);
 $allowCash = in_array('cash', $allowedPaymentMethods, true);
+$allowPayLater = in_array('pay_later', $allowedPaymentMethods, true);
 $registrationUpiSnapshotId = trim((string)($registration['package_upi_id_snapshot'] ?? ''));
 $registrationUpiSnapshotQr = trim((string)($registration['package_upi_qr_snapshot'] ?? ''));
 $packageUpiId = trim((string)($registration['upi_id'] ?? ''));
@@ -750,6 +751,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     }
 }
 
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'pay_later_submit') {
+    if (!$allowPayLater) {
+        $errors[] = 'Pay Later is not enabled for this package.';
+    }
+    if (!$isDraftMode && (string)$registration['payment_status'] === 'Paid') {
+        header('Location: event-booking-confirmation.php?registration_id=' . $registrationId . '&status=paid');
+        exit;
+    }
+    if (!$isDraftMode && strtolower((string)$registration['payment_status']) === 'pending verification') {
+        $errors[] = 'Payment is already submitted and pending verification.';
+    }
+
+    if (empty($errors)) {
+        try {
+            $targetRegistrationId = $registrationId;
+            if ($isDraftMode) {
+                if (!$draftData || !is_array($draftData)) {
+                    throw new RuntimeException('Registration session expired. Please register again.');
+                }
+                $targetRegistrationId = $materializeDraft($pdo, $draftData, false);
+                $rememberDraftRegistration($draftToken, $targetRegistrationId);
+            }
+            if ($targetRegistrationId <= 0) {
+                throw new RuntimeException('Unable to save booking right now.');
+            }
+            if ($isDraftMode) {
+                $clearDraft($draftToken);
+            }
+            header('Location: event-booking-confirmation.php?registration_id=' . $targetRegistrationId . '&status=pay-later');
+            exit;
+        } catch (Throwable $e) {
+            $errors[] = ($e instanceof RuntimeException && trim((string)$e->getMessage()) !== '')
+                ? (string)$e->getMessage()
+                : 'Unable to save pay-later booking. Please try again.';
+            error_log('Pay later submit failed: ' . $e->getMessage());
+        }
+    }
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'manual_submit') {
     if (!$allowUpi) {
         $errors[] = 'Manual UPI is not enabled for this package.';
@@ -991,6 +1031,7 @@ $methodLabelMap = [
     'razorpay' => 'Razorpay',
     'upi' => 'Manual UPI',
     'cash' => 'Cash',
+    'pay_later' => 'Pay Later',
 ];
 ?>
 <main class="event-payment-main" style="background-color:var(--cream-bg);">
@@ -1156,9 +1197,28 @@ $methodLabelMap = [
                         </form>
                     </div>
                 <?php endif; ?>
+
+                <?php if ($allowPayLater): ?>
+                    <div class="card method-card">
+                        <h3>Pay Later</h3>
+                        <p>Save this booking now and complete payment later from your booking page.</p>
+                        <form method="post" autocomplete="off">
+                            <input type="hidden" name="action" value="pay_later_submit">
+                            <?php if ($isDraftMode): ?>
+                                <input type="hidden" name="draft_token" value="<?php echo htmlspecialchars((string)$draftToken); ?>">
+                            <?php else: ?>
+                                <input type="hidden" name="registration_id" value="<?php echo (int)$registrationId; ?>">
+                            <?php endif; ?>
+                            <input type="hidden" id="payLaterPaymentChoice" name="payment_choice" value="<?php echo htmlspecialchars($paymentChoice); ?>">
+                            <button type="submit" class="btn-main btn-alt2">
+                                <?php echo $isRemainingStage ? 'Keep Remaining Payment for Later' : 'Save Booking and Pay Later'; ?>
+                            </button>
+                        </form>
+                    </div>
+                <?php endif; ?>
             </div>
 
-            <?php if (!$allowRazorpay && !$allowUpi && !$allowCash): ?>
+            <?php if (!$allowRazorpay && !$allowUpi && !$allowCash && !$allowPayLater): ?>
                 <div class="card notice warn">
                     <p>No payment method is available right now for this package. Please contact support.</p>
                 </div>
@@ -1175,6 +1235,7 @@ $methodLabelMap = [
     const paymentChoiceEl = document.getElementById('paymentChoice');
     const manualChoiceEl = document.getElementById('manualPaymentChoice');
     const cashChoiceEl = document.getElementById('cashPaymentChoice');
+    const payLaterChoiceEl = document.getElementById('payLaterPaymentChoice');
     const payNowAmountEl = document.getElementById('payNowAmount');
     const rzpAmountText = document.getElementById('rzpAmountText');
     const upiIntentBtn = document.getElementById('upiIntentBtn');
@@ -1221,6 +1282,7 @@ $methodLabelMap = [
         if (rzpAmountText) rzpAmountText.textContent = displayAmount;
         if (manualChoiceEl) manualChoiceEl.value = choice;
         if (cashChoiceEl) cashChoiceEl.value = choice;
+        if (payLaterChoiceEl) payLaterChoiceEl.value = choice;
         if (upiIntentBtn) {
             const upiLink = buildUpiIntentLink();
             upiIntentBtn.href = upiLink || '#';

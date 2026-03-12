@@ -179,7 +179,7 @@ unset($row);
                         <td><?php echo $idx + 1; ?></td>
                         <td><?php echo htmlspecialchars((string)$row['booking_reference']); ?></td>
                         <td><?php echo htmlspecialchars((string)$row['name']); ?></td>
-                        <td><?php echo htmlspecialchars((string)$row['phone']); ?></td>
+                        <td><?php echo htmlspecialchars(vs_format_mobile_for_display((string)$row['phone'])); ?></td>
                         <td>
                             <?php echo htmlspecialchars((string)$row['event_title']); ?><br>
                             <span style="font-size:11px;color:#666;"><?php echo htmlspecialchars((string)($row['event_date_display'] ?? $row['selected_event_date'])); ?></span>

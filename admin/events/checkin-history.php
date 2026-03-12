@@ -257,7 +257,7 @@ if (!empty($queryParams)) {
                             <td><strong><?php echo htmlspecialchars((string)$row['booking_reference']); ?></strong></td>
                             <td><strong><?php echo htmlspecialchars((string)$row['event_title']); ?></strong><br><span class="small"><?php echo htmlspecialchars((string)$row['event_date_display']); ?></span></td>
                             <td><?php echo htmlspecialchars((string)$row['package_name']); ?></td>
-                            <td><strong><?php echo htmlspecialchars((string)$row['name']); ?></strong><br><span class="small"><?php echo htmlspecialchars((string)$row['phone']); ?></span></td>
+                            <td><strong><?php echo htmlspecialchars((string)$row['name']); ?></strong><br><span class="small"><?php echo htmlspecialchars(vs_format_mobile_for_display((string)$row['phone'])); ?></span></td>
                             <td><?php echo (int)$row['persons']; ?></td>
                             <td><?php echo $checkinBy !== '' ? htmlspecialchars($checkinBy) : '-'; ?></td>
                             <td><?php echo !empty($row['checkin_time']) ? htmlspecialchars((string)$row['checkin_time']) : '-'; ?></td>

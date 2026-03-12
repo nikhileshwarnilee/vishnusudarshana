@@ -274,7 +274,7 @@ $totalPages = max(1, ceil($totalRecords / $perPage));
 // Main paginated query
 $sql = "
     SELECT id, tracking_id, customer_name, mobile, category_slug,
-           total_amount, payment_status, service_status, created_at, selected_products
+           total_amount, payment_status, service_status, created_at, selected_products, form_data
     FROM service_requests
     $whereSql
     ORDER BY created_at DESC
@@ -380,7 +380,7 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
 <tr>
     <td><?= htmlspecialchars($row['tracking_id']) ?></td>
     <td><?= htmlspecialchars($row['customer_name']) ?></td>
-    <td><?= htmlspecialchars($row['mobile']) ?></td>
+    <td><?= htmlspecialchars(vs_format_mobile_from_form_data($row['mobile'] ?? '', $row['form_data'] ?? null)) ?></td>
     <td>
         <?php
         $products = '-';

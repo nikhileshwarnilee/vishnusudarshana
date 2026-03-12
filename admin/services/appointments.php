@@ -743,7 +743,7 @@ document.getElementById('refreshRollbackBtn').onclick = function() {
                                 <?= htmlspecialchars($a['customer_name']) ?>
                             </a>
                         </td>
-                        <td><?= htmlspecialchars($a['mobile']) ?></td>
+                        <td><?= htmlspecialchars(vs_format_mobile_from_form_data($a['mobile'] ?? '', $a['form_data'] ?? null)) ?></td>
                         <td style="font-weight:600;color:#800000;">
                             <?= htmlspecialchars($preferredDisplay) ?>
                         </td>

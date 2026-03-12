@@ -309,7 +309,7 @@ unset($recentRow);
                         <td><?php echo htmlspecialchars($row['package_name']); ?></td>
                         <td>
                             <strong><?php echo htmlspecialchars($row['name']); ?></strong><br>
-                            <span class="small"><?php echo htmlspecialchars($row['phone']); ?></span>
+                            <span class="small"><?php echo htmlspecialchars(vs_format_mobile_for_display((string)$row['phone'])); ?></span>
                         </td>
                         <td><?php echo htmlspecialchars((string)($row['booking_reference'] ?? '')); ?></td>
                         <td><?php echo htmlspecialchars(ucfirst((string)($row['payment_type'] ?? 'full'))); ?></td>

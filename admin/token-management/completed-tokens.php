@@ -312,7 +312,7 @@ $bookings = $stmt->fetchAll(PDO::FETCH_ASSOC);
                         <td class="token-no"><?= htmlspecialchars($b['token_no']) ?></td>
                         <td><?= htmlspecialchars($b['location']) ?></td>
                         <td><?= htmlspecialchars($b['name']) ?></td>
-                        <td><?= htmlspecialchars($b['mobile']) ?></td>
+                        <td><?= htmlspecialchars(vs_format_mobile_for_display($b['mobile'] ?? '')) ?></td>
                         <td><?= htmlspecialchars(formatTime12($b['service_time'])) ?></td>
                         <td>
                             <?php

@@ -2,30 +2,31 @@
 require_once (is_file(__DIR__ . '/includes/permissions.php') ? __DIR__ . '/includes/permissions.php' : dirname(__DIR__) . '/includes/permissions.php');
 admin_enforce_mapped_permission('auto');
 require_once __DIR__ . '/includes/admin-auth.php';
-require_once __DIR__ . '/../config/db.php';
+
+date_default_timezone_set('Asia/Kolkata');
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
-if (!isset($_SESSION['user_id']) || vs_admin_is_super_admin()) {
+
+if (!isset($_SESSION['user_id'])) {
+    header('Location: login.php');
+    exit;
+}
+
+if (vs_admin_is_super_admin()) {
     header('Location: index.php');
     exit;
 }
-?>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Staff Dashboard</title>
-    <link rel="stylesheet" href="../assets/css/style.css">
-</head>
-<body>
-<?php include __DIR__ . '/includes/top-menu.php'; ?>
-<div class="admin-container">
-    <h1>Staff Dashboard</h1>
-    <!-- Staff dashboard content will go here -->
-</div>
-</body>
-</html>
 
+require_once __DIR__ . '/../config/db.php';
+require_once __DIR__ . '/includes/dashboard-data.php';
 
+$dashboardPageTitle = 'Staff Dashboard';
+$dashboardHeading = 'Daily Service Desk';
+$dashboard = vs_dashboard_build($pdo, [
+    'user_id' => (int)($_SESSION['user_id'] ?? 0),
+    'user_name' => (string)($_SESSION['user_name'] ?? 'Staff'),
+    'is_super_admin' => false,
+]);
 
+require __DIR__ . '/includes/dashboard-template.php';

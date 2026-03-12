@@ -417,7 +417,7 @@ $buildTabUrl = static function (string $tab, int $eventId): string {
                             <td><?php echo htmlspecialchars($row['package_name']); ?></td>
                             <td>
                                 <strong><?php echo htmlspecialchars($row['name']); ?></strong><br>
-                                <span class="small"><?php echo htmlspecialchars($row['phone']); ?></span>
+                                <span class="small"><?php echo htmlspecialchars(vs_format_mobile_for_display((string)$row['phone'])); ?></span>
                             </td>
                             <td><?php echo htmlspecialchars((string)($row['booking_reference'] ?? '')); ?></td>
                             <td><?php echo htmlspecialchars(ucfirst((string)($row['payment_type'] ?? 'full'))); ?></td>
@@ -569,7 +569,7 @@ $buildTabUrl = static function (string $tab, int $eventId): string {
                             <td><?php echo htmlspecialchars((string)$row['booking_reference']); ?></td>
                             <td><?php echo htmlspecialchars((string)$row['event_title']); ?><br><span class="small"><?php echo htmlspecialchars((string)($row['event_date_display'] ?? $row['event_date'])); ?></span></td>
                             <td><?php echo htmlspecialchars((string)$row['package_name']); ?></td>
-                            <td><?php echo htmlspecialchars((string)$row['name']); ?><br><span class="small"><?php echo htmlspecialchars((string)$row['phone']); ?></span></td>
+                            <td><?php echo htmlspecialchars((string)$row['name']); ?><br><span class="small"><?php echo htmlspecialchars(vs_format_mobile_for_display((string)$row['phone'])); ?></span></td>
                             <td><?php echo htmlspecialchars(ucfirst((string)($row['cancellation_type'] ?? 'full'))); ?></td>
                             <td><?php echo (int)($row['cancelled_persons'] ?? 0); ?></td>
                             <td><?php echo (int)$row['persons']; ?></td>

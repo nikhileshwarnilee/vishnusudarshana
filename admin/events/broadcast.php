@@ -194,7 +194,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['send_broadcast'])) {
             <?php else: ?>
                 <?php foreach ($previewRecipients as $recipient): ?>
                     <tr>
-                        <td><?php echo htmlspecialchars((string)$recipient['phone']); ?></td>
+                        <td><?php echo htmlspecialchars(vs_format_mobile_for_display((string)$recipient['phone'])); ?></td>
                         <td><?php echo htmlspecialchars((string)$recipient['name']); ?></td>
                         <td><?php echo (int)$recipient['registrations']; ?></td>
                     </tr>

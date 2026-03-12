@@ -58,7 +58,7 @@ $categoryFields = [
 ];
 foreach ($categoryFields as $catKey => &$fields) {
     $fields[] = [
-        'label' => 'Additional Questions / Details',
+        'label' => 'Describe Your Question in Detail',
         'name' => 'questions',
         'type' => 'textarea',
         'required' => false,

@@ -439,7 +439,7 @@ if ($eventId > 0) {
                         <td><?php echo htmlspecialchars((string)$row['package_name']); ?></td>
                         <td>
                             <strong><?php echo htmlspecialchars((string)$row['name']); ?></strong><br>
-                            <span class="small"><?php echo htmlspecialchars((string)$row['phone']); ?></span>
+                            <span class="small"><?php echo htmlspecialchars(vs_format_mobile_for_display((string)$row['phone'])); ?></span>
                         </td>
                         <td><?php echo (int)$row['persons']; ?></td>
                         <td><?php echo (int)($row['waitlist_position'] ?? 0) > 0 ? ('#' . (int)$row['waitlist_position']) : 'Pending'; ?></td>
@@ -522,7 +522,7 @@ if ($eventId > 0) {
                         </td>
                         <td>
                             <strong><?php echo htmlspecialchars((string)$row['name']); ?></strong><br>
-                            <span class="small"><?php echo htmlspecialchars((string)$row['phone']); ?></span>
+                            <span class="small"><?php echo htmlspecialchars(vs_format_mobile_for_display((string)$row['phone'])); ?></span>
                         </td>
                         <td><?php echo (int)$row['persons']; ?></td>
                         <td>

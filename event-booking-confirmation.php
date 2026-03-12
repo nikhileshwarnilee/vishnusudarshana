@@ -627,6 +627,10 @@ if (in_array($status, ['paid', 'success', 'successful'], true) || strtolower((st
         $messageBody = 'Cancellation approved.';
     }
     $statusClass = 'success';
+} elseif (in_array($status, ['pay-later', 'pay later', 'paylater'], true)) {
+    $messageTitle = 'Registration Saved (Pay Later)';
+    $messageBody = 'Your registration is saved. Complete payment later from the payment page.';
+    $statusClass = 'pending';
 } elseif (in_array($status, ['pending', 'pending verification'], true) || strtolower((string)$row['payment_status']) === 'pending verification') {
     $messageTitle = 'Payment Pending Verification';
     $messageBody = 'Your manual payment details were submitted. Admin will verify and confirm shortly.';

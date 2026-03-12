@@ -218,7 +218,7 @@ unset($row);
                         <td><?php echo htmlspecialchars((string)($requestRow['booking_reference'] ?? '')); ?></td>
                         <td><?php echo htmlspecialchars((string)($requestRow['event_title'] ?? '')); ?><br><span style="font-size:11px;color:#666;"><?php echo htmlspecialchars((string)($requestRow['event_date_display'] ?? $requestRow['event_date'] ?? '')); ?></span></td>
                         <td><?php echo htmlspecialchars((string)($requestRow['package_name'] ?? '')); ?></td>
-                        <td><?php echo htmlspecialchars((string)($requestRow['name'] ?? '')); ?><br><span style="font-size:11px;color:#666;"><?php echo htmlspecialchars((string)($requestRow['phone'] ?? '')); ?></span></td>
+                        <td><?php echo htmlspecialchars((string)($requestRow['name'] ?? '')); ?><br><span style="font-size:11px;color:#666;"><?php echo htmlspecialchars(vs_format_mobile_for_display((string)($requestRow['phone'] ?? ''))); ?></span></td>
                         <td><?php echo htmlspecialchars(ucfirst((string)($requestRow['request_type'] ?? 'full'))); ?></td>
                         <td><?php echo (int)($requestRow['requested_persons'] ?? 0); ?></td>
                         <td><?php echo (int)($requestRow['persons'] ?? 0); ?></td>
@@ -261,7 +261,7 @@ unset($row);
                         <td><?php echo htmlspecialchars((string)$row['booking_reference']); ?></td>
                         <td><?php echo htmlspecialchars((string)$row['event_title']); ?><br><span style="font-size:11px;color:#666;"><?php echo htmlspecialchars((string)($row['event_date_display'] ?? $row['event_date'])); ?></span></td>
                         <td><?php echo htmlspecialchars((string)$row['package_name']); ?></td>
-                        <td><?php echo htmlspecialchars((string)$row['name']); ?><br><span style="font-size:11px;color:#666;"><?php echo htmlspecialchars((string)$row['phone']); ?></span></td>
+                        <td><?php echo htmlspecialchars((string)$row['name']); ?><br><span style="font-size:11px;color:#666;"><?php echo htmlspecialchars(vs_format_mobile_for_display((string)$row['phone'])); ?></span></td>
                         <td><?php echo htmlspecialchars(ucfirst((string)($row['cancellation_type'] ?? 'full'))); ?></td>
                         <td><?php echo (int)($row['cancelled_persons'] ?? 0); ?></td>
                         <td><?php echo (int)$row['persons']; ?></td>

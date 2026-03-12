@@ -3,6 +3,7 @@ require_once (is_file(__DIR__ . '/includes/permissions.php') ? __DIR__ . '/inclu
 admin_enforce_mapped_permission('auto');
 // AJAX endpoint for dashboard recent activity (admin/index.php)
 require_once __DIR__ . '/../config/db.php';
+require_once __DIR__ . '/../helpers/mobile_display.php';
 
 header('Content-Type: text/html; charset=UTF-8');
 
@@ -32,7 +33,7 @@ $totalPages = max(1, (int)ceil($totalRecords / $perPage));
 $page = min($page, $totalPages);
 $offset = ($page - 1) * $perPage;
 
-    $sql = "SELECT id, tracking_id, customer_name, mobile, selected_products, category_slug, service_status, payment_status, created_at FROM service_requests $whereSql ORDER BY created_at DESC LIMIT $perPage OFFSET $offset";
+    $sql = "SELECT id, tracking_id, customer_name, mobile, form_data, selected_products, category_slug, service_status, payment_status, created_at FROM service_requests $whereSql ORDER BY created_at DESC LIMIT $perPage OFFSET $offset";
 $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
 $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -61,7 +62,7 @@ if (count($rows) === 0) {
         // Tracking ID
         echo '<td>' . htmlspecialchars($row['tracking_id']) . '</td>';
         // Mobile
-        echo '<td>' . htmlspecialchars($row['mobile']) . '</td>';
+        echo '<td>' . htmlspecialchars(vs_format_mobile_from_form_data($row['mobile'] ?? '', $row['form_data'] ?? null)) . '</td>';
         // Product (parse JSON)
         $products = '-';
         $decoded = json_decode($row['selected_products'], true);

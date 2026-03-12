@@ -393,7 +393,7 @@ include __DIR__ . '/../includes/top-menu.php';
     $countStmt->execute($params);
     $totalRecords = $countStmt->fetchColumn();
     $totalPages = max(1, ceil($totalRecords / $perPage));
-    $sql = "SELECT id, tracking_id, customer_name, mobile, category_slug, total_amount, discount, payment_status, service_status, created_at, selected_products FROM service_requests $whereSql ORDER BY created_at DESC LIMIT $perPage OFFSET $offset";
+    $sql = "SELECT id, tracking_id, customer_name, mobile, category_slug, total_amount, discount, payment_status, service_status, created_at, selected_products, form_data FROM service_requests $whereSql ORDER BY created_at DESC LIMIT $perPage OFFSET $offset";
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
     $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -427,7 +427,7 @@ include __DIR__ . '/../includes/top-menu.php';
                         <?= htmlspecialchars($row['customer_name']) ?>
                     </a>
                 </td>
-                <td><?= htmlspecialchars($row['mobile']) ?></td>
+                <td><?= htmlspecialchars(vs_format_mobile_from_form_data($row['mobile'] ?? '', $row['form_data'] ?? null)) ?></td>
                 <td>
                     <?php
                     $products = '-';

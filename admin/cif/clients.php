@@ -165,7 +165,7 @@ table tbody tr:hover { background: #f3f7fa; }
                             <input type="text" name="name" value="<?= htmlspecialchars($c['name']) ?>" required class="client-edit-<?= (int)$c['id'] ?>" style="display:none;padding:6px 10px;border-radius:6px;border:1px solid #ccc;font-size:0.9em;width:120px;" form="client-form-<?= (int)$c['id'] ?>">
                         </td>
                         <td style="padding:10px;">
-                            <span class="client-view-<?= (int)$c['id'] ?>"> <?= htmlspecialchars($c['mobile']) ?> </span>
+                            <span class="client-view-<?= (int)$c['id'] ?>"> <?= htmlspecialchars(vs_format_mobile_for_display($c['mobile'] ?? '')) ?> </span>
                             <input type="text" name="mobile" value="<?= htmlspecialchars($c['mobile']) ?>" class="client-edit-<?= (int)$c['id'] ?>" style="display:none;padding:6px 10px;border-radius:6px;border:1px solid #ccc;font-size:0.9em;width:100px;" form="client-form-<?= (int)$c['id'] ?>">
                         </td>
                         <td style="padding:10px;">

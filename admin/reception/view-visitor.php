@@ -66,7 +66,7 @@ if (!$visitor) {
     <table class="details-table">
         <tr><th>ID</th><td><?= htmlspecialchars($visitor['id']) ?></td></tr>
         <tr><th>Name</th><td><?= htmlspecialchars($visitor['visitor_name']) ?></td></tr>
-        <tr><th>Contact</th><td><?= htmlspecialchars($visitor['contact_number']) ?></td></tr>
+        <tr><th>Contact</th><td><?= htmlspecialchars(vs_format_mobile_for_display($visitor['contact_number'] ?? '')) ?></td></tr>
         <tr><th>Address</th><td><?= htmlspecialchars($visitor['address']) ?></td></tr>
         <tr><th>Purpose</th><td><?= htmlspecialchars($visitor['purpose']) ?></td></tr>
         <tr><th>Visit Type</th><td><?= $visitor['visit_type'] === 'call' ? 'Call' : 'In Office' ?></td></tr>

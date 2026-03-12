@@ -283,7 +283,7 @@ $users = $pdo->query('SELECT * FROM users ORDER BY id DESC')->fetchAll();
                 <td><?= $user['id'] ?></td>
                 <td><?= htmlspecialchars($user['name']) ?></td>
                 <td><?= htmlspecialchars($user['email']) ?></td>
-                <td><?= htmlspecialchars($user['mobile'] ?? '') ?></td>
+                <td><?= htmlspecialchars(vs_format_mobile_for_display($user['mobile'] ?? '')) ?></td>
                 <td><?= $user['status'] ? 'Active' : 'Inactive' ?></td>
                 <td><?= $user['created_at'] ?></td>
                 <td>

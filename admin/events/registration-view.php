@@ -919,7 +919,7 @@ $pageTitle = 'Registration View';
                     </tr>
                     <tr>
                         <th>Phone</th>
-                        <td><?php echo htmlspecialchars((string)$registration['phone']); ?></td>
+                        <td><?php echo htmlspecialchars(vs_format_mobile_for_display((string)$registration['phone'])); ?></td>
                     </tr>
                     <tr>
                         <th>Event</th>

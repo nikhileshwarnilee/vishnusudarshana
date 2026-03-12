@@ -226,7 +226,7 @@ $queryStr = http_build_query(array_diff_key($_GET, ['page' => '']));
 		<?php else: foreach ($with_dues as $row): ?>
 			<tr>
 				<td><?= htmlspecialchars($row['name']) ?></td>
-				<td><?= htmlspecialchars($row['mobile']) ?></td>
+				<td><?= htmlspecialchars(vs_format_mobile_for_display($row['mobile'] ?? '')) ?></td>
 				<td><?= htmlspecialchars($row['address']) ?></td>
 				<td><a href="view-customer-invoices.php?id=<?= $row['id'] ?>" class="invoices-link"><?= $row['total_invoices'] ?></a></td>
 				<td><a href="view-customer-invoices.php?id=<?= $row['id'] ?>" class="invoices-link">&#8377;<?= number_format($row['total_invoiced'],2) ?></a></td>
@@ -265,7 +265,7 @@ $queryStr = http_build_query(array_diff_key($_GET, ['page' => '']));
 	<?php else: foreach ($zero_dues as $row): ?>
 		<tr>
 			<td><?= htmlspecialchars($row['name']) ?></td>
-			<td><?= htmlspecialchars($row['mobile']) ?></td>
+			<td><?= htmlspecialchars(vs_format_mobile_for_display($row['mobile'] ?? '')) ?></td>
 			<td><?= htmlspecialchars($row['address']) ?></td>
 			<td><a href="view-customer-invoices.php?id=<?= $row['id'] ?>" class="invoices-link"><?= $row['total_invoices'] ?></a></td>
 			<td><a href="view-customer-invoices.php?id=<?= $row['id'] ?>" class="invoices-link">&#8377;<?= number_format($row['total_invoiced'],2) ?></a></td>

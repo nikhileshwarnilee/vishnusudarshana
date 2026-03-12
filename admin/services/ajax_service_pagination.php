@@ -2,6 +2,7 @@
 require_once (is_file(__DIR__ . '/includes/permissions.php') ? __DIR__ . '/includes/permissions.php' : dirname(__DIR__) . '/includes/permissions.php');
 admin_enforce_mapped_permission('auto');
 require_once __DIR__ . '/../../config/db.php';
+require_once __DIR__ . '/../../helpers/mobile_display.php';
 
 header('Content-Type: text/html; charset=UTF-8');
 
@@ -49,7 +50,7 @@ $page = min($page, $totalPages);
 $offset  = ($page - 1) * $perPage;
 
 $sql = "
-    SELECT id, tracking_id, customer_name, mobile,
+    SELECT id, tracking_id, customer_name, mobile, form_data,
            category_slug, total_amount,
            payment_status, service_status,
            created_at, selected_products
@@ -106,7 +107,7 @@ foreach ($requests as $row) {
     echo '<tr>';
     echo '<td>' . htmlspecialchars($row['tracking_id']) . '</td>';
     echo '<td>' . htmlspecialchars($row['customer_name']) . '</td>';
-    echo '<td>' . htmlspecialchars($row['mobile']) . '</td>';
+    echo '<td>' . htmlspecialchars(vs_format_mobile_from_form_data($row['mobile'] ?? '', $row['form_data'] ?? null)) . '</td>';
     echo '<td>' . htmlspecialchars($products) . '</td>';
     echo '<td>' . htmlspecialchars($categoryText) . '</td>';
     echo '<td>&#8377;' . number_format($row['total_amount'], 2) . '</td>';

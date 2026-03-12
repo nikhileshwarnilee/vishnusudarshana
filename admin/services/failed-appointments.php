@@ -396,6 +396,7 @@ h1 {
                 }
                 $customerName = $customerDetails['full_name'] ?? ($formData['full_name'] ?? '');
                 $mobile = $customerDetails['mobile'] ?? ($formData['mobile'] ?? '');
+                $mobileDisplay = vs_format_mobile_from_form_data($mobile, !empty($customerDetails) ? $customerDetails : $formData);
                 $preferredDate = $customerDetails['preferred_date'] ?? ($formData['preferred_date'] ?? '');
                 if ($preferredDate) {
                     $preferredDateObj = DateTime::createFromFormat('Y-m-d', $preferredDate);
@@ -419,7 +420,7 @@ h1 {
                 ?>
                 <tr>
                     <td><?= htmlspecialchars($customerName) ?></td>
-                    <td><?= htmlspecialchars($mobile) ?></td>
+                    <td><?= htmlspecialchars($mobileDisplay) ?></td>
                     <td style="font-weight:600;color:#800000;">
                         <?= htmlspecialchars($preferredDisplay) ?>
                     </td>

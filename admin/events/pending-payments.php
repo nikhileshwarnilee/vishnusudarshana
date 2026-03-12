@@ -614,7 +614,7 @@ unset($row);
                             <td><strong><?php echo htmlspecialchars((string)$row['booking_reference']); ?></strong></td>
                             <td><strong><?php echo htmlspecialchars((string)$row['event_title']); ?></strong><br><span class="small"><?php echo htmlspecialchars((string)($row['event_date_display'] ?? $row['selected_event_date'])); ?></span></td>
                             <td><?php echo htmlspecialchars((string)$row['package_name']); ?></td>
-                            <td><strong><?php echo htmlspecialchars((string)$row['name']); ?></strong><br><span class="small"><?php echo htmlspecialchars((string)$row['phone']); ?></span></td>
+                            <td><strong><?php echo htmlspecialchars((string)$row['name']); ?></strong><br><span class="small"><?php echo htmlspecialchars(vs_format_mobile_for_display((string)$row['phone'])); ?></span></td>
                             <td><span class="status-chip <?php echo ((int)$row['checkin_status'] === 1) ? 'status-ok' : 'status-pending'; ?>"><?php echo ((int)$row['checkin_status'] === 1) ? 'Checked In' : 'Not Checked In'; ?></span></td>
                             <td><?php echo $checkinByName !== '' ? htmlspecialchars($checkinByName) : '-'; ?></td>
                             <td><?php echo !empty($row['checkin_time']) ? htmlspecialchars((string)$row['checkin_time']) : '-'; ?></td>

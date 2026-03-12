@@ -6,6 +6,7 @@
  * No hardcoded paths
  */
 require_once __DIR__ . '/../../helpers/favicon.php';
+require_once __DIR__ . '/../../helpers/mobile_display.php';
 require_once __DIR__ . '/admin-auth.php';
 require_once __DIR__ . '/permissions.php';
 
@@ -25,6 +26,12 @@ if (strpos($scriptName, '/admin/') !== false) {
 
 // If empty, site is at root
 $baseUrl = rtrim($baseUrl, '/');
+
+$dateFormatJsUrl = $baseUrl . '/assets/js/date-format-global.js';
+$dateFormatJsFile = __DIR__ . '/../../assets/js/date-format-global.js';
+if (is_file($dateFormatJsFile)) {
+    $dateFormatJsUrl .= '?v=' . filemtime($dateFormatJsFile);
+}
 
 // Current page filename
 $currentPage = basename(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH));
@@ -178,20 +185,6 @@ $normalizeMenuPath = static function (string $path): string {
 };
 $normalizedRequestPath = $normalizeMenuPath($requestPath);
 
-$eventGlobalSources = [
-    ['table' => 'events', 'column' => 'created_at'],
-    ['table' => 'event_dates', 'column' => 'created_at'],
-    ['table' => 'event_packages', 'column' => 'created_at'],
-    ['table' => 'event_registrations', 'column' => 'created_at'],
-    ['table' => 'event_registrations', 'column' => 'checkin_time'],
-    ['table' => 'event_payments', 'column' => 'created_at'],
-    ['table' => 'event_payments', 'column' => 'updated_at'],
-    ['table' => 'event_waitlist', 'column' => 'created_at'],
-    ['table' => 'event_cancellation_requests', 'column' => 'requested_at'],
-    ['table' => 'event_cancellation_requests', 'column' => 'decided_at'],
-    ['table' => 'event_cancellations', 'column' => 'cancelled_at'],
-];
-
 $submenuNotificationSourceMap = [
     'Appointments' => [
         'Pending Appointments' => [
@@ -201,10 +194,6 @@ $submenuNotificationSourceMap = [
         'Accepted Appointments' => [
             ['table' => 'service_requests', 'column' => 'created_at', 'where' => "category_slug = 'appointment' AND payment_status IN ('Paid', 'Free') AND service_status = 'Accepted'"],
             ['table' => 'service_requests', 'column' => 'updated_at', 'where' => "category_slug = 'appointment' AND payment_status IN ('Paid', 'Free') AND service_status = 'Accepted'"],
-        ],
-        'Completed Appointments' => [
-            ['table' => 'service_requests', 'column' => 'created_at', 'where' => "category_slug = 'appointment' AND payment_status IN ('Paid', 'Free') AND service_status = 'Completed'"],
-            ['table' => 'service_requests', 'column' => 'updated_at', 'where' => "category_slug = 'appointment' AND payment_status IN ('Paid', 'Free') AND service_status = 'Completed'"],
         ],
         'Booking Slots' => [
             ['table' => 'blocked_appointment_slots', 'column' => 'created_at'],
@@ -227,55 +216,8 @@ $submenuNotificationSourceMap = [
             ['table' => 'pending_payments', 'column' => 'created_at', 'where' => "category != 'appointment'"],
             ['table' => 'pending_payments', 'column' => 'updated_at', 'where' => "category != 'appointment'"],
         ],
-        'Offline Service Request' => [
-            ['table' => 'service_requests', 'column' => 'created_at', 'where' => "category_slug != 'appointment' AND COALESCE(tracking_id, '') LIKE 'SR%'"],
-            ['table' => 'service_requests', 'column' => 'updated_at', 'where' => "category_slug != 'appointment' AND COALESCE(tracking_id, '') LIKE 'SR%'"],
-        ],
-        'Service Payments' => [
-            ['table' => 'service_requests', 'column' => 'payment_date', 'where' => "category_slug != 'appointment' AND payment_status = 'Paid' AND total_amount > 0"],
-            ['table' => 'service_requests', 'column' => 'updated_at', 'where' => "category_slug != 'appointment' AND payment_status = 'Paid' AND total_amount > 0"],
-            ['table' => 'service_requests', 'column' => 'created_at', 'where' => "category_slug != 'appointment' AND payment_status = 'Paid' AND total_amount > 0"],
-        ],
-        'Products' => [
-            ['table' => 'products', 'column' => 'created_at'],
-            ['table' => 'products', 'column' => 'updated_at'],
-        ],
-        'Service Categories' => [
-            ['table' => 'service_categories', 'column' => 'created_at'],
-            ['table' => 'service_categories', 'column' => 'updated_at'],
-        ],
-    ],
-    'Reception' => [
-        'Booked Tokens' => [
-            ['table' => 'token_bookings', 'column' => 'created_at', 'where' => "LOWER(TRIM(COALESCE(status, ''))) <> 'completed'"],
-            ['table' => 'token_bookings', 'column' => 'updated_at', 'where' => "LOWER(TRIM(COALESCE(status, ''))) <> 'completed'"],
-        ],
-        'Token Management' => [
-            ['table' => 'token_management', 'column' => 'created_at'],
-            ['table' => 'token_management', 'column' => 'updated_at'],
-        ],
-        'Book Token' => [
-            ['table' => 'token_bookings', 'column' => 'created_at'],
-            ['table' => 'token_bookings', 'column' => 'updated_at'],
-        ],
-        'Visitors Log' => [
-            ['table' => 'visitor_tickets', 'column' => 'in_time', 'where' => "status = 'open'"],
-            ['table' => 'visitor_tickets', 'column' => 'created_at', 'where' => "status = 'open'"],
-            ['table' => 'visitor_tickets', 'column' => 'updated_at', 'where' => "status = 'open'"],
-        ],
-        'Closed Visitors Log' => [
-            ['table' => 'visitor_tickets', 'column' => 'out_time', 'where' => "status = 'closed'"],
-            ['table' => 'visitor_tickets', 'column' => 'updated_at', 'where' => "status = 'closed'"],
-            ['table' => 'visitor_tickets', 'column' => 'created_at', 'where' => "status = 'closed'"],
-        ],
     ],
     'Events' => [
-        'Dashboard' => $eventGlobalSources,
-        'All Events' => [
-            ['table' => 'events', 'column' => 'created_at'],
-            ['table' => 'event_dates', 'column' => 'created_at'],
-            ['table' => 'event_packages', 'column' => 'created_at'],
-        ],
         'Registrations' => [
             ['table' => 'event_registrations', 'column' => 'created_at'],
             ['table' => 'event_registrations', 'column' => 'checkin_time'],
@@ -289,23 +231,10 @@ $submenuNotificationSourceMap = [
             ['table' => 'event_payments', 'column' => 'updated_at'],
             ['table' => 'event_cancellations', 'column' => 'cancelled_at'],
         ],
-        'Check-In' => [
-            ['table' => 'event_registrations', 'column' => 'checkin_time'],
-            ['table' => 'event_registrations', 'column' => 'created_at'],
-        ],
         'Pending Payments' => [
             ['table' => 'event_payments', 'column' => 'created_at'],
             ['table' => 'event_payments', 'column' => 'updated_at'],
             ['table' => 'event_registrations', 'column' => 'created_at'],
-        ],
-        'Event Reports' => $eventGlobalSources,
-        'Waitlist' => [
-            ['table' => 'event_waitlist', 'column' => 'created_at'],
-            ['table' => 'event_registrations', 'column' => 'created_at'],
-        ],
-        'Broadcast' => [
-            ['table' => 'event_registrations', 'column' => 'created_at'],
-            ['table' => 'event_registrations', 'column' => 'checkin_time'],
         ],
     ],
 ];
@@ -1438,6 +1367,7 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 </script>
 
+<script src="<?= htmlspecialchars($dateFormatJsUrl, ENT_QUOTES, 'UTF-8') ?>" defer></script>
 <!-- RESPONSIVE TABLES AUTO-WRAPPER SCRIPT -->
 <script src="<?= $baseUrl ?>/admin/includes/responsive-tables.js"></script>
 <?php include __DIR__ . '/floating-model.php'; ?>

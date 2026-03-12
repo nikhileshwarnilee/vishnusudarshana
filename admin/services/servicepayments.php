@@ -70,10 +70,10 @@ $unionSourceWhere = 'WHERE source = "Service Request"';
 
 $unionSql = "
 	SELECT * FROM (
-		SELECT p.id, p.pay_date as payment_date, p.amount as paid_amount, COALESCE(p.discount, 0) as discount, p.amount as total_bill, p.pay_method as method, p.note, p.transaction_details, NULL as customer_name, NULL as mobile, 'Service Payment' as source, NULL as products_json
+		SELECT p.id, p.pay_date as payment_date, p.amount as paid_amount, COALESCE(p.discount, 0) as discount, p.amount as total_bill, p.pay_method as method, p.note, p.transaction_details, NULL as customer_name, NULL as mobile, 'Service Payment' as source, NULL as products_json, NULL as form_data_json
 		FROM service_payments p
 		UNION ALL
-		SELECT sr.id, sr.payment_date, (sr.total_amount - COALESCE(sr.discount, 0)) as paid_amount, COALESCE(sr.discount, 0) as discount, sr.total_amount as total_bill, sr.payment_method as method, sr.payment_note as note, sr.transaction_details, sr.customer_name, sr.mobile, 'Service Request' as source, sr.selected_products as products_json
+		SELECT sr.id, sr.payment_date, (sr.total_amount - COALESCE(sr.discount, 0)) as paid_amount, COALESCE(sr.discount, 0) as discount, sr.total_amount as total_bill, sr.payment_method as method, sr.payment_note as note, sr.transaction_details, sr.customer_name, sr.mobile, 'Service Request' as source, sr.selected_products as products_json, sr.form_data as form_data_json
 		FROM service_requests sr $whereSqlSR
 	) t $unionSourceWhere
 	ORDER BY payment_date DESC, id DESC
@@ -193,7 +193,7 @@ $queryStr = http_build_query(array_diff_key($_GET, ['page' => '']));
 			<tr>
 				<td><?= htmlspecialchars($row['source']) ?></td>
 				<td><?= htmlspecialchars($row['customer_name']) ?></td>
-				<td><?= htmlspecialchars($row['mobile']) ?></td>
+				<td><?= htmlspecialchars(vs_format_mobile_from_form_data($row['mobile'] ?? '', $row['form_data_json'] ?? null)) ?></td>
 				<td><?= htmlspecialchars($row['payment_date'] ?? '') ?></td>
 				<td>&#8377;<?= number_format($row['total_bill'],2) ?></td>
 				<td>&#8377;<?= number_format($row['discount'],2) ?></td>

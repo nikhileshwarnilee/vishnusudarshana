@@ -81,12 +81,12 @@ if ($source_filter === 'Invoice') {
 // Main query: UNION payments and service_requests
 $unionSql = "
 	SELECT * FROM (
-		SELECT p.id, p.paid_date, p.paid_amount, p.method, p.note, p.transaction_details, c.name as customer_name, c.mobile, 'Invoice' as source, NULL as products_json
+		SELECT p.id, p.paid_date, p.paid_amount, p.method, p.note, p.transaction_details, c.name as customer_name, c.mobile, 'Invoice' as source, NULL as products_json, NULL as form_data_json
 		FROM payments p LEFT JOIN customers c ON p.customer_id = c.id $whereSqlPayments
 		UNION ALL
 		SELECT sr.id, DATE(sr.created_at) as paid_date, sr.total_amount as paid_amount, 
 				IF(sr.tracking_id LIKE 'VDSK%', 'Online', 'Offline') as method, sr.category_slug as note, sr.tracking_id as transaction_details, 
-				sr.customer_name as customer_name, sr.mobile, 'Service Request' as source, sr.selected_products as products_json
+				sr.customer_name as customer_name, sr.mobile, 'Service Request' as source, sr.selected_products as products_json, sr.form_data as form_data_json
 			FROM service_requests sr
 			$whereSqlSR
 	) t $unionSourceWhere
@@ -200,7 +200,7 @@ $queryStr = http_build_query(array_diff_key($_GET, ['page' => '']));
 			<tr>
 			<td><?= htmlspecialchars($row['source']) ?></td>
 			<td><?= htmlspecialchars($row['customer_name']) ?></td>
-			<td><?= htmlspecialchars($row['mobile']) ?></td>
+			<td><?= htmlspecialchars(vs_format_mobile_from_form_data($row['mobile'] ?? '', $row['form_data_json'] ?? null)) ?></td>
 			<td><?= htmlspecialchars($row['paid_date']) ?></td>
 			<td>&#8377;<?= number_format($row['paid_amount'],2) ?></td>
 			<td><?= htmlspecialchars($row['method']) ?></td>

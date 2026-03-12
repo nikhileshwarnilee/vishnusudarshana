@@ -362,7 +362,7 @@ $bookings = array_values(array_filter($bookings, function($b) use ($today) {
                             <?= htmlspecialchars($b['name']) ?>
                         </a>
                     </td>
-                    <td><?= htmlspecialchars($b['mobile']) ?></td>
+                    <td><?= htmlspecialchars(vs_format_mobile_for_display($b['mobile'] ?? '')) ?></td>
                     <td><?= htmlspecialchars(formatTime12($b['service_time'])) ?></td>
                     <td>
                         <?php

@@ -4,6 +4,7 @@ admin_enforce_mapped_permission('auto');
 // AJAX endpoint for Visitors Log module
 
 require_once '../../config/db.php';
+require_once '../../helpers/mobile_display.php';
 
 
 $action = $_POST['action'] ?? '';
@@ -46,6 +47,12 @@ switch ($action) {
         $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
         $stmt->execute();
         $rows = $stmt->fetchAll();
+        if (is_array($rows)) {
+            foreach ($rows as &$row) {
+                $row['contact_number'] = vs_format_mobile_for_display($row['contact_number'] ?? '');
+            }
+            unset($row);
+        }
         echo json_encode(['success' => true, 'data' => $rows, 'total' => $total, 'page' => $page, 'perPage' => $perPage]);
         break;
     case 'add':

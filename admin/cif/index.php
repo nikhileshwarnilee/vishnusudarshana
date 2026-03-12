@@ -572,7 +572,7 @@ $(function() {
                         <tbody>
                             <tr>
                                 <td><?= htmlspecialchars($selected_client['name']) ?></td>
-                                <td><?= htmlspecialchars($selected_client['mobile']) ?></td>
+                                <td><?= htmlspecialchars(vs_format_mobile_for_display($selected_client['mobile'] ?? '')) ?></td>
                                 <td><?= htmlspecialchars($selected_client['address']) ?></td>
                                 <td><?= htmlspecialchars($selected_client['dob']) ?></td>
                                 <td><?= htmlspecialchars($selected_client['birth_time']) ?></td>

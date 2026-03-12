@@ -1278,7 +1278,7 @@ $currentListUrl = $buildListUrl();
                     </td>
                     <td>
                         <strong><?php echo htmlspecialchars((string)$row['name']); ?></strong><br>
-                        <span class="small"><?php echo htmlspecialchars((string)$row['phone']); ?></span>
+                        <span class="small"><?php echo htmlspecialchars(vs_format_mobile_for_display((string)$row['phone'])); ?></span>
                     </td>
                     <td><?php echo (int)$row['persons']; ?></td>
                     <td>
