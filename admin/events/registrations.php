@@ -792,6 +792,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_registration']
     }
 }
 
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_waitlisted_registration'], $_POST['registration_id'])) {
+    $registrationId = (int)$_POST['registration_id'];
+    try {
+        admin_enforce_mapped_permission('edit');
+        vs_event_confirm_waitlisted_registration($pdo, $registrationId);
+        $redirectList('Waitlisted booking confirmed. Payment is now open for this booking.', 'ok', [
+            'quick_registration_id' => $registrationId,
+        ]);
+    } catch (Throwable $e) {
+        $errMessage = $e instanceof RuntimeException ? $e->getMessage() : 'Unable to confirm waitlisted booking right now.';
+        $redirectList($errMessage, 'err', [
+            'quick_registration_id' => $registrationId,
+        ]);
+    }
+}
+
 $where = [];
 $params = [];
 if ($eventId > 0) {
@@ -816,6 +832,7 @@ $sql = "SELECT
         COALESCE(d.event_date, e.event_date) AS selected_event_date,
         p.package_name,
         p.is_paid,
+        COALESCE(NULLIF(p.waitlist_confirmation_mode, ''), 'auto') AS waitlist_confirmation_mode,
         COALESCE(NULLIF(pdp.price_total, 0), NULLIF(p.price_total, 0), p.price) AS package_price_total,
         r.package_upi_id_snapshot,
         r.package_upi_qr_snapshot,
@@ -934,6 +951,7 @@ $currentListUrl = $buildListUrl();
         .status-badge { display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border-radius:14px; font-size:0.82em; font-weight:700; }
         .paid { background:#e5ffe5; color:#1a8917; }
         .pending { background:#fff4db; color:#b36b00; }
+        .waitlisted { background:#e6f7ff; color:#0b7285; }
         .failed { background:#ffeaea; color:#b00020; }
         .approved { background:#e5ffe5; color:#1a8917; }
         .auto-verified { background:#dff6ff; color:#0b7285; }
@@ -953,6 +971,7 @@ $currentListUrl = $buildListUrl();
         .action-view { background:#17a2b8; }
         .action-verify { background:#6f42c1; }
         .action-mark { background:#1a8917; }
+        .action-confirm { background:#0b7285; }
         .action-print { background:#444; }
         .action-refund { background:#dc3545; }
         .action-delete { background:#8b0000; }
@@ -1012,7 +1031,7 @@ $currentListUrl = $buildListUrl();
                 <label>Payment Status</label>
                 <select name="payment_status">
                     <option value="">All</option>
-                    <?php foreach (['Unpaid', 'Partial Paid', 'Paid', 'Pending Verification', 'Failed', 'Cancelled'] as $st): ?>
+                    <?php foreach (['Unpaid', 'Partial Paid', 'Paid', 'Pending Verification', 'Waitlisted', 'Failed', 'Cancelled'] as $st): ?>
                         <option value="<?php echo htmlspecialchars($st); ?>" <?php echo ($paymentStatus === $st) ? 'selected' : ''; ?>><?php echo htmlspecialchars($st); ?></option>
                     <?php endforeach; ?>
                 </select>
@@ -1022,7 +1041,7 @@ $currentListUrl = $buildListUrl();
                 <label>Verification Status</label>
                 <select name="verification_status">
                     <option value="">All</option>
-                    <?php foreach (['Pending', 'Approved', 'Auto Verified', 'Rejected', 'Cancelled'] as $st): ?>
+                    <?php foreach (['Pending', 'Approved', 'Auto Verified', 'Waitlisted', 'Rejected', 'Cancelled'] as $st): ?>
                         <option value="<?php echo htmlspecialchars($st); ?>" <?php echo ($verificationStatus === $st) ? 'selected' : ''; ?>><?php echo htmlspecialchars($st); ?></option>
                     <?php endforeach; ?>
                 </select>
@@ -1080,18 +1099,27 @@ $currentListUrl = $buildListUrl();
                 $paymentStatusLower = strtolower($paymentStatusText);
                 $verificationStatusText = trim((string)$row['verification_status']);
                 $verificationStatusLower = strtolower($verificationStatusText);
+                $isWaitlisted = vs_event_is_waitlisted_registration($row);
+                $waitlistPosition = $isWaitlisted ? vs_event_get_waitlist_position($pdo, $registrationId) : 0;
+                $waitlistMode = strtolower(trim((string)($row['waitlist_confirmation_mode'] ?? 'auto')));
+                if (!in_array($waitlistMode, ['auto', 'manual'], true)) {
+                    $waitlistMode = 'auto';
+                }
+                $waitlistModeText = ucfirst($waitlistMode);
                 $paymentRecordStatusLower = strtolower(trim((string)($row['payment_record_status'] ?? '')));
-                $isCancelled = ($paymentStatusLower === 'cancelled' || $verificationStatusLower === 'cancelled');
+                $isCancelled = (!$isWaitlisted && ($paymentStatusLower === 'cancelled' || $verificationStatusLower === 'cancelled'));
                 $isPaidPackage = ((int)($row['is_paid'] ?? 1) === 1);
 
                 $paymentClass = 'pending';
-                if ($paymentStatusLower === 'paid') {
+                if ($isWaitlisted) {
+                    $paymentClass = 'waitlisted';
+                } elseif ($paymentStatusLower === 'paid') {
                     $paymentClass = 'paid';
                 } elseif (in_array($paymentStatusLower, ['failed', 'cancelled', 'rejected'], true)) {
                     $paymentClass = 'failed';
                 }
                 $verifyClass = strtolower(str_replace(' ', '-', $verificationStatusText));
-                if (!in_array($verifyClass, ['pending', 'approved', 'auto-verified', 'rejected', 'cancelled'], true)) {
+                if (!in_array($verifyClass, ['pending', 'approved', 'auto-verified', 'waitlisted', 'rejected', 'cancelled'], true)) {
                     $verifyClass = 'pending';
                 }
 
@@ -1100,24 +1128,37 @@ $currentListUrl = $buildListUrl();
 
                 $amounts = $computeAmounts($row);
                 $totalAmount = (float)$amounts['total'];
-                $paidAmount = (float)$amounts['paid'];
-                $pendingAmount = (float)$amounts['remaining'];
+                if ($isWaitlisted) {
+                    $paidAmount = 0.0;
+                    $pendingAmount = 0.0;
+                    $paidAmountDisplay = 0.0;
+                    $pendingAmountDisplay = 0.0;
+                    $pendingSubmittedAmount = 0.0;
+                    $hasPendingSubmittedAmount = false;
+                    $hasRejectedSubmittedAmount = false;
+                    $paymentAmountNote = 'Payment opens after waitlist confirmation.';
+                } else {
+                    $paidAmount = (float)$amounts['paid'];
+                    $pendingAmount = (float)$amounts['remaining'];
 
-                $displayAmounts = $computeDisplayAmounts($row, $amounts);
-                $paidAmountDisplay = (float)$displayAmounts['paid'];
-                $pendingAmountDisplay = (float)$displayAmounts['remaining'];
-                $pendingSubmittedAmount = (float)$displayAmounts['submitted_amount'];
-                $hasPendingSubmittedAmount = (bool)$displayAmounts['is_pending_submission'];
-                $hasRejectedSubmittedAmount = (bool)$displayAmounts['is_rejected_submission'];
-                $paymentAmountNote = (string)$displayAmounts['note'];
+                    $displayAmounts = $computeDisplayAmounts($row, $amounts);
+                    $paidAmountDisplay = (float)$displayAmounts['paid'];
+                    $pendingAmountDisplay = (float)$displayAmounts['remaining'];
+                    $pendingSubmittedAmount = (float)$displayAmounts['submitted_amount'];
+                    $hasPendingSubmittedAmount = (bool)$displayAmounts['is_pending_submission'];
+                    $hasRejectedSubmittedAmount = (bool)$displayAmounts['is_rejected_submission'];
+                    $paymentAmountNote = (string)$displayAmounts['note'];
+                }
 
                 $hasPendingVerification = (
+                    !$isWaitlisted &&
                     $paymentStatusLower === 'pending verification' &&
                     in_array($paymentRecordStatusLower, ['pending', 'pending verification'], true) &&
                     (int)($row['payment_id'] ?? 0) > 0
                 );
-                $hasPendingCancelRequest = ((int)($row['pending_request_id'] ?? 0) > 0);
+                $hasPendingCancelRequest = (!$isWaitlisted && ((int)($row['pending_request_id'] ?? 0) > 0));
                 $canCollect = (
+                    !$isWaitlisted &&
                     !$isCancelled &&
                     !$hasPendingCancelRequest &&
                     $isPaidPackage &&
@@ -1126,11 +1167,13 @@ $currentListUrl = $buildListUrl();
                     $pendingAmount > 0
                 );
                 $canMarkPaid = (
+                    !$isWaitlisted &&
                     !$isCancelled &&
                     !$hasPendingCancelRequest &&
                     $isPaidPackage &&
                     $paymentStatusLower !== 'paid'
                 );
+                $canConfirmWaitlisted = $isWaitlisted;
 
                 $quickCollectUrl = $buildListUrl([
                     'quick_mode' => 'collect',
@@ -1177,20 +1220,25 @@ $currentListUrl = $buildListUrl();
                     $latestRefundStatus = 'pending';
                 }
                 $latestCancelId = (int)($row['latest_cancel_id'] ?? 0);
-                $deleteEligibility = vs_event_evaluate_registration_delete_eligibility([
-                    'persons' => (int)($row['persons'] ?? 1),
-                    'payment_status' => (string)($row['payment_status'] ?? ''),
-                    'verification_status' => (string)($row['verification_status'] ?? ''),
-                    'checkin_status' => (int)($row['checkin_status'] ?? 0),
-                    'payment_id' => (int)($row['payment_id'] ?? 0),
-                    'amount_paid' => (float)($row['amount_paid'] ?? 0),
-                    'payment_record_status' => (string)($row['payment_record_status'] ?? ''),
-                    'transaction_id' => (string)($row['transaction_id'] ?? ''),
-                    'cancelled_persons_total' => (int)($row['cancelled_persons_total'] ?? 0),
-                    'latest_cancelled_persons' => (int)($row['latest_cancelled_persons'] ?? 0),
-                ]);
-                $canDeleteRegistration = (bool)($deleteEligibility['eligible'] ?? false);
-                $deleteEligibilityReason = (string)($deleteEligibility['reason'] ?? '');
+                if ($isWaitlisted) {
+                    $canDeleteRegistration = false;
+                    $deleteEligibilityReason = 'Waitlisted booking cannot be deleted directly.';
+                } else {
+                    $deleteEligibility = vs_event_evaluate_registration_delete_eligibility([
+                        'persons' => (int)($row['persons'] ?? 1),
+                        'payment_status' => (string)($row['payment_status'] ?? ''),
+                        'verification_status' => (string)($row['verification_status'] ?? ''),
+                        'checkin_status' => (int)($row['checkin_status'] ?? 0),
+                        'payment_id' => (int)($row['payment_id'] ?? 0),
+                        'amount_paid' => (float)($row['amount_paid'] ?? 0),
+                        'payment_record_status' => (string)($row['payment_record_status'] ?? ''),
+                        'transaction_id' => (string)($row['transaction_id'] ?? ''),
+                        'cancelled_persons_total' => (int)($row['cancelled_persons_total'] ?? 0),
+                        'latest_cancelled_persons' => (int)($row['latest_cancelled_persons'] ?? 0),
+                    ]);
+                    $canDeleteRegistration = (bool)($deleteEligibility['eligible'] ?? false);
+                    $deleteEligibilityReason = (string)($deleteEligibility['reason'] ?? '');
+                }
 
                 $paymentRecordText = trim((string)($row['payment_record_status'] ?? ''));
                 $paymentMethodText = trim((string)($row['payment_method'] ?? ''));
@@ -1207,46 +1255,72 @@ $currentListUrl = $buildListUrl();
                 ?>
                 <tr id="reg-<?php echo $registrationId; ?>"<?php echo $hasPendingCancelRequest ? ' class="row-cancel-request"' : ''; ?>>
                     <td><?php echo $registrationId; ?></td>
-                    <td><strong><?php echo htmlspecialchars($bookingRef); ?></strong></td>
+                    <td>
+                        <strong><?php echo htmlspecialchars($bookingRef); ?></strong>
+                        <?php if ($isWaitlisted): ?>
+                            <br><span class="small">Waitlist <?php echo $waitlistPosition > 0 ? ('#' . (int)$waitlistPosition) : 'Pending'; ?></span>
+                        <?php endif; ?>
+                    </td>
                     <td>
                         <strong><?php echo htmlspecialchars((string)$row['event_title']); ?></strong><br>
                         <span class="small"><?php echo htmlspecialchars($eventDateDisplay); ?></span>
                     </td>
-                    <td><?php echo htmlspecialchars((string)$row['package_name']); ?></td>
+                    <td>
+                        <?php echo htmlspecialchars((string)$row['package_name']); ?>
+                        <?php if ($isWaitlisted): ?>
+                            <br><span class="small">Confirm: <?php echo htmlspecialchars($waitlistModeText); ?></span>
+                        <?php endif; ?>
+                    </td>
                     <td>
                         <strong><?php echo htmlspecialchars((string)$row['name']); ?></strong><br>
                         <span class="small"><?php echo htmlspecialchars((string)$row['phone']); ?></span>
                     </td>
                     <td><?php echo (int)$row['persons']; ?></td>
                     <td>
-                        <?php if ($canMarkPaid && !$hasPendingVerification): ?>
-                            <a class="money-link" href="<?php echo htmlspecialchars($quickMarkPaidUrl); ?>">
-                                <span class="status-badge <?php echo htmlspecialchars($paymentClass); ?>"><?php echo htmlspecialchars($paymentStatusText); ?></span>
-                            </a>
+                        <?php if ($isWaitlisted): ?>
+                            <span class="status-badge waitlisted">Waitlisted</span>
+                            <br><span class="small">Payment locked until confirmation</span>
                         <?php else: ?>
-                            <span class="status-badge <?php echo htmlspecialchars($paymentClass); ?>"><?php echo htmlspecialchars($paymentStatusText); ?></span>
+                            <?php if ($canMarkPaid && !$hasPendingVerification): ?>
+                                <a class="money-link" href="<?php echo htmlspecialchars($quickMarkPaidUrl); ?>">
+                                    <span class="status-badge <?php echo htmlspecialchars($paymentClass); ?>"><?php echo htmlspecialchars($paymentStatusText); ?></span>
+                                </a>
+                            <?php else: ?>
+                                <span class="status-badge <?php echo htmlspecialchars($paymentClass); ?>"><?php echo htmlspecialchars($paymentStatusText); ?></span>
+                            <?php endif; ?>
+                            <?php if ($paymentMethodText !== ''): ?><br><span class="small"><?php echo htmlspecialchars($paymentMethodText); ?></span><?php endif; ?>
+                            <?php if ($transactionIdText !== ''): ?><br><span class="small">Txn: <?php echo htmlspecialchars($transactionIdText); ?></span><?php endif; ?>
                         <?php endif; ?>
-                        <?php if ($paymentMethodText !== ''): ?><br><span class="small"><?php echo htmlspecialchars($paymentMethodText); ?></span><?php endif; ?>
-                        <?php if ($transactionIdText !== ''): ?><br><span class="small">Txn: <?php echo htmlspecialchars($transactionIdText); ?></span><?php endif; ?>
                     </td>
                     <td>
-                        <?php if ($hasPendingVerification): ?>
-                            <a class="money-link" href="<?php echo htmlspecialchars($quickVerifyUrl); ?>">
-                                <span class="status-badge <?php echo htmlspecialchars($verifyClass); ?>"><?php echo htmlspecialchars($verificationStatusText); ?></span>
-                            </a>
+                        <?php if ($isWaitlisted): ?>
+                            <span class="status-badge waitlisted">Waitlisted</span>
+                            <br><span class="small">Position: <?php echo $waitlistPosition > 0 ? ('#' . (int)$waitlistPosition) : 'Pending'; ?></span>
                         <?php else: ?>
-                            <span class="status-badge <?php echo htmlspecialchars($verifyClass); ?>"><?php echo htmlspecialchars($verificationStatusText); ?></span>
+                            <?php if ($hasPendingVerification): ?>
+                                <a class="money-link" href="<?php echo htmlspecialchars($quickVerifyUrl); ?>">
+                                    <span class="status-badge <?php echo htmlspecialchars($verifyClass); ?>"><?php echo htmlspecialchars($verificationStatusText); ?></span>
+                                </a>
+                            <?php else: ?>
+                                <span class="status-badge <?php echo htmlspecialchars($verifyClass); ?>"><?php echo htmlspecialchars($verificationStatusText); ?></span>
+                            <?php endif; ?>
+                            <?php if ($paymentRecordText !== ''): ?><br><span class="small">Payment Rec: <?php echo htmlspecialchars($paymentRecordText); ?></span><?php endif; ?>
                         <?php endif; ?>
-                        <?php if ($paymentRecordText !== ''): ?><br><span class="small">Payment Rec: <?php echo htmlspecialchars($paymentRecordText); ?></span><?php endif; ?>
                     </td>
                     <td class="amount-cell">Rs <?php echo htmlspecialchars($formatMoney($totalAmount)); ?></td>
                     <td class="amount-cell">
                         Rs <?php echo htmlspecialchars($formatMoney($paidAmountDisplay)); ?>
-                        <?php if ($hasPendingSubmittedAmount): ?><br><span class="small">Pending verification</span><?php endif; ?>
-                        <?php if ($hasRejectedSubmittedAmount && $paidAmountDisplay <= 0): ?><br><span class="small" style="color:#b00020;">Previous payment rejected</span><?php endif; ?>
+                        <?php if (!$isWaitlisted): ?>
+                            <?php if ($hasPendingSubmittedAmount): ?><br><span class="small">Pending verification</span><?php endif; ?>
+                            <?php if ($hasRejectedSubmittedAmount && $paidAmountDisplay <= 0): ?><br><span class="small" style="color:#b00020;">Previous payment rejected</span><?php endif; ?>
+                        <?php endif; ?>
                     </td>
                     <td>
-                        <?php if ($isCancelled): ?>
+                        <?php if ($isWaitlisted): ?>
+                            <div class="small"><strong>Waitlist Position:</strong> <?php echo $waitlistPosition > 0 ? ('#' . (int)$waitlistPosition) : 'Pending'; ?></div>
+                            <div class="small"><strong>Confirmation:</strong> <?php echo htmlspecialchars($waitlistModeText); ?></div>
+                            <div class="small"><strong>Payment:</strong> Not available until confirmed</div>
+                        <?php elseif ($isCancelled): ?>
                             <div class="small"><strong>Cancel Amt:</strong> Rs <?php echo htmlspecialchars($formatMoney($cancelAmount)); ?></div>
                             <div class="small"><strong>Refund:</strong> Rs <?php echo htmlspecialchars($formatMoney($refundAmount)); ?></div>
                             <?php if ($paidAmount <= 0): ?>
@@ -1316,6 +1390,14 @@ $currentListUrl = $buildListUrl();
                     <td>
                         <div class="action-wrap">
                             <a class="action-link action-view" href="registration-view.php?id=<?php echo $registrationId; ?>&return=<?php echo urlencode($currentListUrl); ?>">View</a>
+                            <?php if ($canConfirmWaitlisted): ?>
+                                <form method="post" style="display:inline;" onsubmit="return confirm('Confirm this waitlisted booking and open payment?');">
+                                    <?php echo $buildFilterHiddenInputs(); ?>
+                                    <input type="hidden" name="confirm_waitlisted_registration" value="1">
+                                    <input type="hidden" name="registration_id" value="<?php echo $registrationId; ?>">
+                                    <button type="submit" class="action-link action-confirm action-btn">Confirm Waitlist</button>
+                                </form>
+                            <?php endif; ?>
                             <?php if ($hasPendingVerification): ?>
                                 <a class="action-link action-verify" href="<?php echo htmlspecialchars($quickVerifyUrl); ?>">Verify</a>
                             <?php endif; ?>
@@ -1328,7 +1410,7 @@ $currentListUrl = $buildListUrl();
                             <?php if ($latestCancelId > 0 && $latestRefundStatus === 'pending' && $isCancelled): ?>
                                 <a class="action-link action-refund" href="<?php echo htmlspecialchars($quickRefundUrl); ?>">Refund</a>
                             <?php endif; ?>
-                            <?php if ($paymentStatusLower === 'paid'): ?>
+                            <?php if ($paymentStatusLower === 'paid' || $isWaitlisted): ?>
                                 <a class="action-link action-print" href="../../event-booking-confirmation.php?registration_id=<?php echo $registrationId; ?>&auto_print=1" target="_blank">Print</a>
                             <?php endif; ?>
                             <?php if ($canDeleteRegistration): ?>
@@ -1339,7 +1421,7 @@ $currentListUrl = $buildListUrl();
                                     <input type="hidden" name="registration_id" value="<?php echo $registrationId; ?>">
                                     <button type="submit" class="action-link action-delete action-btn">Delete</button>
                                 </form>
-                            <?php elseif ($isCancelled): ?>
+                            <?php elseif ($isCancelled || $isWaitlisted): ?>
                                 <span class="small" title="<?php echo htmlspecialchars($deleteEligibilityReason); ?>">Delete Locked</span>
                             <?php endif; ?>
                         </div>

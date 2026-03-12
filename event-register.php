@@ -263,6 +263,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if (empty($errors)) {
+        $shouldJoinWaitlist = false;
+        if ($selectedPackage && array_key_exists('seats_left', $selectedPackage)) {
+            $selectedSeatsLeft = $selectedPackage['seats_left'];
+            if ($selectedSeatsLeft !== null && (int)$selectedSeatsLeft < $persons) {
+                $shouldJoinWaitlist = true;
+            }
+        }
+
         try {
             $validateStmt = $pdo->prepare('SELECT p.id, p.event_id, p.package_name, p.price, p.price_total,
                     COALESCE(pdp.price_total, (CASE WHEN p.price_total > 0 THEN p.price_total ELSE p.price END)) AS effective_price_total,
@@ -298,6 +306,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $selectedDateRow = $dateCheckStmt->fetch(PDO::FETCH_ASSOC);
                 if (!$selectedDateRow || (string)$selectedDateRow['status'] !== 'Active') {
                     throw new RuntimeException('Selected event date is not available.');
+                }
+            }
+
+            if ($shouldJoinWaitlist) {
+                try {
+                    $waitlistResult = vs_event_create_waitlisted_registration(
+                        $pdo,
+                        (int)$event['id'],
+                        $selectedPackageId,
+                        $selectedDateId,
+                        $name,
+                        $phone,
+                        $persons,
+                        $dynamicValues
+                    );
+                    $waitlistedRegistrationId = (int)($waitlistResult['registration_id'] ?? 0);
+                    if ($waitlistedRegistrationId > 0) {
+                        header('Location: event-booking-confirmation.php?registration_id=' . $waitlistedRegistrationId . '&status=waitlisted');
+                        exit;
+                    }
+                } catch (RuntimeException $waitlistError) {
+                    $waitlistMessage = trim((string)$waitlistError->getMessage());
+                    $isSeatAvailableNow = (
+                        stripos($waitlistMessage, 'Seats are available') !== false
+                        || stripos($waitlistMessage, 'proceed to payment') !== false
+                    );
+                    if (!$isSeatAvailableNow) {
+                        throw $waitlistError;
+                    }
                 }
             }
 
@@ -419,6 +456,10 @@ if (is_array($selectedPackage)) {
 }
 $currentPricePerPerson = (float)($selectedPackagePriceMap[$currentSeatKey] ?? $fallbackPackagePrice);
 $personsQty = max((int)$old['persons'], 1);
+$initialWaitlistMode = false;
+if ($currentSeatData !== null && $currentSeatData['seats_left'] !== null && (int)$currentSeatData['seats_left'] < $personsQty) {
+    $initialWaitlistMode = true;
+}
 $selectedPackageForPlan = $selectedPackage;
 if ($selectedPackageForPlan) {
     if ($selectedPackageIsPaid) {
@@ -567,7 +608,18 @@ require_once 'header.php';
                     </div>
                 <?php endif; ?>
 
-                <button type="submit" class="submit-btn" <?php echo (!$registrationOpen || !$selectedPackage) ? 'disabled' : ''; ?>>Proceed To Payment</button>
+                <input type="hidden" id="registration_submit_mode" name="registration_submit_mode" value="<?php echo $initialWaitlistMode ? 'waitlist' : 'payment'; ?>">
+                <div id="waitlist_mode_hint" class="waitlist-mode-hint" style="<?php echo $initialWaitlistMode ? '' : 'display:none;'; ?>">
+                    Seats are currently full for selected quantity. You will join waitlist.
+                </div>
+                <button
+                    type="submit"
+                    id="register_submit_btn"
+                    class="submit-btn<?php echo $initialWaitlistMode ? ' waitlist-mode' : ''; ?>"
+                    <?php echo (!$registrationOpen || !$selectedPackage) ? 'disabled' : ''; ?>
+                >
+                    <?php echo $initialWaitlistMode ? 'Join Waitlist' : 'Proceed To Payment'; ?>
+                </button>
             </form>
         </div>
     </section>
@@ -590,6 +642,9 @@ require_once 'header.php';
     const pricePerPersonEl = document.getElementById('pkg_price_per_person');
     const totalAmountEl = document.getElementById('pkg_total_amount');
     const advanceTotalEl = document.getElementById('pkg_advance_total');
+    const submitBtn = document.getElementById('register_submit_btn');
+    const submitModeInput = document.getElementById('registration_submit_mode');
+    const waitlistHintEl = document.getElementById('waitlist_mode_hint');
 
     function asInt(value, fallback) {
         const parsed = parseInt(value, 10);
@@ -626,6 +681,17 @@ require_once 'header.php';
         availableSeatsEl.textContent = (seatsLeftRaw === null || seatsLeftRaw === undefined) ? 'Unlimited' : String(asInt(seatsLeftRaw, 0));
     }
 
+    function currentSeatInfo() {
+        if (!dateSelect) {
+            return null;
+        }
+        const key = String(dateSelect.value || '0');
+        if (!Object.prototype.hasOwnProperty.call(seatMap, key)) {
+            return null;
+        }
+        return seatMap[key] || null;
+    }
+
     function updateTotals() {
         const qty = Math.max(asInt(qtyInput.value, 1), 1);
         const pricePerPerson = currentPricePerPerson();
@@ -644,20 +710,44 @@ require_once 'header.php';
         }
     }
 
-    qtyInput.addEventListener('input', updateTotals);
+    function updateSubmitAction() {
+        if (!submitBtn) {
+            return;
+        }
+        const qty = Math.max(asInt(qtyInput.value, 1), 1);
+        const seatInfo = currentSeatInfo();
+        const seatsLeftRaw = seatInfo ? seatInfo.seats_left : null;
+        const isWaitlistMode = (seatsLeftRaw !== null && seatsLeftRaw !== undefined && asInt(seatsLeftRaw, 0) < qty);
+
+        submitBtn.textContent = isWaitlistMode ? 'Join Waitlist' : 'Proceed To Payment';
+        submitBtn.classList.toggle('waitlist-mode', isWaitlistMode);
+        if (submitModeInput) {
+            submitModeInput.value = isWaitlistMode ? 'waitlist' : 'payment';
+        }
+        if (waitlistHintEl) {
+            waitlistHintEl.style.display = isWaitlistMode ? 'block' : 'none';
+        }
+    }
+
+    qtyInput.addEventListener('input', function () {
+        updateTotals();
+        updateSubmitAction();
+    });
     if (dateSelect) {
         dateSelect.addEventListener('change', function () {
             updateSeats();
             updateTotals();
+            updateSubmitAction();
         });
     }
 
     updateTotals();
     updateSeats();
+    updateSubmitAction();
 })();
 </script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Marcellus&display=swap');
-html,body{font-family:'Marcellus',serif!important}.event-register-main{min-height:100vh;padding:1.5rem 0 5rem}.event-register-wrap{max-width:980px;margin:0 auto;padding:0 14px}.back-link{display:inline-block;color:#800000;text-decoration:none;font-weight:700;margin-bottom:10px}.card{background:#fff;border:1px solid #ecd3d3;border-radius:14px;box-shadow:0 4px 14px rgba(128,0,0,.08);padding:14px}h1{margin:0 0 8px;color:#800000;font-size:1.6rem}.small{margin:4px 0;color:#555;font-size:.9rem}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;margin-top:10px}.form-group{display:flex;flex-direction:column;gap:6px}label{color:#800000;font-weight:700;font-size:.92rem}input,select,textarea{width:100%;box-sizing:border-box;border:1px solid #e0bebe;border-radius:8px;padding:9px 10px;font-size:.94rem;background:#fff}.package-summary{margin-top:12px;border:1px solid #f1d6d6;background:#fffaf8;border-radius:10px;padding:12px}.package-summary-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:8px 14px;color:#4a3f3f;font-size:.93rem}.pkg-groups{display:flex;flex-direction:column;gap:10px}.pkg-group{background:#fff;border:1px solid #ecdede;border-radius:8px;padding:10px}.pkg-group-title{margin:0 0 8px;color:#7b1f1f;font-size:.94rem;letter-spacing:.2px}.pkg-note{margin:10px 0 0;font-size:.84rem;color:#6a5a5a}.pkg-desc-block{margin:10px 0 0;color:#444;line-height:1.45}.section-title{color:#800000;margin:14px 0 6px;font-size:1.1rem}.req{color:#b00020}.notice{margin:10px 0;padding:10px 12px;border-radius:8px;font-weight:600}.notice.err{background:#ffeaea;color:#b00020}textarea{min-height:90px;resize:vertical}.submit-btn{margin-top:14px;width:100%;border:none;border-radius:8px;background:#800000;color:#fff;font-weight:700;font-size:1rem;padding:11px 12px;cursor:pointer}.submit-btn:disabled{background:#999;cursor:not-allowed}.phone-note{margin-top:2px;color:#666;font-size:.82rem;line-height:1.35}
+html,body{font-family:'Marcellus',serif!important}.event-register-main{min-height:100vh;padding:1.5rem 0 5rem}.event-register-wrap{max-width:980px;margin:0 auto;padding:0 14px}.back-link{display:inline-block;color:#800000;text-decoration:none;font-weight:700;margin-bottom:10px}.card{background:#fff;border:1px solid #ecd3d3;border-radius:14px;box-shadow:0 4px 14px rgba(128,0,0,.08);padding:14px}h1{margin:0 0 8px;color:#800000;font-size:1.6rem}.small{margin:4px 0;color:#555;font-size:.9rem}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;margin-top:10px}.form-group{display:flex;flex-direction:column;gap:6px}label{color:#800000;font-weight:700;font-size:.92rem}input,select,textarea{width:100%;box-sizing:border-box;border:1px solid #e0bebe;border-radius:8px;padding:9px 10px;font-size:.94rem;background:#fff}.package-summary{margin-top:12px;border:1px solid #f1d6d6;background:#fffaf8;border-radius:10px;padding:12px}.package-summary-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:8px 14px;color:#4a3f3f;font-size:.93rem}.pkg-groups{display:flex;flex-direction:column;gap:10px}.pkg-group{background:#fff;border:1px solid #ecdede;border-radius:8px;padding:10px}.pkg-group-title{margin:0 0 8px;color:#7b1f1f;font-size:.94rem;letter-spacing:.2px}.pkg-note{margin:10px 0 0;font-size:.84rem;color:#6a5a5a}.pkg-desc-block{margin:10px 0 0;color:#444;line-height:1.45}.section-title{color:#800000;margin:14px 0 6px;font-size:1.1rem}.req{color:#b00020}.notice{margin:10px 0;padding:10px 12px;border-radius:8px;font-weight:600}.notice.err{background:#ffeaea;color:#b00020}textarea{min-height:90px;resize:vertical}.submit-btn{margin-top:14px;width:100%;border:none;border-radius:8px;background:#800000;color:#fff;font-weight:700;font-size:1rem;padding:11px 12px;cursor:pointer}.submit-btn.waitlist-mode{background:#0b7285}.submit-btn:disabled{background:#999;cursor:not-allowed}.waitlist-mode-hint{margin-top:10px;padding:10px 12px;border-radius:8px;background:#eef9fc;color:#0b5d70;font-size:.9rem}.phone-note{margin-top:2px;color:#666;font-size:.82rem;line-height:1.35}
 </style>
 <?php require_once 'footer.php'; ?>

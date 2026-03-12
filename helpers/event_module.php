@@ -50,6 +50,7 @@ if (!function_exists('vs_event_ensure_tables')) {
                 cancellation_allowed TINYINT(1) NOT NULL DEFAULT 1,
                 refund_allowed TINYINT(1) NOT NULL DEFAULT 1,
                 allow_checkin_without_payment TINYINT(1) NOT NULL DEFAULT 0,
+                waitlist_confirmation_mode ENUM('auto', 'manual') NOT NULL DEFAULT 'auto',
                 seat_limit INT DEFAULT NULL,
                 description TEXT NULL,
                 status ENUM('Active', 'Inactive') NOT NULL DEFAULT 'Active',
@@ -310,6 +311,9 @@ if (!function_exists('vs_event_ensure_tables')) {
         if (!$hasColumn('event_packages', 'allow_checkin_without_payment')) {
             $pdo->exec("ALTER TABLE event_packages ADD COLUMN allow_checkin_without_payment TINYINT(1) NOT NULL DEFAULT 0 AFTER refund_allowed");
         }
+        if (!$hasColumn('event_packages', 'waitlist_confirmation_mode')) {
+            $pdo->exec("ALTER TABLE event_packages ADD COLUMN waitlist_confirmation_mode ENUM('auto', 'manual') NOT NULL DEFAULT 'auto' AFTER allow_checkin_without_payment");
+        }
         if (!$hasColumn('event_packages', 'display_order')) {
             $pdo->exec("ALTER TABLE event_packages ADD COLUMN display_order INT NOT NULL DEFAULT 0 AFTER package_name");
         }
@@ -526,16 +530,25 @@ if (!function_exists('vs_event_ensure_tables')) {
         }
 
         // Backfill booking references for already-created rows.
-        $missingRows = $pdo->query("SELECT id FROM event_registrations WHERE COALESCE(booking_reference, '') = '' ORDER BY id ASC")
-            ->fetchAll(PDO::FETCH_COLUMN);
+        $missingRows = $pdo->query("SELECT id, created_at, payment_status, verification_status
+            FROM event_registrations
+            WHERE COALESCE(booking_reference, '') = ''
+            ORDER BY id ASC")
+            ->fetchAll(PDO::FETCH_ASSOC);
         if (!empty($missingRows)) {
             $backfillStmt = $pdo->prepare("UPDATE event_registrations SET booking_reference = ? WHERE id = ?");
-            foreach ($missingRows as $registrationId) {
-                $registrationId = (int)$registrationId;
+            foreach ($missingRows as $missingRow) {
+                $registrationId = (int)($missingRow['id'] ?? 0);
                 if ($registrationId <= 0) {
                     continue;
                 }
-                $backfillStmt->execute([vs_event_format_booking_reference($registrationId), $registrationId]);
+                $paymentStatus = strtolower(trim((string)($missingRow['payment_status'] ?? '')));
+                $verificationStatus = strtolower(trim((string)($missingRow['verification_status'] ?? '')));
+                $isWaitlisted = ($paymentStatus === 'waitlisted' || $verificationStatus === 'waitlisted');
+                $reference = $isWaitlisted
+                    ? vs_event_format_waitlist_booking_reference($registrationId, (string)($missingRow['created_at'] ?? ''))
+                    : vs_event_format_booking_reference($registrationId, (string)($missingRow['created_at'] ?? ''));
+                $backfillStmt->execute([$reference, $registrationId]);
             }
         }
 
@@ -573,6 +586,30 @@ if (!function_exists('vs_event_format_booking_reference')) {
     }
 }
 
+if (!function_exists('vs_event_format_waitlist_booking_reference')) {
+    function vs_event_format_waitlist_booking_reference(int $registrationId, ?string $createdAt = null): string
+    {
+        $year = date('Y');
+        if ($createdAt !== null && $createdAt !== '') {
+            $ts = strtotime($createdAt);
+            if ($ts !== false) {
+                $year = date('Y', $ts);
+            }
+        }
+
+        return sprintf('VS-WL-%s-%04d', $year, $registrationId);
+    }
+}
+
+if (!function_exists('vs_event_is_waitlisted_registration')) {
+    function vs_event_is_waitlisted_registration(array $row): bool
+    {
+        $paymentStatus = strtolower(trim((string)($row['payment_status'] ?? '')));
+        $verificationStatus = strtolower(trim((string)($row['verification_status'] ?? '')));
+        return ($paymentStatus === 'waitlisted' || $verificationStatus === 'waitlisted');
+    }
+}
+
 if (!function_exists('vs_event_assign_booking_reference')) {
     function vs_event_assign_booking_reference(PDO $pdo, int $registrationId): string
     {
@@ -593,6 +630,69 @@ if (!function_exists('vs_event_assign_booking_reference')) {
         $updateStmt->execute([$reference, $registrationId]);
 
         return $reference;
+    }
+}
+
+if (!function_exists('vs_event_assign_waitlist_booking_reference')) {
+    function vs_event_assign_waitlist_booking_reference(PDO $pdo, int $registrationId): string
+    {
+        $stmt = $pdo->prepare("SELECT booking_reference, created_at FROM event_registrations WHERE id = ? LIMIT 1");
+        $stmt->execute([$registrationId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$row) {
+            return '';
+        }
+
+        $existingReference = trim((string)($row['booking_reference'] ?? ''));
+        if ($existingReference !== '') {
+            return $existingReference;
+        }
+
+        $reference = vs_event_format_waitlist_booking_reference($registrationId, (string)($row['created_at'] ?? ''));
+        $updateStmt = $pdo->prepare("UPDATE event_registrations SET booking_reference = ? WHERE id = ? AND COALESCE(booking_reference, '') = ''");
+        $updateStmt->execute([$reference, $registrationId]);
+
+        return $reference;
+    }
+}
+
+if (!function_exists('vs_event_get_waitlist_position')) {
+    function vs_event_get_waitlist_position(PDO $pdo, int $registrationId): int
+    {
+        $registrationId = max($registrationId, 0);
+        if ($registrationId <= 0) {
+            return 0;
+        }
+
+        $rowStmt = $pdo->prepare("SELECT id, package_id, COALESCE(event_date_id, 0) AS event_date_id, created_at, payment_status, verification_status
+            FROM event_registrations
+            WHERE id = ?
+            LIMIT 1");
+        $rowStmt->execute([$registrationId]);
+        $row = $rowStmt->fetch(PDO::FETCH_ASSOC);
+        if (!$row || !vs_event_is_waitlisted_registration($row)) {
+            return 0;
+        }
+
+        $packageId = (int)($row['package_id'] ?? 0);
+        $eventDateId = (int)($row['event_date_id'] ?? 0);
+        if ($packageId <= 0) {
+            return 0;
+        }
+
+        $createdAt = trim((string)($row['created_at'] ?? ''));
+        $countStmt = $pdo->prepare("SELECT COUNT(*)
+            FROM event_registrations
+            WHERE package_id = ?
+              AND COALESCE(event_date_id, 0) = ?
+              AND (payment_status = 'Waitlisted' OR verification_status = 'Waitlisted')
+              AND (
+                    created_at < ?
+                    OR (created_at = ? AND id <= ?)
+              )");
+        $countStmt->execute([$packageId, $eventDateId, $createdAt, $createdAt, $registrationId]);
+
+        return (int)$countStmt->fetchColumn();
     }
 }
 
@@ -1458,6 +1558,519 @@ if (!function_exists('vs_event_resolve_refund_amount')) {
     }
 }
 
+if (!function_exists('vs_event_create_waitlisted_registration')) {
+    function vs_event_create_waitlisted_registration(
+        PDO $pdo,
+        int $eventId,
+        int $packageId,
+        int $eventDateId,
+        string $name,
+        string $phone,
+        int $persons = 1,
+        array $dynamicValues = []
+    ): array
+    {
+        $eventId = max($eventId, 0);
+        $packageId = max($packageId, 0);
+        $eventDateId = max($eventDateId, 0);
+        $persons = max($persons, 1);
+        $name = trim($name);
+        $phone = trim($phone);
+
+        if ($eventId <= 0 || $packageId <= 0) {
+            throw new RuntimeException('Invalid event/package selected for waitlist.');
+        }
+        if ($name === '' || $phone === '') {
+            throw new RuntimeException('Name and phone are required for waitlist.');
+        }
+
+        try {
+            $pdo->beginTransaction();
+
+            $packageStmt = $pdo->prepare("SELECT
+                    p.*,
+                    e.title AS event_title,
+                    e.event_type,
+                    e.event_date,
+                    e.status AS event_status
+                FROM event_packages p
+                INNER JOIN events e ON e.id = p.event_id
+                WHERE p.id = ?
+                  AND p.event_id = ?
+                LIMIT 1
+                FOR UPDATE");
+            $packageStmt->execute([$packageId, $eventId]);
+            $packageRow = $packageStmt->fetch(PDO::FETCH_ASSOC);
+            if (!$packageRow || (string)($packageRow['status'] ?? '') !== 'Active') {
+                throw new RuntimeException('Selected package is not active.');
+            }
+            if ((string)($packageRow['event_status'] ?? '') !== 'Active') {
+                throw new RuntimeException('Event is currently closed.');
+            }
+
+            $eventType = vs_event_normalize_event_type((string)($packageRow['event_type'] ?? 'single_day'));
+            $dateRow = null;
+            if ($eventType === 'single_day') {
+                $singleDateStmt = $pdo->prepare("SELECT id, event_date, seat_limit, status
+                    FROM event_dates
+                    WHERE event_id = ?
+                      AND status = 'Active'
+                    ORDER BY event_date ASC, id ASC
+                    LIMIT 1
+                    FOR UPDATE");
+                $singleDateStmt->execute([$eventId]);
+                $dateRow = $singleDateStmt->fetch(PDO::FETCH_ASSOC);
+                if (!$dateRow) {
+                    throw new RuntimeException('Configured event date is not available.');
+                }
+                $eventDateId = (int)($dateRow['id'] ?? 0);
+            } elseif ($eventType === 'multi_select_dates') {
+                if ($eventDateId <= 0) {
+                    throw new RuntimeException('Please select a valid event date.');
+                }
+                $dateStmt = $pdo->prepare("SELECT id, event_date, seat_limit, status
+                    FROM event_dates
+                    WHERE id = ?
+                      AND event_id = ?
+                    LIMIT 1
+                    FOR UPDATE");
+                $dateStmt->execute([$eventDateId, $eventId]);
+                $dateRow = $dateStmt->fetch(PDO::FETCH_ASSOC);
+                if (!$dateRow || (string)($dateRow['status'] ?? '') !== 'Active') {
+                    throw new RuntimeException('Selected event date is not active.');
+                }
+            } else {
+                $eventDateId = 0;
+            }
+
+            $duplicateStmt = $pdo->prepare("SELECT id
+                FROM event_registrations
+                WHERE package_id = ?
+                  AND phone = ?
+                  AND (? = 0 OR COALESCE(event_date_id, 0) = ?)
+                  AND payment_status NOT IN ('Failed', 'Cancelled')
+                LIMIT 1
+                FOR UPDATE");
+            $duplicateStmt->execute([$packageId, $phone, $eventDateId, $eventDateId]);
+            if ($duplicateStmt->fetch(PDO::FETCH_ASSOC)) {
+                throw new RuntimeException('This phone already has an active booking/waitlist for selected package.');
+            }
+
+            $packageSeatLimit = (int)($packageRow['seat_limit'] ?? 0);
+            $packageAvailable = null;
+            if ($packageSeatLimit > 0) {
+                $pkgUsedStmt = $pdo->prepare("SELECT COALESCE(SUM(persons), 0)
+                    FROM event_registrations
+                    WHERE package_id = ?
+                      AND (? = 0 OR event_date_id = ?)
+                      AND verification_status IN ('Pending', 'Approved', 'Auto Verified')
+                      AND payment_status NOT IN ('Failed', 'Cancelled')
+                    FOR UPDATE");
+                $pkgUsedStmt->execute([$packageId, $eventDateId, $eventDateId]);
+                $packageUsed = (int)$pkgUsedStmt->fetchColumn();
+                $packageAvailable = max($packageSeatLimit - $packageUsed, 0);
+            }
+
+            $dateAvailable = null;
+            if ($dateRow && (int)($dateRow['seat_limit'] ?? 0) > 0) {
+                $dateSeatLimit = (int)$dateRow['seat_limit'];
+                $dateUsedStmt = $pdo->prepare("SELECT COALESCE(SUM(persons), 0)
+                    FROM event_registrations
+                    WHERE event_id = ?
+                      AND event_date_id = ?
+                      AND verification_status IN ('Pending', 'Approved', 'Auto Verified')
+                      AND payment_status NOT IN ('Failed', 'Cancelled')
+                    FOR UPDATE");
+                $dateUsedStmt->execute([$eventId, $eventDateId]);
+                $dateUsed = (int)$dateUsedStmt->fetchColumn();
+                $dateAvailable = max($dateSeatLimit - $dateUsed, 0);
+            }
+
+            $availableSeats = null;
+            if ($packageAvailable !== null && $dateAvailable !== null) {
+                $availableSeats = min($packageAvailable, $dateAvailable);
+            } elseif ($packageAvailable !== null) {
+                $availableSeats = $packageAvailable;
+            } elseif ($dateAvailable !== null) {
+                $availableSeats = $dateAvailable;
+            }
+
+            if ($availableSeats === null) {
+                throw new RuntimeException('Seats are available. Please proceed with registration.');
+            }
+            if ($availableSeats >= $persons) {
+                throw new RuntimeException('Seats are available for this booking. Please proceed to payment.');
+            }
+
+            $isPaidPackage = ((int)($packageRow['is_paid'] ?? 1) === 1);
+            $allowedMethods = vs_event_payment_methods_from_csv((string)($packageRow['payment_methods'] ?? ''), $isPaidPackage);
+            $snapshotUpiId = null;
+            $snapshotUpiQr = null;
+            if ($isPaidPackage && in_array('upi', $allowedMethods, true)) {
+                $tmpUpiId = trim((string)($packageRow['upi_id'] ?? ''));
+                $tmpUpiQr = trim((string)($packageRow['upi_qr_image'] ?? ''));
+                $snapshotUpiId = $tmpUpiId !== '' ? $tmpUpiId : null;
+                $snapshotUpiQr = $tmpUpiQr !== '' ? $tmpUpiQr : null;
+            }
+
+            $insertStmt = $pdo->prepare("INSERT INTO event_registrations
+                (event_id, package_id, event_date_id, package_upi_id_snapshot, package_upi_qr_snapshot, name, phone, persons, payment_status, verification_status)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'Waitlisted', 'Waitlisted')");
+            $insertStmt->execute([
+                $eventId,
+                $packageId,
+                $eventDateId > 0 ? $eventDateId : null,
+                $snapshotUpiId,
+                $snapshotUpiQr,
+                $name,
+                $phone,
+                $persons,
+            ]);
+            $registrationId = (int)$pdo->lastInsertId();
+            $bookingReference = vs_event_assign_waitlist_booking_reference($pdo, $registrationId);
+
+            $insertDataStmt = $pdo->prepare("INSERT INTO event_registration_data (registration_id, field_name, value) VALUES (?, ?, ?)");
+            $insertDataStmt->execute([$registrationId, 'Name', $name]);
+            $insertDataStmt->execute([$registrationId, 'Phone', $phone]);
+            $insertDataStmt->execute([$registrationId, 'Persons', (string)$persons]);
+            $insertDataStmt->execute([$registrationId, 'Booking Reference', $bookingReference]);
+            $insertDataStmt->execute([$registrationId, 'Source', 'Waitlist']);
+            if ($dateRow) {
+                $insertDataStmt->execute([$registrationId, 'Selected Event Date', (string)($dateRow['event_date'] ?? '')]);
+            } elseif ($eventType === 'date_range') {
+                $rangeLabel = vs_event_get_event_date_display($pdo, $eventId, (string)($packageRow['event_date'] ?? ''), 'date_range');
+                $insertDataStmt->execute([$registrationId, 'Selected Event Date', $rangeLabel]);
+            }
+            foreach ($dynamicValues as $dynamicValue) {
+                $fieldName = trim((string)($dynamicValue['field_name'] ?? ''));
+                if ($fieldName === '') {
+                    continue;
+                }
+                $insertDataStmt->execute([$registrationId, $fieldName, (string)($dynamicValue['value'] ?? '')]);
+            }
+
+            $pdo->commit();
+
+            return [
+                'registration_id' => $registrationId,
+                'booking_reference' => $bookingReference,
+                'waitlist_position' => vs_event_get_waitlist_position($pdo, $registrationId),
+            ];
+        } catch (Throwable $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            if ($e instanceof RuntimeException) {
+                throw $e;
+            }
+            throw new RuntimeException('Unable to join waitlist right now.');
+        }
+    }
+}
+
+if (!function_exists('vs_event_confirm_waitlisted_registration')) {
+    function vs_event_confirm_waitlisted_registration(
+        PDO $pdo,
+        int $registrationId,
+        bool $useExistingTransaction = false
+    ): array
+    {
+        $registrationId = max($registrationId, 0);
+        if ($registrationId <= 0) {
+            throw new RuntimeException('Invalid waitlisted booking selected.');
+        }
+
+        try {
+            if (!$useExistingTransaction) {
+                $pdo->beginTransaction();
+            }
+
+            $stmt = $pdo->prepare("SELECT
+                    r.id,
+                    r.event_id,
+                    r.event_date_id,
+                    r.package_id,
+                    r.booking_reference,
+                    r.name,
+                    r.phone,
+                    r.persons,
+                    r.payment_status,
+                    r.verification_status,
+                    r.package_upi_id_snapshot,
+                    r.package_upi_qr_snapshot,
+                    p.id AS package_row_id,
+                    p.status AS package_status,
+                    p.is_paid,
+                    p.payment_methods,
+                    p.upi_id,
+                    p.upi_qr_image,
+                    p.seat_limit AS package_seat_limit,
+                    p.waitlist_confirmation_mode,
+                    e.status AS event_status,
+                    e.event_type
+                FROM event_registrations r
+                INNER JOIN event_packages p ON p.id = r.package_id
+                INNER JOIN events e ON e.id = r.event_id
+                WHERE r.id = ?
+                LIMIT 1
+                FOR UPDATE");
+            $stmt->execute([$registrationId]);
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            if (!$row) {
+                throw new RuntimeException('Waitlisted booking not found.');
+            }
+            if (!vs_event_is_waitlisted_registration($row)) {
+                throw new RuntimeException('This booking is not in waitlist state.');
+            }
+            if ((string)($row['package_status'] ?? '') !== 'Active') {
+                throw new RuntimeException('Package is not active for waitlist confirmation.');
+            }
+            if ((string)($row['event_status'] ?? '') !== 'Active') {
+                throw new RuntimeException('Event is closed for waitlist confirmation.');
+            }
+
+            $eventId = (int)($row['event_id'] ?? 0);
+            $packageId = (int)($row['package_id'] ?? 0);
+            $eventDateId = (int)($row['event_date_id'] ?? 0);
+            $persons = max((int)($row['persons'] ?? 1), 1);
+
+            $dateRow = null;
+            if ($eventDateId > 0) {
+                $dateStmt = $pdo->prepare("SELECT id, seat_limit, status
+                    FROM event_dates
+                    WHERE id = ?
+                      AND event_id = ?
+                    LIMIT 1
+                    FOR UPDATE");
+                $dateStmt->execute([$eventDateId, $eventId]);
+                $dateRow = $dateStmt->fetch(PDO::FETCH_ASSOC);
+                if (!$dateRow || (string)($dateRow['status'] ?? '') !== 'Active') {
+                    throw new RuntimeException('Selected waitlist date is not active.');
+                }
+            }
+
+            $packageSeatLimit = (int)($row['package_seat_limit'] ?? 0);
+            $packageAvailable = null;
+            if ($packageSeatLimit > 0) {
+                $pkgUsedStmt = $pdo->prepare("SELECT COALESCE(SUM(persons), 0)
+                    FROM event_registrations
+                    WHERE package_id = ?
+                      AND (? = 0 OR event_date_id = ?)
+                      AND id <> ?
+                      AND verification_status IN ('Pending', 'Approved', 'Auto Verified')
+                      AND payment_status NOT IN ('Failed', 'Cancelled')
+                    FOR UPDATE");
+                $pkgUsedStmt->execute([$packageId, $eventDateId, $eventDateId, $registrationId]);
+                $packageUsed = (int)$pkgUsedStmt->fetchColumn();
+                $packageAvailable = max($packageSeatLimit - $packageUsed, 0);
+            }
+
+            $dateAvailable = null;
+            if ($dateRow && (int)($dateRow['seat_limit'] ?? 0) > 0) {
+                $dateSeatLimit = (int)$dateRow['seat_limit'];
+                $dateUsedStmt = $pdo->prepare("SELECT COALESCE(SUM(persons), 0)
+                    FROM event_registrations
+                    WHERE event_id = ?
+                      AND event_date_id = ?
+                      AND id <> ?
+                      AND verification_status IN ('Pending', 'Approved', 'Auto Verified')
+                      AND payment_status NOT IN ('Failed', 'Cancelled')
+                    FOR UPDATE");
+                $dateUsedStmt->execute([$eventId, $eventDateId, $registrationId]);
+                $dateUsed = (int)$dateUsedStmt->fetchColumn();
+                $dateAvailable = max($dateSeatLimit - $dateUsed, 0);
+            }
+
+            $availableSeats = null;
+            if ($packageAvailable !== null && $dateAvailable !== null) {
+                $availableSeats = min($packageAvailable, $dateAvailable);
+            } elseif ($packageAvailable !== null) {
+                $availableSeats = $packageAvailable;
+            } elseif ($dateAvailable !== null) {
+                $availableSeats = $dateAvailable;
+            }
+            if ($availableSeats !== null && $availableSeats < $persons) {
+                throw new RuntimeException('Not enough seats available to confirm this waitlisted booking.');
+            }
+
+            $isPaidPackage = ((int)($row['is_paid'] ?? 1) === 1);
+            $paymentStatus = $isPaidPackage ? 'Unpaid' : 'Paid';
+            $verificationStatus = $isPaidPackage ? 'Pending' : 'Auto Verified';
+
+            $allowedMethods = vs_event_payment_methods_from_csv((string)($row['payment_methods'] ?? ''), $isPaidPackage);
+            $snapshotUpiId = trim((string)($row['package_upi_id_snapshot'] ?? ''));
+            $snapshotUpiQr = trim((string)($row['package_upi_qr_snapshot'] ?? ''));
+            if ($isPaidPackage && in_array('upi', $allowedMethods, true)) {
+                if ($snapshotUpiId === '') {
+                    $snapshotUpiId = trim((string)($row['upi_id'] ?? ''));
+                }
+                if ($snapshotUpiQr === '') {
+                    $snapshotUpiQr = trim((string)($row['upi_qr_image'] ?? ''));
+                }
+            } else {
+                $snapshotUpiId = '';
+                $snapshotUpiQr = '';
+            }
+
+            $updateStmt = $pdo->prepare("UPDATE event_registrations
+                SET payment_status = ?, verification_status = ?, package_upi_id_snapshot = ?, package_upi_qr_snapshot = ?
+                WHERE id = ?");
+            $updateStmt->execute([
+                $paymentStatus,
+                $verificationStatus,
+                $snapshotUpiId !== '' ? $snapshotUpiId : null,
+                $snapshotUpiQr !== '' ? $snapshotUpiQr : null,
+                $registrationId,
+            ]);
+
+            $sourceUpdateStmt = $pdo->prepare("UPDATE event_registration_data
+                SET value = 'Waitlist Confirmed'
+                WHERE registration_id = ?
+                  AND field_name = 'Source'");
+            $sourceUpdateStmt->execute([$registrationId]);
+            if ($sourceUpdateStmt->rowCount() <= 0) {
+                $insertSourceStmt = $pdo->prepare("INSERT INTO event_registration_data (registration_id, field_name, value) VALUES (?, 'Source', 'Waitlist Confirmed')");
+                $insertSourceStmt->execute([$registrationId]);
+            }
+
+            if (!$isPaidPackage) {
+                $freePaymentStmt = $pdo->prepare("INSERT INTO event_payments
+                    (registration_id, amount, payment_type, amount_paid, remaining_amount, payment_method, transaction_id, screenshot, status)
+                    VALUES (?, 0, 'full', 0, 0, 'Free', 'FREE', '', 'Paid')
+                    ON DUPLICATE KEY UPDATE
+                        amount = VALUES(amount),
+                        payment_type = VALUES(payment_type),
+                        amount_paid = VALUES(amount_paid),
+                        remaining_amount = VALUES(remaining_amount),
+                        payment_method = VALUES(payment_method),
+                        transaction_id = VALUES(transaction_id),
+                        screenshot = VALUES(screenshot),
+                        status = VALUES(status)");
+                $freePaymentStmt->execute([$registrationId]);
+            } else {
+                $pdo->prepare("DELETE FROM event_payments WHERE registration_id = ? AND status = 'Created'")->execute([$registrationId]);
+            }
+
+            if (!$useExistingTransaction) {
+                $pdo->commit();
+            }
+
+            return [
+                'registration_id' => $registrationId,
+                'booking_reference' => (string)($row['booking_reference'] ?? ''),
+                'payment_status' => $paymentStatus,
+                'verification_status' => $verificationStatus,
+            ];
+        } catch (Throwable $e) {
+            if (!$useExistingTransaction && $pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            if ($e instanceof RuntimeException) {
+                throw $e;
+            }
+            throw new RuntimeException('Unable to confirm waitlisted booking right now.');
+        }
+    }
+}
+
+if (!function_exists('vs_event_promote_waitlisted_registrations')) {
+    function vs_event_promote_waitlisted_registrations(
+        PDO $pdo,
+        int $eventId,
+        int $packageId,
+        int $eventDateId = 0,
+        int $availableSeats = 0,
+        bool $useExistingTransaction = false
+    ): array
+    {
+        $eventId = max($eventId, 0);
+        $packageId = max($packageId, 0);
+        $eventDateId = max($eventDateId, 0);
+        $availableSeats = max($availableSeats, 0);
+
+        if ($eventId <= 0 || $packageId <= 0 || $availableSeats <= 0) {
+            return ['mode' => 'manual', 'promoted_count' => 0, 'promoted_registration_ids' => []];
+        }
+
+        try {
+            if (!$useExistingTransaction) {
+                $pdo->beginTransaction();
+            }
+
+            $packageStmt = $pdo->prepare("SELECT waitlist_confirmation_mode
+                FROM event_packages
+                WHERE id = ?
+                  AND event_id = ?
+                LIMIT 1
+                FOR UPDATE");
+            $packageStmt->execute([$packageId, $eventId]);
+            $packageRow = $packageStmt->fetch(PDO::FETCH_ASSOC);
+            if (!$packageRow) {
+                if (!$useExistingTransaction) {
+                    $pdo->commit();
+                }
+                return ['mode' => 'manual', 'promoted_count' => 0, 'promoted_registration_ids' => []];
+            }
+
+            $mode = strtolower(trim((string)($packageRow['waitlist_confirmation_mode'] ?? 'auto')));
+            if (!in_array($mode, ['auto', 'manual'], true)) {
+                $mode = 'auto';
+            }
+            if ($mode !== 'auto') {
+                if (!$useExistingTransaction) {
+                    $pdo->commit();
+                }
+                return ['mode' => 'manual', 'promoted_count' => 0, 'promoted_registration_ids' => []];
+            }
+
+            $waitStmt = $pdo->prepare("SELECT id, persons
+                FROM event_registrations
+                WHERE event_id = ?
+                  AND package_id = ?
+                  AND (? = 0 OR COALESCE(event_date_id, 0) = ?)
+                  AND (payment_status = 'Waitlisted' OR verification_status = 'Waitlisted')
+                ORDER BY created_at ASC, id ASC
+                FOR UPDATE");
+            $waitStmt->execute([$eventId, $packageId, $eventDateId, $eventDateId]);
+            $waitRows = $waitStmt->fetchAll(PDO::FETCH_ASSOC);
+
+            $promotedIds = [];
+            foreach ($waitRows as $waitRow) {
+                $waitRegistrationId = (int)($waitRow['id'] ?? 0);
+                $waitPersons = max((int)($waitRow['persons'] ?? 1), 1);
+                if ($waitRegistrationId <= 0) {
+                    continue;
+                }
+                if ($availableSeats < $waitPersons) {
+                    break;
+                }
+
+                vs_event_confirm_waitlisted_registration($pdo, $waitRegistrationId, true);
+                $availableSeats -= $waitPersons;
+                $promotedIds[] = $waitRegistrationId;
+            }
+
+            if (!$useExistingTransaction) {
+                $pdo->commit();
+            }
+
+            return [
+                'mode' => 'auto',
+                'promoted_count' => count($promotedIds),
+                'promoted_registration_ids' => $promotedIds,
+            ];
+        } catch (Throwable $e) {
+            if (!$useExistingTransaction && $pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            if ($e instanceof RuntimeException) {
+                throw $e;
+            }
+            throw new RuntimeException('Unable to promote waitlisted bookings right now.');
+        }
+    }
+}
+
 if (!function_exists('vs_event_cancel_registration')) {
     function vs_event_cancel_registration(
         PDO $pdo,
@@ -1662,6 +2275,15 @@ if (!function_exists('vs_event_cancel_registration')) {
             ]);
             $cancellationId = (int)$pdo->lastInsertId();
 
+            $waitlistPromotion = vs_event_promote_waitlisted_registrations(
+                $pdo,
+                (int)($row['event_id'] ?? 0),
+                (int)($row['package_id'] ?? 0),
+                (int)($row['event_date_id'] ?? 0),
+                $cancelPersons,
+                true
+            );
+
             if (!$useExistingTransaction) {
                 $pdo->commit();
             }
@@ -1675,6 +2297,7 @@ if (!function_exists('vs_event_cancel_registration')) {
                 'remaining_persons' => $remainingPersons,
                 'refund_amount' => $refundAmount,
                 'refund_status' => $refundStatus,
+                'waitlist_promotion' => $waitlistPromotion,
             ];
         } catch (Throwable $e) {
             if (!$useExistingTransaction && $pdo->inTransaction()) {

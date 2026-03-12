@@ -23,6 +23,8 @@ $buildBookingTimeline = static function (array $ctx): array {
     $paymentStatus = strtolower(trim((string)($ctx['payment_status'] ?? '')));
     $verificationStatus = strtolower(trim((string)($ctx['verification_status'] ?? '')));
     $isCancelled = !empty($ctx['is_cancelled']);
+    $isWaitlisted = !empty($ctx['is_waitlisted']);
+    $waitlistPosition = (int)($ctx['waitlist_position'] ?? 0);
     $isPaid = !empty($ctx['is_paid']);
     $isPartialPaid = !empty($ctx['is_partial_paid']);
     $isPendingManualApproval = !empty($ctx['is_pending_manual_approval']);
@@ -56,7 +58,12 @@ $buildBookingTimeline = static function (array $ctx): array {
 
     $paymentStepState = 'pending';
     $paymentStepDetail = 'Payment is still pending for this booking.';
-    if ($isCancelled) {
+    if ($isWaitlisted) {
+        $paymentStepState = 'info';
+        $paymentStepDetail = $waitlistPosition > 0
+            ? ('Booking is on waitlist at position #' . $waitlistPosition . '. Payment will open after confirmation.')
+            : 'Booking is on waitlist. Payment will open after confirmation.';
+    } elseif ($isCancelled) {
         $paymentStepState = 'done';
         $paymentStepDetail = 'Payment actions are closed because this booking is cancelled.';
     } elseif ($isFreeBooking) {
@@ -84,7 +91,10 @@ $buildBookingTimeline = static function (array $ctx): array {
 
     $verificationStepState = 'pending';
     $verificationStepDetail = 'Verification is pending.';
-    if ($isCancelled && $verificationStatus === 'cancelled') {
+    if ($isWaitlisted) {
+        $verificationStepState = 'info';
+        $verificationStepDetail = 'Verification starts only after waitlist confirmation.';
+    } elseif ($isCancelled && $verificationStatus === 'cancelled') {
         $verificationStepState = 'done';
         $verificationStepDetail = 'Verification closed after cancellation.';
     } elseif (in_array($verificationStatus, ['approved', 'auto verified'], true)) {
@@ -106,7 +116,10 @@ $buildBookingTimeline = static function (array $ctx): array {
 
     $cancelStepState = 'pending';
     $cancelStepDetail = 'No cancellation request has been raised.';
-    if ($isCancelled) {
+    if ($isWaitlisted) {
+        $cancelStepState = 'info';
+        $cancelStepDetail = 'Waitlist booking is pending seat confirmation.';
+    } elseif ($isCancelled) {
         if ($cancelLatest) {
             $refundStatus = strtolower(trim((string)($cancelLatest['refund_status'] ?? 'pending')));
             $refundAmount = (float)($cancelLatest['display_refund_amount'] ?? ($cancelLatest['refund_amount'] ?? 0));
@@ -144,7 +157,11 @@ $buildBookingTimeline = static function (array $ctx): array {
     $eligibilityText = 'Booking is not yet eligible for event participation.';
     $nextAction = 'Complete pending booking steps.';
 
-    if ($isCancelled) {
+    if ($isWaitlisted) {
+        $eligibilityState = 'pending';
+        $eligibilityText = 'Booking is currently waitlisted and not yet confirmed.';
+        $nextAction = 'Wait for seat confirmation. Payment will open automatically after confirmation.';
+    } elseif ($isCancelled) {
         $eligibilityState = 'blocked';
         $eligibilityText = 'Not eligible. Booking is cancelled.';
         $nextAction = 'Track refund/cancellation updates in this booking.';
@@ -270,11 +287,15 @@ $buildBookingTimeline = static function (array $ctx): array {
     $progressPercent = (int)round(($completedCoreSteps / 4) * 100);
     if ($isCancelled) {
         $progressPercent = 100;
+    } elseif ($isWaitlisted) {
+        $progressPercent = 25;
     }
 
     $progressLabel = 'In Progress';
     if ($checkinStatus === 1) {
         $progressLabel = 'Checked In';
+    } elseif ($isWaitlisted) {
+        $progressLabel = 'Waitlisted';
     } elseif ($isCancelled) {
         $progressLabel = 'Booking Cancelled';
     } elseif ($eligibilityState === 'done') {
@@ -413,7 +434,9 @@ $verificationStatus = strtolower(trim((string)($row['verification_status'] ?? ''
 $paymentMethod = strtolower(trim((string)($row['payment_method'] ?? '')));
 $paymentRecordStatus = strtolower(trim((string)($row['payment_record_status'] ?? '')));
 
-$isCancelled = ($paymentStatus === 'cancelled' || $verificationStatus === 'cancelled');
+$isWaitlisted = vs_event_is_waitlisted_registration($row);
+$waitlistPosition = $isWaitlisted ? vs_event_get_waitlist_position($pdo, $registrationId) : 0;
+$isCancelled = (!$isWaitlisted && ($paymentStatus === 'cancelled' || $verificationStatus === 'cancelled'));
 $isPaid = ($paymentStatus === 'paid');
 $isPartialPaid = ($paymentStatus === 'partial paid');
 $isManualOrCash = in_array($paymentMethod, ['manual upi', 'cash'], true);
@@ -464,6 +487,20 @@ $pendingSubmittedAmount = (!$isCancelled && $isPendingManualApproval && !$isReje
 $rejectedSubmittedAmount = (!$isCancelled && $isRejectedByAdmin && $submittedManualAmount > 0)
     ? $submittedManualAmount
     : 0.0;
+
+if ($isWaitlisted) {
+    $isPaid = false;
+    $isPartialPaid = false;
+    $isPendingManualApproval = false;
+    $isRejectedByAdmin = false;
+    $displayAmountPaid = 0.0;
+    $displayRemainingAmount = 0.0;
+    $verifiedPaidAmount = 0.0;
+    $pendingSubmittedAmount = 0.0;
+    $rejectedSubmittedAmount = 0.0;
+    $paymentAmountNote = '';
+    $paymentAmountNoteType = '';
+}
 $isApprovedByVerification = (
     in_array($verificationStatus, ['approved', 'auto verified'], true) ||
     in_array($paymentRecordStatus, ['approved', 'paid', 'success', 'successful'], true) ||
@@ -479,6 +516,11 @@ if ($isCancelled) {
     $paymentHighlightIcon = '&#9888;';
     $paymentHighlightTitle = 'Booking Cancelled';
     $paymentHighlightMessage = 'Payment updates are locked for cancelled bookings.';
+} elseif ($isWaitlisted) {
+    $paymentHighlightState = 'neutral';
+    $paymentHighlightIcon = '&#9203;';
+    $paymentHighlightTitle = 'Waitlisted Booking';
+    $paymentHighlightMessage = 'Payment options are disabled until this waitlist booking is confirmed.';
 } elseif ($isPendingManualApproval && !$isRejectedByAdmin) {
     $paymentHighlightState = 'pending';
     $paymentHighlightIcon = '&#9203;';
@@ -504,6 +546,10 @@ if ($isManualOrCash && $isRejectedByAdmin && !$isPaid && !$isCancelled && !$isPa
     $showMakePaymentButton = true;
 }
 $showRemainingPaymentButton = ($isPartialPaid && $remainingAmount > 0 && !$isCancelled);
+if ($isWaitlisted) {
+    $showMakePaymentButton = false;
+    $showRemainingPaymentButton = false;
+}
 
 $businessWhatsappRaw = defined('WHATSAPP_BUSINESS_PHONE') ? trim((string)WHATSAPP_BUSINESS_PHONE) : '';
 $adminWhatsappRaw = defined('ADMIN_WHATSAPP') ? trim((string)ADMIN_WHATSAPP) : '';
@@ -561,6 +607,12 @@ if (in_array($status, ['paid', 'success', 'successful'], true) || strtolower((st
     $messageTitle = 'Booking Updated';
     $messageBody = 'Booking was partially cancelled successfully.';
     $statusClass = 'pending';
+} elseif ($isWaitlisted || in_array($status, ['waitlisted', 'waitlist'], true)) {
+    $messageTitle = 'Waitlist Joined';
+    $messageBody = $waitlistPosition > 0
+        ? ('Your booking is waitlisted. Current waitlist position: #' . $waitlistPosition . '.')
+        : 'Your booking is waitlisted. You will be notified when a seat is available.';
+    $statusClass = 'pending';
 } elseif (
     in_array($status, ['cancelled'], true) ||
     strtolower((string)$row['payment_status']) === 'cancelled' ||
@@ -588,6 +640,7 @@ if (in_array($status, ['paid', 'success', 'successful'], true) || strtolower((st
 $isCancellationAllowed = ((int)($row['cancellation_allowed'] ?? 1) === 1);
 $canCancel = (
     $isCancellationAllowed &&
+    !$isWaitlisted &&
     strtolower((string)$row['payment_status']) !== 'cancelled' &&
     strtolower((string)$row['verification_status']) !== 'cancelled' &&
     (int)($row['checkin_status'] ?? 0) !== 1 &&
@@ -599,6 +652,8 @@ $bookingTimeline = $buildBookingTimeline([
     'payment_status' => (string)($row['payment_status'] ?? ''),
     'verification_status' => (string)($row['verification_status'] ?? ''),
     'is_cancelled' => $isCancelled,
+    'is_waitlisted' => $isWaitlisted,
+    'waitlist_position' => $waitlistPosition,
     'is_paid' => $isPaid,
     'is_partial_paid' => $isPartialPaid,
     'is_pending_manual_approval' => $isPendingManualApproval,
@@ -712,6 +767,9 @@ $bookingTimeline = $buildBookingTimeline([
                 <h2>Event Details</h2>
                 <div class="detail-list">
                     <div><span>Booking Reference</span><strong><?php echo htmlspecialchars((string)($row['booking_reference'] ?? '')); ?></strong></div>
+                    <?php if ($isWaitlisted): ?>
+                        <div><span>Waitlist Position</span><strong><?php echo $waitlistPosition > 0 ? ('#' . $waitlistPosition) : 'Pending'; ?></strong></div>
+                    <?php endif; ?>
                     <div><span>Event</span><strong><?php echo htmlspecialchars((string)$row['event_title']); ?></strong></div>
                     <div><span>Package</span><strong><?php echo htmlspecialchars((string)$row['package_name']); ?></strong></div>
                     <div><span>Event Date</span><strong><?php echo htmlspecialchars($displayEventDate); ?></strong></div>
@@ -728,49 +786,57 @@ $bookingTimeline = $buildBookingTimeline([
                         <span><?php echo htmlspecialchars($paymentHighlightMessage); ?></span>
                     </div>
                 </div>
-                <div class="detail-list">
-                    <div><span>Payment Status</span><strong><?php echo htmlspecialchars((string)$row['payment_status']); ?></strong></div>
-                    <div><span>Verification</span><strong><?php echo htmlspecialchars((string)$row['verification_status']); ?></strong></div>
-                    <div><span>Method</span><strong><?php echo htmlspecialchars((string)($row['payment_method'] ?: 'N/A')); ?></strong></div>
-                    <div><span>Transaction ID</span><strong><?php echo htmlspecialchars((string)($row['transaction_id'] ?: 'N/A')); ?></strong></div>
-                </div>
-                <div class="amount-highlight-grid">
-                    <div class="amount-highlight amount-highlight-total">
-                        <span>Total Amount</span>
-                        <strong>Rs. <?php echo number_format($totalAmount, 0, '.', ''); ?></strong>
+                <?php if ($isWaitlisted): ?>
+                    <div class="detail-list">
+                        <div><span>Booking Status</span><strong>Waitlisted</strong></div>
+                        <div><span>Waitlist Position</span><strong><?php echo $waitlistPosition > 0 ? ('#' . $waitlistPosition) : 'Pending'; ?></strong></div>
+                        <div><span>Payment</span><strong>Disabled Until Confirmation</strong></div>
                     </div>
-                    <div class="amount-highlight amount-highlight-paid amount-highlight-<?php echo htmlspecialchars($paymentHighlightState); ?>">
-                        <span>Paid Amount (Shown)</span>
-                        <strong>Rs. <?php echo number_format($displayAmountPaid, 0, '.', ''); ?></strong>
+                <?php else: ?>
+                    <div class="detail-list">
+                        <div><span>Payment Status</span><strong><?php echo htmlspecialchars((string)$row['payment_status']); ?></strong></div>
+                        <div><span>Verification</span><strong><?php echo htmlspecialchars((string)$row['verification_status']); ?></strong></div>
+                        <div><span>Method</span><strong><?php echo htmlspecialchars((string)($row['payment_method'] ?: 'N/A')); ?></strong></div>
+                        <div><span>Transaction ID</span><strong><?php echo htmlspecialchars((string)($row['transaction_id'] ?: 'N/A')); ?></strong></div>
+                    </div>
+                    <div class="amount-highlight-grid">
+                        <div class="amount-highlight amount-highlight-total">
+                            <span>Total Amount</span>
+                            <strong>Rs. <?php echo number_format($totalAmount, 0, '.', ''); ?></strong>
+                        </div>
+                        <div class="amount-highlight amount-highlight-paid amount-highlight-<?php echo htmlspecialchars($paymentHighlightState); ?>">
+                            <span>Paid Amount (Shown)</span>
+                            <strong>Rs. <?php echo number_format($displayAmountPaid, 0, '.', ''); ?></strong>
+                            <?php if ($pendingSubmittedAmount > 0): ?>
+                                <small>Includes pending verification submission</small>
+                            <?php endif; ?>
+                        </div>
+                        <div class="amount-highlight amount-highlight-remaining">
+                            <span>Remaining Amount</span>
+                            <strong>Rs. <?php echo number_format($displayRemainingAmount, 0, '.', ''); ?></strong>
+                        </div>
                         <?php if ($pendingSubmittedAmount > 0): ?>
-                            <small>Includes pending verification submission</small>
+                            <div class="amount-highlight amount-highlight-confirmed">
+                                <span>Confirmed Paid (Verified)</span>
+                                <strong>Rs. <?php echo number_format($verifiedPaidAmount, 0, '.', ''); ?></strong>
+                            </div>
+                            <div class="amount-highlight amount-highlight-pending">
+                                <span>Submitted For Verification</span>
+                                <strong>Rs. <?php echo number_format($pendingSubmittedAmount, 0, '.', ''); ?></strong>
+                            </div>
+                        <?php endif; ?>
+                        <?php if ($rejectedSubmittedAmount > 0): ?>
+                            <div class="amount-highlight amount-highlight-rejected">
+                                <span>Previous Rejected Submission</span>
+                                <strong>Rs. <?php echo number_format($rejectedSubmittedAmount, 0, '.', ''); ?></strong>
+                            </div>
                         <?php endif; ?>
                     </div>
-                    <div class="amount-highlight amount-highlight-remaining">
-                        <span>Remaining Amount</span>
-                        <strong>Rs. <?php echo number_format($displayRemainingAmount, 0, '.', ''); ?></strong>
-                    </div>
-                    <?php if ($pendingSubmittedAmount > 0): ?>
-                        <div class="amount-highlight amount-highlight-confirmed">
-                            <span>Confirmed Paid (Verified)</span>
-                            <strong>Rs. <?php echo number_format($verifiedPaidAmount, 0, '.', ''); ?></strong>
-                        </div>
-                        <div class="amount-highlight amount-highlight-pending">
-                            <span>Submitted For Verification</span>
-                            <strong>Rs. <?php echo number_format($pendingSubmittedAmount, 0, '.', ''); ?></strong>
-                        </div>
+                    <?php if ($paymentAmountNote !== ''): ?>
+                        <p class="payment-note-text payment-note-<?php echo htmlspecialchars($paymentAmountNoteType); ?>">
+                            <?php echo htmlspecialchars($paymentAmountNote); ?>
+                        </p>
                     <?php endif; ?>
-                    <?php if ($rejectedSubmittedAmount > 0): ?>
-                        <div class="amount-highlight amount-highlight-rejected">
-                            <span>Previous Rejected Submission</span>
-                            <strong>Rs. <?php echo number_format($rejectedSubmittedAmount, 0, '.', ''); ?></strong>
-                        </div>
-                    <?php endif; ?>
-                </div>
-                <?php if ($paymentAmountNote !== ''): ?>
-                    <p class="payment-note-text payment-note-<?php echo htmlspecialchars($paymentAmountNoteType); ?>">
-                        <?php echo htmlspecialchars($paymentAmountNote); ?>
-                    </p>
                 <?php endif; ?>
             </div>
         </div>
@@ -851,6 +917,8 @@ $bookingTimeline = $buildBookingTimeline([
                     <span class="status-note">Cancellation request is pending admin approval.</span>
                 <?php elseif (!$isCancellationAllowed): ?>
                     <span class="status-note status-note-danger">Cancellation is not allowed for this package.</span>
+                <?php elseif ($isWaitlisted): ?>
+                    <span class="status-note">Waitlisted bookings cannot proceed to payment until seat confirmation.</span>
                 <?php endif; ?>
             </div>
         </div>
@@ -903,41 +971,47 @@ $bookingTimeline = $buildBookingTimeline([
                 <tr><th>Phone</th><td><?php echo htmlspecialchars((string)$row['phone']); ?></td><th>Persons / Qty</th><td><?php echo (int)$row['persons']; ?></td></tr>
                 <tr><th>Event</th><td><?php echo htmlspecialchars((string)$row['event_title']); ?></td><th>Package</th><td><?php echo htmlspecialchars((string)$row['package_name']); ?></td></tr>
                 <tr><th>Event Date</th><td><?php echo htmlspecialchars((string)$displayEventDate); ?></td><th>Location</th><td><?php echo htmlspecialchars((string)$row['location']); ?></td></tr>
-                <tr><th>Payment Status</th><td><?php echo htmlspecialchars((string)$row['payment_status']); ?></td><th>Verification</th><td><?php echo htmlspecialchars((string)$row['verification_status']); ?></td></tr>
-                <tr><th>Payment Method</th><td><?php echo htmlspecialchars((string)$row['payment_method']); ?></td><th>Payment Type</th><td><?php echo htmlspecialchars((string)($row['payment_type'] ?? '')); ?></td></tr>
-                <tr><th>Transaction ID</th><td><?php echo htmlspecialchars((string)$row['transaction_id']); ?></td><th>Payment Record</th><td><?php echo htmlspecialchars((string)($row['payment_record_status'] ?? '')); ?></td></tr>
-                <tr class="print-amount-row">
-                    <th>Total Amount</th>
-                    <td class="print-amount-total">Rs. <?php echo number_format($totalAmount, 0, '.', ''); ?></td>
-                    <th>Paid Amount</th>
-                    <td class="print-amount-paid print-amount-paid-<?php echo htmlspecialchars($paymentHighlightState); ?>">Rs. <?php echo number_format($displayAmountPaid, 0, '.', ''); ?></td>
-                </tr>
-                <tr class="print-amount-row">
-                    <th>Remaining Amount</th>
-                    <td class="print-amount-remaining">Rs. <?php echo number_format($displayRemainingAmount, 0, '.', ''); ?></td>
-                    <th>Booked At</th>
-                    <td><?php echo htmlspecialchars((string)$row['created_at']); ?></td>
-                </tr>
-                <?php if ($pendingSubmittedAmount > 0): ?>
+                <?php if ($isWaitlisted): ?>
+                    <tr><th>Booking Status</th><td>Waitlisted</td><th>Waitlist Position</th><td><?php echo $waitlistPosition > 0 ? ('#' . $waitlistPosition) : 'Pending'; ?></td></tr>
+                    <tr><th>Payment</th><td colspan="3">Not available while booking is in waitlist.</td></tr>
+                    <tr><th>Booked At</th><td colspan="3"><?php echo htmlspecialchars((string)$row['created_at']); ?></td></tr>
+                <?php else: ?>
+                    <tr><th>Payment Status</th><td><?php echo htmlspecialchars((string)$row['payment_status']); ?></td><th>Verification</th><td><?php echo htmlspecialchars((string)$row['verification_status']); ?></td></tr>
+                    <tr><th>Payment Method</th><td><?php echo htmlspecialchars((string)$row['payment_method']); ?></td><th>Payment Type</th><td><?php echo htmlspecialchars((string)($row['payment_type'] ?? '')); ?></td></tr>
+                    <tr><th>Transaction ID</th><td><?php echo htmlspecialchars((string)$row['transaction_id']); ?></td><th>Payment Record</th><td><?php echo htmlspecialchars((string)($row['payment_record_status'] ?? '')); ?></td></tr>
                     <tr class="print-amount-row">
-                        <th>Confirmed Paid (Verified)</th>
-                        <td>Rs. <?php echo number_format($verifiedPaidAmount, 0, '.', ''); ?></td>
-                        <th>Submitted For Verification</th>
-                        <td class="print-amount-pending">Rs. <?php echo number_format($pendingSubmittedAmount, 0, '.', ''); ?></td>
+                        <th>Total Amount</th>
+                        <td class="print-amount-total">Rs. <?php echo number_format($totalAmount, 0, '.', ''); ?></td>
+                        <th>Paid Amount</th>
+                        <td class="print-amount-paid print-amount-paid-<?php echo htmlspecialchars($paymentHighlightState); ?>">Rs. <?php echo number_format($displayAmountPaid, 0, '.', ''); ?></td>
                     </tr>
-                <?php endif; ?>
-                <?php if ($rejectedSubmittedAmount > 0): ?>
                     <tr class="print-amount-row">
-                        <th>Rejected Submission</th>
-                        <td class="print-amount-rejected">Rs. <?php echo number_format($rejectedSubmittedAmount, 0, '.', ''); ?></td>
-                        <th>Action</th>
-                        <td>Submit payment again</td>
+                        <th>Remaining Amount</th>
+                        <td class="print-amount-remaining">Rs. <?php echo number_format($displayRemainingAmount, 0, '.', ''); ?></td>
+                        <th>Booked At</th>
+                        <td><?php echo htmlspecialchars((string)$row['created_at']); ?></td>
                     </tr>
+                    <?php if ($pendingSubmittedAmount > 0): ?>
+                        <tr class="print-amount-row">
+                            <th>Confirmed Paid (Verified)</th>
+                            <td>Rs. <?php echo number_format($verifiedPaidAmount, 0, '.', ''); ?></td>
+                            <th>Submitted For Verification</th>
+                            <td class="print-amount-pending">Rs. <?php echo number_format($pendingSubmittedAmount, 0, '.', ''); ?></td>
+                        </tr>
+                    <?php endif; ?>
+                    <?php if ($rejectedSubmittedAmount > 0): ?>
+                        <tr class="print-amount-row">
+                            <th>Rejected Submission</th>
+                            <td class="print-amount-rejected">Rs. <?php echo number_format($rejectedSubmittedAmount, 0, '.', ''); ?></td>
+                            <th>Action</th>
+                            <td>Submit payment again</td>
+                        </tr>
+                    <?php endif; ?>
+                    <?php if ($paymentAmountNote !== ''): ?>
+                        <tr><th>Payment Note</th><td colspan="3" class="print-payment-note"><?php echo htmlspecialchars($paymentAmountNote); ?></td></tr>
+                    <?php endif; ?>
+                    <tr><th>Payment Remark</th><td colspan="3"><?php echo nl2br(htmlspecialchars((string)($row['remarks'] ?? ''))); ?></td></tr>
                 <?php endif; ?>
-                <?php if ($paymentAmountNote !== ''): ?>
-                    <tr><th>Payment Note</th><td colspan="3" class="print-payment-note"><?php echo htmlspecialchars($paymentAmountNote); ?></td></tr>
-                <?php endif; ?>
-                <tr><th>Payment Remark</th><td colspan="3"><?php echo nl2br(htmlspecialchars((string)($row['remarks'] ?? ''))); ?></td></tr>
             </table>
         </div>
 

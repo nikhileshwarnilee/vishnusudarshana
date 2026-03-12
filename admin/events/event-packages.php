@@ -83,6 +83,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_package'])) {
     $cancellationAllowed = isset($_POST['cancellation_allowed']) ? 1 : 0;
     $refundAllowed = isset($_POST['refund_allowed']) ? 1 : 0;
     $allowCheckinWithoutPayment = isset($_POST['allow_checkin_without_payment']) ? 1 : 0;
+    $waitlistConfirmationMode = strtolower(trim((string)($_POST['waitlist_confirmation_mode'] ?? 'auto')));
+    if (!in_array($waitlistConfirmationMode, ['auto', 'manual'], true)) {
+        $waitlistConfirmationMode = 'auto';
+    }
     if ($cancellationAllowed !== 1) {
         $refundAllowed = 0;
     }
@@ -230,9 +234,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_package'])) {
                 $cleanupOldUpiQr = '';
                 if ($packageId > 0) {
                     $stmt = $pdo->prepare('UPDATE event_packages
-                        SET event_id = ?, package_name = ?, display_order = ?, is_paid = ?, price = ?, price_total = ?, advance_amount = ?, payment_mode = ?, payment_methods = ?, upi_id = ?, upi_qr_image = ?, cancellation_allowed = ?, refund_allowed = ?, allow_checkin_without_payment = ?, seat_limit = ?, description = ?, status = ?
+                        SET event_id = ?, package_name = ?, display_order = ?, is_paid = ?, price = ?, price_total = ?, advance_amount = ?, payment_mode = ?, payment_methods = ?, upi_id = ?, upi_qr_image = ?, cancellation_allowed = ?, refund_allowed = ?, allow_checkin_without_payment = ?, waitlist_confirmation_mode = ?, seat_limit = ?, description = ?, status = ?
                         WHERE id = ?');
-                    $stmt->execute([$selectedEventId, $packageName, $displayOrder, $isPaid, $priceTotal, $priceTotal, $advanceAmount, $paymentMode, $paymentMethodsCsv, ($upiId !== '' ? $upiId : null), ($upiQrPath !== '' ? $upiQrPath : null), $cancellationAllowed, $refundAllowed, $allowCheckinWithoutPayment, $seatLimit, $description, $status, $packageId]);
+                    $stmt->execute([$selectedEventId, $packageName, $displayOrder, $isPaid, $priceTotal, $priceTotal, $advanceAmount, $paymentMode, $paymentMethodsCsv, ($upiId !== '' ? $upiId : null), ($upiQrPath !== '' ? $upiQrPath : null), $cancellationAllowed, $refundAllowed, $allowCheckinWithoutPayment, $waitlistConfirmationMode, $seatLimit, $description, $status, $packageId]);
                     $savedPackageId = $packageId;
                     if ($existingUpiQrPath !== '' && $existingUpiQrPath !== $upiQrPath) {
                         $cleanupOldUpiQr = $existingUpiQrPath;
@@ -240,9 +244,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_package'])) {
                     $message = 'Package updated successfully.';
                 } else {
                     $stmt = $pdo->prepare('INSERT INTO event_packages
-                        (event_id, package_name, display_order, is_paid, price, price_total, advance_amount, payment_mode, payment_methods, upi_id, upi_qr_image, cancellation_allowed, refund_allowed, allow_checkin_without_payment, seat_limit, description, status)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
-                    $stmt->execute([$selectedEventId, $packageName, $displayOrder, $isPaid, $priceTotal, $priceTotal, $advanceAmount, $paymentMode, $paymentMethodsCsv, ($upiId !== '' ? $upiId : null), ($upiQrPath !== '' ? $upiQrPath : null), $cancellationAllowed, $refundAllowed, $allowCheckinWithoutPayment, $seatLimit, $description, $status]);
+                        (event_id, package_name, display_order, is_paid, price, price_total, advance_amount, payment_mode, payment_methods, upi_id, upi_qr_image, cancellation_allowed, refund_allowed, allow_checkin_without_payment, waitlist_confirmation_mode, seat_limit, description, status)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+                    $stmt->execute([$selectedEventId, $packageName, $displayOrder, $isPaid, $priceTotal, $priceTotal, $advanceAmount, $paymentMode, $paymentMethodsCsv, ($upiId !== '' ? $upiId : null), ($upiQrPath !== '' ? $upiQrPath : null), $cancellationAllowed, $refundAllowed, $allowCheckinWithoutPayment, $waitlistConfirmationMode, $seatLimit, $description, $status]);
                     $savedPackageId = (int)$pdo->lastInsertId();
                     $message = 'Package added successfully.';
                 }
@@ -405,10 +409,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_package'])) {
 $formCancellationAllowed = true;
 $formRefundAllowed = true;
 $formAllowCheckinWithoutPayment = false;
+$formWaitlistConfirmationMode = 'auto';
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_package'])) {
     $formCancellationAllowed = isset($_POST['cancellation_allowed']);
     $formRefundAllowed = isset($_POST['refund_allowed']);
     $formAllowCheckinWithoutPayment = isset($_POST['allow_checkin_without_payment']);
+    $postedWaitlistMode = strtolower(trim((string)($_POST['waitlist_confirmation_mode'] ?? 'auto')));
+    if (in_array($postedWaitlistMode, ['auto', 'manual'], true)) {
+        $formWaitlistConfirmationMode = $postedWaitlistMode;
+    }
     if (!$formCancellationAllowed) {
         $formRefundAllowed = false;
     }
@@ -416,6 +425,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_package'])) {
     $formCancellationAllowed = ((int)($editPackage['cancellation_allowed'] ?? 1) === 1);
     $formRefundAllowed = ((int)($editPackage['refund_allowed'] ?? 1) === 1);
     $formAllowCheckinWithoutPayment = ((int)($editPackage['allow_checkin_without_payment'] ?? 0) === 1);
+    $savedWaitlistMode = strtolower(trim((string)($editPackage['waitlist_confirmation_mode'] ?? 'auto')));
+    if (in_array($savedWaitlistMode, ['auto', 'manual'], true)) {
+        $formWaitlistConfirmationMode = $savedWaitlistMode;
+    }
 }
 
 if (!$formIsPaid) {
@@ -644,6 +657,14 @@ if ($selectedEventId > 0) {
                     <span style="font-size:12px;color:#666;">If cancellation is disabled, refund is automatically disabled. Check-in policy applies to paid packages.</span>
                 </div>
             </div>
+            <div class="form-group" style="margin-top:10px;">
+                <label>Waitlist Confirmation Mode</label>
+                <select name="waitlist_confirmation_mode">
+                    <option value="auto" <?php echo ($formWaitlistConfirmationMode === 'auto') ? 'selected' : ''; ?>>Auto Confirm (FIFO)</option>
+                    <option value="manual" <?php echo ($formWaitlistConfirmationMode === 'manual') ? 'selected' : ''; ?>>Manual Confirm (Admin Picks)</option>
+                </select>
+                <span style="font-size:12px;color:#666;">Auto mode confirms first waitlisted booking when seats free up. Manual mode requires admin confirmation.</span>
+            </div>
             <div class="form-group" style="margin-top:10px;"><label>Package Description</label><textarea name="description"><?php echo htmlspecialchars((string)($editPackage['description'] ?? '')); ?></textarea></div>
             <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
                 <button type="submit" class="btn-main"><?php echo $editPackage ? 'Update Package' : 'Add Package'; ?></button>
@@ -660,12 +681,12 @@ if ($selectedEventId > 0) {
             <table class="list-table">
                 <thead>
                     <tr>
-                        <th>ID</th><th>Sort</th><th>Package</th><th>Type</th><th>Total Price</th><th>Advance</th><th>Mode</th><th>Methods</th><th>Cancellation</th><th>Refund</th><th>Check-In (Unpaid)</th><th>Total Seats</th><th>Booked Seats</th><th>Remaining Seats</th><th>Revenue Generated</th><th>Status</th><th>Actions</th>
+                        <th>ID</th><th>Sort</th><th>Package</th><th>Type</th><th>Total Price</th><th>Advance</th><th>Mode</th><th>Methods</th><th>Cancellation</th><th>Refund</th><th>Check-In (Unpaid)</th><th>Waitlist Confirm</th><th>Total Seats</th><th>Booked Seats</th><th>Remaining Seats</th><th>Revenue Generated</th><th>Status</th><th>Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                 <?php if (empty($packages)): ?>
-                    <tr><td colspan="17" style="text-align:center;padding:18px;color:#666;">No packages found for this event.</td></tr>
+                    <tr><td colspan="18" style="text-align:center;padding:18px;color:#666;">No packages found for this event.</td></tr>
                 <?php else: ?>
                     <?php foreach ($packages as $pkg): ?>
                         <tr>
@@ -700,6 +721,7 @@ if ($selectedEventId > 0) {
                             <td><?php echo ((int)($pkg['cancellation_allowed'] ?? 1) === 1) ? 'Allowed' : 'Not Allowed'; ?></td>
                             <td><?php echo ((int)($pkg['refund_allowed'] ?? 1) === 1) ? 'Allowed' : 'Not Allowed'; ?></td>
                             <td><?php echo $pkgPaid ? (((int)($pkg['allow_checkin_without_payment'] ?? 0) === 1) ? 'Allowed' : 'Not Allowed') : 'Allowed'; ?></td>
+                            <td><?php echo htmlspecialchars(ucfirst((string)($pkg['waitlist_confirmation_mode'] ?? 'auto'))); ?></td>
                             <td><?php echo ($pkg['total_seats'] === null) ? 'Unlimited' : (int)$pkg['total_seats']; ?></td>
                             <td><?php echo (int)$pkg['seats_booked']; ?></td>
                             <td><?php echo ($pkg['seats_left'] === null) ? 'Unlimited' : (int)$pkg['seats_left']; ?></td>

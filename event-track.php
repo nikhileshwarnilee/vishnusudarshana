@@ -73,6 +73,8 @@ $buildBookingTimeline = static function (array $ctx): array {
     $paymentStatus = strtolower(trim((string)($ctx['payment_status'] ?? '')));
     $verificationStatus = strtolower(trim((string)($ctx['verification_status'] ?? '')));
     $isCancelled = !empty($ctx['is_cancelled']);
+    $isWaitlisted = !empty($ctx['is_waitlisted']);
+    $waitlistPosition = (int)($ctx['waitlist_position'] ?? 0);
     $isPaid = !empty($ctx['is_paid']);
     $isPartialPaid = !empty($ctx['is_partial_paid']);
     $isPendingManualApproval = !empty($ctx['is_pending_manual_approval']);
@@ -106,7 +108,12 @@ $buildBookingTimeline = static function (array $ctx): array {
 
     $paymentStepState = 'pending';
     $paymentStepDetail = 'Payment is still pending for this booking.';
-    if ($isCancelled) {
+    if ($isWaitlisted) {
+        $paymentStepState = 'info';
+        $paymentStepDetail = $waitlistPosition > 0
+            ? ('Booking is on waitlist at position #' . $waitlistPosition . '. Payment will open after confirmation.')
+            : 'Booking is on waitlist. Payment will open after confirmation.';
+    } elseif ($isCancelled) {
         $paymentStepState = 'done';
         $paymentStepDetail = 'Payment actions are closed because this booking is cancelled.';
     } elseif ($isFreeBooking) {
@@ -134,7 +141,10 @@ $buildBookingTimeline = static function (array $ctx): array {
 
     $verificationStepState = 'pending';
     $verificationStepDetail = 'Verification is pending.';
-    if ($isCancelled && $verificationStatus === 'cancelled') {
+    if ($isWaitlisted) {
+        $verificationStepState = 'info';
+        $verificationStepDetail = 'Verification starts only after waitlist confirmation.';
+    } elseif ($isCancelled && $verificationStatus === 'cancelled') {
         $verificationStepState = 'done';
         $verificationStepDetail = 'Verification closed after cancellation.';
     } elseif (in_array($verificationStatus, ['approved', 'auto verified'], true)) {
@@ -156,7 +166,10 @@ $buildBookingTimeline = static function (array $ctx): array {
 
     $cancelStepState = 'pending';
     $cancelStepDetail = 'No cancellation request has been raised.';
-    if ($isCancelled) {
+    if ($isWaitlisted) {
+        $cancelStepState = 'info';
+        $cancelStepDetail = 'Waitlist booking is pending seat confirmation.';
+    } elseif ($isCancelled) {
         if ($cancelLatest) {
             $refundStatus = strtolower(trim((string)($cancelLatest['refund_status'] ?? 'pending')));
             $refundAmount = (float)($cancelLatest['display_refund_amount'] ?? ($cancelLatest['refund_amount'] ?? 0));
@@ -194,7 +207,11 @@ $buildBookingTimeline = static function (array $ctx): array {
     $eligibilityText = 'Booking is not yet eligible for event participation.';
     $nextAction = 'Complete pending booking steps.';
 
-    if ($isCancelled) {
+    if ($isWaitlisted) {
+        $eligibilityState = 'pending';
+        $eligibilityText = 'Booking is currently waitlisted and not yet confirmed.';
+        $nextAction = 'Wait for seat confirmation. Payment will open automatically after confirmation.';
+    } elseif ($isCancelled) {
         $eligibilityState = 'blocked';
         $eligibilityText = 'Not eligible. Booking is cancelled.';
         $nextAction = 'Track refund/cancellation updates in this booking.';
@@ -320,11 +337,15 @@ $buildBookingTimeline = static function (array $ctx): array {
     $progressPercent = (int)round(($completedCoreSteps / 4) * 100);
     if ($isCancelled) {
         $progressPercent = 100;
+    } elseif ($isWaitlisted) {
+        $progressPercent = 25;
     }
 
     $progressLabel = 'In Progress';
     if ($checkinStatus === 1) {
         $progressLabel = 'Checked In';
+    } elseif ($isWaitlisted) {
+        $progressLabel = 'Waitlisted';
     } elseif ($isCancelled) {
         $progressLabel = 'Booking Cancelled';
     } elseif ($eligibilityState === 'done') {
@@ -474,7 +495,9 @@ if ($verifiedContext) {
             $paymentMethod = strtolower(trim((string)($row['payment_method'] ?? '')));
             $paymentRecordStatus = strtolower(trim((string)($row['payment_record_status'] ?? '')));
 
-            $isCancelled = ($paymentStatus === 'cancelled' || $verificationStatus === 'cancelled');
+            $isWaitlisted = vs_event_is_waitlisted_registration($row);
+            $waitlistPosition = $isWaitlisted ? vs_event_get_waitlist_position($pdo, (int)($row['id'] ?? 0)) : 0;
+            $isCancelled = (!$isWaitlisted && ($paymentStatus === 'cancelled' || $verificationStatus === 'cancelled'));
             $isPaid = ($paymentStatus === 'paid');
             $isPartialPaid = ($paymentStatus === 'partial paid');
             $isManualOrCash = in_array($paymentMethod, ['manual upi', 'cash'], true);
@@ -522,6 +545,23 @@ if ($verifiedContext) {
                     : 'Previous payment verification was rejected. Only verified amount is counted as paid.';
             }
 
+            if ($isWaitlisted) {
+                $isPaid = false;
+                $isPartialPaid = false;
+                $isPendingManualApproval = false;
+                $isRejectedByAdmin = false;
+                $showMakePaymentButton = false;
+                $showRemainingPaymentButton = false;
+                $displayAmountPaid = 0.0;
+                $displayRemainingAmount = 0.0;
+                $pendingSubmittedAmount = 0.0;
+                $rejectedSubmittedAmount = 0.0;
+                $verifiedPaidAmount = 0.0;
+                $paymentAmountNote = $waitlistPosition > 0
+                    ? ('Waitlisted at position #' . $waitlistPosition . '. Payment will open after confirmation.')
+                    : 'Waitlisted booking. Payment will open after confirmation.';
+            }
+
             $isApprovedByVerification = (
                 in_array($verificationStatus, ['approved', 'auto verified'], true) ||
                 in_array($paymentRecordStatus, ['approved', 'paid', 'success', 'successful'], true) ||
@@ -537,6 +577,13 @@ if ($verifiedContext) {
                 $paymentStateIcon = '&#9888;';
                 $paymentStateTitle = 'Booking Cancelled';
                 $paymentStateMessage = 'Payment updates are locked because this booking is cancelled.';
+            } elseif ($isWaitlisted) {
+                $paymentState = 'neutral';
+                $paymentStateIcon = '&#9203;';
+                $paymentStateTitle = 'Waitlisted Booking';
+                $paymentStateMessage = $waitlistPosition > 0
+                    ? ('Waitlist position #' . $waitlistPosition . '. Payment opens after confirmation.')
+                    : 'Booking is waitlisted. Payment opens after confirmation.';
             } elseif ($isPendingManualApproval && !$isRejectedByAdmin) {
                 $paymentState = 'pending';
                 $paymentStateIcon = '&#9203;';
@@ -590,7 +637,9 @@ if ($verifiedContext) {
             $row['is_rejected_by_admin'] = $isRejectedByAdmin ? 1 : 0;
             $row['show_make_payment_button'] = $showMakePaymentButton ? 1 : 0;
             $row['show_remaining_payment_button'] = $showRemainingPaymentButton ? 1 : 0;
-            $row['can_cancel'] = (((int)($row['cancellation_allowed'] ?? 1) === 1) && !$isCancelled && (int)($row['checkin_status'] ?? 0) !== 1) ? 1 : 0;
+            $row['can_cancel'] = (((int)($row['cancellation_allowed'] ?? 1) === 1) && !$isCancelled && !$isWaitlisted && (int)($row['checkin_status'] ?? 0) !== 1) ? 1 : 0;
+            $row['is_waitlisted_status'] = $isWaitlisted ? 1 : 0;
+            $row['waitlist_position'] = $waitlistPosition;
 
             $registrationRefundContext[(int)($row['id'] ?? 0)] = [
                 'payment_status' => (string)($row['payment_status'] ?? ''),
@@ -694,6 +743,7 @@ require_once 'header.php';
                         <?php foreach ($rows as $row): ?>
                             <?php
                             $registrationId = (int)$row['id'];
+                            $isWaitlisted = ((int)($row['is_waitlisted_status'] ?? 0) === 1);
                             $isCancelled = (
                                 strtolower((string)($row['payment_status'] ?? '')) === 'cancelled' ||
                                 strtolower((string)($row['verification_status'] ?? '')) === 'cancelled'
@@ -717,6 +767,8 @@ require_once 'header.php';
                                 'payment_status' => (string)($row['payment_status'] ?? ''),
                                 'verification_status' => (string)($row['verification_status'] ?? ''),
                                 'is_cancelled' => $isCancelled,
+                                'is_waitlisted' => $isWaitlisted,
+                                'waitlist_position' => (int)($row['waitlist_position'] ?? 0),
                                 'is_paid' => ((int)($row['is_paid_status'] ?? 0) === 1),
                                 'is_partial_paid' => ((int)($row['is_partial_paid_status'] ?? 0) === 1),
                                 'is_pending_manual_approval' => ((int)($row['is_pending_manual_approval'] ?? 0) === 1),
@@ -857,7 +909,10 @@ require_once 'header.php';
                                     <div class="info-item"><span>Name</span><strong><?php echo htmlspecialchars((string)$row['name']); ?></strong></div>
                                     <div class="info-item"><span>Phone</span><strong><?php echo htmlspecialchars((string)$row['phone']); ?></strong></div>
                                     <div class="info-item"><span>Persons</span><strong><?php echo (int)$row['persons']; ?></strong></div>
-                                    <div class="info-item"><span>Payment Method</span><strong><?php echo htmlspecialchars((string)($row['payment_method'] ?: 'N/A')); ?></strong></div>
+                                    <div class="info-item"><span>Payment Method</span><strong><?php echo $isWaitlisted ? 'Not Available (Waitlisted)' : htmlspecialchars((string)($row['payment_method'] ?: 'N/A')); ?></strong></div>
+                                    <?php if ($isWaitlisted): ?>
+                                        <div class="info-item"><span>Waitlist Position</span><strong><?php echo (int)($row['waitlist_position'] ?? 0) > 0 ? ('#' . (int)$row['waitlist_position']) : 'Pending'; ?></strong></div>
+                                    <?php endif; ?>
                                     <div class="info-item"><span>Check-In Time</span><strong><?php echo !empty($row['checkin_time']) ? htmlspecialchars((string)$row['checkin_time']) : '-'; ?></strong></div>
                                     <div class="info-item"><span>Checked-In By</span><strong><?php echo !empty($row['checkin_by_user_name']) ? htmlspecialchars((string)$row['checkin_by_user_name']) : '-'; ?></strong></div>
                                     <div class="info-item"><span>Booked At</span><strong><?php echo htmlspecialchars((string)$row['created_at']); ?></strong></div>
@@ -899,6 +954,11 @@ require_once 'header.php';
                                     <p class="small-note">
                                         Cancellation request is pending admin approval
                                         (Requested: <?php echo htmlspecialchars((string)($pendingCancelRequest['requested_at'] ?? '-')); ?>).
+                                    </p>
+                                <?php elseif ($isWaitlisted): ?>
+                                    <p class="small-note">
+                                        This booking is currently waitlisted<?php echo ((int)($row['waitlist_position'] ?? 0) > 0) ? (' at position #' . (int)$row['waitlist_position']) : ''; ?>.
+                                        Payment will be available after confirmation.
                                     </p>
                                 <?php elseif ($isCancelled): ?>
                                     <p class="small-note">This booking is already cancelled.</p>

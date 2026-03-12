@@ -111,10 +111,12 @@ $summarySql = "SELECT
     SUM(CASE WHEN LOWER(r.payment_status) = 'partial paid' THEN 1 ELSE 0 END) AS partial_paid_registrations,
     SUM(CASE WHEN LOWER(r.payment_status) = 'unpaid' THEN 1 ELSE 0 END) AS unpaid_registrations,
     SUM(CASE WHEN LOWER(r.payment_status) = 'pending verification' THEN 1 ELSE 0 END) AS pending_verification,
+    SUM(CASE WHEN LOWER(r.payment_status) = 'waitlisted' OR LOWER(r.verification_status) = 'waitlisted' THEN 1 ELSE 0 END) AS waitlisted_registrations,
     SUM(CASE WHEN LOWER(r.payment_status) = 'failed' THEN 1 ELSE 0 END) AS failed_registrations,
     SUM(CASE WHEN LOWER(r.payment_status) = 'cancelled' OR LOWER(r.verification_status) = 'cancelled' THEN 1 ELSE 0 END) AS cancelled_registrations,
     COALESCE(SUM(CASE
         WHEN LOWER(r.payment_status) <> 'cancelled' AND LOWER(r.verification_status) <> 'cancelled'
+             AND LOWER(r.payment_status) <> 'waitlisted' AND LOWER(r.verification_status) <> 'waitlisted'
         THEN COALESCE(r.persons, 0)
         ELSE 0
     END), 0) AS active_persons,
@@ -142,10 +144,12 @@ $reportSql = "SELECT
     SUM(CASE WHEN LOWER(r.payment_status) = 'partial paid' THEN 1 ELSE 0 END) AS partial_paid_count,
     SUM(CASE WHEN LOWER(r.payment_status) = 'unpaid' THEN 1 ELSE 0 END) AS unpaid_count,
     SUM(CASE WHEN LOWER(r.payment_status) = 'pending verification' THEN 1 ELSE 0 END) AS pending_count,
+    SUM(CASE WHEN LOWER(r.payment_status) = 'waitlisted' OR LOWER(r.verification_status) = 'waitlisted' THEN 1 ELSE 0 END) AS waitlisted_count,
     SUM(CASE WHEN LOWER(r.payment_status) = 'failed' THEN 1 ELSE 0 END) AS failed_count,
     SUM(CASE WHEN LOWER(r.payment_status) = 'cancelled' OR LOWER(r.verification_status) = 'cancelled' THEN 1 ELSE 0 END) AS cancelled_count,
     COALESCE(SUM(CASE
         WHEN LOWER(r.payment_status) <> 'cancelled' AND LOWER(r.verification_status) <> 'cancelled'
+             AND LOWER(r.payment_status) <> 'waitlisted' AND LOWER(r.verification_status) <> 'waitlisted'
         THEN COALESCE(r.persons, 0)
         ELSE 0
     END), 0) AS active_persons,
@@ -228,6 +232,7 @@ if ($eventId > 0 && $selectedEvent !== null) {
             'seat_limit' => ($seatLimitRaw > 0 ? $seatLimitRaw : null),
             'total_registrations' => 0,
             'active_registrations' => 0,
+            'waitlisted_registrations' => 0,
             'cancelled_registrations' => 0,
             'paid_registrations' => 0,
             'partial_paid_registrations' => 0,
@@ -237,6 +242,7 @@ if ($eventId > 0 && $selectedEvent !== null) {
             'other_status_registrations' => 0,
             'persons_total_snapshot' => 0,
             'active_persons' => 0,
+            'waitlisted_persons' => 0,
             'cancelled_persons' => 0,
             'checked_in_registrations' => 0,
             'checked_in_persons' => 0,
@@ -383,6 +389,7 @@ if ($eventId > 0 && $selectedEvent !== null) {
     $eventInsights = [
         'total_bookings' => 0,
         'active_registrations' => 0,
+        'waitlisted_registrations' => 0,
         'cancelled_registrations' => 0,
         'paid_registrations' => 0,
         'partial_paid_registrations' => 0,
@@ -391,6 +398,7 @@ if ($eventId > 0 && $selectedEvent !== null) {
         'failed_registrations' => 0,
         'other_status_registrations' => 0,
         'persons_active' => 0,
+        'persons_waitlisted' => 0,
         'persons_cancelled' => 0,
         'persons_gross' => 0,
         'checked_in_registrations' => 0,
@@ -437,6 +445,7 @@ if ($eventId > 0 && $selectedEvent !== null) {
                 'seat_limit' => null,
                 'total_registrations' => 0,
                 'active_registrations' => 0,
+                'waitlisted_registrations' => 0,
                 'cancelled_registrations' => 0,
                 'paid_registrations' => 0,
                 'partial_paid_registrations' => 0,
@@ -446,6 +455,7 @@ if ($eventId > 0 && $selectedEvent !== null) {
                 'other_status_registrations' => 0,
                 'persons_total_snapshot' => 0,
                 'active_persons' => 0,
+                'waitlisted_persons' => 0,
                 'cancelled_persons' => 0,
                 'checked_in_registrations' => 0,
                 'checked_in_persons' => 0,
@@ -467,6 +477,7 @@ if ($eventId > 0 && $selectedEvent !== null) {
 
         $paymentStatusLower = strtolower(trim((string)($regRow['payment_status'] ?? '')));
         $verificationStatusLower = strtolower(trim((string)($regRow['verification_status'] ?? '')));
+        $isWaitlisted = ($paymentStatusLower === 'waitlisted' || $verificationStatusLower === 'waitlisted');
         $isCancelled = ($paymentStatusLower === 'cancelled' || $verificationStatusLower === 'cancelled');
 
         $eventInsights['gross_collected'] += $amountPaid;
@@ -474,6 +485,11 @@ if ($eventId > 0 && $selectedEvent !== null) {
         if ($isCancelled) {
             $eventInsights['cancelled_registrations']++;
             $packageInsightsMap[$packageId]['cancelled_registrations']++;
+        } elseif ($isWaitlisted) {
+            $eventInsights['waitlisted_registrations']++;
+            $eventInsights['persons_waitlisted'] += $persons;
+            $packageInsightsMap[$packageId]['waitlisted_registrations']++;
+            $packageInsightsMap[$packageId]['waitlisted_persons'] += $persons;
         } else {
             $eventInsights['active_registrations']++;
             $eventInsights['persons_active'] += $persons;
@@ -510,38 +526,40 @@ if ($eventId > 0 && $selectedEvent !== null) {
             $packageInsightsMap[$packageId]['pending_cancel_request_registrations']++;
         }
 
-        switch ($paymentStatusLower) {
-            case 'paid':
-                $eventInsights['paid_registrations']++;
-                $packageInsightsMap[$packageId]['paid_registrations']++;
-                break;
-            case 'partial paid':
-                $eventInsights['partial_paid_registrations']++;
-                $packageInsightsMap[$packageId]['partial_paid_registrations']++;
-                break;
-            case 'unpaid':
-                $eventInsights['unpaid_registrations']++;
-                $packageInsightsMap[$packageId]['unpaid_registrations']++;
-                break;
-            case 'pending verification':
-                $eventInsights['pending_verification']++;
-                $packageInsightsMap[$packageId]['pending_verification']++;
-                break;
-            case 'failed':
-                $eventInsights['failed_registrations']++;
-                $packageInsightsMap[$packageId]['failed_registrations']++;
-                break;
-            case 'cancelled':
-                break;
-            default:
-                $eventInsights['other_status_registrations']++;
-                $packageInsightsMap[$packageId]['other_status_registrations']++;
-                break;
+        if (!$isWaitlisted) {
+            switch ($paymentStatusLower) {
+                case 'paid':
+                    $eventInsights['paid_registrations']++;
+                    $packageInsightsMap[$packageId]['paid_registrations']++;
+                    break;
+                case 'partial paid':
+                    $eventInsights['partial_paid_registrations']++;
+                    $packageInsightsMap[$packageId]['partial_paid_registrations']++;
+                    break;
+                case 'unpaid':
+                    $eventInsights['unpaid_registrations']++;
+                    $packageInsightsMap[$packageId]['unpaid_registrations']++;
+                    break;
+                case 'pending verification':
+                    $eventInsights['pending_verification']++;
+                    $packageInsightsMap[$packageId]['pending_verification']++;
+                    break;
+                case 'failed':
+                    $eventInsights['failed_registrations']++;
+                    $packageInsightsMap[$packageId]['failed_registrations']++;
+                    break;
+                case 'cancelled':
+                    break;
+                default:
+                    $eventInsights['other_status_registrations']++;
+                    $packageInsightsMap[$packageId]['other_status_registrations']++;
+                    break;
+            }
         }
     }
 
     $eventInsights['persons_cancelled'] = max((int)($cancelSummary['cancelled_persons_total'] ?? 0), 0);
-    $eventInsights['persons_gross'] = $eventInsights['persons_active'] + $eventInsights['persons_cancelled'];
+    $eventInsights['persons_gross'] = $eventInsights['persons_active'] + $eventInsights['persons_waitlisted'] + $eventInsights['persons_cancelled'];
 
     foreach ($packageInsightsMap as &$pkgInsight) {
         $seatLimit = $pkgInsight['seat_limit'];
@@ -596,6 +614,9 @@ if ($eventId > 0 && $selectedEvent !== null) {
     }
     if ($eventInsights['pending_verification'] > 0) {
         $insightNotes[] = $eventInsights['pending_verification'] . ' booking(s) are awaiting payment verification.';
+    }
+    if ($eventInsights['waitlisted_registrations'] > 0) {
+        $insightNotes[] = $eventInsights['waitlisted_registrations'] . ' booking(s) are currently waitlisted for ' . $eventInsights['persons_waitlisted'] . ' person(s).';
     }
     if ($eventInsights['failed_registrations'] > 0) {
         $insightNotes[] = $eventInsights['failed_registrations'] . ' booking(s) are in failed payment status and may need follow-up.';
@@ -758,6 +779,7 @@ if (!empty($exportQuery)) {
                 </div>
                 <div class="quick-links">
                     <a class="quick-link" href="registrations.php?event_id=<?php echo (int)$eventId; ?>">View Registrations</a>
+                    <a class="quick-link" href="waitlist.php?event_id=<?php echo (int)$eventId; ?>">View Waitlist</a>
                     <a class="quick-link" href="cancellations.php?event_id=<?php echo (int)$eventId; ?>">View Cancellations</a>
                     <a class="quick-link" href="event-packages.php?event_id=<?php echo (int)$eventId; ?>">Manage Packages</a>
                     <a class="quick-link" href="pending-payments.php?event_id=<?php echo (int)$eventId; ?>">Pending Payments</a>
@@ -783,15 +805,25 @@ if (!empty($exportQuery)) {
                     <div class="insight-value"><?php echo (int)$eventInsights['cancelled_registrations']; ?></div>
                     <div class="insight-note">Full-cancelled bookings</div>
                 </div>
+                <div class="insight-card <?php echo ((int)$eventInsights['waitlisted_registrations'] > 0) ? 'alert' : ''; ?>">
+                    <div class="insight-title">Waitlisted Registrations</div>
+                    <div class="insight-value"><?php echo (int)$eventInsights['waitlisted_registrations']; ?></div>
+                    <div class="insight-note">Waiting for seat confirmation</div>
+                </div>
                 <div class="insight-card">
                     <div class="insight-title">Persons Booked (Gross)</div>
                     <div class="insight-value"><?php echo (int)$eventInsights['persons_gross']; ?></div>
-                    <div class="insight-note">Active + cancelled persons</div>
+                    <div class="insight-note">Active + waitlisted + cancelled persons</div>
                 </div>
                 <div class="insight-card">
                     <div class="insight-title">Persons Active</div>
                     <div class="insight-value"><?php echo (int)$eventInsights['persons_active']; ?></div>
                     <div class="insight-note">Current seats occupied</div>
+                </div>
+                <div class="insight-card <?php echo ((int)$eventInsights['persons_waitlisted'] > 0) ? 'alert' : ''; ?>">
+                    <div class="insight-title">Persons Waitlisted</div>
+                    <div class="insight-value"><?php echo (int)$eventInsights['persons_waitlisted']; ?></div>
+                    <div class="insight-note">Seats pending confirmation</div>
                 </div>
                 <div class="insight-card <?php echo ((int)$eventInsights['persons_cancelled'] > 0) ? 'alert' : ''; ?>">
                     <div class="insight-title">Persons Cancelled</div>
@@ -957,13 +989,14 @@ if (!empty($exportQuery)) {
                             </td>
                             <td>
                                 Total: <?php echo (int)$pkg['total_registrations']; ?><br>
-                                <span class="small">Active: <?php echo (int)$pkg['active_registrations']; ?> | Cancelled: <?php echo (int)$pkg['cancelled_registrations']; ?></span>
+                                <span class="small">Active: <?php echo (int)$pkg['active_registrations']; ?> | Waitlisted: <?php echo (int)$pkg['waitlisted_registrations']; ?> | Cancelled: <?php echo (int)$pkg['cancelled_registrations']; ?></span>
                             </td>
                             <td>
                                 <span class="small">Paid: <?php echo (int)$pkg['paid_registrations']; ?></span><br>
                                 <span class="small">Partial: <?php echo (int)$pkg['partial_paid_registrations']; ?></span><br>
                                 <span class="small">Unpaid: <?php echo (int)$pkg['unpaid_registrations']; ?></span><br>
                                 <span class="small">Pending Ver.: <?php echo (int)$pkg['pending_verification']; ?></span><br>
+                                <span class="small">Waitlisted: <?php echo (int)$pkg['waitlisted_registrations']; ?></span><br>
                                 <span class="small">Failed: <?php echo (int)$pkg['failed_registrations']; ?></span>
                             </td>
                             <td>
@@ -1058,6 +1091,10 @@ if (!empty($exportQuery)) {
                     <div class="insight-title">Unpaid</div>
                     <div class="insight-value"><?php echo (int)($summary['unpaid_registrations'] ?? 0); ?></div>
                 </div>
+                <div class="insight-card <?php echo ((int)($summary['waitlisted_registrations'] ?? 0) > 0) ? 'alert' : ''; ?>">
+                    <div class="insight-title">Waitlisted</div>
+                    <div class="insight-value"><?php echo (int)($summary['waitlisted_registrations'] ?? 0); ?></div>
+                </div>
                 <div class="insight-card <?php echo ((int)($summary['pending_verification'] ?? 0) > 0) ? 'alert' : ''; ?>">
                     <div class="insight-title">Pending Verification</div>
                     <div class="insight-value"><?php echo (int)($summary['pending_verification'] ?? 0); ?></div>
@@ -1097,6 +1134,7 @@ if (!empty($exportQuery)) {
                         <th>Partial</th>
                         <th>Unpaid</th>
                         <th>Pending</th>
+                        <th>Waitlisted</th>
                         <th>Failed</th>
                         <th>Cancelled</th>
                         <th>Collected</th>
@@ -1104,7 +1142,7 @@ if (!empty($exportQuery)) {
                 </thead>
                 <tbody>
                 <?php if (empty($reportRows)): ?>
-                    <tr><td colspan="13" style="text-align:center; padding:20px; color:#666;">No report rows found for selected filters.</td></tr>
+                    <tr><td colspan="14" style="text-align:center; padding:20px; color:#666;">No report rows found for selected filters.</td></tr>
                 <?php else: ?>
                     <?php foreach ($reportRows as $row): ?>
                         <?php
@@ -1130,6 +1168,7 @@ if (!empty($exportQuery)) {
                             <td><?php echo (int)$row['partial_paid_count']; ?></td>
                             <td><?php echo (int)$row['unpaid_count']; ?></td>
                             <td><?php echo (int)$row['pending_count']; ?></td>
+                            <td><?php echo (int)$row['waitlisted_count']; ?></td>
                             <td><?php echo (int)$row['failed_count']; ?></td>
                             <td><?php echo (int)$row['cancelled_count']; ?></td>
                             <td>Rs <?php echo htmlspecialchars($formatMoney((float)$row['collected_amount'])); ?></td>
