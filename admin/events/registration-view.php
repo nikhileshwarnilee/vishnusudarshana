@@ -1163,7 +1163,7 @@ $pageTitle = 'Registration View';
     <section class="surface panel" style="border-color:#f0d6d6;background:#fffafb;">
         <h3>Delete Registration</h3>
         <?php if ($viewCanDeleteRegistration): ?>
-            <p class="help">This registration meets delete policy: fully cancelled, zero paid amount, not checked-in, and no pending verification.</p>
+            <p class="help">This registration meets delete policy: fully cancelled, zero net paid amount (after processed refund), not checked-in, and no pending verification.</p>
             <form method="post" autocomplete="off" onsubmit="return confirm('Delete this registration permanently? This action cannot be undone.');">
                 <input type="hidden" name="action" value="delete">
                 <input type="hidden" name="registration_id" value="<?php echo (int)$registration['id']; ?>">

@@ -27,21 +27,13 @@ $respondJson = static function (array $payload): void {
     exit;
 };
 
-$formatUpiAmount = static function (float $amount): string {
-    $normalized = round(max($amount, 0), 2);
-    $formatted = number_format($normalized, 2, '.', '');
-    $formatted = rtrim(rtrim($formatted, '0'), '.');
-    return $formatted !== '' ? $formatted : '0';
-};
-
-$buildUpiIntentLink = static function (string $upiId, float $amount) use ($formatUpiAmount): string {
+$buildUpiIntentLink = static function (string $upiId): string {
     $pa = preg_replace('/\s+/', '', $upiId);
-    $am = $formatUpiAmount($amount);
     if ($pa === '') {
         return '';
     }
 
-    return 'upi://pay?pa=' . $pa . '&am=' . rawurlencode($am) . '&cu=INR';
+    return 'upi://pay?pa=' . $pa;
 };
 
 $loadRegistrationById = static function (PDO $pdo, int $regId): ?array {
@@ -988,7 +980,7 @@ if ($upiId !== '') {
     $upiIntentBaseParams = [
         'pa' => $upiId,
     ];
-    $initialUpiIntentLink = $buildUpiIntentLink($upiId, $displayNowAmount);
+    $initialUpiIntentLink = $buildUpiIntentLink($upiId);
 }
 $isPaid = ((string)$registration['payment_status'] === 'Paid');
 $showChoiceSelector = ((string)$packageData['payment_mode'] === 'optional' && !$isRemainingStage && !$isPaid);
@@ -1120,7 +1112,7 @@ $methodLabelMap = [
                         <?php endif; ?>
                         <?php if (!empty($upiIntentBaseParams)): ?>
                             <a href="<?php echo htmlspecialchars($initialUpiIntentLink); ?>" class="btn-main btn-link" id="upiIntentBtn" target="_blank" rel="noopener">
-                                Pay Rs. <span id="upiIntentAmountText"><?php echo number_format($displayNowAmount, 2, '.', ''); ?></span> in UPI App
+                                Pay in UPI App
                             </a>
                         <?php endif; ?>
                         <form method="post" enctype="multipart/form-data" autocomplete="off">
@@ -1186,7 +1178,6 @@ $methodLabelMap = [
     const payNowAmountEl = document.getElementById('payNowAmount');
     const rzpAmountText = document.getElementById('rzpAmountText');
     const upiIntentBtn = document.getElementById('upiIntentBtn');
-    const upiIntentAmountText = document.getElementById('upiIntentAmountText');
     const upiIntentBaseParams = <?php echo json_encode($upiIntentBaseParams, JSON_UNESCAPED_UNICODE); ?>;
     const postUrl = <?php echo json_encode('event-payment.php?' . $flowQuery); ?>;
     const flowData = <?php if ($isDraftMode): ?>{ draft_token: <?php echo json_encode((string)$draftToken); ?> }<?php else: ?>{ registration_id: <?php echo json_encode((int)$registrationId); ?> }<?php endif; ?>;
@@ -1211,7 +1202,7 @@ $methodLabelMap = [
         return asString || '0';
     }
 
-    function buildUpiIntentLink(amount) {
+    function buildUpiIntentLink() {
         if (!upiIntentBaseParams || typeof upiIntentBaseParams !== 'object' || !upiIntentBaseParams.pa) {
             return '';
         }
@@ -1219,8 +1210,7 @@ $methodLabelMap = [
         if (!pa) {
             return '';
         }
-        const am = formatAmount(amount);
-        return 'upi://pay?pa=' + pa + '&am=' + encodeURIComponent(am) + '&cu=INR';
+        return 'upi://pay?pa=' + pa;
     }
 
     function refreshAmounts() {
@@ -1231,9 +1221,8 @@ $methodLabelMap = [
         if (rzpAmountText) rzpAmountText.textContent = displayAmount;
         if (manualChoiceEl) manualChoiceEl.value = choice;
         if (cashChoiceEl) cashChoiceEl.value = choice;
-        if (upiIntentAmountText) upiIntentAmountText.textContent = displayAmount;
         if (upiIntentBtn) {
-            const upiLink = buildUpiIntentLink(amount);
+            const upiLink = buildUpiIntentLink();
             upiIntentBtn.href = upiLink || '#';
             upiIntentBtn.style.pointerEvents = upiLink ? 'auto' : 'none';
             upiIntentBtn.setAttribute('aria-disabled', upiLink ? 'false' : 'true');

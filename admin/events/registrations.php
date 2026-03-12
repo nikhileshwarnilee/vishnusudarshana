@@ -850,6 +850,7 @@ $sql = "SELECT
         ep.remarks,
         c_tot.cancelled_persons_total,
         c_tot.refund_amount_total,
+        c_tot.processed_refund_amount_total,
         c_last.id AS latest_cancel_id,
         c_last.cancelled_persons AS latest_cancelled_persons,
         c_last.refund_amount AS latest_refund_amount,
@@ -869,7 +870,8 @@ $sql = "SELECT
     LEFT JOIN (
         SELECT registration_id,
             SUM(cancelled_persons) AS cancelled_persons_total,
-            SUM(refund_amount) AS refund_amount_total
+            SUM(refund_amount) AS refund_amount_total,
+            SUM(CASE WHEN refund_status = 'processed' THEN refund_amount ELSE 0 END) AS processed_refund_amount_total
         FROM event_cancellations
         GROUP BY registration_id
     ) c_tot ON c_tot.registration_id = r.id
@@ -1234,7 +1236,10 @@ $currentListUrl = $buildListUrl();
                         'payment_record_status' => (string)($row['payment_record_status'] ?? ''),
                         'transaction_id' => (string)($row['transaction_id'] ?? ''),
                         'cancelled_persons_total' => (int)($row['cancelled_persons_total'] ?? 0),
+                        'processed_refund_amount_total' => (float)($row['processed_refund_amount_total'] ?? 0),
                         'latest_cancelled_persons' => (int)($row['latest_cancelled_persons'] ?? 0),
+                        'latest_refund_amount' => (float)($row['latest_refund_amount'] ?? 0),
+                        'latest_refund_status' => (string)($row['latest_refund_status'] ?? ''),
                     ]);
                     $canDeleteRegistration = (bool)($deleteEligibility['eligible'] ?? false);
                     $deleteEligibilityReason = (string)($deleteEligibility['reason'] ?? '');

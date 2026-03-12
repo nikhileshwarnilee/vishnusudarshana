@@ -2574,16 +2574,22 @@ if (!function_exists('vs_event_evaluate_registration_delete_eligibility')) {
         $verificationStatus = strtolower(trim((string)($row['verification_status'] ?? '')));
         $paymentRecordStatus = strtolower(trim((string)($row['payment_record_status'] ?? '')));
         $isCheckedIn = ((int)($row['checkin_status'] ?? 0) === 1);
+        $isCancelled = ($paymentStatus === 'cancelled' || $verificationStatus === 'cancelled');
 
         $amountPaid = round(max((float)($row['amount_paid'] ?? 0), 0), 2);
+        $processedRefundAmount = round(max((float)($row['processed_refund_amount_total'] ?? 0), 0), 2);
+        $latestRefundStatus = strtolower(trim((string)($row['latest_refund_status'] ?? '')));
+        if ($processedRefundAmount <= 0 && $latestRefundStatus === 'processed') {
+            $processedRefundAmount = round(max((float)($row['latest_refund_amount'] ?? 0), 0), 2);
+        }
+        $netPaidAmount = round(max($amountPaid - $processedRefundAmount, 0), 2);
         $hasPaidStatus = in_array($paymentStatus, ['paid', 'partial paid'], true);
-        $hasPaidAmount = ($amountPaid > 0.0) || $hasPaidStatus;
+        $hasPaidAmount = ($netPaidAmount > 0.0) || ($hasPaidStatus && !$isCancelled && $processedRefundAmount <= 0.0);
 
         $cancelledPersonsTotal = (int)($row['cancelled_persons_total'] ?? 0);
         if ($cancelledPersonsTotal <= 0) {
             $cancelledPersonsTotal = (int)($row['latest_cancelled_persons'] ?? 0);
         }
-        $isCancelled = ($paymentStatus === 'cancelled' || $verificationStatus === 'cancelled');
         $isFullyCancelled = ($isCancelled && $cancelledPersonsTotal > 0 && $cancelledPersonsTotal >= $persons);
 
         $isVerificationPending = in_array($verificationStatus, ['pending', 'pending verification'], true)
@@ -2604,7 +2610,7 @@ if (!function_exists('vs_event_evaluate_registration_delete_eligibility')) {
         if (!$isFullyCancelled) {
             $reason = 'Delete is allowed only after full cancellation for all booked persons.';
         } elseif ($hasPaidAmount) {
-            $reason = 'Delete is blocked because paid amount is not zero.';
+            $reason = 'Delete is blocked because paid amount is not zero after processed refunds.';
         } elseif ($isCheckedIn) {
             $reason = 'Checked-in registration cannot be deleted.';
         } elseif ($isVerificationPending) {
@@ -2620,6 +2626,9 @@ if (!function_exists('vs_event_evaluate_registration_delete_eligibility')) {
             'reason' => $reason,
             'persons' => $persons,
             'cancelled_persons_total' => $cancelledPersonsTotal,
+            'amount_paid' => $amountPaid,
+            'processed_refund_amount_total' => $processedRefundAmount,
+            'net_paid_amount' => $netPaidAmount,
             'has_paid_amount' => $hasPaidAmount,
             'is_checked_in' => $isCheckedIn,
             'is_fully_cancelled' => $isFullyCancelled,
@@ -2654,16 +2663,22 @@ if (!function_exists('vs_event_get_registration_delete_eligibility')) {
                 COALESCE(ep.status, '') AS payment_record_status,
                 COALESCE(ep.transaction_id, '') AS transaction_id,
                 COALESCE(c_tot.cancelled_persons_total, 0) AS cancelled_persons_total,
-                COALESCE(c_last.cancelled_persons, 0) AS latest_cancelled_persons
+                COALESCE(c_tot.processed_refund_amount_total, 0) AS processed_refund_amount_total,
+                COALESCE(c_last.cancelled_persons, 0) AS latest_cancelled_persons,
+                COALESCE(c_last.refund_amount, 0) AS latest_refund_amount,
+                COALESCE(c_last.refund_status, '') AS latest_refund_status
             FROM event_registrations r
             LEFT JOIN event_payments ep ON ep.registration_id = r.id
             LEFT JOIN (
-                SELECT registration_id, SUM(cancelled_persons) AS cancelled_persons_total
+                SELECT
+                    registration_id,
+                    SUM(cancelled_persons) AS cancelled_persons_total,
+                    SUM(CASE WHEN refund_status = 'processed' THEN refund_amount ELSE 0 END) AS processed_refund_amount_total
                 FROM event_cancellations
                 GROUP BY registration_id
             ) c_tot ON c_tot.registration_id = r.id
             LEFT JOIN (
-                SELECT c1.registration_id, c1.cancelled_persons
+                SELECT c1.registration_id, c1.cancelled_persons, c1.refund_amount, c1.refund_status
                 FROM event_cancellations c1
                 INNER JOIN (
                     SELECT registration_id, MAX(id) AS latest_id
