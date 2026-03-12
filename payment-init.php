@@ -665,6 +665,14 @@ $orderId = $razorpay_order_id;
                     <?php if (!empty($item['desc'])): ?>
                     <div class="product-desc"><?php echo htmlspecialchars($item['desc']); ?></div>
                     <?php endif; ?>
+                    <?php if (!empty($item['variant_value_name'])): ?>
+                    <div class="product-desc">
+                        <?php
+                            $variantName = !empty($item['variant_name']) ? $item['variant_name'] : 'Variant';
+                            echo htmlspecialchars($variantName . ': ' . $item['variant_value_name']);
+                        ?>
+                    </div>
+                    <?php endif; ?>
                     <div class="product-price">₹<?php echo number_format($item['price'], 2); ?> × <?php echo $item['qty']; ?> = ₹<?php echo number_format($item['line_total'], 2); ?></div>
                 </div>
             </li>
@@ -692,6 +700,14 @@ $orderId = $razorpay_order_id;
                 <div class="product-info">
                     <div class="product-name"><?php echo htmlspecialchars($prod['name']); ?></div>
                     <div class="product-desc"><?php echo htmlspecialchars($prod['desc']); ?></div>
+                    <?php if (!empty($prod['variant_value_name'])): ?>
+                    <div class="product-desc">
+                        <?php
+                            $variantName = !empty($prod['variant_name']) ? $prod['variant_name'] : 'Variant';
+                            echo htmlspecialchars($variantName . ': ' . $prod['variant_value_name']);
+                        ?>
+                    </div>
+                    <?php endif; ?>
                 </div>
                 <div class="qty-controls">
                     <span class="details-label">Qty:</span>

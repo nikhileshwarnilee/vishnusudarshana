@@ -2,6 +2,9 @@
 require_once (is_file(__DIR__ . '/includes/permissions.php') ? __DIR__ . '/includes/permissions.php' : dirname(__DIR__) . '/includes/permissions.php');
 admin_enforce_mapped_permission('auto');
 require_once __DIR__ . '/../../config/db.php';
+require_once __DIR__ . '/../../helpers/product_variants.php';
+
+vs_ensure_product_variant_schema($pdo);
 
 header('Content-Type: text/html; charset=UTF-8');
 
@@ -21,7 +24,11 @@ $total_pages = max(1, ceil($total_products / $perPage));
 $page = min($page, $total_pages);
 $offset = ($page - 1) * $perPage;
 
-$query = "SELECT * FROM products" . $whereClause . " ORDER BY display_order ASC, id DESC LIMIT $perPage OFFSET $offset";
+$query = "SELECT p.*, pv.variant_name
+          FROM products p
+          LEFT JOIN product_variants pv ON pv.id = p.variant_id" . $whereClause . "
+          ORDER BY p.display_order ASC, p.id DESC
+          LIMIT $perPage OFFSET $offset";
 $stmt = $pdo->prepare($query);
 $stmt->execute();
 $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -38,7 +45,13 @@ $categoryNames = [
 // If filtering by category, show all products in that category grouped
 if ($categoryFilter) {
     // Get all products for the selected category (no pagination limit)
-    $allStmt = $pdo->prepare("SELECT * FROM products WHERE category_slug = ? ORDER BY display_order ASC, id DESC");
+    $allStmt = $pdo->prepare("
+        SELECT p.*, pv.variant_name
+        FROM products p
+        LEFT JOIN product_variants pv ON pv.id = p.variant_id
+        WHERE p.category_slug = ?
+        ORDER BY p.display_order ASC, p.id DESC
+    ");
     $allStmt->execute([$categoryFilter]);
     $allProducts = $allStmt->fetchAll(PDO::FETCH_ASSOC);
     
@@ -50,6 +63,7 @@ if ($categoryFilter) {
         echo '<thead><tr>';
         echo '<th>ID</th>';
         echo '<th>Product Name</th>';
+        echo '<th>Variant</th>';
         echo '<th>Price</th>';
         echo '<th>Status</th>';
         echo '<th>Is Mandatory</th>';
@@ -62,6 +76,7 @@ if ($categoryFilter) {
             echo '<tr>';
             echo '<td>' . $product['id'] . '</td>';
             echo '<td>' . htmlspecialchars($product['product_name']) . '</td>';
+            echo '<td>' . (!empty($product['variant_name']) ? htmlspecialchars($product['variant_name']) : '-') . '</td>';
             echo '<td>&#8377;' . number_format($product['price'], 2) . '</td>';
             echo '<td><span class="status-badge ' . ($product['is_active'] ? 'status-completed' : 'status-cancelled') . '">' . ($product['is_active'] ? 'Active' : 'Inactive') . '</span></td>';
             echo '<td>';
@@ -95,7 +110,13 @@ if ($categoryFilter) {
         echo '<div class="no-products">No products found.</div>';
     } else {
         foreach ($categories as $cat) {
-            $catStmt = $pdo->prepare("SELECT * FROM products WHERE category_slug = ? ORDER BY display_order ASC, id DESC");
+            $catStmt = $pdo->prepare("
+                SELECT p.*, pv.variant_name
+                FROM products p
+                LEFT JOIN product_variants pv ON pv.id = p.variant_id
+                WHERE p.category_slug = ?
+                ORDER BY p.display_order ASC, p.id DESC
+            ");
             $catStmt->execute([$cat]);
             $catProducts = $catStmt->fetchAll(PDO::FETCH_ASSOC);
             
@@ -107,6 +128,7 @@ if ($categoryFilter) {
                 echo '<thead><tr>';
                 echo '<th>ID</th>';
                 echo '<th>Product Name</th>';
+                echo '<th>Variant</th>';
                 echo '<th>Price</th>';
                 echo '<th>Status</th>';
                 echo '<th>Is Mandatory</th>';
@@ -119,6 +141,7 @@ if ($categoryFilter) {
                     echo '<tr>';
                     echo '<td>' . $product['id'] . '</td>';
                     echo '<td>' . htmlspecialchars($product['product_name']) . '</td>';
+                    echo '<td>' . (!empty($product['variant_name']) ? htmlspecialchars($product['variant_name']) : '-') . '</td>';
                     echo '<td>&#8377;' . number_format($product['price'], 2) . '</td>';
                     echo '<td><span class="status-badge ' . ($product['is_active'] ? 'status-completed' : 'status-cancelled') . '">' . ($product['is_active'] ? 'Active' : 'Inactive') . '</span></td>';
                     echo '<td>';

@@ -28,6 +28,9 @@ $pageTitle = 'Payment Success | Vishnusudarshana';
 
 // Session is already started in header.php — DO NOT start here
 require_once __DIR__ . '/config/db.php';
+require_once __DIR__ . '/helpers/product_variants.php';
+
+vs_ensure_product_variant_schema($pdo);
 
 /**
  * Find an existing finalized booking by payment/order identifiers.
@@ -280,7 +283,7 @@ if (isset($_GET['free']) && $_GET['free'] == 1) {
     require_once __DIR__ . '/config/db.php';
     session_start();
     $form_data = $_POST ?? [];
-    unset($form_data['product_ids'], $form_data['qty'], $form_data['make_payment']);
+    unset($form_data['product_ids'], $form_data['qty'], $form_data['variant_value'], $form_data['make_payment']);
     $category = $_POST['category'] ?? '';
     $customerName = $_POST['full_name'] ?? '';
     $mobile = $_POST['mobile'] ?? '';
@@ -288,14 +291,66 @@ if (isset($_GET['free']) && $_GET['free'] == 1) {
     $city = $_POST['city'] ?? '';
     $products = $_POST['product_ids'] ?? [];
     $qtys = $_POST['qty'] ?? [];
+    $variantSelections = $_POST['variant_value'] ?? [];
     $totalAmount = 0;
     // Compose selected_products array
     $selected_products = [];
-    if (is_array($products)) {
-        foreach ($products as $pid) {
+    $productIds = is_array($products) ? vs_variant_normalize_id_list($products) : [];
+    if (!empty($productIds)) {
+        $placeholders = implode(',', array_fill(0, count($productIds), '?'));
+        $productStmt = $pdo->prepare("
+            SELECT p.*, pv.variant_name
+            FROM products p
+            LEFT JOIN product_variants pv ON pv.id = p.variant_id
+            WHERE p.id IN ($placeholders)
+        ");
+        $productStmt->execute($productIds);
+        $productRows = $productStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+        $requestedValueIds = [];
+        foreach ($productRows as $productRow) {
+            $pid = (int)$productRow['id'];
+            $rawValueId = $variantSelections[$pid] ?? '';
+            if ($rawValueId !== '' && ctype_digit((string)$rawValueId)) {
+                $requestedValueIds[] = (int)$rawValueId;
+            }
+        }
+        $valueLookup = vs_get_product_variant_value_lookup($pdo, $requestedValueIds, true);
+
+        foreach ($productRows as $productRow) {
+            $pid = (int)$productRow['id'];
+            $qty = isset($qtys[$pid]) ? max(1, (int)$qtys[$pid]) : 1;
+            $price = isset($productRow['price']) ? (float)$productRow['price'] : 0;
+            $lineTotal = $price * $qty;
+            $totalAmount += $lineTotal;
+
+            $variantId = !empty($productRow['variant_id']) ? (int)$productRow['variant_id'] : null;
+            $variantName = !empty($productRow['variant_name']) ? (string)$productRow['variant_name'] : '';
+
+            $selectedVariantValueId = null;
+            $selectedVariantValueName = '';
+            if ($variantId !== null) {
+                $rawValueId = $variantSelections[$pid] ?? '';
+                if ($rawValueId !== '' && ctype_digit((string)$rawValueId)) {
+                    $candidateValueId = (int)$rawValueId;
+                    if (!empty($valueLookup[$candidateValueId]) && (int)$valueLookup[$candidateValueId]['variant_id'] === $variantId) {
+                        $selectedVariantValueId = $candidateValueId;
+                        $selectedVariantValueName = (string)$valueLookup[$candidateValueId]['value_name'];
+                    }
+                }
+            }
+
             $selected_products[] = [
                 'id' => $pid,
-                'qty' => $qtys[$pid] ?? 1
+                'name' => $productRow['product_name'] ?? '',
+                'desc' => $productRow['short_description'] ?? '',
+                'price' => $price,
+                'qty' => $qty,
+                'line_total' => $lineTotal,
+                'variant_id' => $variantId,
+                'variant_name' => $variantName !== '' ? $variantName : null,
+                'variant_value_id' => $selectedVariantValueId,
+                'variant_value_name' => $selectedVariantValueName !== '' ? $selectedVariantValueName : null,
             ];
         }
     }
@@ -520,32 +575,39 @@ try {
         if (!empty($products) && is_array($products)) {
             $productNames = [];
             foreach ($products as $product) {
-                // Prefer already-available names to avoid extra queries
+                $baseName = '';
                 if (!empty($product['name'])) {
-                    $productNames[] = $product['name'];
-                    continue;
+                    $baseName = (string)$product['name'];
+                } elseif (!empty($product['product_name'])) {
+                    $baseName = (string)$product['product_name'];
                 }
-                if (!empty($product['product_name'])) {
-                    $productNames[] = $product['product_name'];
-                    continue;
-                }
+
                 // Fallback: fetch by ID if present
                 $productId = $product['id'] ?? $product['product_id'] ?? null;
-                if ($productId) {
+                if ($baseName === '' && $productId) {
                     try {
                         $prodStmt = $pdo->prepare('SELECT product_name FROM products WHERE id = ? LIMIT 1');
                         $prodStmt->execute([$productId]);
                         $prodName = $prodStmt->fetchColumn();
                         if ($prodName) {
-                            $productNames[] = $prodName;
+                            $baseName = (string)$prodName;
                         } else {
                             error_log('Product name not found for ID: ' . $productId);
-                            $productNames[] = 'Service Item';
+                            $baseName = 'Service Item';
                         }
                     } catch (Exception $e) {
                         error_log('Product lookup failed for ID ' . $productId . ': ' . $e->getMessage());
-                        $productNames[] = 'Service Item';
+                        $baseName = 'Service Item';
                     }
+                }
+
+                $variantValueName = trim((string)($product['variant_value_name'] ?? ''));
+                if ($baseName !== '' && $variantValueName !== '') {
+                    $productNames[] = $baseName . ' (' . $variantValueName . ')';
+                } elseif ($baseName !== '') {
+                    $productNames[] = $baseName;
+                } elseif ($variantValueName !== '') {
+                    $productNames[] = $variantValueName;
                 }
             }
             // Join with comma and space

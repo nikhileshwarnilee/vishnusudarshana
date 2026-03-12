@@ -2,6 +2,9 @@
 require_once (is_file(__DIR__ . '/includes/permissions.php') ? __DIR__ . '/includes/permissions.php' : dirname(__DIR__) . '/includes/permissions.php');
 admin_enforce_mapped_permission('auto');
 require_once __DIR__ . '/../../config/db.php';
+require_once __DIR__ . '/../../helpers/product_variants.php';
+
+vs_ensure_product_variant_schema($pdo);
 
 $categoryOptions = [
     'appointment' => 'Appointment Booking',
@@ -13,8 +16,10 @@ $categoryOptions = [
 ];
 
 $product_name = $product_slug = $category_slug = $short_description = $price = '';
+$variant_id = '';
 $is_active = 1;
 $errors = [];
+$variants = vs_get_product_variants($pdo, true);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax'])) {
     $product_name = trim($_POST['product_name'] ?? '');
@@ -22,6 +27,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax'])) {
     $category_slug = $_POST['category_slug'] ?? '';
     $short_description = trim($_POST['short_description'] ?? '');
     $price = trim($_POST['price'] ?? '');
+    $variant_id = trim((string)($_POST['variant_id'] ?? ''));
     $is_active = isset($_POST['is_active']) && $_POST['is_active'] == '1' ? 1 : 0;
 
     // Validation
@@ -29,6 +35,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax'])) {
     if ($product_slug === '') $errors[] = 'Product slug is required.';
     if ($category_slug === '' || !isset($categoryOptions[$category_slug])) $errors[] = 'Category is required.';
     if ($price === '' || !is_numeric($price)) $errors[] = 'Valid price is required.';
+
+    $variantIdForSave = null;
+    if ($variant_id !== '') {
+        if (!ctype_digit($variant_id)) {
+            $errors[] = 'Invalid variant selected.';
+        } else {
+            $variantIdForSave = (int)$variant_id;
+            $variantCheck = $pdo->prepare("SELECT id FROM product_variants WHERE id = ? AND is_active = 1");
+            $variantCheck->execute([$variantIdForSave]);
+            if (!$variantCheck->fetchColumn()) {
+                $errors[] = 'Selected variant does not exist.';
+            }
+        }
+    }
 
     // Slug uniqueness
     $stmt = $pdo->prepare("SELECT id FROM products WHERE product_slug = ?");
@@ -39,8 +59,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax'])) {
 
     if (!$errors) {
         $createdAt = date('Y-m-d H:i:s');
-        $stmt = $pdo->prepare("INSERT INTO products (category_slug, product_name, product_slug, short_description, price, is_active, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)");
-        $stmt->execute([$category_slug, $product_name, $product_slug, $short_description, $price, $is_active, $createdAt]);
+        $stmt = $pdo->prepare("INSERT INTO products (category_slug, product_name, product_slug, short_description, price, variant_id, is_active, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt->execute([$category_slug, $product_name, $product_slug, $short_description, $price, $variantIdForSave, $is_active, $createdAt]);
         echo json_encode(['success' => true]);
         exit;
     } else {
@@ -104,6 +124,16 @@ function generateSlug($str) {
         </label>
         <label class="form-label">Price:
             <input type="number" name="price" class="form-input" value="<?php echo htmlspecialchars($price); ?>" step="0.01" required>
+        </label>
+        <label class="form-label">Variant (Optional):
+            <select name="variant_id" class="form-select">
+                <option value="">-- No Variant --</option>
+                <?php foreach ($variants as $variant): ?>
+                    <option value="<?php echo (int)$variant['id']; ?>" <?php if ((string)$variant_id === (string)$variant['id']) echo 'selected'; ?>>
+                        <?php echo htmlspecialchars($variant['variant_name']); ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
         </label>
         <label class="form-label">Status:
             <select name="is_active" class="form-select">

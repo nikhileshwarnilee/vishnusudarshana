@@ -3,31 +3,75 @@
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['make_payment'])) {
     require_once __DIR__ . '/config/db.php';
     require_once __DIR__ . '/helpers/payment_link_map.php';
+    require_once __DIR__ . '/helpers/product_variants.php';
+    vs_ensure_product_variant_schema($pdo);
     $category = $_POST['category'] ?? '';
     $customer_details = $_POST;
-    unset($customer_details['product_ids'], $customer_details['qty'], $customer_details['make_payment']);
+    unset($customer_details['product_ids'], $customer_details['qty'], $customer_details['variant_value'], $customer_details['make_payment']);
     // Store only customer-entered fields in form_data. Product/payment control fields are internal.
     $form_data = $customer_details;
     $product_ids = $_POST['product_ids'] ?? [];
     $quantities = $_POST['qty'] ?? [];
+    $variantSelections = $_POST['variant_value'] ?? [];
     $selected_products = [];
     $total_amount = 0;
+    if (is_array($product_ids)) {
+        $product_ids = vs_variant_normalize_id_list($product_ids);
+    } else {
+        $product_ids = [];
+    }
     if (!empty($product_ids)) {
         $placeholders = implode(',', array_fill(0, count($product_ids), '?'));
-        $stmt = $pdo->prepare("SELECT * FROM products WHERE id IN ($placeholders)");
+        $stmt = $pdo->prepare("
+            SELECT p.*, pv.variant_name
+            FROM products p
+            LEFT JOIN product_variants pv ON pv.id = p.variant_id
+            WHERE p.id IN ($placeholders)
+        ");
         $stmt->execute($product_ids);
         $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $requestedValueIds = [];
         foreach ($products as $product) {
-            $pid = $product['id'];
+            $pid = (int)$product['id'];
+            $rawValueId = $variantSelections[$pid] ?? '';
+            if ($rawValueId !== '' && ctype_digit((string)$rawValueId)) {
+                $requestedValueIds[] = (int)$rawValueId;
+            }
+        }
+        $valueLookup = vs_get_product_variant_value_lookup($pdo, $requestedValueIds, true);
+
+        foreach ($products as $product) {
+            $pid = (int)$product['id'];
             $qty = isset($quantities[$pid]) ? max(1, intval($quantities[$pid])) : 1;
             $line_total = $product['price'] * $qty;
+            $variantId = !empty($product['variant_id']) ? (int)$product['variant_id'] : null;
+            $variantName = !empty($product['variant_name']) ? (string)$product['variant_name'] : '';
+
+            $selectedVariantValueId = null;
+            $selectedVariantValueName = '';
+            if ($variantId !== null) {
+                $rawValueId = $variantSelections[$pid] ?? '';
+                if ($rawValueId !== '' && ctype_digit((string)$rawValueId)) {
+                    $candidateValueId = (int)$rawValueId;
+                    if (!empty($valueLookup[$candidateValueId]) && (int)$valueLookup[$candidateValueId]['variant_id'] === $variantId) {
+                        $selectedVariantValueId = $candidateValueId;
+                        $selectedVariantValueName = (string)$valueLookup[$candidateValueId]['value_name'];
+                    }
+                }
+            }
+
             $selected_products[] = [
                 'id' => $pid,
                 'name' => $product['product_name'],
                 'desc' => $product['short_description'],
                 'price' => $product['price'],
                 'qty' => $qty,
-                'line_total' => $line_total
+                'line_total' => $line_total,
+                'variant_id' => $variantId,
+                'variant_name' => $variantName !== '' ? $variantName : null,
+                'variant_value_id' => $selectedVariantValueId,
+                'variant_value_name' => $selectedVariantValueName !== '' ? $selectedVariantValueName : null,
             ];
             $total_amount += $line_total;
         }
@@ -60,6 +104,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['make_payment'])) {
 $pageTitle = 'Review & Select Services | Vishnusudarshana';
 require_once 'header.php';
 require_once __DIR__ . '/config/db.php';
+require_once __DIR__ . '/helpers/product_variants.php';
+
+vs_ensure_product_variant_schema($pdo);
 
 // Step 2: Read input
 $category = $_GET['category'] ?? '';
@@ -144,6 +191,22 @@ if ($category === 'appointment') {
     $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
+$variantLookup = [];
+$variantValuesByVariant = [];
+if (!empty($products) && is_array($products)) {
+    $variantIds = [];
+    foreach ($products as $productRow) {
+        if (!empty($productRow['variant_id'])) {
+            $variantIds[] = (int)$productRow['variant_id'];
+        }
+    }
+    $variantIds = vs_variant_normalize_id_list($variantIds);
+    if (!empty($variantIds)) {
+        $variantLookup = vs_get_product_variant_lookup($pdo, $variantIds, true);
+        $variantValuesByVariant = vs_get_product_variant_values_grouped($pdo, $variantIds, true);
+    }
+}
+
 ?>
 <?php
 $reviewFieldLabels = [
@@ -203,6 +266,12 @@ $reviewFieldLabels = [
         <?php endforeach; ?>
         <ul class="product-list">
             <?php foreach ($products as $product): ?>
+            <?php
+                $productVariantId = !empty($product['variant_id']) ? (int)$product['variant_id'] : 0;
+                $variantRow = $productVariantId > 0 && isset($variantLookup[$productVariantId]) ? $variantLookup[$productVariantId] : null;
+                $variantLabel = $variantRow ? (string)$variantRow['variant_name'] : '';
+                $variantValues = $productVariantId > 0 && isset($variantValuesByVariant[$productVariantId]) ? $variantValuesByVariant[$productVariantId] : [];
+            ?>
             <li class="product-item">
                 <div class="product-info">
                     <div style="display:flex;align-items:center;gap:14px;">
@@ -214,6 +283,25 @@ $reviewFieldLabels = [
                         </div>
                     </div>
                     <div class="product-price">₹<?php echo number_format($product['price'], 2); ?></div>
+                    <?php if (!empty($variantValues)): ?>
+                        <div class="product-variant-wrap">
+                            <label class="variant-label" for="variant_value_<?php echo (int)$product['id']; ?>">
+                                <?php echo htmlspecialchars($variantLabel !== '' ? $variantLabel : 'Variant'); ?>:
+                            </label>
+                            <select
+                                id="variant_value_<?php echo (int)$product['id']; ?>"
+                                class="variant-select"
+                                name="variant_value[<?php echo (int)$product['id']; ?>]"
+                            >
+                                <option value="">Select <?php echo htmlspecialchars($variantLabel !== '' ? $variantLabel : 'Option'); ?> (Optional)</option>
+                                <?php foreach ($variantValues as $variantValue): ?>
+                                    <option value="<?php echo (int)$variantValue['id']; ?>">
+                                        <?php echo htmlspecialchars($variantValue['value_name']); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                    <?php endif; ?>
                 </div>
                 <div class="qty-controls">
                     <button type="button" class="qty-btn" onclick="changeQty(this, -1)">−</button>
@@ -239,6 +327,7 @@ function updateTotals() {
     document.querySelectorAll('.product-item').forEach(function(row) {
         const cb = row.querySelector('input[type=checkbox][name="product_ids[]"]');
         const qtyInput = row.querySelector('.qty-input');
+        const variantSelect = row.querySelector('.variant-select');
         const price = parseFloat(cb.getAttribute('data-price'));
         let qty = parseInt(qtyInput.value);
         if (!cb.checked) qty = 0;
@@ -248,6 +337,9 @@ function updateTotals() {
         total += lineTotal;
         qtyInput.disabled = !cb.checked;
         row.querySelectorAll('.qty-btn').forEach(btn => btn.disabled = !cb.checked);
+        if (variantSelect) {
+            variantSelect.disabled = !cb.checked;
+        }
     });
     document.getElementById('totalPrice').textContent = '₹' + total.toFixed(2);
     // Enable payBtn if any product is selected, even if total is 0
@@ -320,6 +412,18 @@ html,body{font-family:'Marcellus',serif!important;}
 .product-name { font-weight: 600; color: #800000; font-size: 1.08em; }
 .product-desc { font-size: 0.97em; color: #555; margin: 2px 0 2px 0; }
 .product-price { color: #1a8917; font-weight: 600; font-size: 1.08em; margin-top: 6px; }
+.product-variant-wrap { margin-top: 8px; }
+.variant-label { display: block; color: #6a2f2f; font-size: 0.9em; margin-bottom: 4px; font-weight: 600; }
+.variant-select {
+    width: 100%;
+    border: 1px solid #e0bebe;
+    border-radius: 6px;
+    padding: 6px 8px;
+    font-size: 0.92em;
+    background: #fff;
+    color: #333;
+}
+.variant-select:disabled { background: #f3f3f3; color: #999; }
 .line-total { font-size: 0.98em; color: #800000; font-weight: 600; min-width: 60px; text-align: right; }
 .sticky-total { position: sticky; bottom: 0; background: #fff; padding: 14px 0 0 0; text-align: right; font-size: 1.13em; border-top: 1px solid #e0bebe; box-shadow: 0 -2px 8px #e0bebe22; z-index: 10; }
 .pay-btn { width: 100%; background: #800000; color: #fff; border: none; border-radius: 8px; padding: 14px 0; font-size: 1.08em; font-weight: 600; margin-top: 10px; cursor: pointer; box-shadow: 0 2px 8px #80000022; transition: background 0.15s; }

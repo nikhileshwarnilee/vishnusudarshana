@@ -106,6 +106,7 @@ if (!function_exists('vs_admin_permission_map')) {
             'products/ajax_list.php' => ['pairs' => [['Services', 'Products']], 'action' => 'view'],
             'products/add.php' => ['pairs' => [['Services', 'Products']]],
             'products/edit.php' => ['pairs' => [['Services', 'Products']]],
+            'products/variants.php' => ['pairs' => [['Services', 'Products']]],
             'products/delete.php' => ['pairs' => [['Services', 'Products']], 'action' => 'delete'],
             'products/delete_product.php' => ['pairs' => [['Services', 'Products']], 'action' => 'delete'],
             'products/update_mandatory.php' => ['pairs' => [['Services', 'Products']], 'action' => 'edit'],

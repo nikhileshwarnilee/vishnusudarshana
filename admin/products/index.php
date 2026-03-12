@@ -16,8 +16,11 @@ if (session_status() === PHP_SESSION_NONE) {
     body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f7f7fa; margin: 0; }
     .admin-container { max-width: 1100px; margin: 0 auto; padding: 24px 12px; }
     h1 { color: #800000; margin-bottom: 18px; font-family: inherit; }
-    .add-btn { display:inline-block; background:#800000; color:#fff; padding:8px 18px; border-radius:8px; text-decoration:none; font-weight:600; margin-bottom:18px; transition: background 0.15s; }
+    .top-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 18px; }
+    .add-btn { display:inline-block; background:#800000; color:#fff; padding:8px 18px; border-radius:8px; text-decoration:none; font-weight:600; transition: background 0.15s; }
     .add-btn:hover { background: #a00000; }
+    .add-btn.secondary { background: #3f5166; }
+    .add-btn.secondary:hover { background: #2d3b4a; }
     
     /* Category Filter Bar */
     .filter-bar { 
@@ -136,7 +139,10 @@ if (session_status() === PHP_SESSION_NONE) {
 <?php include __DIR__ . '/../includes/top-menu.php'; ?>
 <div class="admin-container">
     <h1>Product Management</h1>
-    <a href="add.php" class="add-btn">+ Add Product</a>
+    <div class="top-actions">
+        <a href="add.php" class="add-btn">+ Add Product</a>
+        <a href="variants.php" class="add-btn secondary">Manage Variants</a>
+    </div>
     
     <!-- Category Filter -->
     <div class="filter-bar">

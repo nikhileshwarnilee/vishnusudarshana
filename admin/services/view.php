@@ -3,6 +3,9 @@ require_once (is_file(__DIR__ . '/includes/permissions.php') ? __DIR__ . '/inclu
 admin_enforce_mapped_permission('auto');
 require_once __DIR__ . '/../../config/db.php';
 require_once __DIR__ . '/../../helpers/send_whatsapp.php';
+require_once __DIR__ . '/../../helpers/product_variants.php';
+
+vs_ensure_product_variant_schema($pdo);
 
 $id = $_GET['id'] ?? '';
 if (!$id) {
@@ -450,10 +453,27 @@ $adminNotes = $stmt->fetchAll(PDO::FETCH_ASSOC);
             if (!empty($request['selected_products'])) {
                 $products = json_decode($request['selected_products'], true);
             }
+            $variantIdList = [];
+            $variantValueIdList = [];
+            if (!empty($products) && is_array($products)) {
+                foreach ($products as $prodItem) {
+                    if (!empty($prodItem['variant_id'])) {
+                        $variantIdList[] = (int)$prodItem['variant_id'];
+                    }
+                    if (!empty($prodItem['variant_value_id'])) {
+                        $variantValueIdList[] = (int)$prodItem['variant_value_id'];
+                    }
+                }
+            }
+            $variantLookupForProducts = vs_get_product_variant_lookup($pdo, $variantIdList, false);
+            $variantValueLookupForProducts = vs_get_product_variant_value_lookup($pdo, $variantValueIdList, false);
+
             if ($products && is_array($products) && count($products) > 0): ?>
                 <table class="details-table" style="margin-bottom:18px;">
                     <tr>
                         <th>Product Name</th>
+                        <th>Variant</th>
+                        <th>Value</th>
                         <th>Quantity</th>
                         <th>Price (&#8377;)</th>
                         <th>Subtotal (&#8377;)</th>
@@ -479,18 +499,36 @@ $adminNotes = $stmt->fetchAll(PDO::FETCH_ASSOC);
                         }
                         $qty = isset($prod['qty']) ? (int)$prod['qty'] : 1;
                         $price = isset($prod['price']) ? (float)$prod['price'] : 0;
-                        $subtotal = $qty * $price;
+                        $subtotal = isset($prod['line_total']) ? (float)$prod['line_total'] : ($qty * $price);
                         $grandTotal += $subtotal;
+
+                        $variantName = trim((string)($prod['variant_name'] ?? ''));
+                        $variantValueName = trim((string)($prod['variant_value_name'] ?? ''));
+
+                        $variantId = !empty($prod['variant_id']) ? (int)$prod['variant_id'] : 0;
+                        if ($variantName === '' && $variantId > 0 && isset($variantLookupForProducts[$variantId])) {
+                            $variantName = (string)$variantLookupForProducts[$variantId]['variant_name'];
+                        }
+
+                        $variantValueId = !empty($prod['variant_value_id']) ? (int)$prod['variant_value_id'] : 0;
+                        if ($variantValueName === '' && $variantValueId > 0 && isset($variantValueLookupForProducts[$variantValueId])) {
+                            $variantValueName = (string)$variantValueLookupForProducts[$variantValueId]['value_name'];
+                            if ($variantName === '') {
+                                $variantName = (string)$variantValueLookupForProducts[$variantValueId]['variant_name'];
+                            }
+                        }
                     ?>
                     <tr>
                         <td><?php echo htmlspecialchars($name); ?></td>
+                        <td><?php echo $variantName !== '' ? htmlspecialchars($variantName) : '-'; ?></td>
+                        <td><?php echo $variantValueName !== '' ? htmlspecialchars($variantValueName) : '-'; ?></td>
                         <td><?php echo htmlspecialchars($qty); ?></td>
                         <td>&#8377;<?php echo number_format($price, 2); ?></td>
                         <td>&#8377;<?php echo number_format($subtotal, 2); ?></td>
                     </tr>
                     <?php endforeach; ?>
                     <tr>
-                        <th colspan="3" style="text-align:right;">Total Amount</th>
+                        <th colspan="5" style="text-align:right;">Total Amount</th>
                         <th>&#8377;<?php echo number_format($grandTotal, 2); ?></th>
                     </tr>
                 </table>
