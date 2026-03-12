@@ -271,6 +271,8 @@ $reviewFieldLabels = [
                 $variantRow = $productVariantId > 0 && isset($variantLookup[$productVariantId]) ? $variantLookup[$productVariantId] : null;
                 $variantLabel = $variantRow ? (string)$variantRow['variant_name'] : '';
                 $variantValues = $productVariantId > 0 && isset($variantValuesByVariant[$productVariantId]) ? $variantValuesByVariant[$productVariantId] : [];
+                $longDescriptionRaw = (string)($product['long_description'] ?? '');
+                $hasLongDescription = trim(strip_tags(html_entity_decode($longDescriptionRaw, ENT_QUOTES, 'UTF-8'))) !== '';
             ?>
             <li class="product-item">
                 <div class="product-info">
@@ -280,6 +282,25 @@ $reviewFieldLabels = [
                         <div>
                             <div class="product-name"><?php echo htmlspecialchars($product['product_name']); ?></div>
                             <div class="product-desc"><?php echo htmlspecialchars($product['short_description']); ?></div>
+                            <?php if ($hasLongDescription): ?>
+                                <button
+                                    type="button"
+                                    class="read-more-btn"
+                                    data-product-title="<?php echo htmlspecialchars($product['product_name'], ENT_QUOTES, 'UTF-8'); ?>"
+                                    data-long-desc-id="product_long_desc_<?php echo (int)$product['id']; ?>"
+                                    onclick="openProductDetails(this)"
+                                >
+                                    Read More
+                                </button>
+                                <script type="application/json" id="product_long_desc_<?php echo (int)$product['id']; ?>" class="product-long-desc-json">
+<?php
+echo json_encode(
+    ['html' => $longDescriptionRaw],
+    JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE
+);
+?>
+                                </script>
+                            <?php endif; ?>
                         </div>
                     </div>
                     <div class="product-price">₹<?php echo number_format($product['price'], 2); ?></div>
@@ -320,7 +341,75 @@ $reviewFieldLabels = [
     </form>
     <?php endif; ?>
     <a href="services.php" class="review-back-link">&larr; Back to Services</a>
+<div id="productInfoModal" class="product-info-modal" aria-hidden="true">
+    <div class="product-info-overlay" onclick="closeProductDetails()"></div>
+    <div class="product-info-dialog" role="dialog" aria-modal="true" aria-labelledby="productInfoTitle">
+        <button type="button" class="product-info-close" onclick="closeProductDetails()" aria-label="Close details">&times;</button>
+        <div class="product-info-head">
+            <div class="product-info-kicker">Service Details</div>
+            <h3 id="productInfoTitle" class="product-info-title"></h3>
+        </div>
+        <div id="productInfoBody" class="product-info-body"></div>
+    </div>
+</div>
 <script>
+function sanitizeLongDescriptionHtml(html) {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html || '', 'text/html');
+    doc.querySelectorAll('script').forEach(function(el) { el.remove(); });
+    doc.querySelectorAll('*').forEach(function(el) {
+        Array.from(el.attributes).forEach(function(attr) {
+            if (/^on/i.test(attr.name)) {
+                el.removeAttribute(attr.name);
+            }
+        });
+    });
+    return doc.body.innerHTML;
+}
+
+function openProductDetails(button) {
+    const modal = document.getElementById('productInfoModal');
+    const titleEl = document.getElementById('productInfoTitle');
+    const bodyEl = document.getElementById('productInfoBody');
+    if (!modal || !titleEl || !bodyEl || !button) return;
+
+    const title = button.getAttribute('data-product-title') || 'Service Details';
+    const longDescId = button.getAttribute('data-long-desc-id') || '';
+    let html = '';
+    if (longDescId) {
+        const descJsonNode = document.getElementById(longDescId);
+        if (descJsonNode) {
+            try {
+                const parsed = JSON.parse(descJsonNode.textContent || '{}');
+                html = typeof parsed.html === 'string' ? parsed.html : '';
+            } catch (e) {
+                html = '';
+            }
+        }
+    }
+    const safeHtml = sanitizeLongDescriptionHtml(html);
+
+    titleEl.textContent = title;
+    bodyEl.innerHTML = safeHtml || '<p>Details are not available at the moment.</p>';
+    modal.classList.add('open');
+    modal.setAttribute('aria-hidden', 'false');
+    document.body.classList.add('modal-open');
+}
+
+function closeProductDetails() {
+    const modal = document.getElementById('productInfoModal');
+    if (!modal) return;
+    modal.classList.remove('open');
+    modal.setAttribute('aria-hidden', 'true');
+    document.body.classList.remove('modal-open');
+}
+
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeProductDetails();
+    }
+});
+
 function updateTotals() {
     let total = 0;
     let anyChecked = false;
@@ -411,6 +500,23 @@ html,body{font-family:'Marcellus',serif!important;}
 .product-checkbox { width: 28px; height: 28px; accent-color: #800000; cursor: pointer; }
 .product-name { font-weight: 600; color: #800000; font-size: 1.08em; }
 .product-desc { font-size: 0.97em; color: #555; margin: 2px 0 2px 0; }
+.read-more-btn {
+    margin-top: 8px;
+    border: none;
+    background: linear-gradient(135deg, #fff3e7 0%, #ffe4d4 100%);
+    color: #7c2200;
+    font-weight: 700;
+    font-size: 0.88em;
+    padding: 6px 11px;
+    border-radius: 999px;
+    box-shadow: 0 2px 8px rgba(124, 34, 0, 0.14);
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.read-more-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 5px 14px rgba(124, 34, 0, 0.2);
+}
 .product-price { color: #1a8917; font-weight: 600; font-size: 1.08em; margin-top: 6px; }
 .product-variant-wrap { margin-top: 8px; }
 .variant-label { display: block; color: #6a2f2f; font-size: 0.9em; margin-bottom: 4px; font-weight: 600; }
@@ -429,6 +535,79 @@ html,body{font-family:'Marcellus',serif!important;}
 .pay-btn { width: 100%; background: #800000; color: #fff; border: none; border-radius: 8px; padding: 14px 0; font-size: 1.08em; font-weight: 600; margin-top: 10px; cursor: pointer; box-shadow: 0 2px 8px #80000022; transition: background 0.15s; }
 .pay-btn:disabled { background: #ccc; color: #fff; cursor: not-allowed; }
 .review-back-link { display:block;text-align:center;margin-top:18px;color:#1a8917;font-size:0.98em;text-decoration:none; }
+.modal-open { overflow: hidden; }
+.product-info-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: none;
+}
+.product-info-modal.open { display: block; }
+.product-info-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(33, 20, 12, 0.56);
+    backdrop-filter: blur(2px);
+}
+.product-info-dialog {
+    position: relative;
+    width: min(92vw, 560px);
+    max-height: 82vh;
+    overflow: auto;
+    margin: 9vh auto 0;
+    background: linear-gradient(165deg, #fffef8 0%, #fff5ee 48%, #fff8f3 100%);
+    border: 1px solid #f2d3c4;
+    border-radius: 20px;
+    box-shadow: 0 22px 56px rgba(73, 31, 12, 0.24);
+    animation: productInfoPop 0.2s ease-out;
+}
+@keyframes productInfoPop {
+    from { opacity: 0; transform: translateY(14px) scale(0.98); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.product-info-close {
+    position: absolute;
+    top: 10px;
+    right: 12px;
+    border: none;
+    background: transparent;
+    font-size: 1.9em;
+    color: #8f4931;
+    line-height: 1;
+    cursor: pointer;
+}
+.product-info-head {
+    padding: 20px 22px 10px 22px;
+    border-bottom: 1px solid #f3ddd1;
+}
+.product-info-kicker {
+    font-size: 0.78em;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #b04f26;
+    font-weight: 700;
+}
+.product-info-title {
+    margin: 7px 0 0;
+    color: #6f1400;
+    font-size: 1.2em;
+}
+.product-info-body {
+    padding: 16px 22px 22px;
+    color: #3b3b3b;
+    font-size: 0.98em;
+    line-height: 1.7;
+}
+.product-info-body h1,
+.product-info-body h2,
+.product-info-body h3,
+.product-info-body h4,
+.product-info-body h5,
+.product-info-body h6 { color: #6f1400; margin: 10px 0 6px; }
+.product-info-body p { margin: 8px 0; }
+.product-info-body ul,
+.product-info-body ol { padding-left: 20px; }
+.product-info-body img { max-width: 100%; height: auto; border-radius: 10px; }
 @media (max-width: 700px) { .main-content { padding: 8px 2px 16px 2px; border-radius: 0; } }
 </style>
 </script>

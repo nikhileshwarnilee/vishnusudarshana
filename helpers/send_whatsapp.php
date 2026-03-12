@@ -24,7 +24,11 @@ function sendWhatsAppMessage($to, $templateName, $variables = [], $language = nu
     $language = $language ?? WHATSAPP_DEFAULT_LANGUAGE;
     
     // Format phone number
-    $to = formatWhatsAppPhone($to);
+    $to = formatWhatsAppPhone(
+        $to,
+        $variables['country_code'] ?? null,
+        $variables['custom_country_code'] ?? null
+    );
     if (!$to) {
         return [
             'success' => false,
@@ -167,26 +171,57 @@ function sendWhatsAppMessage($to, $templateName, $variables = [], $language = nu
  * @param string $phone Phone number
  * @return string|false Formatted phone or false if invalid
  */
-function formatWhatsAppPhone($phone) {
+function formatWhatsAppPhone($phone, $countryCode = null, $customCountryCode = null) {
     if (!$phone) return false;
-    
-    // Remove all non-numeric characters
-    $phone = preg_replace('/[^0-9]/', '', $phone);
-    
-    // Remove leading zeros
-    $phone = ltrim($phone, '0');
-    
-    // Add country code if missing
-    if (strlen($phone) === 10) {
-        $phone = WHATSAPP_COUNTRY_CODE . $phone;
+
+    $rawPhone = trim((string)$phone);
+    if ($rawPhone === '') return false;
+
+    $countryCodeRaw = trim((string)$countryCode);
+    $customCountryCodeRaw = trim((string)$customCountryCode);
+    if (strtolower($countryCodeRaw) === 'other') {
+        $countryCodeRaw = $customCountryCodeRaw;
     }
-    
-    // Validate length (should be 12 digits for India: 91 + 10 digits)
-    if (WHATSAPP_PHONE_VALIDATION && strlen($phone) < 10) {
+    $countryCodeDigits = preg_replace('/[^0-9]/', '', $countryCodeRaw);
+    $defaultCountryCodeDigits = preg_replace('/[^0-9]/', '', (string)WHATSAPP_COUNTRY_CODE);
+    if (!is_string($defaultCountryCodeDigits) || $defaultCountryCodeDigits === '') {
+        $defaultCountryCodeDigits = '91';
+    }
+
+    $hasExplicitIntlPrefix = (strpos($rawPhone, '+') === 0 || strpos($rawPhone, '00') === 0);
+
+    // Convert 00-prefixed international format to standard digits format.
+    if (strpos($rawPhone, '00') === 0) {
+        $rawPhone = '+' . substr($rawPhone, 2);
+    }
+
+    $phoneDigits = preg_replace('/[^0-9]/', '', $rawPhone);
+    $phoneDigits = is_string($phoneDigits) ? $phoneDigits : '';
+    $phoneDigits = ltrim($phoneDigits, '0');
+    if ($phoneDigits === '') return false;
+
+    // If an explicit country code is provided and number does not already contain it, prepend it.
+    if (
+        $countryCodeDigits !== '' &&
+        !$hasExplicitIntlPrefix &&
+        strpos($phoneDigits, $countryCodeDigits) !== 0 &&
+        strlen($phoneDigits) >= 6 &&
+        strlen($phoneDigits) <= 12
+    ) {
+        $phoneDigits = $countryCodeDigits . $phoneDigits;
+    }
+
+    // If number is still local-length, use default country code.
+    if (strlen($phoneDigits) === 10) {
+        $phoneDigits = $defaultCountryCodeDigits . $phoneDigits;
+    }
+
+    // Basic E.164 digits length guard.
+    if (WHATSAPP_PHONE_VALIDATION && !preg_match('/^\d{8,15}$/', $phoneDigits)) {
         return false;
     }
-    
-    return $phone;
+
+    return $phoneDigits;
 }
 
 /**
@@ -328,6 +363,16 @@ function sendWhatsAppNotification($eventType, $data) {
             'data' => null
         ];
     }
+
+    $countryContext = [];
+    if (is_array($data)) {
+        if (array_key_exists('country_code', $data)) {
+            $countryContext['country_code'] = $data['country_code'];
+        }
+        if (array_key_exists('custom_country_code', $data)) {
+            $countryContext['custom_country_code'] = $data['custom_country_code'];
+        }
+    }
     
     // Map event types to templates and extract variables
     switch ($eventType) {
@@ -358,24 +403,24 @@ function sendWhatsAppNotification($eventType, $data) {
             return sendWhatsAppMessage(
                 $data['mobile'],
                 'APPOINTMENT_BOOKED_PAYMENT_SUCCESS',
-                [
+                array_merge([
                     'name' => $data['name'] ?? $data['customer_name'] ?? '',
                     'category' => $data['category'] ?? 'Appointment',
                     'products_list' => $data['products_list'] ?? '',
                     'tracking_url' => $data['tracking_url'] ?? $data['tracking_id'] ?? ''
-                ]
+                ], $countryContext)
             );
             
         case 'service_received':
             return sendWhatsAppMessage(
                 $data['mobile'],
                 'SERVICE_RECEIVED',
-                [
+                array_merge([
                     'name' => $data['name'] ?? $data['customer_name'] ?? '',
                     'category' => $data['category'] ?? 'Service',
                     'products_list' => $data['products_list'] ?? '',
                     'tracking_url' => $data['tracking_url'] ?? $data['tracking_id'] ?? ''
-                ]
+                ], $countryContext)
             );
             
         case 'service_accepted':

@@ -111,6 +111,7 @@ if (!function_exists('vs_admin_permission_map')) {
             'products/delete_product.php' => ['pairs' => [['Services', 'Products']], 'action' => 'delete'],
             'products/update_mandatory.php' => ['pairs' => [['Services', 'Products']], 'action' => 'edit'],
             'products/update_sequence.php' => ['pairs' => [['Services', 'Products']], 'action' => 'edit'],
+            'products/upload-editor-image.php' => ['pairs' => [['Services', 'Products']], 'action' => 'edit'],
 
             // Events
             'events/index.php' => ['pairs' => [['Events', 'Dashboard']]],

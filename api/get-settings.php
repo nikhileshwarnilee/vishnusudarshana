@@ -54,6 +54,24 @@ function normalizeSameDayOnlineBookingCutoffTime($value): string
     return '09:00';
 }
 
+function normalizeTokenBookingCommonNoteText($value): string
+{
+    $text = trim((string) $value);
+    if ($text === '') {
+        return '';
+    }
+    if (function_exists('mb_substr')) {
+        return mb_substr($text, 0, 3000);
+    }
+    return substr($text, 0, 3000);
+}
+
+function normalizeTokenBookingCommonNoteEnabled($value): int
+{
+    $normalized = strtolower(trim((string) $value));
+    return in_array($normalized, ['1', 'true', 'yes', 'on', 'enabled'], true) ? 1 : 0;
+}
+
 function getSettingValue(PDO $pdo, string $key): ?string
 {
     $stmt = $pdo->prepare('SELECT setting_value FROM system_settings WHERE setting_key = ? LIMIT 1');
@@ -78,10 +96,14 @@ try {
     $languageRaw = getSettingValue($pdo, 'announcement_language');
     $tabletWhatsAppRaw = getSettingValue($pdo, 'tablet_token_whatsapp_enabled');
     $sameDayCutoffRaw = getSettingValue($pdo, 'same_day_online_booking_cutoff_time');
+    $tokenBookingCommonNoteRaw = getSettingValue($pdo, 'token_booking_common_note');
+    $tokenBookingCommonNoteEnabledRaw = getSettingValue($pdo, 'token_booking_common_note_enabled');
 
     $language = normalizeAnnouncementLanguage($languageRaw);
     $tabletWhatsAppEnabled = normalizeTabletWhatsAppEnabled($tabletWhatsAppRaw ?? '1');
     $sameDayCutoffTime = normalizeSameDayOnlineBookingCutoffTime($sameDayCutoffRaw);
+    $tokenBookingCommonNote = normalizeTokenBookingCommonNoteText($tokenBookingCommonNoteRaw);
+    $tokenBookingCommonNoteEnabled = normalizeTokenBookingCommonNoteEnabled($tokenBookingCommonNoteEnabledRaw ?? '1');
 
     // Ensure persistent defaults exist.
     if ($languageRaw === null) {
@@ -93,12 +115,20 @@ try {
     if ($sameDayCutoffRaw === null) {
         upsertSetting($pdo, 'same_day_online_booking_cutoff_time', $sameDayCutoffTime);
     }
+    if ($tokenBookingCommonNoteRaw === null) {
+        upsertSetting($pdo, 'token_booking_common_note', $tokenBookingCommonNote);
+    }
+    if ($tokenBookingCommonNoteEnabledRaw === null) {
+        upsertSetting($pdo, 'token_booking_common_note_enabled', (string) $tokenBookingCommonNoteEnabled);
+    }
 
     respond([
         'success' => true,
         'announcement_language' => $language,
         'tablet_token_whatsapp_enabled' => $tabletWhatsAppEnabled === 1,
         'same_day_online_booking_cutoff_time' => $sameDayCutoffTime,
+        'token_booking_common_note' => $tokenBookingCommonNote,
+        'token_booking_common_note_enabled' => $tokenBookingCommonNoteEnabled === 1,
     ]);
 } catch (Throwable $e) {
     respond([
@@ -106,6 +136,8 @@ try {
         'announcement_language' => 'marathi',
         'tablet_token_whatsapp_enabled' => true,
         'same_day_online_booking_cutoff_time' => '09:00',
+        'token_booking_common_note' => '',
+        'token_booking_common_note_enabled' => true,
         'message' => 'Unable to load settings right now.'
     ], 500);
 }

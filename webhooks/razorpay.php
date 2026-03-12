@@ -303,6 +303,8 @@ function vs_rzp_send_recovery_notifications(array $pendingRow, string $trackingI
         if ($category === 'appointment') {
             $customerResult = sendWhatsAppNotification('appointment_booked_payment_success', [
                 'mobile' => $mobile,
+                'country_code' => $customerDetails['country_code'] ?? ($formData['country_code'] ?? ''),
+                'custom_country_code' => $customerDetails['custom_country_code'] ?? ($formData['custom_country_code'] ?? ''),
                 'name' => $customerName,
                 'category' => 'Appointment',
                 'products_list' => $productsList,
@@ -323,6 +325,8 @@ function vs_rzp_send_recovery_notifications(array $pendingRow, string $trackingI
             $serviceCategoryDisplay = ucwords(str_replace('-', ' ', $category));
             $customerResult = sendWhatsAppNotification('service_received', [
                 'mobile' => $mobile,
+                'country_code' => $customerDetails['country_code'] ?? ($formData['country_code'] ?? ''),
+                'custom_country_code' => $customerDetails['custom_country_code'] ?? ($formData['custom_country_code'] ?? ''),
                 'name' => $customerName,
                 'category' => $serviceCategoryDisplay,
                 'products_list' => $productsList,

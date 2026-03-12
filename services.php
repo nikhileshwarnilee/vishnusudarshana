@@ -43,11 +43,11 @@
                 <div class="card-text-filler"></div>
                 <div class="card-btn-wrap"><span class="redesigned-cta-btn">Book Now</span></div>
             </a>
-            <!-- Astrology Consultation Card -->
+            <!-- Birth Chart & Astrology Consultation Card -->
             <a class="category-card home-top-card" href="category.php?category=astrology-consultation">
                 <img src="assets/images/religious-bg/astrology.png" alt="Astrology Consultation Icon" class="home-top-card-icon" />
-                <div class="home-top-card-title">Astrology Consultation</div>
-                <div class="home-top-card-desc">Personalised astrological guidance for life, career, health, and decisions.</div>
+                <div class="home-top-card-title">Birth Chart &amp; Astrology Consultation</div>
+                <div class="home-top-card-desc">Personalised birth chart and astrological guidance for life, career, health, and decisions.</div>
                 <div class="card-text-filler"></div>
                 <div class="card-text-filler"></div>
                 <div class="card-text-filler"></div>

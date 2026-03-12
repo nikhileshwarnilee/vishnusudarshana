@@ -589,7 +589,10 @@ $adminNotes = $stmt->fetchAll(PDO::FETCH_ASSOC);
     <!-- Add Internal Note Form -->
     <div style="background:#fef9f9;border:1px solid #f3caca;border-radius:8px;padding:12px;margin-bottom:18px;">
         <textarea id="note_text" placeholder="Add internal note (admin only)" style="width:100%;padding:10px;border:1px solid #f3caca;border-radius:6px;font-size:0.98em;font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;min-height:80px;box-sizing:border-box;"></textarea>
-        <button onclick="saveNote()" style="background:#800000;color:#fff;border:none;border-radius:8px;padding:8px 18px;font-size:0.98em;font-weight:600;cursor:pointer;margin-top:8px;">Save Note</button>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px;">
+            <button type="button" onclick="saveNote(false)" style="background:#800000;color:#fff;border:none;border-radius:8px;padding:8px 18px;font-size:0.98em;font-weight:600;cursor:pointer;">Save Note</button>
+            <button type="button" onclick="saveNote(true)" style="background:#25D366;color:#fff;border:none;border-radius:8px;padding:8px 18px;font-size:0.98em;font-weight:600;cursor:pointer;">Save and Send</button>
+        </div>
         <span id="note_status" style="margin-left:10px;font-size:0.95em;"></span>
     </div>
 
@@ -635,9 +638,10 @@ $adminNotes = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 }
             });
         }
-    function saveNote() {
+    function saveNote(sendNotification) {
         var noteText = document.getElementById('note_text').value.trim();
         var statusEl = document.getElementById('note_status');
+        var mobile = <?php echo json_encode($request['mobile']); ?>;
         
         if (noteText === '') {
             statusEl.style.color = '#c00';
@@ -660,12 +664,16 @@ $adminNotes = $stmt->fetchAll(PDO::FETCH_ASSOC);
         .then(data => {
             if (data.success) {
                 statusEl.style.color = '#1a8917';
-                statusEl.textContent = 'Note saved successfully!';
+                statusEl.textContent = sendNotification ? 'Note saved. Sending notification...' : 'Note saved successfully!';
                 document.getElementById('note_text').value = '';
                 refreshNotes();
-                setTimeout(() => {
-                    statusEl.textContent = '';
-                }, 3000);
+                if (sendNotification) {
+                    sendNoteNotification(mobile, noteText, 'note_status');
+                } else {
+                    setTimeout(() => {
+                        statusEl.textContent = '';
+                    }, 3000);
+                }
             } else {
                 statusEl.style.color = '#c00';
                 statusEl.textContent = data.message || 'Failed to save note';

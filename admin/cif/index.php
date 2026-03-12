@@ -68,9 +68,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_enquiry_notes'
     $enquiry_id = (int)$_POST['enquiry_id'];
     $notes = trim($_POST['notes'] ?? '');
     $client_id = isset($_POST['client_id']) ? (int)$_POST['client_id'] : 0;
-    $stmt = $pdo->prepare('UPDATE cif_enquiries SET notes = ? WHERE id = ?');
-    $stmt->execute([$notes, $enquiry_id]);
-    $msg = 'Notes updated!';
+    $category_id = isset($_POST['category_id']) ? (int)$_POST['category_id'] : 0;
+    if ($category_id > 0) {
+        $stmt = $pdo->prepare('UPDATE cif_enquiries SET category_id = ?, notes = ? WHERE id = ? AND client_id = ?');
+        $stmt->execute([$category_id, $notes, $enquiry_id, $client_id]);
+        $msg = 'Enquiry updated!';
+    } else {
+        $msg = 'Please select a valid category.';
+    }
     $selected_client_id = $client_id;
     header('Location: index.php?client_id=' . $client_id);
     exit;
@@ -448,6 +453,16 @@ $(function() {
                             <td style="padding:10px;white-space:pre-line;">
                                 <?php if ($edit_enquiry_id === (int)$enq['id']): ?>
                                     <form method="post" style="display:flex;flex-direction:column;gap:8px;">
+                                        <select name="category_id" required style="padding:8px 12px;border-radius:6px;border:1px solid #ccc;font-size:1em;max-width:340px;">
+                                            <option value="">-- Select Category --</option>
+                                            <?php
+                                            $editCategories = $pdo->query('SELECT * FROM cif_categories ORDER BY name ASC')->fetchAll();
+                                            foreach ($editCategories as $cat): ?>
+                                                <option value="<?= (int)$cat['id'] ?>" <?= ((int)$enq['category_id'] === (int)$cat['id']) ? 'selected' : '' ?>>
+                                                    <?= htmlspecialchars($cat['name']) ?>
+                                                </option>
+                                            <?php endforeach; ?>
+                                        </select>
                                         <textarea name="notes" style="padding:8px 12px;border-radius:6px;border:1px solid #ccc;font-size:1em;min-width:360px;min-height:80px;"><?= htmlspecialchars($enq['notes']) ?></textarea>
                                         <input type="hidden" name="update_enquiry_notes" value="1">
                                         <input type="hidden" name="enquiry_id" value="<?= (int)$enq['id'] ?>">

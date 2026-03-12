@@ -85,12 +85,30 @@ function formatCutoffTimeDisplay(string $cutoffTime): string
     return $dt ? $dt->format('g:i A') : $cutoffTime;
 }
 
+function normalizeMobileNumber(string $mobile): string
+{
+    $digits = preg_replace('/\D+/', '', $mobile);
+    $digits = is_string($digits) ? $digits : '';
+
+    if (strlen($digits) === 12 && strpos($digits, '91') === 0) {
+        $digits = substr($digits, 2);
+    }
+
+    return $digits;
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $location = trim($_POST['location'] ?? '');
     $name = trim($_POST['name'] ?? '');
-    $mobile = trim($_POST['mobile'] ?? '');
+    $mobile = normalizeMobileNumber((string)($_POST['mobile'] ?? ''));
     $token_date = trim($_POST['token_date'] ?? '');
     $service_time = trim($_POST['service_time'] ?? '');
+
+    if (!preg_match('/^\d{10}$/', $mobile)) {
+        echo json_encode(['success' => false, 'error' => 'Please enter a valid 10 digit mobile number.']);
+        exit;
+    }
+
     if ($location && $name && $mobile && $token_date) {
         $sameDayCutoffTime = getSameDayOnlineBookingCutoffTime($pdo);
         $sameDayCutoffDisplay = formatCutoffTimeDisplay($sameDayCutoffTime);
@@ -127,6 +145,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $pdo->beginTransaction();
         try {
+            // Prevent repeat booking with the same mobile number on the same day.
+            $duplicateStmt = $pdo->prepare(
+                "SELECT id
+                 FROM token_bookings
+                 WHERE token_date = ?
+                 AND (
+                    mobile = ?
+                    OR mobile = CONCAT('91', ?)
+                    OR mobile = CONCAT('+91', ?)
+                 )
+                 LIMIT 1
+                 FOR UPDATE"
+            );
+            $duplicateStmt->execute([$token_date, $mobile, $mobile, $mobile]);
+            $duplicateBooking = $duplicateStmt->fetch(PDO::FETCH_ASSOC);
+            if ($duplicateBooking) {
+                $pdo->rollBack();
+                echo json_encode([
+                    'success' => false,
+                    'duplicate_booking' => true,
+                    'error' => 'Token already booked with this number.'
+                ]);
+                exit;
+            }
+
             // Find next token_no for this date/location
             $stmt = $pdo->prepare("SELECT MAX(token_no) AS max_token_no FROM token_bookings WHERE token_date = ? AND LOWER(TRIM(location)) = LOWER(TRIM(?))");
             $stmt->execute([$token_date, $location]);

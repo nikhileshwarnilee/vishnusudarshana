@@ -624,6 +624,8 @@ try {
                 // Send automatic WhatsApp notification to customer
                 $whatsappResult = sendWhatsAppNotification('appointment_booked_payment_success', [
                     'mobile' => $mobile,
+                    'country_code' => $customer['country_code'] ?? ($formData['country_code'] ?? ''),
+                    'custom_country_code' => $customer['custom_country_code'] ?? ($formData['custom_country_code'] ?? ''),
                     'name' => $customerName ?: 'Customer',
                     'category' => 'Appointment',
                     'products_list' => $productsList,
@@ -657,6 +659,8 @@ try {
                 $serviceCategoryDisplay = ucwords(str_replace('-', ' ', $category));
                 $whatsappResult = sendWhatsAppNotification('service_received', [
                     'mobile' => $mobile,
+                    'country_code' => $customer['country_code'] ?? ($formData['country_code'] ?? ''),
+                    'custom_country_code' => $customer['custom_country_code'] ?? ($formData['custom_country_code'] ?? ''),
                     'name' => $customerName ?: 'Customer',
                     'category' => $serviceCategoryDisplay,
                     'products_list' => $productsList,

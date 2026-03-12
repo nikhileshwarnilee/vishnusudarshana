@@ -176,6 +176,30 @@ $mobileNumber = $phoneNumber;
 try {
     $pdo->beginTransaction();
 
+    // Prevent repeat booking with the same mobile number on the same day.
+    $duplicateStmt = $pdo->prepare(
+        "SELECT id
+         FROM token_bookings
+         WHERE token_date = ?
+         AND (
+            mobile = ?
+            OR mobile = CONCAT('91', ?)
+            OR mobile = CONCAT('+91', ?)
+         )
+         LIMIT 1
+         FOR UPDATE"
+    );
+    $duplicateStmt->execute([$tokenDate, $mobileNumber, $mobileNumber, $mobileNumber]);
+    $duplicateBooking = $duplicateStmt->fetch(PDO::FETCH_ASSOC);
+    if ($duplicateBooking) {
+        $pdo->rollBack();
+        respond([
+            'success' => false,
+            'duplicate_booking' => true,
+            'message' => 'Token already booked with this number.'
+        ], 409);
+    }
+
     $slotStmt = $pdo->prepare(
         'SELECT id, token_date, from_time, to_time, unbooked_tokens, total_tokens
          FROM token_management

@@ -29,6 +29,7 @@ $product_name = $product['product_name'];
 $product_slug = $product['product_slug'];
 $category_slug = $product['category_slug'];
 $short_description = $product['short_description'];
+$long_description = $product['long_description'] ?? '';
 $price = $product['price'];
 $variant_id = isset($product['variant_id']) ? (string)$product['variant_id'] : '';
 $is_active = $product['is_active'];
@@ -40,6 +41,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax'])) {
     $product_slug = trim($_POST['product_slug'] ?? '');
     $category_slug = $_POST['category_slug'] ?? '';
     $short_description = trim($_POST['short_description'] ?? '');
+    $long_description = trim($_POST['long_description'] ?? '');
     $price = trim($_POST['price'] ?? '');
     $variant_id = trim((string)($_POST['variant_id'] ?? ''));
     $is_active = isset($_POST['is_active']) && $_POST['is_active'] == '1' ? 1 : 0;
@@ -71,8 +73,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax'])) {
     }
 
     if (!$errors) {
-        $stmt = $pdo->prepare("UPDATE products SET category_slug=?, product_name=?, product_slug=?, short_description=?, price=?, variant_id=?, is_active=? WHERE id=?");
-        $stmt->execute([$category_slug, $product_name, $product_slug, $short_description, $price, $variantIdForSave, $is_active, $id]);
+        $stmt = $pdo->prepare("UPDATE products SET category_slug=?, product_name=?, product_slug=?, short_description=?, long_description=?, price=?, variant_id=?, is_active=? WHERE id=?");
+        $stmt->execute([$category_slug, $product_name, $product_slug, $short_description, $long_description, $price, $variantIdForSave, $is_active, $id]);
         echo json_encode(['success' => true]);
         exit;
     } else {
@@ -94,6 +96,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax'])) {
     .form-label { font-weight: 600; display:block; margin-bottom:6px; }
     .form-input, .form-select, .form-textarea { width:100%; padding:10px 12px; border-radius:8px; border:1px solid #e0bebe; font-size:1.08em; margin-bottom:16px; font-family: inherit; }
     .form-input:focus, .form-select:focus, .form-textarea:focus { border-color: #800000; outline: none; }
+    .editor-wrapper { border:1px solid #e0bebe; border-radius:12px; overflow:hidden; margin-bottom:16px; }
+    .editor-area { min-height:200px; }
     .form-btn { background:#800000; color:#fff; border:none; border-radius:8px; padding:12px 0; font-size:1.08em; font-weight:600; width:100%; cursor:pointer; margin-top:10px; transition: background 0.15s; }
     .form-btn:hover { background: #a00000; }
     .back-link { display:inline-block; margin-bottom:18px; color:#800000; text-decoration:none; font-weight:600; }
@@ -127,6 +131,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax'])) {
         <label class="form-label">Short Description:
             <textarea name="short_description" class="form-textarea" rows="3"><?php echo htmlspecialchars($short_description); ?></textarea>
         </label>
+        <label class="form-label" for="long_description_editor">Long Description (Read More Content):</label>
+        <div class="editor-wrapper">
+            <textarea id="long_description_editor" name="long_description" class="editor-area"><?php echo htmlspecialchars($long_description); ?></textarea>
+        </div>
         <label class="form-label">Price:
             <input type="number" name="price" class="form-input" value="<?php echo htmlspecialchars($price); ?>" step="0.01" required>
         </label>
@@ -148,7 +156,48 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax'])) {
         </label>
         <button type="submit" class="form-btn">Save Changes</button>
     </form>
+    <script src="https://cdn.jsdelivr.net/npm/tinymce@7.6.1/tinymce.min.js" referrerpolicy="origin"></script>
     <script>
+    if (typeof tinymce !== 'undefined') {
+        tinymce.init({
+            selector: '#long_description_editor',
+            height: 280,
+            menubar: 'edit view insert format tools table',
+            plugins: 'advlist autolink lists link image media table code preview searchreplace visualblocks wordcount charmap emoticons autoresize anchor',
+            toolbar: 'undo redo | blocks fontfamily fontsize | bold italic underline forecolor backcolor | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | link image media table blockquote | removeformat | preview code',
+            toolbar_mode: 'sliding',
+            branding: false,
+            promotion: false,
+            content_style: 'body { font-family:Segoe UI,Tahoma,Verdana,sans-serif; font-size:15px } img { max-width:100%; height:auto; }',
+            object_resizing: 'img,table,iframe,video',
+            image_advtab: true,
+            image_caption: true,
+            image_dimensions: true,
+            media_dimensions: true,
+            media_live_embeds: true,
+            link_default_target: '_blank',
+            extended_valid_elements: 'iframe[src|frameborder|style|scrolling|class|width|height|name|align|allow|allowfullscreen],video[*],source[*]',
+            images_upload_handler: (blobInfo, progress) => new Promise((resolve, reject) => {
+                const file = blobInfo.blob();
+                const xhr = new XMLHttpRequest();
+                xhr.open('POST', 'upload-editor-image.php', true);
+                xhr.responseType = 'json';
+                xhr.onerror = () => reject('Upload failed');
+                xhr.onload = () => {
+                    const response = xhr.response || {};
+                    if (!response.url) {
+                        reject(response.error || 'Upload failed');
+                        return;
+                    }
+                    resolve(response.url);
+                };
+                const data = new FormData();
+                data.append('upload', file);
+                xhr.send(data);
+            })
+        });
+    }
+
     // Instant slug generation
     $('#product_name').on('input', function() {
         var name = $(this).val();
@@ -159,6 +208,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax'])) {
     // AJAX form submission
     $('#editProductForm').on('submit', function(e) {
         e.preventDefault();
+        if (window.tinymce && window.tinymce.get('long_description_editor')) {
+            window.tinymce.triggerSave();
+        }
         $('#form-messages').html('<div class="loading">Saving changes...</div>');
         $.ajax({
             url: window.location.pathname + '?id=<?php echo $id; ?>',

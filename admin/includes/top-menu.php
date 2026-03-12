@@ -1441,4 +1441,5 @@ document.addEventListener('DOMContentLoaded', function () {
 <!-- RESPONSIVE TABLES AUTO-WRAPPER SCRIPT -->
 <script src="<?= $baseUrl ?>/admin/includes/responsive-tables.js"></script>
 <?php include __DIR__ . '/floating-model.php'; ?>
+<?php include __DIR__ . '/internal-clipboard.php'; ?>
 

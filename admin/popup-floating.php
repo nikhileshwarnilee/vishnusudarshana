@@ -11,9 +11,6 @@ admin_enforce_mapped_permission('auto');
     <meta name="viewport" content="width=600, initial-scale=1.0">
     <?php echo vs_favicon_tags(); ?>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Kalam:wght@400&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f7f7fa; margin: 0; }
         .popup-container { max-width: 520px; margin: 32px auto; background: #fff; border-radius: 16px; box-shadow: 0 4px 24px #80000033; padding: 32px 24px; }
@@ -61,28 +58,45 @@ admin_enforce_mapped_permission('auto');
     const adminBaseUrl = new URL('.', window.location.href);
     const getAdminAssetUrl = fileName => new URL(`includes/${fileName}`, adminBaseUrl).href;
 
-    function ensureKalamFontLoaded() {
-        return new Promise(resolve => {
-            const linkId = 'kalam-font-link';
-            let link = document.getElementById(linkId);
-            if (!link) {
-                link = document.createElement('link');
-                link.id = linkId;
-                link.rel = 'stylesheet';
-                link.href = 'https://fonts.googleapis.com/css2?family=Kalam:wght@400&display=swap';
-                document.head.appendChild(link);
-            }
+    function insertPlainTextAtCursor(text) {
+        const plainText = (text || '').replace(/\r\n?/g, '\n');
+        if (document.queryCommandSupported && document.queryCommandSupported('insertText')) {
+            document.execCommand('insertText', false, plainText);
+            return;
+        }
 
-            if (document.fonts && document.fonts.load) {
-                Promise.all([
-                    document.fonts.load("400 18px 'Kalam'"),
-                    document.fonts.load("400 24px 'Kalam'")
-                ]).then(() => resolve()).catch(() => resolve());
-            } else {
-                link.onload = () => resolve();
-                setTimeout(resolve, 500);
+        const selection = window.getSelection();
+        if (!selection || !selection.rangeCount) return;
+
+        const range = selection.getRangeAt(0);
+        range.deleteContents();
+        const fragment = document.createDocumentFragment();
+        const lines = plainText.split('\n');
+        lines.forEach((line, idx) => {
+            fragment.appendChild(document.createTextNode(line));
+            if (idx < lines.length - 1) {
+                fragment.appendChild(document.createElement('br'));
             }
         });
+        range.insertNode(fragment);
+        range.collapse(false);
+        selection.removeAllRanges();
+        selection.addRange(range);
+    }
+
+    function getEditorOutputHtml(editorEl) {
+        if (!editorEl) return '';
+        const wrapper = document.createElement('div');
+        wrapper.innerHTML = editorEl.innerHTML || '';
+
+        wrapper.querySelectorAll('script,style').forEach(node => node.remove());
+        wrapper.querySelectorAll('*').forEach(node => {
+            node.style.background = '';
+            node.style.backgroundColor = '';
+            node.removeAttribute('bgcolor');
+        });
+
+        return wrapper.innerHTML;
     }
 
     function createSection() {
@@ -151,6 +165,11 @@ admin_enforce_mapped_permission('auto');
         editable.addEventListener('focus', () => {
             // placeholder behavior can be added if needed
         });
+        editable.addEventListener('paste', e => {
+            e.preventDefault();
+            const text = (e.clipboardData || window.clipboardData).getData('text/plain');
+            insertPlainTextAtCursor(text);
+        });
 
         sectionsContainer.appendChild(section);
     }
@@ -160,7 +179,7 @@ admin_enforce_mapped_permission('auto');
         const sections = Array.from(sectionsContainer.querySelectorAll('.rt-section'));
         const headerImg = getAdminAssetUrl('compbanner.jpg');
         const footerImg = getAdminAssetUrl('footerbanner.jpg');
-        let html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Print</title><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Kalam:wght@400&display=swap" rel="stylesheet"><style>@page{margin:0;}html,body{margin:0;padding:0;background:#fef5b0;font-family:Arial,sans-serif;}body{display:flex;flex-direction:column;min-height:100vh;} .page-body{flex:1;display:flex;flex-direction:column;} .content{padding:20px;padding-bottom:30px;margin:24px 50px;flex:1;text-align:center;} .section-title{font-family:\'Kalam\',cursive;font-weight:700;font-size:20px;color:#800000;text-align:center;} .section-content{font-family:\'Kalam\',cursive;font-weight:400;font-size:16px;line-height:1.5;text-align:center;} .section-content *{text-align:center !important;} #printFooter{width:100%;display:block;margin:0;padding:0;page-break-inside:avoid;break-inside:avoid;}</style></head><body>';
+        let html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Print</title><style>@page{margin:0;}html,body{margin:0;padding:0;background:#fef5b0;font-family:\'Segoe UI\',Tahoma,Geneva,Verdana,sans-serif;}body{display:flex;flex-direction:column;min-height:100vh;} .page-body{flex:1;display:flex;flex-direction:column;} .content{padding:0 0 12px 0;margin:18mm 16mm 12mm;flex:1;} .section-title{font-weight:700;font-size:18px;color:#800000;line-height:1.35;word-break:break-word;overflow-wrap:anywhere;} .section-content{font-size:16px;line-height:1.6;white-space:pre-wrap;word-break:break-word;overflow-wrap:anywhere;} .section-content *{max-width:100%;word-break:break-word;overflow-wrap:anywhere;} #printFooter{width:100%;display:block;margin:0;padding:0;page-break-inside:avoid;break-inside:avoid;}</style></head><body>';
         html += '<div class="page-body">';
         html += `<img src="${headerImg}" alt="Header" style="width:100%;display:block;margin:0;padding:0;">`;
         html += '<div class="content">';
@@ -168,8 +187,8 @@ admin_enforce_mapped_permission('auto');
             const titleSel = section.querySelector('select');
             const selectedText = titleSel ? titleSel.options[titleSel.selectedIndex]?.text || '' : '';
             const editor = section.querySelector('[contenteditable]');
-            const content = editor ? editor.innerHTML : '';
-            html += `<div style="margin-bottom:20px;text-align:center;">
+            const content = editor ? getEditorOutputHtml(editor) : '';
+            html += `<div style="margin-bottom:20px;">
                 <div class="section-title" style="font-weight:bold;margin-bottom:8px;">${selectedText}</div>
                 <div class="section-content">${content}</div>
             </div>`;
@@ -233,7 +252,6 @@ admin_enforce_mapped_permission('auto');
         });
     });
     downloadBtn.addEventListener('click', () => {
-        ensureKalamFontLoaded().then(() => {
             const sections = Array.from(sectionsContainer.querySelectorAll('.rt-section'));
             const headerImg = getAdminAssetUrl('compbanner.jpg');
             const footerImg = getAdminAssetUrl('footerbanner.jpg');
@@ -241,7 +259,7 @@ admin_enforce_mapped_permission('auto');
             // Create proper DOM elements for PDF
             const pdfContainer = document.createElement('div');
             pdfContainer.style.backgroundColor = '#fef5b0';
-            pdfContainer.style.fontFamily = 'Arial, sans-serif';
+            pdfContainer.style.fontFamily = "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif";
             pdfContainer.style.display = 'flex';
             pdfContainer.style.flexDirection = 'column';
             pdfContainer.style.width = '210mm';
@@ -268,42 +286,34 @@ admin_enforce_mapped_permission('auto');
             const contentWrapper = document.createElement('div');
             contentWrapper.style.padding = '20px';
             contentWrapper.style.paddingBottom = '30px';
-            contentWrapper.style.margin = '30px 50px';
+            contentWrapper.style.margin = '18mm 16mm 12mm';
             contentWrapper.style.flex = '1';
-            contentWrapper.style.textAlign = 'center';
             
             // Add sections
             sections.forEach((section, idx) => {
                 const titleSel = section.querySelector('select');
                 const selectedText = titleSel ? titleSel.options[titleSel.selectedIndex]?.text || '' : '';
                 const editor = section.querySelector('[contenteditable]');
-                const content = editor ? editor.innerHTML : '';
+                const content = editor ? getEditorOutputHtml(editor) : '';
                 
                 const sectionDiv = document.createElement('div');
                 sectionDiv.style.marginBottom = '20px';
-                sectionDiv.style.textAlign = 'center';
                 
                 const titleDiv = document.createElement('div');
-                titleDiv.style.fontFamily = "'Kalam', cursive";
-                titleDiv.style.fontWeight = '400';
-                titleDiv.style.fontSize = '20px';
+                titleDiv.style.fontSize = '18px';
                 titleDiv.style.color = '#800000';
                 titleDiv.style.fontWeight = 'bold';
                 titleDiv.style.marginBottom = '8px';
-                titleDiv.style.textAlign = 'center';
                 titleDiv.textContent = selectedText;
                 sectionDiv.appendChild(titleDiv);
                 
                 const contentDiv = document.createElement('div');
-                contentDiv.style.fontFamily = "'Kalam', cursive";
-                contentDiv.style.fontWeight = '400';
                 contentDiv.style.fontSize = '16px';
                 contentDiv.style.lineHeight = '1.5';
-                contentDiv.style.textAlign = 'center';
+                contentDiv.style.whiteSpace = 'pre-wrap';
+                contentDiv.style.overflowWrap = 'anywhere';
+                contentDiv.style.wordBreak = 'break-word';
                 contentDiv.innerHTML = content;
-                contentDiv.querySelectorAll('*').forEach(el => {
-                    el.style.textAlign = 'center';
-                });
                 sectionDiv.appendChild(contentDiv);
                 
                 contentWrapper.appendChild(sectionDiv);
@@ -386,7 +396,6 @@ admin_enforce_mapped_permission('auto');
                     }
                 });
             });
-        });
     });
     // Initialize first section
     createSection();
@@ -604,5 +613,6 @@ admin_enforce_mapped_permission('auto');
         return div.innerHTML;
     }
     </script>
+    <?php include __DIR__ . '/includes/internal-clipboard.php'; ?>
 </body>
 </html>

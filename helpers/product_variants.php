@@ -86,6 +86,20 @@ if (!function_exists('vs_ensure_product_variant_schema')) {
             $pdo->exec("ALTER TABLE products ADD COLUMN variant_id INT NULL AFTER price");
         }
 
+        $longDescStmt = $pdo->prepare("
+            SELECT COUNT(*)
+            FROM INFORMATION_SCHEMA.COLUMNS
+            WHERE TABLE_SCHEMA = DATABASE()
+              AND TABLE_NAME = 'products'
+              AND COLUMN_NAME = 'long_description'
+        ");
+        $longDescStmt->execute();
+        $hasLongDescriptionColumn = (int)$longDescStmt->fetchColumn() > 0;
+
+        if (!$hasLongDescriptionColumn) {
+            $pdo->exec("ALTER TABLE products ADD COLUMN long_description MEDIUMTEXT NULL AFTER short_description");
+        }
+
         $indexStmt = $pdo->prepare("
             SELECT COUNT(*)
             FROM INFORMATION_SCHEMA.STATISTICS

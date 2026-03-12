@@ -1692,7 +1692,9 @@
                 return;
             }
 
-            if (data.invalid_phone) {
+            if (data.duplicate_booking) {
+                setStatus(data.message || 'Token already booked with this number.', 'error');
+            } else if (data.invalid_phone) {
                 setStatus('\u0915\u0943\u092a\u092f\u093e \u092f\u094b\u0917\u094d\u092f \u0967\u0966 \u0905\u0902\u0915\u0940 \u092e\u094b\u092c\u093e\u0908\u0932 \u0928\u0902\u092c\u0930 \u091f\u093e\u0915\u093e.', 'error');
             } else {
                 setStatus('\u0938\u0927\u094d\u092f\u093e \u091f\u094b\u0915\u0928 \u092e\u093f\u0933\u0924 \u0928\u093e\u0939\u0940. \u0915\u0943\u092a\u092f\u093e \u092a\u0941\u0928\u094d\u0939\u093e \u092a\u094d\u0930\u092f\u0924\u094d\u0928 \u0915\u0930\u093e.', 'error');

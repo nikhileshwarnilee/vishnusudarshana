@@ -126,6 +126,26 @@ include '../includes/top-menu.php';
             <span id="sameDayCutoffSaveMsg" class="language-msg"></span>
         </div>
     </section>
+    <section class="settings-card" aria-label="Book Token Common Note">
+        <h2 class="settings-title">Book Token Common Note</h2>
+        <p class="settings-desc">This note appears on public <code>book-token.php</code> for all dates.</p>
+        <div class="language-options" style="margin-bottom:8px;">
+            <label class="language-option">
+                <input type="radio" name="tokenBookingCommonNoteEnabled" value="1" checked>
+                Show
+            </label>
+            <label class="language-option">
+                <input type="radio" name="tokenBookingCommonNoteEnabled" value="0">
+                Hide
+            </label>
+        </div>
+        <label for="tokenBookingCommonNoteText" class="form-label" style="margin-bottom:6px;">Common Note Content</label>
+        <textarea id="tokenBookingCommonNoteText" class="form-input" rows="4" maxlength="3000" placeholder="Enter common notification text for book-token page..." style="resize:vertical;"></textarea>
+        <div class="language-actions" style="margin-top:10px;">
+            <button type="button" id="saveTokenBookingCommonNoteBtn" class="language-save-btn">Save Common Note</button>
+            <span id="tokenBookingCommonNoteSaveMsg" class="language-msg"></span>
+        </div>
+    </section>
     <div style="max-width:900px;margin:18px auto 0 auto;display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
         <label for="cityTableFilter" style="font-weight:600;color:#6b0000;">Filter by City:</label>
         <select id="cityTableFilter" class="form-select" style="min-width:180px;">
@@ -206,6 +226,38 @@ include '../includes/top-menu.php';
         msg.style.color = isError ? '#a0001b' : '#176b1a';
     }
 
+    function getTokenBookingCommonNoteEnabledValue() {
+        const selected = document.querySelector('input[name="tokenBookingCommonNoteEnabled"]:checked');
+        return selected ? selected.value : '1';
+    }
+
+    function setTokenBookingCommonNoteEnabledValue(enabled) {
+        const safeValue = String(enabled) === '0' ? '0' : '1';
+        const radio = document.querySelector('input[name="tokenBookingCommonNoteEnabled"][value="' + safeValue + '"]');
+        if (radio) {
+            radio.checked = true;
+        }
+    }
+
+    function getTokenBookingCommonNoteTextValue() {
+        const input = document.getElementById('tokenBookingCommonNoteText');
+        if (!input) return '';
+        return String(input.value || '').trim();
+    }
+
+    function setTokenBookingCommonNoteTextValue(value) {
+        const input = document.getElementById('tokenBookingCommonNoteText');
+        if (!input) return;
+        input.value = String(value || '');
+    }
+
+    function setTokenBookingCommonNoteMessage(message, isError) {
+        const msg = document.getElementById('tokenBookingCommonNoteSaveMsg');
+        if (!msg) return;
+        msg.textContent = message || '';
+        msg.style.color = isError ? '#a0001b' : '#176b1a';
+    }
+
     function loadAnnouncementLanguage() {
         fetch('../../api/get-settings.php', { cache: 'no-store' })
             .then(res => res.json())
@@ -214,16 +266,22 @@ include '../includes/top-menu.php';
                     setSelectedAnnouncementLanguage(data.announcement_language || 'marathi');
                     setSelectedTabletTokenWhatsappEnabled(data.tablet_token_whatsapp_enabled ? '1' : '0');
                     setSameDayCutoffTimeValue(data.same_day_online_booking_cutoff_time || '09:00');
+                    setTokenBookingCommonNoteTextValue(data.token_booking_common_note || '');
+                    setTokenBookingCommonNoteEnabledValue(data.token_booking_common_note_enabled ? '1' : '0');
                 } else {
                     setSelectedAnnouncementLanguage('marathi');
                     setSelectedTabletTokenWhatsappEnabled('1');
                     setSameDayCutoffTimeValue('09:00');
+                    setTokenBookingCommonNoteTextValue('');
+                    setTokenBookingCommonNoteEnabledValue('1');
                 }
             })
             .catch(() => {
                 setSelectedAnnouncementLanguage('marathi');
                 setSelectedTabletTokenWhatsappEnabled('1');
                 setSameDayCutoffTimeValue('09:00');
+                setTokenBookingCommonNoteTextValue('');
+                setTokenBookingCommonNoteEnabledValue('1');
             });
     }
 
@@ -304,6 +362,36 @@ include '../includes/top-menu.php';
         })
         .catch(() => {
             setSameDayCutoffMessage('Error while saving same-day cutoff time.', true);
+        });
+    }
+
+    function saveTokenBookingCommonNoteSetting() {
+        const noteText = getTokenBookingCommonNoteTextValue();
+        const enabledValue = getTokenBookingCommonNoteEnabledValue();
+        const body = new URLSearchParams();
+        body.set('token_booking_common_note', noteText);
+        body.set('token_booking_common_note_enabled', enabledValue);
+
+        setTokenBookingCommonNoteMessage('Saving...', false);
+        fetch('../../api/save-settings.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
+            },
+            body: body.toString()
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data && data.success) {
+                setTokenBookingCommonNoteTextValue(data.token_booking_common_note || noteText);
+                setTokenBookingCommonNoteEnabledValue(data.token_booking_common_note_enabled ? '1' : '0');
+                setTokenBookingCommonNoteMessage('Common note setting saved.', false);
+            } else {
+                setTokenBookingCommonNoteMessage('Failed to save common note setting.', true);
+            }
+        })
+        .catch(() => {
+            setTokenBookingCommonNoteMessage('Error while saving common note setting.', true);
         });
     }
 
@@ -530,6 +618,10 @@ include '../includes/top-menu.php';
         const saveSameDayCutoffBtn = document.getElementById('saveSameDayCutoffBtn');
         if (saveSameDayCutoffBtn) {
             saveSameDayCutoffBtn.addEventListener('click', saveSameDayCutoffSetting);
+        }
+        const saveTokenBookingCommonNoteBtn = document.getElementById('saveTokenBookingCommonNoteBtn');
+        if (saveTokenBookingCommonNoteBtn) {
+            saveTokenBookingCommonNoteBtn.addEventListener('click', saveTokenBookingCommonNoteSetting);
         }
         fetchTokens();
         const cityFilter = document.getElementById('cityTableFilter');
