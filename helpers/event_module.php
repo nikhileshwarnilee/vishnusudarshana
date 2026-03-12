@@ -26,6 +26,7 @@ if (!function_exists('vs_event_ensure_tables')) {
                 event_date DATE NOT NULL,
                 registration_start DATE NOT NULL,
                 registration_end DATE NOT NULL,
+                registration_end_time TIME DEFAULT NULL,
                 status ENUM('Active', 'Closed') NOT NULL DEFAULT 'Active',
                 send_whatsapp_notifications TINYINT(1) NOT NULL DEFAULT 1,
                 created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -263,6 +264,9 @@ if (!function_exists('vs_event_ensure_tables')) {
         }
         if (!$hasColumn('events', 'send_whatsapp_notifications')) {
             $pdo->exec("ALTER TABLE events ADD COLUMN send_whatsapp_notifications TINYINT(1) NOT NULL DEFAULT 1 AFTER status");
+        }
+        if (!$hasColumn('events', 'registration_end_time')) {
+            $pdo->exec("ALTER TABLE events ADD COLUMN registration_end_time TIME DEFAULT NULL AFTER registration_end");
         }
         if (!$hasColumn('event_form_fields', 'field_placeholder')) {
             $pdo->exec("ALTER TABLE event_form_fields ADD COLUMN field_placeholder VARCHAR(255) NULL AFTER field_options");
