@@ -29,7 +29,9 @@ $respondJson = static function (array $payload): void {
 
 $formatUpiAmount = static function (float $amount): string {
     $normalized = round(max($amount, 0), 2);
-    return number_format($normalized, 2, '.', '');
+    $formatted = number_format($normalized, 2, '.', '');
+    $formatted = rtrim(rtrim($formatted, '0'), '.');
+    return $formatted !== '' ? $formatted : '0';
 };
 
 $buildUniqueUpiReference = static function (string $seedPrefix = 'EVT'): string {
@@ -53,12 +55,21 @@ $buildUpiIntentLink = static function (array $baseParams, float $amount) use ($f
     if (empty($baseParams['pa'])) {
         return '';
     }
+    $pa = preg_replace('/\s+/', '', (string)($baseParams['pa'] ?? ''));
+    $pn = trim((string)($baseParams['pn'] ?? 'Vishnusudarshana'));
+    $tn = trim((string)($baseParams['tn'] ?? 'Event Booking'));
+    $am = $formatUpiAmount($amount);
+    if ($pa === '') {
+        return '';
+    }
 
-    $finalParams = $baseParams;
-    $finalParams['am'] = $formatUpiAmount($amount);
-    $finalParams['cu'] = 'INR';
-
-    return 'upi://pay?' . http_build_query($finalParams, '', '&', PHP_QUERY_RFC3986);
+    // Keep UPI address readable with '@' (no %40), while encoding text fields safely.
+    return 'upi://pay?'
+        . 'pa=' . $pa
+        . '&pn=' . rawurlencode($pn)
+        . '&am=' . rawurlencode($am)
+        . '&cu=INR'
+        . '&tn=' . rawurlencode($tn);
 };
 
 $loadRegistrationById = static function (PDO $pdo, int $regId): ?array {
@@ -1010,11 +1021,7 @@ if ($upiId !== '') {
     $upiIntentBaseParams = [
         'pa' => $upiId,
         'pn' => 'Vishnusudarshana',
-        'mc' => '0000',
-        'tid' => $upiOrderId,
-        'tr' => $upiOrderId,
         'tn' => 'Event Booking ' . $upiOrderId,
-        'cu' => 'INR',
     ];
     $initialUpiIntentLink = $buildUpiIntentLink($upiIntentBaseParams, $displayNowAmount);
 }
@@ -1232,26 +1239,26 @@ $methodLabelMap = [
     function formatAmount(amount) {
         const parsed = Number(amount);
         if (!Number.isFinite(parsed) || parsed < 0) {
-            return '0.00';
+            return '0';
         }
-        return parsed.toFixed(2);
+        const rounded = Math.round(parsed * 100) / 100;
+        const asString = rounded.toFixed(2).replace(/\.00$/, '').replace(/(\.\d)0$/, '$1');
+        return asString || '0';
     }
 
     function buildUpiIntentLink(amount) {
         if (!upiIntentBaseParams || typeof upiIntentBaseParams !== 'object' || !upiIntentBaseParams.pa) {
             return '';
         }
-        const params = new URLSearchParams({
-            pa: String(upiIntentBaseParams.pa || ''),
-            pn: String(upiIntentBaseParams.pn || 'Vishnusudarshana'),
-            mc: String(upiIntentBaseParams.mc || '0000'),
-            tid: String(upiIntentBaseParams.tid || ''),
-            tr: String(upiIntentBaseParams.tr || ''),
-            tn: String(upiIntentBaseParams.tn || ''),
-            am: formatAmount(amount),
-            cu: 'INR'
-        });
-        return 'upi://pay?' + params.toString();
+        const pa = String(upiIntentBaseParams.pa || '').replace(/\s+/g, '');
+        if (!pa) {
+            return '';
+        }
+        const pn = encodeURIComponent(String(upiIntentBaseParams.pn || 'Vishnusudarshana'));
+        const tn = encodeURIComponent(String(upiIntentBaseParams.tn || 'Event Booking'));
+        const am = encodeURIComponent(formatAmount(amount));
+        // Keep pa as plain UPI ID so '@' is not converted to %40.
+        return 'upi://pay?pa=' + pa + '&pn=' + pn + '&am=' + am + '&cu=INR&tn=' + tn;
     }
 
     function refreshAmounts() {
