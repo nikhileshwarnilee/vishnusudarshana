@@ -252,7 +252,7 @@ $packageUpiId = trim((string)($registration['upi_id'] ?? ''));
 $packageUpiQr = trim((string)($registration['upi_qr_image'] ?? ''));
 $effectiveUpiId = $registrationUpiSnapshotId !== '' ? $registrationUpiSnapshotId : $packageUpiId;
 $effectiveUpiQr = $registrationUpiSnapshotQr !== '' ? $registrationUpiSnapshotQr : $packageUpiQr;
-if ($effectiveUpiId === '') {
+if ($effectiveUpiId === '' && $effectiveUpiQr === '') {
     $effectiveUpiId = (string)(getenv('EVENT_UPI_ID') ?: getenv('EVENT_MANUAL_UPI') ?: '');
 }
 
@@ -1134,11 +1134,17 @@ $methodLabelMap = [
                     <div class="card method-card">
                         <h3>Manual UPI Payment</h3>
                         <p>Transfer using your UPI app and submit transaction details for verification.</p>
-                        <p><strong>UPI ID:</strong> <?php echo htmlspecialchars($upiId); ?></p>
+                        <?php if ($upiId !== ''): ?>
+                            <p><strong>UPI ID:</strong> <?php echo htmlspecialchars($upiId); ?></p>
+                        <?php else: ?>
+                            <p><strong>UPI ID:</strong> Not configured for this package. Please pay using QR code.</p>
+                        <?php endif; ?>
                         <?php if ($upiQrImage !== ''): ?>
                             <div class="qr-wrap">
                                 <img src="<?php echo htmlspecialchars($upiQrImage); ?>" alt="UPI QR">
                             </div>
+                        <?php elseif ($upiId === ''): ?>
+                            <p class="small" style="color:#b00020;">UPI QR is not configured for this package. Please contact admin.</p>
                         <?php endif; ?>
                         <?php if (!empty($upiIntentBaseParams)): ?>
                             <a href="<?php echo htmlspecialchars($initialUpiIntentLink); ?>" class="btn-main btn-link" id="upiIntentBtn" target="_blank" rel="noopener">

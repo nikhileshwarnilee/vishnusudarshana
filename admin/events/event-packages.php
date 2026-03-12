@@ -123,6 +123,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_package'])) {
     $selectedEventTypeForSave = vs_event_normalize_event_type((string)($selectedEventForSave['event_type'] ?? 'single_day'));
     $multiDatePriceMap = [];
     $upiRequired = ($isPaid === 1 && in_array('upi', $paymentMethods, true));
+    $hasUpiRouteTarget = ($upiId !== '' || $upiQrPath !== '');
 
     if ($isPaid === 1 && $selectedEventTypeForSave === 'multi_select_dates') {
         if (!in_array($datePricingMode, ['same', 'separate'], true)) {
@@ -195,8 +196,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_package'])) {
         $error = 'Invalid payment mode.';
     } elseif ($isPaid === 1 && empty($paymentMethods)) {
         $error = 'Please select at least one payment method for paid package.';
-    } elseif ($upiRequired && $upiId === '') {
-        $error = 'UPI ID is required when UPI method is enabled.';
+    } elseif ($upiRequired && !$hasUpiRouteTarget) {
+        $error = 'When UPI method is enabled, add UPI ID or upload UPI QR image.';
     } elseif (!in_array($status, ['Active', 'Inactive'], true)) {
         $error = 'Invalid package status.';
     } else {
@@ -632,7 +633,7 @@ if ($selectedEventId > 0) {
                                 </div>
                             <?php endif; ?>
                             <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;"><input type="file" id="upi_qr_input" name="upi_qr_image" accept=".jpg,.jpeg,.png,.webp"></div>
-                            <span style="font-size:12px;color:#666;">Optional. You can keep only UPI ID without QR image.</span>
+                            <span style="font-size:12px;color:#666;">Add UPI ID, QR image, or both. QR-only payment is supported.</span>
                         </div>
                     </div>
                     <input type="hidden" id="upi_qr_existing_state" value="<?php echo ($formUpiQrPath !== '') ? '1' : '0'; ?>">
@@ -839,7 +840,7 @@ if ($selectedEventId > 0) {
             upiConfigWrap.style.display = enableUpiConfig ? '' : 'none';
         }
         if (upiIdInput) {
-            upiIdInput.required = enableUpiConfig;
+            upiIdInput.required = false;
         }
         if (upiQrInput) {
             upiQrInput.required = false;
@@ -1012,9 +1013,11 @@ if ($selectedEventId > 0) {
         }
         if (isUpiEnabled()) {
             const upiId = upiIdInput ? upiIdInput.value.trim() : '';
-            if (upiId === '') {
+            const hasExistingQr = !!(upiQrExistingState && upiQrExistingState.value === '1');
+            const hasNewQr = !!(upiQrInput && upiQrInput.files && upiQrInput.files.length > 0);
+            if (upiId === '' && !hasExistingQr && !hasNewQr) {
                 e.preventDefault();
-                alert('UPI ID is required when UPI method is enabled.');
+                alert('For UPI method, please add UPI ID or upload UPI QR image.');
             }
         }
     });
