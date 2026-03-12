@@ -58,6 +58,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_package'])) {
     $selectedEventId = (int)($_POST['event_id'] ?? 0);
     $selectedDateId = (int)($_POST['event_date_id'] ?? 0);
     $packageName = trim((string)($_POST['package_name'] ?? ''));
+    $displayOrderRaw = trim((string)($_POST['display_order'] ?? '0'));
+    $displayOrder = ($displayOrderRaw === '') ? 0 : (int)$displayOrderRaw;
     $packageType = trim((string)($_POST['package_type'] ?? 'paid'));
     $isPaid = ($packageType === 'free') ? 0 : 1;
     $priceTotal = (float)($_POST['price_total'] ?? 0);
@@ -90,14 +92,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_package'])) {
     $description = trim((string)($_POST['description'] ?? ''));
     $status = trim((string)($_POST['status'] ?? 'Active'));
     $upiId = trim((string)($_POST['upi_id'] ?? ''));
+    $existingUpiQrPath = '';
+    $removeUpiQr = ((string)($_POST['remove_upi_qr_image'] ?? '0') === '1');
     $upiQrPath = '';
     if ($packageId > 0) {
         $existingUpiStmt = $pdo->prepare('SELECT upi_qr_image FROM event_packages WHERE id = ? LIMIT 1');
         $existingUpiStmt->execute([$packageId]);
         $existingUpiRow = $existingUpiStmt->fetch(PDO::FETCH_ASSOC);
         if ($existingUpiRow) {
-            $upiQrPath = trim((string)($existingUpiRow['upi_qr_image'] ?? ''));
+            $existingUpiQrPath = trim((string)($existingUpiRow['upi_qr_image'] ?? ''));
+            $upiQrPath = $existingUpiQrPath;
         }
+    }
+    if ($removeUpiQr) {
+        $upiQrPath = '';
     }
     if (isset($_FILES['upi_qr_image']) && (int)($_FILES['upi_qr_image']['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE) {
         $uploadedUpiQr = vs_event_store_upload($_FILES['upi_qr_image'], 'package-upi', ['jpg', 'jpeg', 'png', 'webp']);
@@ -169,6 +177,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_package'])) {
         $error = 'Selected event not found.';
     } elseif ($packageName === '') {
         $error = 'Package name is required.';
+    } elseif ($displayOrderRaw !== '' && !preg_match('/^-?\d+$/', $displayOrderRaw)) {
+        $error = 'Sort order must be a whole number.';
+    } elseif ($displayOrder < 0) {
+        $error = 'Sort order must be zero or more.';
     } elseif (!in_array($packageType, ['paid', 'free'], true)) {
         $error = 'Invalid package type.';
     } elseif ($priceTotal < 0) {
@@ -181,8 +193,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_package'])) {
         $error = 'Please select at least one payment method for paid package.';
     } elseif ($upiRequired && $upiId === '') {
         $error = 'UPI ID is required when UPI method is enabled.';
-    } elseif ($upiRequired && $upiQrPath === '') {
-        $error = 'UPI QR image is required when UPI method is enabled.';
     } elseif (!in_array($status, ['Active', 'Inactive'], true)) {
         $error = 'Invalid package status.';
     } else {
@@ -217,18 +227,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_package'])) {
         if ($error === '') {
             try {
                 $pdo->beginTransaction();
+                $cleanupOldUpiQr = '';
                 if ($packageId > 0) {
                     $stmt = $pdo->prepare('UPDATE event_packages
-                        SET event_id = ?, package_name = ?, is_paid = ?, price = ?, price_total = ?, advance_amount = ?, payment_mode = ?, payment_methods = ?, upi_id = ?, upi_qr_image = ?, cancellation_allowed = ?, refund_allowed = ?, allow_checkin_without_payment = ?, seat_limit = ?, description = ?, status = ?
+                        SET event_id = ?, package_name = ?, display_order = ?, is_paid = ?, price = ?, price_total = ?, advance_amount = ?, payment_mode = ?, payment_methods = ?, upi_id = ?, upi_qr_image = ?, cancellation_allowed = ?, refund_allowed = ?, allow_checkin_without_payment = ?, seat_limit = ?, description = ?, status = ?
                         WHERE id = ?');
-                    $stmt->execute([$selectedEventId, $packageName, $isPaid, $priceTotal, $priceTotal, $advanceAmount, $paymentMode, $paymentMethodsCsv, ($upiId !== '' ? $upiId : null), ($upiQrPath !== '' ? $upiQrPath : null), $cancellationAllowed, $refundAllowed, $allowCheckinWithoutPayment, $seatLimit, $description, $status, $packageId]);
+                    $stmt->execute([$selectedEventId, $packageName, $displayOrder, $isPaid, $priceTotal, $priceTotal, $advanceAmount, $paymentMode, $paymentMethodsCsv, ($upiId !== '' ? $upiId : null), ($upiQrPath !== '' ? $upiQrPath : null), $cancellationAllowed, $refundAllowed, $allowCheckinWithoutPayment, $seatLimit, $description, $status, $packageId]);
                     $savedPackageId = $packageId;
+                    if ($existingUpiQrPath !== '' && $existingUpiQrPath !== $upiQrPath) {
+                        $cleanupOldUpiQr = $existingUpiQrPath;
+                    }
                     $message = 'Package updated successfully.';
                 } else {
                     $stmt = $pdo->prepare('INSERT INTO event_packages
-                        (event_id, package_name, is_paid, price, price_total, advance_amount, payment_mode, payment_methods, upi_id, upi_qr_image, cancellation_allowed, refund_allowed, allow_checkin_without_payment, seat_limit, description, status)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
-                    $stmt->execute([$selectedEventId, $packageName, $isPaid, $priceTotal, $priceTotal, $advanceAmount, $paymentMode, $paymentMethodsCsv, ($upiId !== '' ? $upiId : null), ($upiQrPath !== '' ? $upiQrPath : null), $cancellationAllowed, $refundAllowed, $allowCheckinWithoutPayment, $seatLimit, $description, $status]);
+                        (event_id, package_name, display_order, is_paid, price, price_total, advance_amount, payment_mode, payment_methods, upi_id, upi_qr_image, cancellation_allowed, refund_allowed, allow_checkin_without_payment, seat_limit, description, status)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+                    $stmt->execute([$selectedEventId, $packageName, $displayOrder, $isPaid, $priceTotal, $priceTotal, $advanceAmount, $paymentMode, $paymentMethodsCsv, ($upiId !== '' ? $upiId : null), ($upiQrPath !== '' ? $upiQrPath : null), $cancellationAllowed, $refundAllowed, $allowCheckinWithoutPayment, $seatLimit, $description, $status]);
                     $savedPackageId = (int)$pdo->lastInsertId();
                     $message = 'Package added successfully.';
                 }
@@ -245,6 +259,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_package'])) {
                 }
 
                 $pdo->commit();
+
+                if ($cleanupOldUpiQr !== '') {
+                    $cleanupPath = __DIR__ . '/../../' . ltrim($cleanupOldUpiQr, '/');
+                    if (is_file($cleanupPath)) {
+                        @unlink($cleanupPath);
+                    }
+                }
             } catch (Throwable $e) {
                 if ($pdo->inTransaction()) {
                     $pdo->rollBack();
@@ -487,6 +508,11 @@ if ($selectedEventId > 0) {
             <div class="grid">
                 <div class="form-group"><label>Package Name</label><input type="text" name="package_name" value="<?php echo htmlspecialchars((string)($editPackage['package_name'] ?? '')); ?>" required></div>
                 <div class="form-group">
+                    <label>Sort Order</label>
+                    <input type="number" name="display_order" min="0" step="1" value="<?php echo htmlspecialchars((string)($_POST['display_order'] ?? $editPackage['display_order'] ?? '0')); ?>">
+                    <span style="font-size:12px;color:#666;">Lower number shows first on website.</span>
+                </div>
+                <div class="form-group">
                     <label>Package Type</label>
                     <select name="package_type" id="package_type">
                         <option value="paid" <?php echo $formIsPaid ? 'selected' : ''; ?>>Paid</option>
@@ -571,16 +597,29 @@ if ($selectedEventId > 0) {
                         </div>
                         <div class="form-group">
                             <label>UPI QR Image</label>
+                            <?php $removeUpiQrValue = (isset($_POST['remove_upi_qr_image']) && (string)$_POST['remove_upi_qr_image'] === '1') ? '1' : '0'; ?>
+                            <input type="hidden" id="remove_upi_qr_image" name="remove_upi_qr_image" value="<?php echo $removeUpiQrValue; ?>">
                             <?php if ($formUpiQrPath !== ''): ?>
-                                <div style="margin-bottom:8px;">
+                                <div id="upi_qr_preview_wrap" style="position:relative;display:inline-block;margin-bottom:8px;">
                                     <a href="../../<?php echo htmlspecialchars(ltrim($formUpiQrPath, '/')); ?>" target="_blank">
                                         <img src="../../<?php echo htmlspecialchars(ltrim($formUpiQrPath, '/')); ?>" alt="UPI QR" style="width:90px;height:90px;object-fit:cover;border:1px solid #e0bebe;border-radius:8px;">
                                     </a>
+                                    <button
+                                        type="button"
+                                        id="remove_upi_qr_btn"
+                                        title="Delete QR image"
+                                        aria-label="Delete QR image"
+                                        style="position:absolute;top:-7px;right:-7px;width:22px;height:22px;border:none;border-radius:50%;background:#dc3545;color:#fff;font-size:16px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;"
+                                    >&times;</button>
                                     <div style="font-size:12px;color:#666;margin-top:3px;">Current QR image</div>
                                 </div>
+                                <div id="upi_qr_remove_note" style="display:none;font-size:12px;color:#b00020;margin:0 0 8px;">
+                                    QR image marked for deletion.
+                                    <button type="button" id="undo_remove_upi_qr_btn" style="border:none;background:none;color:#0b7285;font-weight:700;cursor:pointer;padding:0;margin-left:4px;text-decoration:underline;">Undo</button>
+                                </div>
                             <?php endif; ?>
-                            <input type="file" id="upi_qr_input" name="upi_qr_image" accept=".jpg,.jpeg,.png,.webp">
-                            <span style="font-size:12px;color:#666;">Required when UPI method is enabled.</span>
+                            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;"><input type="file" id="upi_qr_input" name="upi_qr_image" accept=".jpg,.jpeg,.png,.webp"></div>
+                            <span style="font-size:12px;color:#666;">Optional. You can keep only UPI ID without QR image.</span>
                         </div>
                     </div>
                     <input type="hidden" id="upi_qr_existing_state" value="<?php echo ($formUpiQrPath !== '') ? '1' : '0'; ?>">
@@ -615,21 +654,34 @@ if ($selectedEventId > 0) {
 
     <div class="card">
         <h3 style="margin-top:0;color:#800000;">Package Seat Dashboard</h3>
+        <p style="margin:0 0 8px;color:#5f5f5f;">Use <strong>Sort</strong> column to control website display. Lower number appears first.</p>
         <p style="margin:0 0 10px;color:#5f5f5f;"><strong>Event Type:</strong> <?php echo htmlspecialchars($selectedEventTypeText); ?> | <strong><?php echo htmlspecialchars($dashboardScopeLabel); ?>:</strong> <?php echo htmlspecialchars($dashboardScopeText); ?></p>
         <div style="overflow:auto;">
             <table class="list-table">
                 <thead>
                     <tr>
-                        <th>ID</th><th>Package</th><th>Type</th><th>Total Price</th><th>Advance</th><th>Mode</th><th>Methods</th><th>Cancellation</th><th>Refund</th><th>Check-In (Unpaid)</th><th>Total Seats</th><th>Booked Seats</th><th>Remaining Seats</th><th>Revenue Generated</th><th>Status</th><th>Actions</th>
+                        <th>ID</th><th>Sort</th><th>Package</th><th>Type</th><th>Total Price</th><th>Advance</th><th>Mode</th><th>Methods</th><th>Cancellation</th><th>Refund</th><th>Check-In (Unpaid)</th><th>Total Seats</th><th>Booked Seats</th><th>Remaining Seats</th><th>Revenue Generated</th><th>Status</th><th>Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                 <?php if (empty($packages)): ?>
-                    <tr><td colspan="16" style="text-align:center;padding:18px;color:#666;">No packages found for this event.</td></tr>
+                    <tr><td colspan="17" style="text-align:center;padding:18px;color:#666;">No packages found for this event.</td></tr>
                 <?php else: ?>
                     <?php foreach ($packages as $pkg): ?>
                         <tr>
                             <td><?php echo (int)$pkg['id']; ?></td>
+                            <td>
+                                <input
+                                    type="number"
+                                    class="pkg-order-input"
+                                    data-id="<?php echo (int)$pkg['id']; ?>"
+                                    data-event-id="<?php echo (int)$selectedEventId; ?>"
+                                    min="0"
+                                    step="1"
+                                    value="<?php echo (int)($pkg['display_order'] ?? 0); ?>"
+                                    style="width:82px;padding:4px 6px;border:1px solid #ddd;border-radius:4px;"
+                                >
+                            </td>
                             <td><strong><?php echo htmlspecialchars((string)$pkg['package_name']); ?></strong></td>
                             <?php
                             $pkgPaid = vs_event_is_package_paid($pkg);
@@ -691,6 +743,11 @@ if ($selectedEventId > 0) {
     const upiConfigWrap = document.getElementById('upi_config_wrap');
     const upiIdInput = document.getElementById('upi_id_input');
     const upiQrInput = document.getElementById('upi_qr_input');
+    const removeUpiQrInput = document.getElementById('remove_upi_qr_image');
+    const removeUpiQrBtn = document.getElementById('remove_upi_qr_btn');
+    const undoRemoveUpiQrBtn = document.getElementById('undo_remove_upi_qr_btn');
+    const upiQrPreviewWrap = document.getElementById('upi_qr_preview_wrap');
+    const upiQrRemoveNote = document.getElementById('upi_qr_remove_note');
     const upiQrExistingState = document.getElementById('upi_qr_existing_state');
     const cancellationAllowedEl = document.getElementById('cancellation_allowed');
     const refundAllowedEl = document.getElementById('refund_allowed');
@@ -763,8 +820,21 @@ if ($selectedEventId > 0) {
             upiIdInput.required = enableUpiConfig;
         }
         if (upiQrInput) {
-            const hasExistingQr = upiQrExistingState && upiQrExistingState.value === '1';
-            upiQrInput.required = enableUpiConfig && !hasExistingQr;
+            upiQrInput.required = false;
+        }
+    }
+
+    function syncUpiQrRemovalState() {
+        const removeEnabled = !!(removeUpiQrInput && removeUpiQrInput.value === '1');
+        if (upiQrPreviewWrap) {
+            upiQrPreviewWrap.style.display = removeEnabled ? 'none' : 'inline-block';
+        }
+        if (upiQrRemoveNote) {
+            upiQrRemoveNote.style.display = removeEnabled ? 'block' : 'none';
+        }
+        if (upiQrExistingState) {
+            const defaultValue = upiQrExistingState.dataset.defaultValue || upiQrExistingState.value || '0';
+            upiQrExistingState.value = removeEnabled ? '0' : defaultValue;
         }
     }
 
@@ -840,6 +910,9 @@ if ($selectedEventId > 0) {
             if (upiQrInput) {
                 upiQrInput.required = false;
             }
+            if (removeUpiQrInput) {
+                removeUpiQrInput.value = '0';
+            }
         } else if (allMethodsInitial && allMethodsInitial.value === '1' && methodItems.length > 0) {
             methodItems.forEach(function (el) { el.checked = true; });
         }
@@ -848,6 +921,7 @@ if ($selectedEventId > 0) {
         syncCancellationRefund();
         syncUnpaidCheckinPolicy();
         syncUpiConfigVisibility();
+        syncUpiQrRemovalState();
     }
 
     if (pricingModeEl) {
@@ -877,6 +951,32 @@ if ($selectedEventId > 0) {
     if (cancellationAllowedEl) {
         cancellationAllowedEl.addEventListener('change', syncCancellationRefund);
     }
+    if (upiQrExistingState && !upiQrExistingState.dataset.defaultValue) {
+        upiQrExistingState.dataset.defaultValue = upiQrExistingState.value;
+    }
+    if (removeUpiQrBtn && removeUpiQrInput) {
+        removeUpiQrBtn.addEventListener('click', function () {
+            removeUpiQrInput.value = '1';
+            if (upiQrInput) {
+                upiQrInput.value = '';
+            }
+            syncUpiQrRemovalState();
+        });
+    }
+    if (undoRemoveUpiQrBtn && removeUpiQrInput) {
+        undoRemoveUpiQrBtn.addEventListener('click', function () {
+            removeUpiQrInput.value = '0';
+            syncUpiQrRemovalState();
+        });
+    }
+    if (upiQrInput) {
+        upiQrInput.addEventListener('change', function () {
+            if (upiQrInput.files && upiQrInput.files.length > 0 && removeUpiQrInput) {
+                removeUpiQrInput.value = '0';
+            }
+            syncUpiQrRemovalState();
+        });
+    }
     packageTypeEl.addEventListener('change', togglePaidFields);
     formEl.addEventListener('submit', function (e) {
         if (packageTypeEl.value !== 'paid') {
@@ -890,21 +990,65 @@ if ($selectedEventId > 0) {
         }
         if (isUpiEnabled()) {
             const upiId = upiIdInput ? upiIdInput.value.trim() : '';
-            const hasExistingQr = upiQrExistingState && upiQrExistingState.value === '1';
-            const hasNewQr = upiQrInput && upiQrInput.files && upiQrInput.files.length > 0;
             if (upiId === '') {
                 e.preventDefault();
                 alert('UPI ID is required when UPI method is enabled.');
-                return;
-            }
-            if (!hasExistingQr && !hasNewQr) {
-                e.preventDefault();
-                alert('UPI QR image is required when UPI method is enabled.');
             }
         }
     });
 
     togglePaidFields();
+
+    const orderInputs = Array.from(document.querySelectorAll('.pkg-order-input'));
+    orderInputs.forEach(function (inputEl) {
+        inputEl.addEventListener('change', function () {
+            const packageId = inputEl.getAttribute('data-id');
+            const eventId = inputEl.getAttribute('data-event-id');
+            const rawValue = inputEl.value.trim();
+            const parsedValue = Number.parseInt(rawValue, 10);
+
+            if (!Number.isFinite(parsedValue) || parsedValue < 0) {
+                alert('Sort order must be zero or more.');
+                inputEl.value = inputEl.defaultValue || '0';
+                return;
+            }
+
+            inputEl.style.opacity = '0.6';
+            fetch('update-package-order.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: 'package_id=' + encodeURIComponent(packageId)
+                    + '&event_id=' + encodeURIComponent(eventId || '')
+                    + '&display_order=' + encodeURIComponent(String(parsedValue))
+            })
+            .then(function (response) { return response.json(); })
+            .then(function (data) {
+                inputEl.style.opacity = '1';
+                if (data && data.success) {
+                    inputEl.defaultValue = String(parsedValue);
+                    inputEl.style.borderColor = '#1a8917';
+                    setTimeout(function () {
+                        inputEl.style.borderColor = '#ddd';
+                    }, 1000);
+                    return;
+                }
+                inputEl.value = inputEl.defaultValue || '0';
+                inputEl.style.borderColor = '#dc3545';
+                setTimeout(function () {
+                    inputEl.style.borderColor = '#ddd';
+                }, 1500);
+                alert((data && data.error) ? data.error : 'Unable to update sort order.');
+            })
+            .catch(function () {
+                inputEl.style.opacity = '1';
+                inputEl.value = inputEl.defaultValue || '0';
+                alert('Unable to update sort order right now.');
+            });
+        });
+    });
 })();
 </script>
 <script src="../includes/responsive-tables.js"></script>

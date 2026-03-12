@@ -743,9 +743,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     if ($allowUpi && trim($effectiveUpiId) === '') {
         $errors[] = 'UPI ID is not configured for this package. Please contact admin.';
     }
-    if ($allowUpi && trim($effectiveUpiQr) === '') {
-        $errors[] = 'UPI QR is not configured for this package. Please contact admin.';
-    }
     if (!$isDraftMode && (string)$registration['payment_status'] === 'Paid') {
         header('Location: event-booking-confirmation.php?registration_id=' . $registrationId . '&status=paid');
         exit;

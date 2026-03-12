@@ -116,38 +116,157 @@ function vs_ps_render_processed_page(array $existingRequest): void
 
     require_once 'header.php';
     ?>
-    <main class="main-content">
-        <h1 class="review-title">Payment Already Processed</h1>
-        <div class="review-card">
-            <h2 class="section-title">Your Booking Is Confirmed</h2>
-            <p class="success-text">
-                This payment was already finalized earlier.<br>
-                No duplicate booking has been created.
-            </p>
-            <?php if ($trackingId !== ''): ?>
-                <p class="success-text"><strong>Tracking ID:</strong> <?= htmlspecialchars($trackingId) ?></p>
-            <?php endif; ?>
-            <?php if ($createdAt !== ''): ?>
-                <p class="success-text"><strong>Booked On:</strong> <?= htmlspecialchars(date('d-M-Y h:i A', strtotime($createdAt))) ?></p>
-            <?php endif; ?>
-            <p class="success-text"><strong>Category:</strong> <?= htmlspecialchars($categoryLabel) ?></p>
-            <?php if ($trackingId !== ''): ?>
-                <a href="track.php?id=<?= urlencode($trackingId) ?>" class="pay-btn">Track Your Service</a>
-            <?php else: ?>
-                <a href="services.php" class="pay-btn">Back to Services</a>
-            <?php endif; ?>
-        </div>
-    </main>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Marcellus&display=swap');
-        html,body{font-family:'Marcellus',serif!important;}
-        .main-content { max-width:480px;margin:0 auto;padding:18px; }
-        .review-title { text-align:center;font-size:1.2em;margin-bottom:16px; }
-        .review-card { background:#f9eaea;border-radius:14px;padding:16px;text-align:center; }
-        .section-title { color:#800000;font-weight:600;margin-bottom:10px; }
-        .success-text { color:#333;margin-bottom:12px; }
-        .pay-btn { display:inline-block;background:#800000;color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:600; }
+        .vs-processed-shell {
+            max-width: 760px;
+            margin: 22px auto;
+            padding: 10px 12px 22px;
+        }
+        .vs-processed-card {
+            background: linear-gradient(155deg, #fffef9 0%, #fff5f5 52%, #fff9ef 100%);
+            border: 1px solid rgba(128, 0, 0, 0.16);
+            border-radius: 20px;
+            box-shadow: 0 18px 44px rgba(128, 0, 0, 0.12);
+            padding: 26px 22px 22px;
+        }
+        .vs-processed-badge {
+            display: inline-block;
+            background: #f0fff1;
+            color: #0b7d2a;
+            border: 1px solid #9bd8aa;
+            border-radius: 999px;
+            font-size: 0.84rem;
+            font-weight: 700;
+            letter-spacing: 0.02em;
+            padding: 5px 12px;
+            margin-bottom: 10px;
+        }
+        .vs-processed-title {
+            margin: 0;
+            font-size: 1.62rem;
+            color: #6f0000;
+            line-height: 1.25;
+        }
+        .vs-processed-subtitle {
+            margin: 9px 0 0;
+            color: #5f4a4a;
+            font-size: 1.03rem;
+            line-height: 1.6;
+        }
+        .vs-processed-meta {
+            margin: 18px 0 0;
+            background: #fff;
+            border: 1px solid #f0d7d7;
+            border-radius: 14px;
+            padding: 8px 12px;
+        }
+        .vs-processed-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 10px 0;
+            border-bottom: 1px dashed #ecd2d2;
+        }
+        .vs-processed-row:last-child {
+            border-bottom: 0;
+        }
+        .vs-processed-label {
+            color: #8f5555;
+            font-weight: 700;
+            font-size: 0.95rem;
+        }
+        .vs-processed-value {
+            color: #2f2f2f;
+            font-weight: 700;
+            text-align: right;
+            word-break: break-word;
+        }
+        .vs-processed-value.tracking {
+            color: #7f0000;
+            letter-spacing: 0.02em;
+        }
+        .vs-processed-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 18px;
+        }
+        .vs-processed-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 44px;
+            padding: 0 16px;
+            border-radius: 10px;
+            text-decoration: none;
+            font-weight: 700;
+            font-size: 0.96rem;
+            transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease, color 0.15s ease;
+        }
+        .vs-processed-btn:hover {
+            transform: translateY(-1px);
+        }
+        .vs-processed-btn-primary {
+            background: #800000;
+            color: #fff;
+            box-shadow: 0 8px 18px rgba(128, 0, 0, 0.24);
+        }
+        .vs-processed-btn-primary:hover {
+            background: #670000;
+        }
+        .vs-processed-btn-secondary {
+            background: #fff;
+            color: #7a2121;
+            border: 1px solid #e7c6c6;
+        }
+        .vs-processed-btn-secondary:hover {
+            background: #fff3f3;
+        }
+        @media (max-width: 640px) {
+            .vs-processed-title {
+                font-size: 1.35rem;
+            }
+            .vs-processed-row {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 4px;
+            }
+            .vs-processed-value {
+                text-align: left;
+            }
+        }
     </style>
+    <main class="main-content vs-processed-shell">
+        <section class="vs-processed-card">
+            <div class="vs-processed-badge">Payment Completed</div>
+            <h1 class="vs-processed-title">Payment Already Processed</h1>
+            <p class="vs-processed-subtitle">Your payment link was already completed earlier. Your booking is confirmed and no further action is required.</p>
+            <div class="vs-processed-meta">
+                <?php if ($trackingId !== ''): ?>
+                    <div class="vs-processed-row">
+                        <div class="vs-processed-label">Tracking ID</div>
+                        <div class="vs-processed-value tracking"><?= htmlspecialchars($trackingId, ENT_QUOTES, 'UTF-8') ?></div>
+                    </div>
+                <?php endif; ?>
+                <?php if ($createdAt !== ''): ?>
+                    <div class="vs-processed-row">
+                        <div class="vs-processed-label">Processed On</div>
+                        <div class="vs-processed-value"><?= htmlspecialchars(date('d-M-Y h:i A', strtotime($createdAt)), ENT_QUOTES, 'UTF-8') ?></div>
+                    </div>
+                <?php endif; ?>
+                <div class="vs-processed-row">
+                    <div class="vs-processed-label">Category</div>
+                    <div class="vs-processed-value"><?= htmlspecialchars($categoryLabel, ENT_QUOTES, 'UTF-8') ?></div>
+                </div>
+            </div>
+            <div class="vs-processed-actions">
+                <?php if ($trackingId !== ''): ?>
+                    <a href="track.php?id=<?= urlencode($trackingId) ?>" class="vs-processed-btn vs-processed-btn-primary">Track Your Request</a>
+                <?php endif; ?>
+                <a href="services.php" class="vs-processed-btn vs-processed-btn-secondary">&larr; Back to Services</a>
+            </div>
+        </section>
+    </main>
     <?php
     require_once 'footer.php';
     exit;
@@ -548,6 +667,11 @@ try {
 $successStatusMessage = $alreadyProcessedInInsert
     ? 'This payment was already finalized earlier. Your booking remains confirmed.'
     : 'Our team will contact you shortly.<br>Keep your tracking ID for reference.';
+$categoryDisplay = ucwords(str_replace('-', ' ', (string)$category));
+$amountDisplay = number_format((float)$totalAmount, 2);
+$customerDisplay = trim((string)$customerName) !== '' ? (string)$customerName : 'Customer';
+$mobileDisplay = trim((string)$mobile) !== '' ? (string)$mobile : 'Not Available';
+$paymentDisplay = trim((string)$razorpay_payment_id) !== '' ? (string)$razorpay_payment_id : (string)$payment_id;
 
 /* ======================
    RENDER SERVICE UI
@@ -555,20 +679,47 @@ $successStatusMessage = $alreadyProcessedInInsert
 require_once 'header.php';
 ?>
 
-<main class="main-content">
-    <h1 class="review-title">Thank You for Your Payment!</h1>
-    <div class="review-card">
-        <h2 class="section-title">Your Tracking ID</h2>
-        <div class="tracking-id">
-            <?= htmlspecialchars($tracking_id) ?>
-        </div>
-        <p id="payment-status-msg" class="success-text">
+<main class="main-content success-shell">
+    <section class="success-card">
+        <div class="success-badge">&#9989; Payment Successful</div>
+        <h1 class="success-title">Booking Confirmed</h1>
+        <p id="payment-status-msg" class="success-subtitle">
             <?= $successStatusMessage ?>
         </p>
-        <a href="track.php?id=<?= urlencode($tracking_id) ?>" class="pay-btn">
-            Track Your Service
-        </a>
-    </div>
+
+        <div class="success-tracking-wrap">
+            <div class="success-tracking-label">&#128269; Tracking ID</div>
+            <div class="success-tracking-id"><?= htmlspecialchars($tracking_id) ?></div>
+        </div>
+
+        <div class="success-details">
+            <div class="success-row">
+                <span>&#127991; Category</span>
+                <strong><?= htmlspecialchars($categoryDisplay) ?></strong>
+            </div>
+            <div class="success-row">
+                <span>&#128179; Payment ID</span>
+                <strong><?= htmlspecialchars($paymentDisplay) ?></strong>
+            </div>
+            <div class="success-row">
+                <span>&#8377; Amount Paid</span>
+                <strong>&#8377;<?= htmlspecialchars($amountDisplay) ?></strong>
+            </div>
+            <div class="success-row">
+                <span>&#128100; Customer</span>
+                <strong><?= htmlspecialchars($customerDisplay) ?></strong>
+            </div>
+            <div class="success-row">
+                <span>&#128222; Mobile</span>
+                <strong><?= htmlspecialchars($mobileDisplay) ?></strong>
+            </div>
+        </div>
+
+        <div class="success-actions">
+            <a href="track.php?id=<?= urlencode($tracking_id) ?>" class="success-btn success-btn-primary">&#128269; Track Your Request</a>
+            <a href="services.php" class="success-btn success-btn-secondary">&larr; Back to Services</a>
+        </div>
+    </section>
 </main>
 <script>
 // Poll backend every 3 seconds for payment status
@@ -580,7 +731,8 @@ function checkPaymentStatus() {
     fetch('ajax/check_payment_status.php?payment_id=' + encodeURIComponent(paymentId))
         .then(res => res.json())
         .then(data => {
-            if (data.success && data.payment_status === 'paid') {
+            const statusNormalized = String((data && data.payment_status) ? data.payment_status : '').toLowerCase();
+            if (data.success && (statusNormalized === 'paid' || statusNormalized === 'free')) {
                 statusMsg.textContent = 'Payment verified. Your booking will be confirmed soon.';
                 if (pollInterval) clearInterval(pollInterval);
             } else if (data.success && data.payment_status) {
@@ -601,14 +753,118 @@ window.addEventListener('DOMContentLoaded', checkPaymentStatus);
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Marcellus&display=swap');
     html,body{font-family:'Marcellus',serif!important;}
-    .main-content { max-width:480px;margin:0 auto;padding:18px; }
-    .review-title { text-align:center;font-size:1.2em;margin-bottom:16px; }
-    .review-card { background:#f9eaea;border-radius:14px;padding:16px;text-align:center; }
-    .section-title { color:#800000;font-weight:600;margin-bottom:10px; }
-    .tracking-id { font-size:1.4em;font-weight:700;color:#800000;margin:12px 0; }
-    .success-text { color:#333;margin-bottom:18px; }
-    .pay-btn { display:inline-block;background:#800000;color:#fff;padding:12px 28px;
-               border-radius:8px;text-decoration:none;font-weight:600; }
+    .success-shell { max-width: 760px; margin: 0 auto; padding: 20px 12px 26px; }
+    .success-card {
+        background: linear-gradient(150deg, #fffef9 0%, #fff5f6 56%, #fff9ef 100%);
+        border: 1px solid rgba(128, 0, 0, 0.16);
+        border-radius: 20px;
+        box-shadow: 0 18px 44px rgba(128, 0, 0, 0.12);
+        padding: 24px 20px 22px;
+    }
+    .success-badge {
+        display: inline-block;
+        background: #f0fff1;
+        color: #0b7d2a;
+        border: 1px solid #9bd8aa;
+        border-radius: 999px;
+        font-size: 0.86rem;
+        font-weight: 700;
+        letter-spacing: 0.02em;
+        padding: 5px 12px;
+        margin-bottom: 10px;
+    }
+    .success-title {
+        margin: 0;
+        color: #6f0000;
+        font-size: 1.68rem;
+        line-height: 1.2;
+    }
+    .success-subtitle {
+        margin: 10px 0 0;
+        color: #5f4a4a;
+        font-size: 1.02rem;
+        line-height: 1.55;
+    }
+    .success-tracking-wrap {
+        margin-top: 18px;
+        padding: 12px 14px;
+        background: #fff;
+        border: 1px solid #f0d7d7;
+        border-radius: 14px;
+        text-align: center;
+    }
+    .success-tracking-label {
+        color: #8f5555;
+        font-weight: 700;
+        font-size: 0.95rem;
+        margin-bottom: 6px;
+    }
+    .success-tracking-id {
+        color: #7f0000;
+        font-weight: 800;
+        letter-spacing: 0.04em;
+        font-size: 1.2rem;
+        word-break: break-word;
+    }
+    .success-details {
+        margin-top: 14px;
+        background: #fff;
+        border: 1px solid #f0d7d7;
+        border-radius: 14px;
+        padding: 8px 12px;
+    }
+    .success-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 12px;
+        padding: 10px 0;
+        border-bottom: 1px dashed #ecd2d2;
+        color: #5e4545;
+    }
+    .success-row:last-child { border-bottom: 0; }
+    .success-row span { font-weight: 700; }
+    .success-row strong {
+        color: #2f2f2f;
+        text-align: right;
+        word-break: break-word;
+    }
+    .success-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 18px;
+    }
+    .success-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 44px;
+        padding: 0 16px;
+        border-radius: 10px;
+        text-decoration: none;
+        font-size: 0.96rem;
+        font-weight: 700;
+        transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+    }
+    .success-btn:hover { transform: translateY(-1px); }
+    .success-btn-primary {
+        background: #800000;
+        color: #fff;
+        box-shadow: 0 8px 18px rgba(128, 0, 0, 0.24);
+    }
+    .success-btn-primary:hover { background: #670000; }
+    .success-btn-secondary {
+        background: #fff;
+        color: #7a2121;
+        border: 1px solid #e7c6c6;
+    }
+    .success-btn-secondary:hover { background: #fff3f3; }
+    @media (max-width: 640px) {
+        .success-title { font-size: 1.4rem; }
+        .success-row { flex-direction: column; gap: 4px; }
+        .success-row strong { text-align: left; }
+    }
 </style>
 <?php
 require_once 'footer.php';

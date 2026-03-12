@@ -38,6 +38,7 @@ if (!function_exists('vs_event_ensure_tables')) {
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 event_id INT NOT NULL,
                 package_name VARCHAR(255) NOT NULL,
+                display_order INT NOT NULL DEFAULT 0,
                 is_paid TINYINT(1) NOT NULL DEFAULT 1,
                 price DECIMAL(10,2) NOT NULL DEFAULT 0.00,
                 price_total DECIMAL(10,2) NOT NULL DEFAULT 0.00,
@@ -54,6 +55,7 @@ if (!function_exists('vs_event_ensure_tables')) {
                 status ENUM('Active', 'Inactive') NOT NULL DEFAULT 'Active',
                 created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 KEY idx_event_packages_event_id (event_id),
+                KEY idx_event_packages_display_order (event_id, display_order, id),
                 KEY idx_event_packages_status (status),
                 CONSTRAINT fk_event_packages_event FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
@@ -307,6 +309,12 @@ if (!function_exists('vs_event_ensure_tables')) {
         }
         if (!$hasColumn('event_packages', 'allow_checkin_without_payment')) {
             $pdo->exec("ALTER TABLE event_packages ADD COLUMN allow_checkin_without_payment TINYINT(1) NOT NULL DEFAULT 0 AFTER refund_allowed");
+        }
+        if (!$hasColumn('event_packages', 'display_order')) {
+            $pdo->exec("ALTER TABLE event_packages ADD COLUMN display_order INT NOT NULL DEFAULT 0 AFTER package_name");
+        }
+        if (!$hasIndex('event_packages', 'idx_event_packages_display_order')) {
+            $pdo->exec("ALTER TABLE event_packages ADD KEY idx_event_packages_display_order (event_id, display_order, id)");
         }
         $didAddIsPaidColumn = false;
         if (!$hasColumn('event_packages', 'is_paid')) {
@@ -725,7 +733,7 @@ if (!function_exists('vs_event_fetch_packages_with_seats')) {
             $sql .= " AND p.status = 'Active'";
         }
 
-        $sql .= " GROUP BY p.id ORDER BY p.id DESC";
+        $sql .= " GROUP BY p.id ORDER BY p.display_order ASC, p.id DESC";
 
         $stmt = $pdo->prepare($sql);
         $stmt->execute($params);

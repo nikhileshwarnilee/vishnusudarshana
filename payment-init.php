@@ -60,24 +60,175 @@ if (!function_exists('vs_render_processed_payment_page')) {
         $createdAt = (string)($serviceRow['created_at'] ?? '');
         $categorySlug = (string)($serviceRow['category_slug'] ?? '');
         $categoryLabel = $categorySlug !== '' ? ucwords(str_replace('-', ' ', $categorySlug)) : 'Service';
+        $resolvedPaymentId = trim((string)($serviceRow['razorpay_payment_id'] ?? ''));
+        if ($resolvedPaymentId === '') {
+            $resolvedPaymentId = trim((string)($serviceRow['payment_id'] ?? ''));
+        }
 
-        echo '<main class="main-content" style="background-color:var(--cream-bg);">';
-        echo '<h2>Payment Already Processed</h2>';
-        echo '<p>Your payment link was already completed earlier. No action is needed.</p>';
-        if ($trackingId !== '') {
-            echo '<p><strong>Tracking ID:</strong> ' . htmlspecialchars($trackingId, ENT_QUOTES, 'UTF-8') . '</p>';
+        if ($resolvedPaymentId !== '') {
+            $successUrl = 'payment-success.php?payment_id=' . urlencode($resolvedPaymentId);
+            echo '<main class="main-content" style="background-color:var(--cream-bg);"><h2>Redirecting...</h2>';
+            echo '<p>Your payment is already confirmed. Taking you to the success page.</p>';
+            vs_safe_redirect($successUrl);
+            echo '</main>';
+            require_once 'footer.php';
+            exit;
         }
-        if ($createdAt !== '') {
-            echo '<p><strong>Processed On:</strong> ' . htmlspecialchars(date('d-M-Y h:i A', strtotime($createdAt)), ENT_QUOTES, 'UTF-8') . '</p>';
-        }
-        echo '<p><strong>Category:</strong> ' . htmlspecialchars($categoryLabel, ENT_QUOTES, 'UTF-8') . '</p>';
-        if ($trackingId !== '') {
-            echo '<a href="track.php?id=' . urlencode($trackingId) . '" class="pay-btn" style="display:inline-block;text-decoration:none;">Track Your Request</a>';
-        } else {
-            echo '<a href="services.php" class="pay-btn" style="display:inline-block;text-decoration:none;">Back to Services</a>';
-        }
-        echo '<a href="services.php" class="review-back-link">&larr; Back to Services</a>';
-        echo '</main>';
+
+        require_once 'header.php';
+        ?>
+        <style>
+            .vs-processed-shell {
+                max-width: 760px;
+                margin: 22px auto;
+                padding: 10px 12px 22px;
+            }
+            .vs-processed-card {
+                background: linear-gradient(155deg, #fffef9 0%, #fff5f5 52%, #fff9ef 100%);
+                border: 1px solid rgba(128, 0, 0, 0.16);
+                border-radius: 20px;
+                box-shadow: 0 18px 44px rgba(128, 0, 0, 0.12);
+                padding: 26px 22px 22px;
+            }
+            .vs-processed-badge {
+                display: inline-block;
+                background: #f0fff1;
+                color: #0b7d2a;
+                border: 1px solid #9bd8aa;
+                border-radius: 999px;
+                font-size: 0.84rem;
+                font-weight: 700;
+                letter-spacing: 0.02em;
+                padding: 5px 12px;
+                margin-bottom: 10px;
+            }
+            .vs-processed-title {
+                margin: 0;
+                font-size: 1.62rem;
+                color: #6f0000;
+                line-height: 1.25;
+            }
+            .vs-processed-subtitle {
+                margin: 9px 0 0;
+                color: #5f4a4a;
+                font-size: 1.03rem;
+                line-height: 1.6;
+            }
+            .vs-processed-meta {
+                margin: 18px 0 0;
+                background: #fff;
+                border: 1px solid #f0d7d7;
+                border-radius: 14px;
+                padding: 8px 12px;
+            }
+            .vs-processed-row {
+                display: flex;
+                justify-content: space-between;
+                gap: 10px;
+                padding: 10px 0;
+                border-bottom: 1px dashed #ecd2d2;
+            }
+            .vs-processed-row:last-child {
+                border-bottom: 0;
+            }
+            .vs-processed-label {
+                color: #8f5555;
+                font-weight: 700;
+                font-size: 0.95rem;
+            }
+            .vs-processed-value {
+                color: #2f2f2f;
+                font-weight: 700;
+                text-align: right;
+                word-break: break-word;
+            }
+            .vs-processed-value.tracking {
+                color: #7f0000;
+                letter-spacing: 0.02em;
+            }
+            .vs-processed-actions {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 10px;
+                margin-top: 18px;
+            }
+            .vs-processed-btn {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                min-height: 44px;
+                padding: 0 16px;
+                border-radius: 10px;
+                text-decoration: none;
+                font-weight: 700;
+                font-size: 0.96rem;
+                transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease, color 0.15s ease;
+            }
+            .vs-processed-btn:hover {
+                transform: translateY(-1px);
+            }
+            .vs-processed-btn-primary {
+                background: #800000;
+                color: #fff;
+                box-shadow: 0 8px 18px rgba(128, 0, 0, 0.24);
+            }
+            .vs-processed-btn-primary:hover {
+                background: #670000;
+            }
+            .vs-processed-btn-secondary {
+                background: #fff;
+                color: #7a2121;
+                border: 1px solid #e7c6c6;
+            }
+            .vs-processed-btn-secondary:hover {
+                background: #fff3f3;
+            }
+            @media (max-width: 640px) {
+                .vs-processed-title {
+                    font-size: 1.35rem;
+                }
+                .vs-processed-row {
+                    flex-direction: column;
+                    align-items: flex-start;
+                    gap: 4px;
+                }
+                .vs-processed-value {
+                    text-align: left;
+                }
+            }
+        </style>
+        <main class="main-content vs-processed-shell">
+            <section class="vs-processed-card">
+                <div class="vs-processed-badge">Payment Completed</div>
+                <h1 class="vs-processed-title">Payment Already Processed</h1>
+                <p class="vs-processed-subtitle">Your payment link was already completed earlier. Your booking is confirmed and no further action is required.</p>
+                <div class="vs-processed-meta">
+                    <?php if ($trackingId !== ''): ?>
+                        <div class="vs-processed-row">
+                            <div class="vs-processed-label">Tracking ID</div>
+                            <div class="vs-processed-value tracking"><?= htmlspecialchars($trackingId, ENT_QUOTES, 'UTF-8') ?></div>
+                        </div>
+                    <?php endif; ?>
+                    <?php if ($createdAt !== ''): ?>
+                        <div class="vs-processed-row">
+                            <div class="vs-processed-label">Processed On</div>
+                            <div class="vs-processed-value"><?= htmlspecialchars(date('d-M-Y h:i A', strtotime($createdAt)), ENT_QUOTES, 'UTF-8') ?></div>
+                        </div>
+                    <?php endif; ?>
+                    <div class="vs-processed-row">
+                        <div class="vs-processed-label">Category</div>
+                        <div class="vs-processed-value"><?= htmlspecialchars($categoryLabel, ENT_QUOTES, 'UTF-8') ?></div>
+                    </div>
+                </div>
+                <div class="vs-processed-actions">
+                    <?php if ($trackingId !== ''): ?>
+                        <a href="track.php?id=<?= urlencode($trackingId) ?>" class="vs-processed-btn vs-processed-btn-primary">Track Your Request</a>
+                    <?php endif; ?>
+                    <a href="services.php" class="vs-processed-btn vs-processed-btn-secondary">&larr; Back to Services</a>
+                </div>
+            </section>
+        </main>
+        <?php
         require_once 'footer.php';
         exit;
     }
@@ -366,6 +517,10 @@ $orderId = $razorpay_order_id;
 .pay-btn { width: 100%; background: #800000; color: #fff; border: none; border-radius: 8px; padding: 14px 0; font-size: 1.08em; font-weight: 600; margin-top: 10px; cursor: pointer; box-shadow: 0 2px 8px #80000022; transition: background 0.15s; }
 .pay-btn:disabled { background: #ccc; color: #fff; cursor: not-allowed; }
 .pay-btn.loading { background: #6a0000; color: #fff; }
+.pay-status-hint { margin-top: 10px; min-height: 18px; font-size: 0.92em; text-align: center; color: #7a2121; }
+.pay-status-hint.info { color: #7a2121; }
+.pay-status-hint.success { color: #1a8917; }
+.pay-status-hint.warn { color: #8a5b00; }
 .pay-btn-spinner {
     display: inline-block;
     width: 16px;
@@ -559,6 +714,7 @@ $orderId = $razorpay_order_id;
     </div>
     <?php endif; ?>
     <button class="pay-btn" id="rzpPayBtn" style="margin-top:18px;">Proceed to Secure Payment</button>
+    <div id="paymentStatusHint" class="pay-status-hint" aria-live="polite"></div>
     <?php if ($paymentSource === 'appointment'): ?>
     <a href="service-detail.php?service=appointment" class="review-back-link">&larr; Back to Appointment</a>
     <?php else: ?>
@@ -589,23 +745,177 @@ $description = ($paymentSource === 'appointment') ? 'Appointment Booking Fee' : 
 ?>
 <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 <script>
+var paymentId = "<?php echo addslashes((string)$payment_id); ?>";
+var orderId = "<?php echo addslashes((string)$orderId); ?>";
 var paymentFailedUrl = "payment-failed.php?payment_id=<?php echo urlencode((string)$payment_id); ?>";
+var statusCheckUrl = "ajax/check_payment_and_booking_status.php";
 var payBtn = document.getElementById('rzpPayBtn');
+var paymentStatusHint = document.getElementById('paymentStatusHint');
 var payBtnLabel = payBtn ? payBtn.textContent : 'Proceed to Secure Payment';
+var payBtnMode = 'pay';
+var attemptStorageKey = 'vds_payment_attempted_' + paymentId;
+var attemptExpiryMs = 6 * 60 * 60 * 1000;
 
-function setPayButtonLoading(isLoading) {
+function setHint(message, type) {
+    if (!paymentStatusHint) {
+        return;
+    }
+    paymentStatusHint.className = 'pay-status-hint' + (type ? (' ' + type) : '');
+    paymentStatusHint.textContent = message || '';
+}
+
+function getAttemptState() {
+    try {
+        var raw = localStorage.getItem(attemptStorageKey);
+        if (!raw) {
+            return false;
+        }
+        var parsed = JSON.parse(raw);
+        if (!parsed || parsed.attempted !== true) {
+            return false;
+        }
+        var ts = Number(parsed.ts || 0);
+        if (!ts || (Date.now() - ts) > attemptExpiryMs) {
+            localStorage.removeItem(attemptStorageKey);
+            return false;
+        }
+        return true;
+    } catch (e) {
+        return false;
+    }
+}
+
+function setAttemptState(attempted) {
+    try {
+        if (attempted) {
+            localStorage.setItem(attemptStorageKey, JSON.stringify({ attempted: true, ts: Date.now() }));
+        } else {
+            localStorage.removeItem(attemptStorageKey);
+        }
+    } catch (e) {
+        // Ignore storage errors.
+    }
+}
+
+function setButtonMode(mode) {
+    payBtnMode = (mode === 'check') ? 'check' : 'pay';
+    payBtnLabel = (payBtnMode === 'check') ? 'Check Payment Status' : 'Proceed to Secure Payment';
+    if (payBtn && !payBtn.classList.contains('loading')) {
+        payBtn.textContent = payBtnLabel;
+    }
+}
+
+function setPayButtonLoading(isLoading, loadingText) {
     if (!payBtn) {
         return;
     }
     if (isLoading) {
         payBtn.disabled = true;
         payBtn.classList.add('loading');
-        payBtn.innerHTML = '<span class="pay-btn-spinner"></span>Opening Secure Gateway...';
+        payBtn.innerHTML = '<span class="pay-btn-spinner"></span>' + (loadingText || 'Opening Secure Gateway...');
     } else {
         payBtn.disabled = false;
         payBtn.classList.remove('loading');
         payBtn.textContent = payBtnLabel;
     }
+}
+
+function buildStatusCheckUrl() {
+    return statusCheckUrl
+        + '?payment_id=' + encodeURIComponent(paymentId)
+        + '&order_id=' + encodeURIComponent(orderId);
+}
+
+function routeTo(url, fallbackUrl) {
+    var target = (url && String(url).trim() !== '') ? String(url) : fallbackUrl;
+    window.location.href = target;
+}
+
+function openRazorpayCheckout() {
+    setAttemptState(true);
+    setButtonMode('check');
+    setPayButtonLoading(true, 'Opening Secure Gateway...');
+    try {
+        var rzp = new Razorpay(options);
+        rzp.open();
+    } catch (error) {
+        setPayButtonLoading(false);
+        routeTo(paymentFailedUrl, paymentFailedUrl);
+    }
+}
+
+function checkPaymentStatusAndRoute(allowCheckoutOnUnpaid) {
+    setPayButtonLoading(true, 'Checking Status...');
+    setHint('Checking latest payment status...', 'info');
+
+    fetch(buildStatusCheckUrl(), { credentials: 'same-origin' })
+        .then(function(res) {
+            return res.json();
+        })
+        .then(function(data) {
+            if (!data || !data.success) {
+                if (allowCheckoutOnUnpaid) {
+                    setHint('Could not verify status. Opening secure gateway...', 'warn');
+                    openRazorpayCheckout();
+                } else {
+                    setPayButtonLoading(false);
+                    setHint('Could not verify status. Please try again.', 'warn');
+                }
+                return;
+            }
+
+            var state = String(data.state || '').toLowerCase();
+            if (state === 'success') {
+                setAttemptState(false);
+                setHint('Payment confirmed. Redirecting...', 'success');
+                routeTo(data.redirect_url, 'payment-success.php?payment_id=' + encodeURIComponent(paymentId));
+                return;
+            }
+
+            if (state === 'failed') {
+                setAttemptState(false);
+                setHint('Payment failed. Redirecting to retry page...', 'warn');
+                routeTo(data.redirect_url, paymentFailedUrl);
+                return;
+            }
+
+            if (state === 'unpaid') {
+                if (allowCheckoutOnUnpaid) {
+                    setHint('No completed payment found. Opening secure gateway...', 'info');
+                    openRazorpayCheckout();
+                } else {
+                    setAttemptState(false);
+                    setHint('No completed payment found. Redirecting to retry page...', 'warn');
+                    routeTo(data.redirect_url, paymentFailedUrl);
+                }
+                return;
+            }
+
+            if (state === 'pending' || state === 'processing') {
+                setAttemptState(true);
+                setButtonMode('check');
+                setPayButtonLoading(false);
+                setHint(data.message || 'Payment is processing. Please click "Check Payment Status" again in a few seconds.', 'warn');
+                return;
+            }
+
+            if (allowCheckoutOnUnpaid) {
+                setHint('Status unclear. Opening secure gateway...', 'warn');
+                openRazorpayCheckout();
+            } else {
+                setPayButtonLoading(false);
+                setHint('Status unclear. Please try again in a moment.', 'warn');
+            }
+        })
+        .catch(function() {
+            if (allowCheckoutOnUnpaid) {
+                setHint('Network issue while checking status. Opening secure gateway...', 'warn');
+                openRazorpayCheckout();
+            } else {
+                setPayButtonLoading(false);
+                setHint('Network issue while checking status. Please retry.', 'warn');
+            }
+        });
 }
 
 const options = {
@@ -650,6 +960,7 @@ const options = {
             checkmark.style.display = 'block';
             loaderText.textContent = 'Payment Verified!';
             loaderSubtext.textContent = 'Redirecting to confirmation page...';
+            setAttemptState(false);
             
             setTimeout(function() {
                 window.location.href = "payment-success.php?payment_id=" + encodeURIComponent(actualPaymentId);
@@ -657,6 +968,7 @@ const options = {
         }).catch(function() {
             // Even if DB update fails, proceed - data is safe with orderId in database
             loaderSubtext.textContent = 'Completing transaction...';
+            setAttemptState(false);
             setTimeout(function() {
                 window.location.href = "payment-success.php?payment_id=" + encodeURIComponent(actualPaymentId);
             }, 500);
@@ -665,20 +977,30 @@ const options = {
     modal: {
         ondismiss: function() {
             setPayButtonLoading(false);
-            window.location.href = paymentFailedUrl;
+            routeTo(paymentFailedUrl, paymentFailedUrl);
         }
     }
 };
-document.getElementById('rzpPayBtn').onclick = function(e){
-    e.preventDefault();
-    setPayButtonLoading(true);
-    try {
-        var rzp = new Razorpay(options);
-        rzp.open();
-    } catch (error) {
-        setPayButtonLoading(false);
-        window.location.href = paymentFailedUrl;
-    }
-};
+
+if (getAttemptState()) {
+    setButtonMode('check');
+    setHint('Checking your last payment status...', 'info');
+    setTimeout(function() {
+        checkPaymentStatusAndRoute(false);
+    }, 300);
+} else {
+    setButtonMode('pay');
+}
+
+if (payBtn) {
+    payBtn.onclick = function(e) {
+        e.preventDefault();
+        if (payBtnMode === 'check') {
+            checkPaymentStatusAndRoute(false);
+        } else {
+            checkPaymentStatusAndRoute(true);
+        }
+    };
+}
 </script>
 <?php require_once 'footer.php'; ?>
