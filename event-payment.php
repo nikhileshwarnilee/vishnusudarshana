@@ -56,20 +56,47 @@ $buildUpiIntentLink = static function (array $baseParams, float $amount) use ($f
         return '';
     }
     $pa = preg_replace('/\s+/', '', (string)($baseParams['pa'] ?? ''));
-    $pn = trim((string)($baseParams['pn'] ?? 'Vishnusudarshana'));
-    $tn = trim((string)($baseParams['tn'] ?? 'Event Booking'));
+    $pn = trim((string)($baseParams['pn'] ?? 'VISHNUSUDARSHANA DHARMIK SANSKAR KENDRA'));
+    $tn = trim((string)($baseParams['tn'] ?? 'Verified Merchant'));
     $am = $formatUpiAmount($amount);
     if ($pa === '') {
         return '';
     }
 
-    // Keep UPI address readable with '@' (no %40), while encoding text fields safely.
-    return 'upi://pay?'
-        . 'pa=' . $pa
-        . '&pn=' . rawurlencode($pn)
-        . '&am=' . rawurlencode($am)
-        . '&cu=INR'
-        . '&tn=' . rawurlencode($tn);
+    $values = [
+        'pa' => $pa,
+        'pn' => $pn,
+        'mc' => trim((string)($baseParams['mc'] ?? '')),
+        'tn' => $tn,
+        'am' => $am,
+        'cu' => 'INR',
+        'url' => trim((string)($baseParams['url'] ?? '')),
+        'mode' => trim((string)($baseParams['mode'] ?? '')),
+        'orgid' => trim((string)($baseParams['orgid'] ?? '')),
+        'mid' => trim((string)($baseParams['mid'] ?? '')),
+        'msid' => trim((string)($baseParams['msid'] ?? '')),
+        'mtid' => trim((string)($baseParams['mtid'] ?? '')),
+        'sign' => trim((string)($baseParams['sign'] ?? '')),
+    ];
+    $paramOrder = ['pa', 'pn', 'mc', 'tn', 'am', 'cu', 'url', 'mode', 'orgid', 'mid', 'msid', 'mtid', 'sign'];
+    $queryParts = [];
+    foreach ($paramOrder as $key) {
+        $rawValue = (string)($values[$key] ?? '');
+        if ($rawValue === '') {
+            continue;
+        }
+        if ($key === 'pa') {
+            // Keep UPI address readable with '@' (no %40).
+            $queryParts[] = 'pa=' . $rawValue;
+            continue;
+        }
+        $queryParts[] = $key . '=' . rawurlencode($rawValue);
+    }
+    if (empty($queryParts)) {
+        return '';
+    }
+
+    return 'upi://pay?' . implode('&', $queryParts);
 };
 
 $loadRegistrationById = static function (PDO $pdo, int $regId): ?array {
@@ -1013,15 +1040,17 @@ $displayNowAmount = round($dueNow, 2);
 $upiIntentBaseParams = [];
 $initialUpiIntentLink = '';
 if ($upiId !== '') {
-    $upiSeedPrefix = trim((string)($registration['booking_reference'] ?? ''));
-    if ($upiSeedPrefix === '') {
-        $upiSeedPrefix = $isDraftMode ? ('D' . strtoupper(substr((string)$draftToken, 0, 6))) : ('R' . (string)$registrationId);
-    }
-    $upiOrderId = $buildUniqueUpiReference($upiSeedPrefix);
+    $signedMerchantUpi = 'vish98500574879@barodampay';
+    $signatureValue = (strcasecmp($upiId, $signedMerchantUpi) === 0)
+        ? 'MEYCIQDtxVt8bWil73OnmyG+oTpjeaCFO3hDNNdGUjnaPXUHxAIhAOXAfLCQINa67sbltmr2l4410volR4zMK5Z4TFyD06w/'
+        : '';
     $upiIntentBaseParams = [
         'pa' => $upiId,
-        'pn' => 'Vishnusudarshana',
-        'tn' => 'Event Booking ' . $upiOrderId,
+        'pn' => 'VISHNUSUDARSHANA DHARMIK SANSKAR KENDRA',
+        'tn' => 'Verified Merchant',
+        'mode' => '02',
+        'orgid' => '159012',
+        'sign' => $signatureValue,
     ];
     $initialUpiIntentLink = $buildUpiIntentLink($upiIntentBaseParams, $displayNowAmount);
 }
@@ -1254,11 +1283,39 @@ $methodLabelMap = [
         if (!pa) {
             return '';
         }
-        const pn = encodeURIComponent(String(upiIntentBaseParams.pn || 'Vishnusudarshana'));
-        const tn = encodeURIComponent(String(upiIntentBaseParams.tn || 'Event Booking'));
-        const am = encodeURIComponent(formatAmount(amount));
-        // Keep pa as plain UPI ID so '@' is not converted to %40.
-        return 'upi://pay?pa=' + pa + '&pn=' + pn + '&am=' + am + '&cu=INR&tn=' + tn;
+        const values = {
+            pa: pa,
+            pn: String(upiIntentBaseParams.pn || 'VISHNUSUDARSHANA DHARMIK SANSKAR KENDRA'),
+            mc: String(upiIntentBaseParams.mc || ''),
+            tn: String(upiIntentBaseParams.tn || 'Verified Merchant'),
+            am: formatAmount(amount),
+            cu: 'INR',
+            url: String(upiIntentBaseParams.url || ''),
+            mode: String(upiIntentBaseParams.mode || ''),
+            orgid: String(upiIntentBaseParams.orgid || ''),
+            mid: String(upiIntentBaseParams.mid || ''),
+            msid: String(upiIntentBaseParams.msid || ''),
+            mtid: String(upiIntentBaseParams.mtid || ''),
+            sign: String(upiIntentBaseParams.sign || '')
+        };
+        const order = ['pa', 'pn', 'mc', 'tn', 'am', 'cu', 'url', 'mode', 'orgid', 'mid', 'msid', 'mtid', 'sign'];
+        const parts = [];
+        order.forEach(function (key) {
+            const rawValue = String(values[key] || '');
+            if (rawValue === '') {
+                return;
+            }
+            if (key === 'pa') {
+                // Keep pa readable with '@' and avoid %40.
+                parts.push('pa=' + rawValue);
+                return;
+            }
+            parts.push(key + '=' + encodeURIComponent(rawValue));
+        });
+        if (parts.length === 0) {
+            return '';
+        }
+        return 'upi://pay?' + parts.join('&');
     }
 
     function refreshAmounts() {
