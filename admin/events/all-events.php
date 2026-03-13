@@ -22,6 +22,31 @@ $error = '';
 if (isset($_GET['saved']) && (string)$_GET['saved'] === '1') {
     $message = 'Event saved successfully.';
 }
+if (isset($_GET['order_saved']) && (string)$_GET['order_saved'] === '1') {
+    $message = 'Website order updated successfully.';
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_display_order_event_id'])) {
+    $eventId = (int)($_POST['update_display_order_event_id'] ?? 0);
+    $displayOrder = max(0, (int)($_POST['display_order'] ?? 0));
+    if ($eventId > 0) {
+        try {
+            $existsStmt = $pdo->prepare('SELECT COUNT(*) FROM events WHERE id = ?');
+            $existsStmt->execute([$eventId]);
+            if ((int)$existsStmt->fetchColumn() <= 0) {
+                $error = 'Event not found.';
+            } else {
+                $updateOrderStmt = $pdo->prepare('UPDATE events SET display_order = ? WHERE id = ?');
+                $updateOrderStmt->execute([$displayOrder, $eventId]);
+                header('Location: all-events.php?order_saved=1');
+                exit;
+            }
+        } catch (Throwable $e) {
+            $error = 'Failed to update website order.';
+            error_log('Event display order update failed: ' . $e->getMessage());
+        }
+    }
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_event_id'])) {
     $eventId = (int)$_POST['delete_event_id'];
@@ -82,7 +107,11 @@ $listSql = "
         FROM event_registrations
         GROUP BY event_id
     ) reg ON reg.event_id = e.id
-    ORDER BY e.event_date DESC, e.id DESC
+    ORDER BY
+        CASE WHEN COALESCE(e.display_order, 0) > 0 THEN 0 ELSE 1 END ASC,
+        CASE WHEN COALESCE(e.display_order, 0) > 0 THEN e.display_order ELSE 2147483647 END ASC,
+        e.event_date ASC,
+        e.id DESC
 ";
 $events = $pdo->query($listSql)->fetchAll(PDO::FETCH_ASSOC);
 foreach ($events as &$eventRow) {
@@ -129,7 +158,10 @@ unset($eventRow);
         .action-packages { background:#17a2b8; color:#fff; }
         .action-registrations { background:#1a8917; color:#fff; }
         .action-reports { background:#6f42c1; color:#fff; }
+        .action-save { background:#800000; color:#fff; }
         .action-delete { background:#dc3545; color:#fff; }
+        .order-form { display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+        .order-input { width:72px; padding:6px 8px; border:1px solid #d9b3b3; border-radius:6px; font-size:0.9em; }
         .empty { text-align:center; padding:24px; color:#666; }
     </style>
 </head>
@@ -142,6 +174,7 @@ unset($eventRow);
     <div class="actions">
         <a class="btn-main" href="add-event.php">+ Add Event</a>
     </div>
+    <div class="small" style="margin-bottom:12px;">Use a smaller website order number to show an event first on the public website. Keep `0` to use the normal date order.</div>
 
     <?php if ($message !== ''): ?>
         <div class="notice ok"><?php echo htmlspecialchars($message); ?></div>
@@ -158,6 +191,7 @@ unset($eventRow);
                 <th>Event</th>
                 <th>Date & Location</th>
                 <th>Registration Window</th>
+                <th>Website Order</th>
                 <th>Status</th>
                 <th>Packages</th>
                 <th>Registrations</th>
@@ -166,7 +200,7 @@ unset($eventRow);
         </thead>
         <tbody>
         <?php if (empty($events)): ?>
-            <tr><td class="empty" colspan="9">No events found.</td></tr>
+            <tr><td class="empty" colspan="10">No events found.</td></tr>
         <?php else: ?>
             <?php foreach ($events as $event): ?>
                 <tr>
@@ -188,6 +222,14 @@ unset($eventRow);
                     </td>
                     <td>
                         <span class="small"><?php echo htmlspecialchars((string)($event['registration_window_display'] !== '' ? $event['registration_window_display'] : (($event['registration_start'] ?? '') . ' to ' . ($event['registration_end'] ?? '')))); ?></span>
+                    </td>
+                    <td>
+                        <form method="post" class="order-form">
+                            <input type="hidden" name="update_display_order_event_id" value="<?php echo (int)$event['id']; ?>">
+                            <input type="number" min="0" name="display_order" class="order-input" value="<?php echo (int)($event['display_order'] ?? 0); ?>">
+                            <button type="submit" class="action-btn action-save">Save</button>
+                        </form>
+                        <span class="small">0 = default date order</span>
                     </td>
                     <td>
                         <span class="status-badge <?php echo ($event['status'] === 'Active') ? 'status-active' : 'status-closed'; ?>">

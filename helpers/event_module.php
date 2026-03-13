@@ -16,6 +16,7 @@ if (!function_exists('vs_event_ensure_tables')) {
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 title VARCHAR(255) NOT NULL,
                 slug VARCHAR(255) NOT NULL,
+                display_order INT NOT NULL DEFAULT 0,
                 event_type ENUM('single_day', 'multi_select_dates', 'date_range') NOT NULL DEFAULT 'single_day',
                 short_description TEXT NULL,
                 long_description LONGTEXT NULL,
@@ -30,6 +31,7 @@ if (!function_exists('vs_event_ensure_tables')) {
                 send_whatsapp_notifications TINYINT(1) NOT NULL DEFAULT 1,
                 created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 UNIQUE KEY uniq_event_slug (slug),
+                KEY idx_events_display_order (display_order, event_date, id),
                 KEY idx_events_status_date (status, event_date),
                 KEY idx_events_registration_window (registration_start, registration_end)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
@@ -252,6 +254,9 @@ if (!function_exists('vs_event_ensure_tables')) {
         if (!$hasColumn('events', 'event_type')) {
             $pdo->exec("ALTER TABLE events ADD COLUMN event_type ENUM('single_day', 'multi_select_dates', 'date_range') NOT NULL DEFAULT 'single_day' AFTER slug");
         }
+        if (!$hasColumn('events', 'display_order')) {
+            $pdo->exec("ALTER TABLE events ADD COLUMN display_order INT NOT NULL DEFAULT 0 AFTER slug");
+        }
         if (!$hasColumn('events', 'short_description')) {
             $pdo->exec("ALTER TABLE events ADD COLUMN short_description TEXT NULL AFTER event_type");
         }
@@ -282,6 +287,9 @@ if (!function_exists('vs_event_ensure_tables')) {
                     END
                 WHERE 1=1");
             $pdo->exec("ALTER TABLE events DROP COLUMN description");
+        }
+        if (!$hasIndex('events', 'idx_events_display_order')) {
+            $pdo->exec("ALTER TABLE events ADD KEY idx_events_display_order (display_order, event_date, id)");
         }
 
         // Keep event_dates in sync for existing single-day events.

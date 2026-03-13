@@ -14,7 +14,11 @@ FROM events e
 LEFT JOIN event_packages p ON p.event_id = e.id
 WHERE e.status = 'Active'
 GROUP BY e.id
-ORDER BY e.event_date ASC, e.id DESC";
+ORDER BY
+    CASE WHEN COALESCE(e.display_order, 0) > 0 THEN 0 ELSE 1 END ASC,
+    CASE WHEN COALESCE(e.display_order, 0) > 0 THEN e.display_order ELSE 2147483647 END ASC,
+    e.event_date ASC,
+    e.id DESC";
 $events = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC);
 $countdownScriptFile = __DIR__ . '/assets/js/event-registration-countdown.js';
 $countdownScriptSrc = 'assets/js/event-registration-countdown.js' . (is_file($countdownScriptFile) ? ('?v=' . filemtime($countdownScriptFile)) : '');
