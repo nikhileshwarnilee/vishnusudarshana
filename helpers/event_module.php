@@ -20,7 +20,6 @@ if (!function_exists('vs_event_ensure_tables')) {
                 short_description TEXT NULL,
                 long_description LONGTEXT NULL,
                 youtube_video_url VARCHAR(255) DEFAULT NULL,
-                description LONGTEXT NULL,
                 image VARCHAR(255) DEFAULT NULL,
                 location VARCHAR(255) DEFAULT NULL,
                 event_date DATE NOT NULL,
@@ -271,16 +270,19 @@ if (!function_exists('vs_event_ensure_tables')) {
         if (!$hasColumn('event_form_fields', 'field_placeholder')) {
             $pdo->exec("ALTER TABLE event_form_fields ADD COLUMN field_placeholder VARCHAR(255) NULL AFTER field_options");
         }
-        $pdo->exec("UPDATE events
-            SET short_description = CASE
-                    WHEN COALESCE(short_description, '') = '' THEN LEFT(COALESCE(description, ''), 500)
-                    ELSE short_description
-                END,
-                long_description = CASE
-                    WHEN COALESCE(long_description, '') = '' THEN COALESCE(description, '')
-                    ELSE long_description
-                END
-            WHERE 1=1");
+        if ($hasColumn('events', 'description')) {
+            $pdo->exec("UPDATE events
+                SET short_description = CASE
+                        WHEN COALESCE(short_description, '') = '' THEN LEFT(COALESCE(description, ''), 500)
+                        ELSE short_description
+                    END,
+                    long_description = CASE
+                        WHEN COALESCE(long_description, '') = '' THEN COALESCE(description, '')
+                        ELSE long_description
+                    END
+                WHERE 1=1");
+            $pdo->exec("ALTER TABLE events DROP COLUMN description");
+        }
 
         // Keep event_dates in sync for existing single-day events.
         $pdo->exec("INSERT IGNORE INTO event_dates (event_id, event_date, seat_limit, status)
@@ -703,18 +705,131 @@ if (!function_exists('vs_event_get_waitlist_position')) {
 if (!function_exists('vs_event_is_registration_open')) {
     function vs_event_is_registration_open(array $event, ?string $onDate = null): bool
     {
-        $today = $onDate ?: date('Y-m-d');
         if (($event['status'] ?? '') !== 'Active') {
             return false;
         }
 
-        $start = (string)($event['registration_start'] ?? '');
-        $end = (string)($event['registration_end'] ?? '');
-        if ($start === '' || $end === '') {
+        $startAt = vs_event_get_registration_start_datetime($event);
+        $deadlineAt = vs_event_get_registration_deadline($event);
+        if (!$startAt instanceof DateTimeImmutable || !$deadlineAt instanceof DateTimeImmutable) {
             return false;
         }
 
-        return ($today >= $start && $today <= $end);
+        $timezone = new DateTimeZone(date_default_timezone_get() ?: 'Asia/Kolkata');
+        try {
+            $now = ($onDate !== null && trim($onDate) !== '')
+                ? new DateTimeImmutable($onDate, $timezone)
+                : new DateTimeImmutable('now', $timezone);
+        } catch (Throwable $e) {
+            return false;
+        }
+
+        return ($now >= $startAt && $now <= $deadlineAt);
+    }
+}
+
+if (!function_exists('vs_event_normalize_registration_end_time')) {
+    function vs_event_normalize_registration_end_time(?string $timeValue, string $fallback = '23:59:59'): string
+    {
+        $timeValue = trim((string)$timeValue);
+        if ($timeValue === '') {
+            return $fallback;
+        }
+
+        if (preg_match('/^\d{2}:\d{2}$/', $timeValue)) {
+            return $timeValue . ':00';
+        }
+
+        if (preg_match('/^\d{2}:\d{2}:\d{2}$/', $timeValue)) {
+            return $timeValue;
+        }
+
+        return $fallback;
+    }
+}
+
+if (!function_exists('vs_event_build_datetime')) {
+    function vs_event_build_datetime(string $dateValue, string $timeValue): ?DateTimeImmutable
+    {
+        $dateValue = trim($dateValue);
+        $timeValue = trim($timeValue);
+        if ($dateValue === '' || $timeValue === '') {
+            return null;
+        }
+
+        $timezone = new DateTimeZone(date_default_timezone_get() ?: 'Asia/Kolkata');
+        $dateTime = DateTimeImmutable::createFromFormat('Y-m-d H:i:s', $dateValue . ' ' . $timeValue, $timezone);
+        if ($dateTime instanceof DateTimeImmutable) {
+            return $dateTime;
+        }
+
+        try {
+            return new DateTimeImmutable($dateValue . ' ' . $timeValue, $timezone);
+        } catch (Throwable $e) {
+            return null;
+        }
+    }
+}
+
+if (!function_exists('vs_event_get_registration_start_datetime')) {
+    function vs_event_get_registration_start_datetime(array $event): ?DateTimeImmutable
+    {
+        $startDate = trim((string)($event['registration_start'] ?? ''));
+        if ($startDate === '') {
+            return null;
+        }
+
+        return vs_event_build_datetime($startDate, '00:00:00');
+    }
+}
+
+if (!function_exists('vs_event_get_registration_deadline')) {
+    function vs_event_get_registration_deadline(array $event): ?DateTimeImmutable
+    {
+        $endDate = trim((string)($event['registration_end'] ?? ''));
+        if ($endDate === '') {
+            return null;
+        }
+
+        $endTime = vs_event_normalize_registration_end_time((string)($event['registration_end_time'] ?? ''));
+        return vs_event_build_datetime($endDate, $endTime);
+    }
+}
+
+if (!function_exists('vs_event_get_registration_deadline_iso')) {
+    function vs_event_get_registration_deadline_iso(array $event): string
+    {
+        $deadlineAt = vs_event_get_registration_deadline($event);
+        return $deadlineAt instanceof DateTimeImmutable ? $deadlineAt->format(DATE_ATOM) : '';
+    }
+}
+
+if (!function_exists('vs_event_format_registration_deadline')) {
+    function vs_event_format_registration_deadline(array $event): string
+    {
+        $deadlineAt = vs_event_get_registration_deadline($event);
+        if (!$deadlineAt instanceof DateTimeImmutable) {
+            return '';
+        }
+
+        $hasExplicitTime = trim((string)($event['registration_end_time'] ?? '')) !== '';
+        return $deadlineAt->format($hasExplicitTime ? 'd M Y, g:i A' : 'd M Y');
+    }
+}
+
+if (!function_exists('vs_event_format_registration_window')) {
+    function vs_event_format_registration_window(array $event): string
+    {
+        $startAt = vs_event_get_registration_start_datetime($event);
+        $deadlineAt = vs_event_get_registration_deadline($event);
+        if (!$startAt instanceof DateTimeImmutable || !$deadlineAt instanceof DateTimeImmutable) {
+            return '';
+        }
+
+        $hasExplicitTime = trim((string)($event['registration_end_time'] ?? '')) !== '';
+        $startLabel = $startAt->format('d M Y');
+        $endLabel = $deadlineAt->format($hasExplicitTime ? 'd M Y, g:i A' : 'd M Y');
+        return $startLabel . ' to ' . $endLabel;
     }
 }
 

@@ -92,6 +92,7 @@ foreach ($events as &$eventRow) {
         (string)($eventRow['event_date'] ?? ''),
         (string)($eventRow['event_type'] ?? 'single_day')
     );
+    $eventRow['registration_window_display'] = vs_event_format_registration_window($eventRow);
 }
 unset($eventRow);
 ?>
@@ -186,8 +187,7 @@ unset($eventRow);
                         <span class="small"><?php echo htmlspecialchars($event['location']); ?></span>
                     </td>
                     <td>
-                        <span class="small">From: <?php echo htmlspecialchars($event['registration_start']); ?></span><br>
-                        <span class="small">To: <?php echo htmlspecialchars($event['registration_end']); ?></span>
+                        <span class="small"><?php echo htmlspecialchars((string)($event['registration_window_display'] !== '' ? $event['registration_window_display'] : (($event['registration_start'] ?? '') . ' to ' . ($event['registration_end'] ?? '')))); ?></span>
                     </td>
                     <td>
                         <span class="status-badge <?php echo ($event['status'] === 'Active') ? 'status-active' : 'status-closed'; ?>">

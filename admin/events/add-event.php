@@ -11,6 +11,10 @@ if (!isset($_SESSION['user_id'])) {
     exit;
 }
 
+header('Cache-Control: private, no-store, no-cache, must-revalidate, max-age=0');
+header('Pragma: no-cache');
+header('Expires: 0');
+
 require_once __DIR__ . '/../../config/db.php';
 require_once __DIR__ . '/../../helpers/event_module.php';
 
@@ -31,6 +35,8 @@ $form = [
     'event_date' => '',
     'registration_start' => '',
     'registration_end' => '',
+    'registration_end_time' => '',
+    'registration_end_datetime' => '',
     'status' => 'Active',
     'send_whatsapp_notifications' => '1',
 ];
@@ -47,6 +53,26 @@ $existingDateBookedByDate = [];
 $existingDateRowsWithBookings = [];
 $formFields = [];
 
+$buildDateTimeLocalValue = static function (string $dateValue, string $timeValue): string {
+    $dateValue = trim($dateValue);
+    if ($dateValue === '') {
+        return '';
+    }
+
+    $timeValue = trim($timeValue);
+    if ($timeValue === '') {
+        $timeValue = '23:59:00';
+    } elseif (preg_match('/^\d{2}:\d{2}$/', $timeValue)) {
+        $timeValue .= ':00';
+    }
+
+    if (!preg_match('/^\d{2}:\d{2}:\d{2}$/', $timeValue)) {
+        $timeValue = '23:59:00';
+    }
+
+    return $dateValue . 'T' . substr($timeValue, 0, 5);
+};
+
 if ($editId > 0) {
     $eventStmt = $pdo->prepare("SELECT * FROM events WHERE id = ? LIMIT 1");
     $eventStmt->execute([$editId]);
@@ -55,14 +81,16 @@ if ($editId > 0) {
         $form['title'] = (string)$existing['title'];
         $form['slug'] = (string)$existing['slug'];
         $form['event_type'] = in_array((string)$existing['event_type'], ['single_day', 'multi_select_dates', 'date_range'], true) ? (string)$existing['event_type'] : 'single_day';
-        $form['short_description'] = (string)($existing['short_description'] ?? $existing['description'] ?? '');
-        $form['long_description'] = (string)($existing['long_description'] ?? $existing['description'] ?? '');
+        $form['short_description'] = (string)($existing['short_description'] ?? '');
+        $form['long_description'] = (string)($existing['long_description'] ?? '');
         $form['youtube_video_url'] = (string)($existing['youtube_video_url'] ?? '');
         $form['image'] = (string)$existing['image'];
         $form['location'] = (string)$existing['location'];
         $form['event_date'] = (string)$existing['event_date'];
         $form['registration_start'] = (string)$existing['registration_start'];
         $form['registration_end'] = (string)$existing['registration_end'];
+        $form['registration_end_time'] = (string)($existing['registration_end_time'] ?? '');
+        $form['registration_end_datetime'] = $buildDateTimeLocalValue($form['registration_end'], $form['registration_end_time']);
         $form['status'] = (string)$existing['status'];
         $form['send_whatsapp_notifications'] = ((int)($existing['send_whatsapp_notifications'] ?? 1) === 1) ? '1' : '0';
 
@@ -164,7 +192,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $form['location'] = trim((string)($_POST['location'] ?? ''));
     $form['event_date'] = trim((string)($_POST['event_date'] ?? ''));
     $form['registration_start'] = trim((string)($_POST['registration_start'] ?? ''));
-    $form['registration_end'] = trim((string)($_POST['registration_end'] ?? ''));
+    $form['registration_end'] = '';
+    $form['registration_end_time'] = '';
+    $form['registration_end_datetime'] = trim((string)($_POST['registration_end_datetime'] ?? ''));
     $form['status'] = trim((string)($_POST['status'] ?? 'Active'));
     $form['send_whatsapp_notifications'] = ((int)($_POST['send_whatsapp_notifications'] ?? 1) === 1) ? '1' : '0';
 
@@ -183,13 +213,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($form['slug'] === '') {
         $errors[] = 'Event slug is required.';
     }
+    if ($form['short_description'] === '') {
+        $errors[] = 'Short description is required.';
+    }
     if ($form['location'] === '') {
         $errors[] = 'Event location is required.';
     }
-    if ($form['registration_start'] === '' || $form['registration_end'] === '') {
-        $errors[] = 'Registration dates are required.';
-    } elseif ($form['registration_end'] < $form['registration_start']) {
-        $errors[] = 'Registration end date must be after start date.';
+    if ($form['registration_start'] === '' || $form['registration_end_datetime'] === '') {
+        $errors[] = 'Registration start date and last registration date-time are required.';
+    } else {
+        try {
+            $registrationEndAt = new DateTimeImmutable($form['registration_end_datetime']);
+            $form['registration_end'] = $registrationEndAt->format('Y-m-d');
+            $form['registration_end_time'] = $registrationEndAt->format('H:i:s');
+        } catch (Throwable $e) {
+            $errors[] = 'Last registration date-time is invalid.';
+        }
+    }
+
+    $registrationStartAt = vs_event_get_registration_start_datetime($form);
+    $registrationDeadlineAt = vs_event_get_registration_deadline($form);
+    if ($form['registration_start'] !== '' && $form['registration_end_datetime'] !== '') {
+        if (!$registrationStartAt instanceof DateTimeImmutable || !$registrationDeadlineAt instanceof DateTimeImmutable) {
+            $errors[] = 'Registration date-time details could not be parsed.';
+        } elseif ($registrationDeadlineAt < $registrationStartAt) {
+            $errors[] = 'Last registration date-time must be after the registration start date.';
+        }
     }
     if (!in_array($form['status'], ['Active', 'Closed'], true)) {
         $errors[] = 'Invalid event status.';
@@ -425,11 +474,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (empty($errors)) {
         try {
             $pdo->beginTransaction();
-            $descriptionCompat = trim(strip_tags($form['long_description']));
-            if ($descriptionCompat === '') {
-                $descriptionCompat = $form['short_description'];
-            }
-
             if ($editId > 0) {
                 $oldImageStmt = $pdo->prepare("SELECT image FROM events WHERE id = ? LIMIT 1");
                 $oldImageStmt->execute([$editId]);
@@ -437,11 +481,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $newImage = $uploadedImage ?: $oldImage;
 
                 $updateStmt = $pdo->prepare("UPDATE events
-                    SET title = ?, slug = ?, event_type = ?, short_description = ?, long_description = ?, youtube_video_url = ?, description = ?, image = ?, location = ?, event_date = ?, registration_start = ?, registration_end = ?, status = ?, send_whatsapp_notifications = ?
+                    SET title = ?, slug = ?, event_type = ?, short_description = ?, long_description = ?, youtube_video_url = ?, image = ?, location = ?, event_date = ?, registration_start = ?, registration_end = ?, registration_end_time = ?, status = ?, send_whatsapp_notifications = ?
                     WHERE id = ?");
                 $updateStmt->execute([
-                    $form['title'], $form['slug'], $form['event_type'], $form['short_description'], $form['long_description'], $form['youtube_video_url'], $descriptionCompat,
-                    $newImage, $form['location'], $form['event_date'], $form['registration_start'], $form['registration_end'], $form['status'], (int)$form['send_whatsapp_notifications'], $editId,
+                    $form['title'], $form['slug'], $form['event_type'], $form['short_description'], $form['long_description'], $form['youtube_video_url'],
+                    $newImage, $form['location'], $form['event_date'], $form['registration_start'], $form['registration_end'], $form['registration_end_time'], $form['status'], (int)$form['send_whatsapp_notifications'], $editId,
                 ]);
 
                 if ($uploadedImage && $oldImage !== '' && $oldImage !== $uploadedImage) {
@@ -453,11 +497,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $eventId = $editId;
             } else {
                 $insertStmt = $pdo->prepare("INSERT INTO events
-                    (title, slug, event_type, short_description, long_description, youtube_video_url, description, image, location, event_date, registration_start, registration_end, status, send_whatsapp_notifications)
+                    (title, slug, event_type, short_description, long_description, youtube_video_url, image, location, event_date, registration_start, registration_end, registration_end_time, status, send_whatsapp_notifications)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
                 $insertStmt->execute([
-                    $form['title'], $form['slug'], $form['event_type'], $form['short_description'], $form['long_description'], $form['youtube_video_url'], $descriptionCompat,
-                    (string)$uploadedImage, $form['location'], $form['event_date'], $form['registration_start'], $form['registration_end'], $form['status'], (int)$form['send_whatsapp_notifications'],
+                    $form['title'], $form['slug'], $form['event_type'], $form['short_description'], $form['long_description'], $form['youtube_video_url'],
+                    (string)$uploadedImage, $form['location'], $form['event_date'], $form['registration_start'], $form['registration_end'], $form['registration_end_time'], $form['status'], (int)$form['send_whatsapp_notifications'],
                 ]);
                 $eventId = (int)$pdo->lastInsertId();
             }
@@ -516,7 +560,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo $editId > 0 ? 'Edit Event' : 'Add Event'; ?></title>
     <link rel="stylesheet" href="../../assets/css/style.css">
-    <style>body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f7f7fa;margin:0}.admin-container{max-width:1100px;margin:0 auto;padding:24px 12px}.card{background:#fff;border-radius:14px;box-shadow:0 2px 12px #e0bebe22;padding:18px;margin-bottom:18px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:12px}.form-group{display:flex;flex-direction:column;gap:6px}label{color:#800000;font-weight:700;font-size:.92em}input,select,textarea{width:100%;box-sizing:border-box;padding:10px 12px;border:1px solid #e0bebe;border-radius:8px;font-size:.95em;background:#fff}textarea{min-height:100px}.field-table{width:100%;border-collapse:collapse;margin-top:10px}.field-table th,.field-table td{border:1px solid #f1d6d6;padding:8px;vertical-align:top}.field-table th{background:#f9eaea;color:#800000}.btn-main{display:inline-block;padding:10px 14px;border-radius:8px;background:#800000;color:#fff;text-decoration:none;border:none;font-weight:700;cursor:pointer}.btn-alt{background:#6c757d}.btn-row{display:flex;gap:10px;margin-top:12px;flex-wrap:wrap}.add-field{background:#17a2b8;color:#fff;border:none;border-radius:8px;padding:8px 12px;font-weight:700;cursor:pointer}.remove-field{background:#dc3545;color:#fff;border:none;border-radius:6px;padding:7px 10px;font-weight:700;cursor:pointer}.notice{margin:10px 0;padding:10px 12px;border-radius:8px;font-weight:600;background:#ffeaea;color:#b00020}.event-type-block{margin-top:12px;border:1px solid #f1d6d6;border-radius:10px;padding:12px;background:#fffaf8}.hidden{display:none}</style>
+    <style>body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f7f7fa;margin:0}.admin-container{max-width:1100px;margin:0 auto;padding:24px 12px}.card{background:#fff;border-radius:14px;box-shadow:0 2px 12px #e0bebe22;padding:18px;margin-bottom:18px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:12px}.form-group{display:flex;flex-direction:column;gap:6px}label{color:#800000;font-weight:700;font-size:.92em}input,select,textarea{width:100%;box-sizing:border-box;padding:10px 12px;border:1px solid #e0bebe;border-radius:8px;font-size:.95em;background:#fff}textarea{min-height:100px}.field-table{width:100%;border-collapse:collapse;margin-top:10px}.field-table th,.field-table td{border:1px solid #f1d6d6;padding:8px;vertical-align:top}.field-table th{background:#f9eaea;color:#800000}.btn-main{display:inline-block;padding:10px 14px;border-radius:8px;background:#800000;color:#fff;text-decoration:none;border:none;font-weight:700;cursor:pointer}.btn-alt{background:#6c757d}.btn-row{display:flex;gap:10px;margin-top:12px;flex-wrap:wrap}.add-field{background:#17a2b8;color:#fff;border:none;border-radius:8px;padding:8px 12px;font-weight:700;cursor:pointer}.remove-field{background:#dc3545;color:#fff;border:none;border-radius:6px;padding:7px 10px;font-weight:700;cursor:pointer}.sort-field{background:#fff;color:#800000;border:1px solid #d9a7a7;border-radius:6px;padding:7px 10px;font-weight:700;cursor:pointer}.sort-field[disabled]{opacity:.45;cursor:not-allowed}.field-action-cell{white-space:nowrap}.field-order-hint{margin-top:8px;font-size:12px;color:#666}.notice{margin:10px 0;padding:10px 12px;border-radius:8px;font-weight:600;background:#ffeaea;color:#b00020}.event-type-block{margin-top:12px;border:1px solid #f1d6d6;border-radius:10px;padding:12px;background:#fffaf8}.hidden{display:none}</style>
     <style>.editor-wrapper{border:1px solid #e0bebe;border-radius:12px;overflow:hidden;background:#fff;box-shadow:inset 0 1px 0 #f7f0f0}.editor-area{min-height:260px;padding:14px;outline:none;font-size:1em;line-height:1.6}</style>
 </head>
 <body>
@@ -544,7 +588,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </div>
                 <div class="form-group"><label>Location</label><input type="text" name="location" value="<?php echo htmlspecialchars($form['location']); ?>" required></div>
                 <div class="form-group"><label>Registration Start</label><input type="date" name="registration_start" value="<?php echo htmlspecialchars($form['registration_start']); ?>" required></div>
-                <div class="form-group"><label>Registration End</label><input type="date" name="registration_end" value="<?php echo htmlspecialchars($form['registration_end']); ?>" required></div>
+                <div class="form-group">
+                    <label>Last Registration Date & Time</label>
+                    <input type="datetime-local" name="registration_end_datetime" value="<?php echo htmlspecialchars($form['registration_end_datetime'] !== '' ? $form['registration_end_datetime'] : $buildDateTimeLocalValue($form['registration_end'], $form['registration_end_time'])); ?>" step="60" required>
+                    <span style="font-size:12px;color:#666;">This is the exact closing date and time for registrations.</span>
+                </div>
                 <div class="form-group"><label>Status</label><select name="status"><option value="Active" <?php echo ($form['status'] === 'Active') ? 'selected' : ''; ?>>Active</option><option value="Closed" <?php echo ($form['status'] === 'Closed') ? 'selected' : ''; ?>>Closed</option></select></div>
                 <div class="form-group"><label>Send WhatsApp Notifications</label><select name="send_whatsapp_notifications"><option value="1" <?php echo ($form['send_whatsapp_notifications'] === '1') ? 'selected' : ''; ?>>Yes</option><option value="0" <?php echo ($form['send_whatsapp_notifications'] === '0') ? 'selected' : ''; ?>>No</option></select></div>
                 <div class="form-group"><label>Image</label><input type="file" name="image" accept=".jpg,.jpeg,.png,.gif,.webp"></div>
@@ -613,7 +661,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </div>
                 <?php if ($editId > 0): ?><span style="font-size:12px;color:#666;">Date-range updates will migrate all existing bookings to the new primary range date automatically.</span><?php endif; ?>
             </div>
-            <div class="form-group" style="margin-top:12px;"><label>Short Description</label><textarea name="short_description"><?php echo htmlspecialchars($form['short_description']); ?></textarea></div>
+            <div class="form-group" style="margin-top:12px;"><label>Short Description</label><textarea name="short_description" required><?php echo htmlspecialchars($form['short_description']); ?></textarea></div>
             <div class="form-group" style="margin-top:12px;">
                 <label>Long Description</label>
                 <div class="editor-wrapper">
@@ -625,7 +673,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
         <div class="card">
             <div style="display:flex;align-items:center;justify-content:space-between"><h3 style="margin:0;color:#800000">Dynamic Registration Fields</h3><button type="button" class="add-field" id="addFieldBtn">+ Add Field</button></div>
-            <table class="field-table"><thead><tr><th>Field Name</th><th>Type</th><th>Options</th><th>Placeholder</th><th>Required</th><th>Action</th></tr></thead><tbody id="fieldRows"><?php foreach ($formFields as $f): ?><tr><td><input type="text" name="field_name[]" value="<?php echo htmlspecialchars((string)$f['field_name']); ?>"></td><td><select name="field_type[]"><?php foreach (['text','phone','number','textarea','select','file','date'] as $t): ?><option value="<?php echo $t; ?>" <?php echo ((string)$f['field_type'] === $t) ? 'selected' : ''; ?>><?php echo ucfirst($t); ?></option><?php endforeach; ?></select></td><td><input type="text" name="field_options[]" value="<?php echo htmlspecialchars((string)$f['field_options']); ?>"></td><td><input type="text" name="field_placeholder[]" value="<?php echo htmlspecialchars((string)($f['field_placeholder'] ?? '')); ?>"></td><td><select name="field_required[]"><option value="1" <?php echo ((int)$f['required'] === 1) ? 'selected' : ''; ?>>Yes</option><option value="0" <?php echo ((int)$f['required'] === 0) ? 'selected' : ''; ?>>No</option></select></td><td><button type="button" class="remove-field">X</button></td></tr><?php endforeach; ?></tbody></table>
+            <div class="field-order-hint">Use the up/down buttons to choose which registration field appears first.</div>
+            <table class="field-table"><thead><tr><th>Field Name</th><th>Type</th><th>Options</th><th>Placeholder</th><th>Required</th><th>Order</th><th>Action</th></tr></thead><tbody id="fieldRows"><?php foreach ($formFields as $f): ?><tr><td><input type="text" name="field_name[]" value="<?php echo htmlspecialchars((string)$f['field_name']); ?>"></td><td><select name="field_type[]"><?php foreach (['text','phone','number','textarea','select','file','date'] as $t): ?><option value="<?php echo $t; ?>" <?php echo ((string)$f['field_type'] === $t) ? 'selected' : ''; ?>><?php echo ucfirst($t); ?></option><?php endforeach; ?></select></td><td><input type="text" name="field_options[]" value="<?php echo htmlspecialchars((string)$f['field_options']); ?>"></td><td><input type="text" name="field_placeholder[]" value="<?php echo htmlspecialchars((string)($f['field_placeholder'] ?? '')); ?>"></td><td><select name="field_required[]"><option value="1" <?php echo ((int)$f['required'] === 1) ? 'selected' : ''; ?>>Yes</option><option value="0" <?php echo ((int)$f['required'] === 0) ? 'selected' : ''; ?>>No</option></select></td><td class="field-action-cell"><button type="button" class="sort-field move-field-up" title="Move up">↑</button> <button type="button" class="sort-field move-field-down" title="Move down">↓</button></td><td class="field-action-cell"><button type="button" class="remove-field">X</button></td></tr><?php endforeach; ?></tbody></table>
         </div>
         <div class="btn-row"><button type="submit" class="btn-main"><?php echo $editId > 0 ? 'Update Event' : 'Create Event'; ?></button><a href="all-events.php" class="btn-main btn-alt">Back to All Events</a></div>
     </form>
@@ -633,6 +682,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <script src="https://cdn.jsdelivr.net/npm/tinymce@7.6.1/tinymce.min.js" referrerpolicy="origin"></script>
 <script>
 (function () {
+    window.addEventListener('pageshow', function (event) {
+        if (event.persisted) {
+            window.location.reload();
+        }
+    });
+
     const title = document.getElementById('event_title');
     const slug = document.getElementById('event_slug');
     const typeSel = document.getElementById('event_type');
@@ -672,6 +727,56 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 const tr = btn.closest('tr');
                 if (tr) {
                     tr.remove();
+                    if (tr.parentElement === rows) {
+                        refreshFieldOrderButtons();
+                    }
+                }
+            };
+        });
+    }
+
+    function refreshFieldOrderButtons() {
+        if (!rows) {
+            return;
+        }
+        const fieldRows = Array.from(rows.querySelectorAll('tr'));
+        fieldRows.forEach(function (tr, index) {
+            const upBtn = tr.querySelector('.move-field-up');
+            const downBtn = tr.querySelector('.move-field-down');
+            if (upBtn) {
+                upBtn.disabled = index === 0;
+            }
+            if (downBtn) {
+                downBtn.disabled = index === fieldRows.length - 1;
+            }
+        });
+    }
+
+    function bindFieldSortButtons(root) {
+        root.querySelectorAll('.move-field-up').forEach(function (btn) {
+            btn.onclick = function () {
+                const tr = btn.closest('tr');
+                if (!tr || tr.parentElement !== rows) {
+                    return;
+                }
+                const prev = tr.previousElementSibling;
+                if (prev) {
+                    rows.insertBefore(tr, prev);
+                    refreshFieldOrderButtons();
+                }
+            };
+        });
+
+        root.querySelectorAll('.move-field-down').forEach(function (btn) {
+            btn.onclick = function () {
+                const tr = btn.closest('tr');
+                if (!tr || tr.parentElement !== rows) {
+                    return;
+                }
+                const next = tr.nextElementSibling;
+                if (next) {
+                    rows.insertBefore(next, tr);
+                    refreshFieldOrderButtons();
                 }
             };
         });
@@ -687,9 +792,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (addFieldBtn && rows) {
         addFieldBtn.addEventListener('click', function () {
             const tr = document.createElement('tr');
-            tr.innerHTML = '<td><input type=\"text\" name=\"field_name[]\"></td><td><select name=\"field_type[]\"><option value=\"text\">Text</option><option value=\"phone\">Phone</option><option value=\"number\">Number</option><option value=\"textarea\">Textarea</option><option value=\"select\">Select</option><option value=\"file\">File</option><option value=\"date\">Date</option></select></td><td><input type=\"text\" name=\"field_options[]\"></td><td><input type=\"text\" name=\"field_placeholder[]\"></td><td><select name=\"field_required[]\"><option value=\"1\">Yes</option><option value=\"0\" selected>No</option></select></td><td><button type=\"button\" class=\"remove-field\">X</button></td>';
+            tr.innerHTML = '<td><input type=\"text\" name=\"field_name[]\"></td><td><select name=\"field_type[]\"><option value=\"text\">Text</option><option value=\"phone\">Phone</option><option value=\"number\">Number</option><option value=\"textarea\">Textarea</option><option value=\"select\">Select</option><option value=\"file\">File</option><option value=\"date\">Date</option></select></td><td><input type=\"text\" name=\"field_options[]\"></td><td><input type=\"text\" name=\"field_placeholder[]\"></td><td><select name=\"field_required[]\"><option value=\"1\">Yes</option><option value=\"0\" selected>No</option></select></td><td class=\"field-action-cell\"><button type=\"button\" class=\"sort-field move-field-up\" title=\"Move up\">↑</button> <button type=\"button\" class=\"sort-field move-field-down\" title=\"Move down\">↓</button></td><td class=\"field-action-cell\"><button type=\"button\" class=\"remove-field\">X</button></td>';
             rows.appendChild(tr);
             bindRemoveButtons(tr);
+            bindFieldSortButtons(tr);
+            refreshFieldOrderButtons();
         });
     }
 
@@ -703,6 +810,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     bindRemoveButtons(document);
+    bindFieldSortButtons(document);
+    refreshFieldOrderButtons();
     if (typeSel) {
         typeSel.addEventListener('change', toggleTypeBlocks);
         toggleTypeBlocks();
