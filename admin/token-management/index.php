@@ -80,6 +80,24 @@ include '../includes/top-menu.php';
         <button type="submit" class="form-btn form-actions">Save</button>
     </form>
     <div id="saveMsg" style="margin-top:16px;font-weight:600;text-align:center;"></div>
+    <section class="settings-card" aria-label="Live Token Announcement Settings">
+        <h2 class="settings-title">Live Token Announcements</h2>
+        <p class="settings-desc">Voice announcements on the public Live Token status page.</p>
+        <div class="language-options">
+            <label class="language-option">
+                <input type="radio" name="liveTokenAnnouncementEnabled" value="1" checked>
+                ON
+            </label>
+            <label class="language-option">
+                <input type="radio" name="liveTokenAnnouncementEnabled" value="0">
+                OFF
+            </label>
+        </div>
+        <div class="language-actions">
+            <button type="button" id="saveLiveTokenAnnouncementBtn" class="language-save-btn">Save Announcement Setting</button>
+            <span id="liveTokenAnnouncementSaveMsg" class="language-msg"></span>
+        </div>
+    </section>
     <section class="settings-card" aria-label="Announcement Settings">
         <h2 class="settings-title">Announcement Language</h2>
         <div class="language-options">
@@ -169,6 +187,19 @@ include '../includes/top-menu.php';
         }
     }
 
+    function getSelectedLiveTokenAnnouncementEnabled() {
+        const selected = document.querySelector('input[name="liveTokenAnnouncementEnabled"]:checked');
+        return selected ? selected.value : '1';
+    }
+
+    function setSelectedLiveTokenAnnouncementEnabled(enabled) {
+        const safeValue = String(enabled) === '0' ? '0' : '1';
+        const radio = document.querySelector('input[name="liveTokenAnnouncementEnabled"][value="' + safeValue + '"]');
+        if (radio) {
+            radio.checked = true;
+        }
+    }
+
     function getSelectedTabletTokenWhatsappEnabled() {
         const selected = document.querySelector('input[name="tabletTokenWhatsapp"]:checked');
         return selected ? selected.value : '1';
@@ -184,6 +215,13 @@ include '../includes/top-menu.php';
 
     function setLanguageMessage(message, isError) {
         const msg = document.getElementById('languageSaveMsg');
+        if (!msg) return;
+        msg.textContent = message || '';
+        msg.style.color = isError ? '#a0001b' : '#176b1a';
+    }
+
+    function setLiveTokenAnnouncementMessage(message, isError) {
+        const msg = document.getElementById('liveTokenAnnouncementSaveMsg');
         if (!msg) return;
         msg.textContent = message || '';
         msg.style.color = isError ? '#a0001b' : '#176b1a';
@@ -264,12 +302,14 @@ include '../includes/top-menu.php';
             .then(data => {
                 if (data && data.success) {
                     setSelectedAnnouncementLanguage(data.announcement_language || 'marathi');
+                    setSelectedLiveTokenAnnouncementEnabled(data.live_token_announcement_enabled ? '1' : '0');
                     setSelectedTabletTokenWhatsappEnabled(data.tablet_token_whatsapp_enabled ? '1' : '0');
                     setSameDayCutoffTimeValue(data.same_day_online_booking_cutoff_time || '09:00');
                     setTokenBookingCommonNoteTextValue(data.token_booking_common_note || '');
                     setTokenBookingCommonNoteEnabledValue(data.token_booking_common_note_enabled ? '1' : '0');
                 } else {
                     setSelectedAnnouncementLanguage('marathi');
+                    setSelectedLiveTokenAnnouncementEnabled('1');
                     setSelectedTabletTokenWhatsappEnabled('1');
                     setSameDayCutoffTimeValue('09:00');
                     setTokenBookingCommonNoteTextValue('');
@@ -278,6 +318,7 @@ include '../includes/top-menu.php';
             })
             .catch(() => {
                 setSelectedAnnouncementLanguage('marathi');
+                setSelectedLiveTokenAnnouncementEnabled('1');
                 setSelectedTabletTokenWhatsappEnabled('1');
                 setSameDayCutoffTimeValue('09:00');
                 setTokenBookingCommonNoteTextValue('');
@@ -308,6 +349,33 @@ include '../includes/top-menu.php';
         })
         .catch(() => {
             setLanguageMessage('Error while saving language.', true);
+        });
+    }
+
+    function saveLiveTokenAnnouncementSetting() {
+        const enabledValue = getSelectedLiveTokenAnnouncementEnabled();
+        const body = new URLSearchParams();
+        body.set('live_token_announcement_enabled', enabledValue);
+
+        setLiveTokenAnnouncementMessage('Saving...', false);
+        fetch('../../api/save-settings.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
+            },
+            body: body.toString()
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data && data.success) {
+                setSelectedLiveTokenAnnouncementEnabled(data.live_token_announcement_enabled ? '1' : '0');
+                setLiveTokenAnnouncementMessage('Live token announcement setting saved.', false);
+            } else {
+                setLiveTokenAnnouncementMessage('Failed to save live token announcement setting.', true);
+            }
+        })
+        .catch(() => {
+            setLiveTokenAnnouncementMessage('Error while saving live token announcement setting.', true);
         });
     }
 
@@ -610,6 +678,10 @@ include '../includes/top-menu.php';
         const saveLanguageBtn = document.getElementById('saveLanguageBtn');
         if (saveLanguageBtn) {
             saveLanguageBtn.addEventListener('click', saveAnnouncementLanguage);
+        }
+        const saveLiveTokenAnnouncementBtn = document.getElementById('saveLiveTokenAnnouncementBtn');
+        if (saveLiveTokenAnnouncementBtn) {
+            saveLiveTokenAnnouncementBtn.addEventListener('click', saveLiveTokenAnnouncementSetting);
         }
         const saveTabletWhatsAppBtn = document.getElementById('saveTabletWhatsAppBtn');
         if (saveTabletWhatsAppBtn) {

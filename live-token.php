@@ -324,7 +324,7 @@ body.fullscreen-mode .calendar-card {
 	</div>
 </main>
 
-<script src="js/announcement-helper.js?v=20260307a1"></script>
+<script src="js/announcement-helper.js?v=20260313a1"></script>
 <script>
 
 const cards = document.querySelectorAll('.calendar-card');
@@ -335,12 +335,21 @@ const settingsUrl = 'api/get-settings.php';
 const urlParams = new URLSearchParams(window.location.search);
 const fullscreenCity = urlParams.get('fullscreen');
 let announcementLanguage = 'marathi';
+let announcementEnabled = true;
 const announcedTokenByCity = {};
 const initializedTokenByCity = {};
 
 function normalizeAnnouncementLanguage(value) {
 	const v = String(value || '').trim().toLowerCase();
 	return v === 'english' ? 'english' : 'marathi';
+}
+
+function normalizeAnnouncementEnabled(value) {
+	if (typeof value === 'boolean') {
+		return value;
+	}
+	const v = String(value || '').trim().toLowerCase();
+	return ['1', 'true', 'yes', 'on', 'enabled'].includes(v);
 }
 
 function parseTokenValue(value) {
@@ -352,19 +361,24 @@ function parseTokenValue(value) {
 	return cleaned ? parseInt(cleaned, 10) : NaN;
 }
 
-async function loadAnnouncementLanguage() {
+async function loadAnnouncementSettings() {
 	try {
 		const res = await fetch(settingsUrl, { cache: 'no-store' });
 		const data = await res.json();
 		if (data && data.success) {
 			announcementLanguage = normalizeAnnouncementLanguage(data.announcement_language);
+			const enabledRaw = Object.prototype.hasOwnProperty.call(data, 'live_token_announcement_enabled')
+				? data.live_token_announcement_enabled
+				: '1';
+			announcementEnabled = normalizeAnnouncementEnabled(enabledRaw);
 		}
 	} catch (err) {
 		announcementLanguage = 'marathi';
+		announcementEnabled = true;
 	}
 }
 
-function maybeAnnounceCurrentToken(city, currentTokenRaw) {
+function maybeAnnounceCurrentToken(city, currentTokenRaw, nextTokenRaw) {
 	const token = parseTokenValue(currentTokenRaw);
 	if (!Number.isFinite(token) || token <= 0) {
 		return;
@@ -381,8 +395,11 @@ function maybeAnnounceCurrentToken(city, currentTokenRaw) {
 	}
 
 	announcedTokenByCity[city] = token;
-	if (window.TokenAnnouncement && typeof window.TokenAnnouncement.announceTokenCall === 'function') {
-		window.TokenAnnouncement.announceTokenCall(token, announcementLanguage);
+	if (!announcementEnabled) {
+		return;
+	}
+	if (window.TokenAnnouncement && typeof window.TokenAnnouncement.announceLiveTokenStatus === 'function') {
+		window.TokenAnnouncement.announceLiveTokenStatus(token, nextTokenRaw, announcementLanguage);
 	}
 }
 
@@ -426,7 +443,7 @@ async function fetchLiveTokens() {
 		cards.forEach(card => {
 			const city = card.getAttribute('data-city');
 			const cityData = (data.cities && data.cities[city]) ? data.cities[city] : {};
-			maybeAnnounceCurrentToken(city, cityData.current_token);
+			maybeAnnounceCurrentToken(city, cityData.current_token, cityData.next_token);
 			renderCard(card, cityData, data.date);
 		});
 	} catch (err) {
@@ -463,8 +480,8 @@ async function liveUpdate() {
 	await Promise.all([fetchLiveTokens(), updateVisibility()]);
 }
 
-loadAnnouncementLanguage();
-setInterval(loadAnnouncementLanguage, 30000);
+loadAnnouncementSettings();
+setInterval(loadAnnouncementSettings, 30000);
 liveUpdate();
 setInterval(liveUpdate, 10000);
 

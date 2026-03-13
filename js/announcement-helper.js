@@ -244,6 +244,29 @@
         return '\u091f\u094b\u0915\u0928 \u0915\u094d\u0930\u092e\u093e\u0902\u0915 ' + tokenSpeech + ', \u0915\u0943\u092a\u092f\u093e \u0906\u0924 \u092f\u093e.';
     }
 
+    function liveTokenStatusMessage(currentToken, nextToken, language) {
+        var currentParsed = parseTokenNumber(currentToken);
+        if (!Number.isFinite(currentParsed) || currentParsed <= 0) {
+            return '';
+        }
+        var nextParsed = parseTokenNumber(nextToken);
+        var hasNext = Number.isFinite(nextParsed) && nextParsed > 0;
+
+        if (normalizeLanguage(language) === 'english') {
+            if (hasNext) {
+                return 'Current token number ' + currentParsed + '. Next token number ' + nextParsed + '.';
+            }
+            return 'Current token number ' + currentParsed + '.';
+        }
+
+        var currentSpeech = numberToMarathiWords(currentParsed);
+        if (hasNext) {
+            var nextSpeech = numberToMarathiWords(nextParsed);
+            return '\u091a\u093e\u0932\u0942 \u091f\u094b\u0915\u0928 \u0915\u094d\u0930\u092e\u093e\u0902\u0915 ' + currentSpeech + ' \u0906\u0939\u0947. \u092a\u0941\u0922\u0940\u0932 \u091f\u094b\u0915\u0928 \u0915\u094d\u0930\u092e\u093e\u0902\u0915 ' + nextSpeech + ' \u0906\u0939\u0947.';
+        }
+        return '\u091a\u093e\u0932\u0942 \u091f\u094b\u0915\u0928 \u0915\u094d\u0930\u092e\u093e\u0902\u0915 ' + currentSpeech + ' \u0906\u0939\u0947.';
+    }
+
     async function announceToken(tokenNumber, language, options) {
         var opts = options || {};
         await playBeep(opts.beepUrl);
@@ -269,6 +292,19 @@
         });
     }
 
+    async function announceLiveTokenStatus(currentToken, nextToken, language, options) {
+        var message = liveTokenStatusMessage(currentToken, nextToken, language);
+        if (!message) {
+            return Promise.resolve();
+        }
+        var opts = options || {};
+        await playBeep(opts.beepUrl);
+        await wait(BEEP_DELAY_MS);
+        return speakText(message, language, {
+            cancelQueue: true
+        });
+    }
+
     global.TokenAnnouncement = {
         normalizeLanguage: normalizeLanguage,
         languageCode: languageCode,
@@ -277,7 +313,8 @@
         playBeep: playBeep,
         announceToken: announceToken,
         announcePrintingStart: announcePrintingStart,
-        announceTokenCall: announceTokenCall
+        announceTokenCall: announceTokenCall,
+        announceLiveTokenStatus: announceLiveTokenStatus
     };
 })(window);
 
