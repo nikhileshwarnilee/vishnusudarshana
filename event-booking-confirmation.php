@@ -692,7 +692,6 @@ $bookingTimeline = $buildBookingTimeline([
             <div class="track-update-note">
                 <strong>Current information is shown on this page.</strong>
                 <span>If you want latest updates on this booking (payment verification, status changes, cancellation/refund progress), use Track Booking.</span>
-                <a class="btn-main btn-track-inline" href="event-track.php">Track Latest Updates</a>
             </div>
             <?php if (!empty($cancelError)): ?>
                 <p class="error-inline"><?php echo htmlspecialchars((string)$cancelError); ?></p>

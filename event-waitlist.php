@@ -96,16 +96,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (empty($errors)) {
         try {
-            $insertStmt = $pdo->prepare("INSERT INTO event_waitlist (event_id, package_id, event_date_id, name, phone, persons) VALUES (?, ?, ?, ?, ?, ?)");
-            $insertStmt->execute([(int)$event['id'], $selectedPackageId, $selectedDateId > 0 ? $selectedDateId : null, $name, $phone, $persons]);
+            $forceWaitlist = !empty($packageMap[$selectedPackageId]['has_waitlist']);
+            $waitlistResult = vs_event_create_waitlisted_registration(
+                $pdo,
+                (int)$event['id'],
+                $selectedPackageId,
+                $selectedDateId,
+                $name,
+                $phone,
+                $persons,
+                [],
+                $forceWaitlist
+            );
             $pkg = $packageMap[$selectedPackageId];
+            $bookingReference = trim((string)($waitlistResult['booking_reference'] ?? ''));
+            $waitlistPosition = (int)($waitlistResult['waitlist_position'] ?? 0);
+
             $success = 'Waitlist request submitted for ' . (string)$pkg['package_name'] . '. We will contact you when seats open.';
+            if ($bookingReference !== '') {
+                $success .= ' Booking reference: ' . $bookingReference . '.';
+            }
+            if ($waitlistPosition > 0) {
+                $success .= ' Current waitlist position: #' . $waitlistPosition . '.';
+            }
+
             $old = ['name' => '', 'phone' => '', 'persons' => '1', 'package_id' => (string)$selectedPackageId, 'event_date_id' => (string)$selectedDateId];
         } catch (Throwable $e) {
-            $errors[] = (stripos((string)$e->getMessage(), 'uniq_event_waitlist_package_phone') !== false)
-                ? 'This phone is already on waitlist for the selected package.'
-                : 'Unable to join waitlist at the moment.';
-            error_log('Event waitlist failed: ' . $e->getMessage());
+            $message = trim((string)$e->getMessage());
+            if ($message !== '' && stripos($message, 'Seats are available') !== false) {
+                $errors[] = 'Seats are available for this package. Please register instead of joining the waitlist.';
+            } elseif ($message !== '' && (stripos($message, 'active booking') !== false || stripos($message, 'waitlist') !== false)) {
+                $errors[] = 'This phone already has an active booking or waitlist for the selected package.';
+            } elseif ($message !== '') {
+                $errors[] = $message;
+            } else {
+                $errors[] = 'Unable to join waitlist at the moment.';
+            }
+            error_log('Event waitlist failed: ' . (string)$e->getMessage());
         }
     }
 }

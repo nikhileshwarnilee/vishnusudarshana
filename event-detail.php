@@ -35,6 +35,31 @@ $youtubeEmbedUrl = vs_event_get_youtube_embed_url((string)($event['youtube_video
 $countdownScriptFile = __DIR__ . '/assets/js/event-registration-countdown.js';
 $countdownScriptSrc = 'assets/js/event-registration-countdown.js' . (is_file($countdownScriptFile) ? ('?v=' . filemtime($countdownScriptFile)) : '');
 
+$waitlistCounts = [];
+try {
+    $waitlistCountStmt = $pdo->prepare("SELECT package_id, COUNT(*) AS cnt
+        FROM (
+            SELECT package_id
+            FROM event_registrations
+            WHERE event_id = ?
+              AND (payment_status = 'Waitlisted' OR verification_status = 'Waitlisted')
+            UNION ALL
+            SELECT package_id
+            FROM event_waitlist
+            WHERE event_id = ?
+        ) w
+        GROUP BY package_id");
+    $waitlistCountStmt->execute([(int)$event['id'], (int)$event['id']]);
+    foreach ($waitlistCountStmt->fetchAll(PDO::FETCH_ASSOC) as $waitRow) {
+        $pkgId = (int)($waitRow['package_id'] ?? 0);
+        if ($pkgId > 0) {
+            $waitlistCounts[$pkgId] = (int)($waitRow['cnt'] ?? 0);
+        }
+    }
+} catch (Throwable $e) {
+    $waitlistCounts = [];
+}
+
 $pageTitle = $event['title'] . ' | Event Details';
 require_once 'header.php';
 ?>
@@ -111,6 +136,11 @@ require_once 'header.php';
                         $seatsLeft = $pkg['seats_left'];
                         $isFull = (bool)$pkg['is_full'];
                         $canRegister = $registrationOpen && !$isFull;
+                        $packageId = (int)($pkg['id'] ?? 0);
+                        $hasWaitlist = !empty($pkg['has_waitlist']);
+                        if (!$hasWaitlist && $packageId > 0 && !empty($waitlistCounts)) {
+                            $hasWaitlist = !empty($waitlistCounts[$packageId]);
+                        }
                         $priceTotal = (float)($pkg['price_total'] ?? $pkg['price'] ?? 0);
                         $isPaidPackage = vs_event_is_package_paid($pkg);
                         $registerUrl = 'event-register.php?slug=' . urlencode((string)$event['slug']) . '&package=' . (int)$pkg['id'];
@@ -121,9 +151,9 @@ require_once 'header.php';
                             <p class="pkg-price"><?php echo $isPaidPackage ? ('Rs. ' . number_format($priceTotal, 0, '.', '')) : 'Free'; ?></p>
                             <p class="pkg-desc"><?php echo nl2br(htmlspecialchars((string)$pkg['description'])); ?></p>
                             <p class="pkg-seats"><?php echo ($seatsLeft === null) ? 'Seats: Unlimited' : ('Seats Available: ' . (int)$seatsLeft); ?></p>
-                            <?php if ($canRegister): ?>
+                            <?php if ($canRegister && !$hasWaitlist): ?>
                                 <a class="register-btn" href="<?php echo htmlspecialchars($registerUrl); ?>">Register</a>
-                            <?php elseif ($isFull): ?>
+                            <?php elseif ($isFull || $hasWaitlist): ?>
                                 <a class="register-btn waitlist-btn" href="<?php echo htmlspecialchars($waitlistUrl); ?>">Join Waitlist</a>
                             <?php else: ?>
                                 <span class="register-btn disabled">Registration Closed</span>

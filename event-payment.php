@@ -1227,6 +1227,16 @@ $methodLabelMap = [
     </section>
 </main>
 
+<div id="rzpVerifyOverlay" class="rzp-verify-overlay" role="status" aria-live="polite" aria-label="Verifying payment">
+    <div class="rzp-verify-card">
+        <div id="rzpVerifySpinner" class="rzp-verify-spinner" aria-hidden="true"></div>
+        <div id="rzpVerifyIcon" class="rzp-verify-icon" aria-hidden="true"></div>
+        <p id="rzpVerifyTitle" class="rzp-verify-title">Verifying payment...</p>
+        <p id="rzpVerifySubtitle" class="rzp-verify-subtitle">Please wait while we confirm your payment.</p>
+        <button type="button" id="rzpVerifyRetry" class="btn-main rzp-verify-retry">Try Again</button>
+    </div>
+</div>
+
 <?php if ($allowRazorpay): ?><script src="https://checkout.razorpay.com/v1/checkout.js"></script><?php endif; ?>
 <script>
 (function() {
@@ -1240,6 +1250,10 @@ $methodLabelMap = [
     const rzpAmountText = document.getElementById('rzpAmountText');
     const upiIntentBtn = document.getElementById('upiIntentBtn');
     const upiIntentBaseParams = <?php echo json_encode($upiIntentBaseParams, JSON_UNESCAPED_UNICODE); ?>;
+    const verifyOverlay = document.getElementById('rzpVerifyOverlay');
+    const verifyTitle = document.getElementById('rzpVerifyTitle');
+    const verifySubtitle = document.getElementById('rzpVerifySubtitle');
+    const verifyRetryBtn = document.getElementById('rzpVerifyRetry');
     const postUrl = <?php echo json_encode('event-payment.php?' . $flowQuery); ?>;
     const flowData = <?php if ($isDraftMode): ?>{ draft_token: <?php echo json_encode((string)$draftToken); ?> }<?php else: ?>{ registration_id: <?php echo json_encode((int)$registrationId); ?> }<?php endif; ?>;
     const optionalAmounts = {
@@ -1297,6 +1311,38 @@ $methodLabelMap = [
         return;
     }
 
+    function showVerifyOverlay(state, title, subtitle) {
+        if (!verifyOverlay) {
+            return;
+        }
+        verifyOverlay.dataset.state = state || 'verifying';
+        if (verifyTitle && typeof title === 'string') {
+            verifyTitle.textContent = title;
+        }
+        if (verifySubtitle && typeof subtitle === 'string') {
+            verifySubtitle.textContent = subtitle;
+        }
+        verifyOverlay.classList.add('is-visible');
+    }
+
+    function hideVerifyOverlay() {
+        if (!verifyOverlay) {
+            return;
+        }
+        verifyOverlay.classList.remove('is-visible');
+        verifyOverlay.dataset.state = '';
+    }
+
+    if (verifyRetryBtn) {
+        verifyRetryBtn.addEventListener('click', function() {
+            hideVerifyOverlay();
+            if (msgEl) {
+                msgEl.textContent = 'Payment verification failed. Please try again.';
+            }
+            payBtn.disabled = false;
+        });
+    }
+
     function postForm(data) {
         const merged = Object.assign({}, flowData, data || {});
         const body = new URLSearchParams(merged);
@@ -1325,6 +1371,7 @@ $methodLabelMap = [
                     prefill: { name: res.name || '', email: res.email || '', contact: res.contact || '' },
                     theme: { color: '#8e2d1f' },
                     handler: function(response) {
+                        showVerifyOverlay('verifying', 'Verifying payment...', 'Please wait while we confirm your payment.');
                         if (msgEl) msgEl.textContent = 'Verifying payment...';
                         postForm({
                             action: 'verify_razorpay',
@@ -1334,11 +1381,15 @@ $methodLabelMap = [
                             razorpay_signature: response.razorpay_signature
                         }).then(function(verifyRes) {
                             if (verifyRes.success && verifyRes.redirect) {
-                                window.location.href = verifyRes.redirect;
+                                showVerifyOverlay('success', 'Payment verified!', 'Redirecting to confirmation...');
+                                window.setTimeout(function() {
+                                    window.location.href = verifyRes.redirect;
+                                }, 1200);
                             } else {
                                 throw new Error(verifyRes.message || 'Payment verification failed.');
                             }
                         }).catch(function(err) {
+                            showVerifyOverlay('error', 'Payment verification failed', 'Please try again.');
                             if (msgEl) msgEl.textContent = err.message;
                             payBtn.disabled = false;
                         });
@@ -1408,6 +1459,25 @@ input,select{box-sizing:border-box}
 .notice.warn{background:#fff5e8;color:#8a4b17;font-weight:700}
 .success-box h3,.free-card h3{margin-top:0}
 .success-box{background:#eaf8ef;border-color:#b9e2c8}
+.rzp-verify-overlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(255,250,245,.9);opacity:0;pointer-events:none;transition:opacity .2s ease;z-index:9999}
+.rzp-verify-overlay.is-visible{opacity:1;pointer-events:auto}
+.rzp-verify-card{background:#fff;border:1px solid #ecd8d8;border-radius:18px;padding:20px 24px;box-shadow:0 18px 30px rgba(126,0,0,.15);text-align:center;max-width:420px;width:min(90vw,420px)}
+.rzp-verify-spinner{width:48px;height:48px;border-radius:50%;border:4px solid #f1d6d0;border-top-color:#7d1b14;margin:0 auto 12px;animation:rzpSpin .85s linear infinite}
+.rzp-verify-icon{display:none;width:48px;height:48px;border-radius:50%;margin:0 auto 12px;position:relative}
+.rzp-verify-title{margin:0;font-weight:700;color:#7d1b14;font-size:1.05rem}
+.rzp-verify-subtitle{margin:6px 0 12px;color:#5f4c47;font-size:.92rem}
+.rzp-verify-retry{display:none}
+.rzp-verify-overlay[data-state="success"] .rzp-verify-spinner{display:none}
+.rzp-verify-overlay[data-state="success"] .rzp-verify-icon{display:block;background:#eaf8ef;border:2px solid #b9e2c8}
+.rzp-verify-overlay[data-state="success"] .rzp-verify-icon::after{content:'';position:absolute;width:12px;height:24px;border:3px solid #1d6b3d;border-top:0;border-left:0;transform:rotate(45deg);top:8px;left:16px}
+.rzp-verify-overlay[data-state="error"] .rzp-verify-spinner{display:none}
+.rzp-verify-overlay[data-state="error"] .rzp-verify-icon{display:block;background:#ffeaea;border:2px solid #f3b3b3}
+.rzp-verify-overlay[data-state="error"] .rzp-verify-icon::before,
+.rzp-verify-overlay[data-state="error"] .rzp-verify-icon::after{content:'';position:absolute;top:14px;left:22px;width:3px;height:20px;background:#b00020;border-radius:2px}
+.rzp-verify-overlay[data-state="error"] .rzp-verify-icon::before{transform:rotate(45deg)}
+.rzp-verify-overlay[data-state="error"] .rzp-verify-icon::after{transform:rotate(-45deg)}
+.rzp-verify-overlay[data-state="error"] .rzp-verify-retry{display:inline-block}
+@keyframes rzpSpin{to{transform:rotate(360deg)}}
 @media (max-width:700px){
     .event-payment-main{padding-top:1.1rem}
     h1{font-size:1.32rem}

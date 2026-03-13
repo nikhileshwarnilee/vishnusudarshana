@@ -966,6 +966,42 @@ if (!function_exists('vs_event_fetch_packages_with_seats')) {
         $stmt->execute($params);
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
+        $waitlistDateSql = '';
+        $waitlistParams = [$eventId];
+        if ($eventDateId > 0) {
+            $waitlistDateSql = ' AND COALESCE(event_date_id, 0) = ?';
+            $waitlistParams[] = $eventDateId;
+        }
+
+        $waitlistRegMap = [];
+        $waitlistRegStmt = $pdo->prepare("SELECT package_id, COUNT(*) AS cnt
+            FROM event_registrations
+            WHERE event_id = ?
+              AND (payment_status = 'Waitlisted' OR verification_status = 'Waitlisted')
+              {$waitlistDateSql}
+            GROUP BY package_id");
+        $waitlistRegStmt->execute($waitlistParams);
+        foreach ($waitlistRegStmt->fetchAll(PDO::FETCH_ASSOC) as $waitRow) {
+            $pkgId = (int)($waitRow['package_id'] ?? 0);
+            if ($pkgId > 0) {
+                $waitlistRegMap[$pkgId] = (int)($waitRow['cnt'] ?? 0);
+            }
+        }
+
+        $legacyWaitlistMap = [];
+        $legacyWaitStmt = $pdo->prepare("SELECT package_id, COUNT(*) AS cnt
+            FROM event_waitlist
+            WHERE event_id = ?
+              {$waitlistDateSql}
+            GROUP BY package_id");
+        $legacyWaitStmt->execute($waitlistParams);
+        foreach ($legacyWaitStmt->fetchAll(PDO::FETCH_ASSOC) as $legacyRow) {
+            $pkgId = (int)($legacyRow['package_id'] ?? 0);
+            if ($pkgId > 0) {
+                $legacyWaitlistMap[$pkgId] = (int)($legacyRow['cnt'] ?? 0);
+            }
+        }
+
         $dateSeatLimit = null;
         $dateBooked = 0;
         if ($eventDateId > 0) {
@@ -1000,6 +1036,14 @@ if (!function_exists('vs_event_fetch_packages_with_seats')) {
                 $row['price_total'] = $row['effective_price_total'];
                 $row['price'] = $row['effective_price_total'];
             }
+
+            $rowPackageId = (int)($row['id'] ?? 0);
+            $waitlistedCount = $rowPackageId > 0 ? (int)($waitlistRegMap[$rowPackageId] ?? 0) : 0;
+            $legacyWaitlistedCount = $rowPackageId > 0 ? (int)($legacyWaitlistMap[$rowPackageId] ?? 0) : 0;
+            $row['waitlisted_registrations'] = $waitlistedCount;
+            $row['legacy_waitlist_entries'] = $legacyWaitlistedCount;
+            $row['waitlist_total'] = $waitlistedCount + $legacyWaitlistedCount;
+            $row['has_waitlist'] = $row['waitlist_total'] > 0;
 
             $packageSeatLimit = isset($row['seat_limit']) ? (int)$row['seat_limit'] : 0;
             $booked = isset($row['seats_booked']) ? (int)$row['seats_booked'] : 0;
@@ -1694,7 +1738,8 @@ if (!function_exists('vs_event_create_waitlisted_registration')) {
         string $name,
         string $phone,
         int $persons = 1,
-        array $dynamicValues = []
+        array $dynamicValues = [],
+        bool $forceWaitlist = false
     ): array
     {
         $eventId = max($eventId, 0);
@@ -1822,11 +1867,13 @@ if (!function_exists('vs_event_create_waitlisted_registration')) {
                 $availableSeats = $dateAvailable;
             }
 
-            if ($availableSeats === null) {
-                throw new RuntimeException('Seats are available. Please proceed with registration.');
-            }
-            if ($availableSeats >= $persons) {
-                throw new RuntimeException('Seats are available for this booking. Please proceed to payment.');
+            if (!$forceWaitlist) {
+                if ($availableSeats === null) {
+                    throw new RuntimeException('Seats are available. Please proceed with registration.');
+                }
+                if ($availableSeats >= $persons) {
+                    throw new RuntimeException('Seats are available for this booking. Please proceed to payment.');
+                }
             }
 
             $isPaidPackage = ((int)($packageRow['is_paid'] ?? 1) === 1);
