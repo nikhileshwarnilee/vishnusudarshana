@@ -4,6 +4,7 @@
 require_once __DIR__ . '/../config/db.php';
 require_once __DIR__ . '/../vendor/autoload.php';
 require_once __DIR__ . '/../helpers/payment_link_map.php';
+require_once __DIR__ . '/../helpers/service_request_notifications.php';
 
 use Razorpay\Api\Api;
 
@@ -206,12 +207,9 @@ function vs_reconcile_products_list(array $products, string $category): string
 /**
  * Additive notification path for Scenario C (cron recovery), keeps A-flow untouched.
  */
-function vs_reconcile_send_recovery_notifications(array $pendingRow, string $trackingId): void
+function vs_reconcile_send_recovery_notifications(PDO $pdo, array $pendingRow, string $trackingId): void
 {
     try {
-        require_once __DIR__ . '/../helpers/send_whatsapp.php';
-        require_once __DIR__ . '/../config/admin_config.php';
-
         $customerDetails = vs_reconcile_json_array($pendingRow['customer_details'] ?? '');
         $formData = vs_reconcile_json_array($pendingRow['form_data'] ?? '');
         if (empty($formData)) {
@@ -231,55 +229,16 @@ function vs_reconcile_send_recovery_notifications(array $pendingRow, string $tra
             return;
         }
 
-        $productsList = vs_reconcile_products_list($products, $category);
-        $adminMobile = defined('ADMIN_WHATSAPP')
-            ? ADMIN_WHATSAPP
-            : (defined('WHATSAPP_BUSINESS_PHONE') ? WHATSAPP_BUSINESS_PHONE : '918975224444');
-
-        if ($category === 'appointment') {
-            $customerResult = sendWhatsAppNotification('appointment_booked_payment_success', [
-                'mobile' => $mobile,
-                'country_code' => $customerDetails['country_code'] ?? ($formData['country_code'] ?? ''),
-                'custom_country_code' => $customerDetails['custom_country_code'] ?? ($formData['custom_country_code'] ?? ''),
-                'name' => $customerName,
-                'category' => 'Appointment',
-                'products_list' => $productsList,
-                'tracking_url' => $trackingId
-            ]);
-            sendWhatsAppNotification('admin_services_alert', [
-                'admin_mobile' => $adminMobile,
-                'customer_name' => $customerName,
-                'customer_mobile' => $mobile,
-                'category' => 'Appointment',
-                'products_list' => $productsList,
-                'tracking_id' => $trackingId
-            ]);
-            if (!$customerResult['success']) {
-                vs_reconcile_log_line('Recovery WhatsApp failed (appointment) tracking_id=' . $trackingId . ': ' . ($customerResult['message'] ?? 'unknown'));
-            }
-        } else {
-            $serviceCategoryDisplay = ucwords(str_replace('-', ' ', $category));
-            $customerResult = sendWhatsAppNotification('service_received', [
-                'mobile' => $mobile,
-                'country_code' => $customerDetails['country_code'] ?? ($formData['country_code'] ?? ''),
-                'custom_country_code' => $customerDetails['custom_country_code'] ?? ($formData['custom_country_code'] ?? ''),
-                'name' => $customerName,
-                'category' => $serviceCategoryDisplay,
-                'products_list' => $productsList,
-                'tracking_url' => $trackingId
-            ]);
-            sendWhatsAppNotification('admin_services_alert', [
-                'admin_mobile' => $adminMobile,
-                'customer_name' => $customerName,
-                'customer_mobile' => $mobile,
-                'category' => $serviceCategoryDisplay,
-                'products_list' => $productsList,
-                'tracking_id' => $trackingId
-            ]);
-            if (!$customerResult['success']) {
-                vs_reconcile_log_line('Recovery WhatsApp failed (service) tracking_id=' . $trackingId . ': ' . ($customerResult['message'] ?? 'unknown'));
-            }
-        }
+        vs_service_request_send_initial_notifications($pdo, [
+            'tracking_id' => $trackingId,
+            'category' => $category,
+            'customer_name' => $customerName,
+            'mobile' => $mobile,
+            'country_code' => $customerDetails['country_code'] ?? ($formData['country_code'] ?? ''),
+            'custom_country_code' => $customerDetails['custom_country_code'] ?? ($formData['custom_country_code'] ?? ''),
+            'form_data' => $formData,
+            'selected_products' => $products,
+        ]);
     } catch (Throwable $e) {
         vs_reconcile_log_line('Recovery notification error tracking_id=' . $trackingId . ': ' . $e->getMessage());
     }
@@ -322,27 +281,23 @@ function vs_reconcile_insert_service_request(PDO $pdo, array $pendingRow, string
     $trackingId = vs_reconcile_generate_tracking_id($pdo);
     $createdAt = date('Y-m-d H:i:s');
 
-    $insertStmt = $pdo->prepare("INSERT INTO service_requests (
-        tracking_id, category_slug, customer_name, mobile, email, city,
-        form_data, selected_products, total_amount, payment_id, razorpay_order_id, razorpay_payment_id, payment_status, service_status, created_at
-    ) VALUES (
-        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Paid', 'Received', ?
-    )");
-
-    $insertStmt->execute([
-        $trackingId,
-        $category,
-        $customerName !== '' ? $customerName : 'N/A',
-        $mobile !== '' ? $mobile : 'N/A',
-        $email,
-        $city,
-        json_encode($formData),
-        json_encode($products),
-        $totalAmount,
-        $paymentId,
-        $orderId,
-        $paymentId,
-        $createdAt
+    vs_service_request_insert($pdo, [
+        'tracking_id' => $trackingId,
+        'category_slug' => $category,
+        'customer_name' => $customerName !== '' ? $customerName : 'N/A',
+        'mobile' => $mobile !== '' ? $mobile : 'N/A',
+        'email' => $email,
+        'city' => $city,
+        'form_data' => $formData,
+        'selected_products' => $products,
+        'total_amount' => $totalAmount,
+        'payment_id' => $paymentId,
+        'razorpay_order_id' => $orderId,
+        'razorpay_payment_id' => $paymentId,
+        'payment_status' => 'Paid',
+        'booking_status' => 'confirmed',
+        'service_status' => 'Received',
+        'created_at' => $createdAt,
     ]);
 
     return $trackingId;
@@ -401,7 +356,7 @@ function vs_reconcile_finalize_from_pending(PDO $pdo, array $pendingRow, string 
             vs_reconcile_log_line('Pending sync failed for order_id=' . $orderId . ': ' . $syncError->getMessage());
         }
 
-        vs_reconcile_send_recovery_notifications($lockedPending, $trackingId);
+        vs_reconcile_send_recovery_notifications($pdo, $lockedPending, $trackingId);
         return 'inserted:' . $trackingId;
     } catch (Throwable $e) {
         if ($pdo->inTransaction()) {

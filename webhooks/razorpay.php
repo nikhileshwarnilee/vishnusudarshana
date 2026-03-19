@@ -4,6 +4,7 @@
 require_once __DIR__ . '/../config/db.php';
 require_once __DIR__ . '/../vendor/autoload.php';
 require_once __DIR__ . '/../helpers/payment_link_map.php';
+require_once __DIR__ . '/../helpers/service_request_notifications.php';
 
 /**
  * Read config from environment first, then fallback to .env file.
@@ -270,12 +271,9 @@ function vs_rzp_products_list(array $products, string $category): string
 /**
  * Additive notification path for Scenario B (webhook recovery), keeps A-flow untouched.
  */
-function vs_rzp_send_recovery_notifications(array $pendingRow, string $trackingId): void
+function vs_rzp_send_recovery_notifications(PDO $pdo, array $pendingRow, string $trackingId): void
 {
     try {
-        require_once __DIR__ . '/../helpers/send_whatsapp.php';
-        require_once __DIR__ . '/../config/admin_config.php';
-
         $customerDetails = vs_rzp_json_array($pendingRow['customer_details'] ?? '');
         $formData = vs_rzp_json_array($pendingRow['form_data'] ?? '');
         if (empty($formData)) {
@@ -295,55 +293,16 @@ function vs_rzp_send_recovery_notifications(array $pendingRow, string $trackingI
             return;
         }
 
-        $productsList = vs_rzp_products_list($products, $category);
-        $adminMobile = defined('ADMIN_WHATSAPP')
-            ? ADMIN_WHATSAPP
-            : (defined('WHATSAPP_BUSINESS_PHONE') ? WHATSAPP_BUSINESS_PHONE : '918975224444');
-
-        if ($category === 'appointment') {
-            $customerResult = sendWhatsAppNotification('appointment_booked_payment_success', [
-                'mobile' => $mobile,
-                'country_code' => $customerDetails['country_code'] ?? ($formData['country_code'] ?? ''),
-                'custom_country_code' => $customerDetails['custom_country_code'] ?? ($formData['custom_country_code'] ?? ''),
-                'name' => $customerName,
-                'category' => 'Appointment',
-                'products_list' => $productsList,
-                'tracking_url' => $trackingId
-            ]);
-            sendWhatsAppNotification('admin_services_alert', [
-                'admin_mobile' => $adminMobile,
-                'customer_name' => $customerName,
-                'customer_mobile' => $mobile,
-                'category' => 'Appointment',
-                'products_list' => $productsList,
-                'tracking_id' => $trackingId
-            ]);
-            if (!$customerResult['success']) {
-                error_log('Razorpay webhook recovery WhatsApp failed (appointment) tracking_id=' . $trackingId . ': ' . ($customerResult['message'] ?? 'unknown'));
-            }
-        } else {
-            $serviceCategoryDisplay = ucwords(str_replace('-', ' ', $category));
-            $customerResult = sendWhatsAppNotification('service_received', [
-                'mobile' => $mobile,
-                'country_code' => $customerDetails['country_code'] ?? ($formData['country_code'] ?? ''),
-                'custom_country_code' => $customerDetails['custom_country_code'] ?? ($formData['custom_country_code'] ?? ''),
-                'name' => $customerName,
-                'category' => $serviceCategoryDisplay,
-                'products_list' => $productsList,
-                'tracking_url' => $trackingId
-            ]);
-            sendWhatsAppNotification('admin_services_alert', [
-                'admin_mobile' => $adminMobile,
-                'customer_name' => $customerName,
-                'customer_mobile' => $mobile,
-                'category' => $serviceCategoryDisplay,
-                'products_list' => $productsList,
-                'tracking_id' => $trackingId
-            ]);
-            if (!$customerResult['success']) {
-                error_log('Razorpay webhook recovery WhatsApp failed (service) tracking_id=' . $trackingId . ': ' . ($customerResult['message'] ?? 'unknown'));
-            }
-        }
+        vs_service_request_send_initial_notifications($pdo, [
+            'tracking_id' => $trackingId,
+            'category' => $category,
+            'customer_name' => $customerName,
+            'mobile' => $mobile,
+            'country_code' => $customerDetails['country_code'] ?? ($formData['country_code'] ?? ''),
+            'custom_country_code' => $customerDetails['custom_country_code'] ?? ($formData['custom_country_code'] ?? ''),
+            'form_data' => $formData,
+            'selected_products' => $products,
+        ]);
     } catch (Throwable $e) {
         error_log('Razorpay webhook recovery notification error tracking_id=' . $trackingId . ': ' . $e->getMessage());
     }
@@ -360,7 +319,13 @@ function vs_rzp_send_notifications_for_existing_row(PDO $pdo, string $orderId): 
     }
 
     try {
-        $serviceStmt = $pdo->prepare('SELECT tracking_id FROM service_requests WHERE razorpay_order_id = ? ORDER BY id DESC LIMIT 1');
+        $serviceStmt = $pdo->prepare('
+            SELECT tracking_id, category_slug, customer_name, mobile, form_data, selected_products
+            FROM service_requests
+            WHERE razorpay_order_id = ?
+            ORDER BY id DESC
+            LIMIT 1
+        ');
         $serviceStmt->execute([$orderId]);
         $serviceRow = $serviceStmt->fetch(PDO::FETCH_ASSOC);
         if (!$serviceRow || empty($serviceRow['tracking_id'])) {
@@ -370,11 +335,64 @@ function vs_rzp_send_notifications_for_existing_row(PDO $pdo, string $orderId): 
         $pendingStmt = $pdo->prepare('SELECT * FROM pending_payments WHERE razorpay_order_id = ? ORDER BY id DESC LIMIT 1');
         $pendingStmt->execute([$orderId]);
         $pendingRow = $pendingStmt->fetch(PDO::FETCH_ASSOC);
-        if (!$pendingRow) {
+
+        $formData = vs_rzp_json_array($serviceRow['form_data'] ?? '');
+        $selectedProducts = vs_rzp_json_array($serviceRow['selected_products'] ?? '');
+        $countryCode = '';
+        $customCountryCode = '';
+
+        if ($pendingRow) {
+            $customerDetails = vs_rzp_json_array($pendingRow['customer_details'] ?? '');
+            $pendingFormData = vs_rzp_json_array($pendingRow['form_data'] ?? '');
+            if (empty($pendingFormData)) {
+                $pendingFormData = vs_rzp_json_array($pendingRow['appointment_form'] ?? '');
+            }
+            $pendingProducts = vs_rzp_json_array($pendingRow['selected_products'] ?? '');
+
+            if (empty($formData)) {
+                $formData = $pendingFormData;
+            }
+            if (empty($selectedProducts)) {
+                $selectedProducts = $pendingProducts;
+            }
+
+            $countryCode = (string)($customerDetails['country_code'] ?? ($pendingFormData['country_code'] ?? ($formData['country_code'] ?? '')));
+            $customCountryCode = (string)($customerDetails['custom_country_code'] ?? ($pendingFormData['custom_country_code'] ?? ($formData['custom_country_code'] ?? '')));
+        } else {
+            $countryCode = (string)($formData['country_code'] ?? '');
+            $customCountryCode = (string)($formData['custom_country_code'] ?? '');
+        }
+
+        $pendingCategory = $pendingRow ? trim((string)($pendingRow['category'] ?? '')) : '';
+        $category = trim((string)($serviceRow['category_slug'] ?? ''));
+        if ($category === '') {
+            $category = $pendingCategory !== '' ? $pendingCategory : 'unknown-service';
+        }
+        $customerName = trim((string)($serviceRow['customer_name'] ?? ''));
+        if ($customerName === '' && $pendingRow) {
+            $customerDetails = vs_rzp_json_array($pendingRow['customer_details'] ?? '');
+            $customerName = (string)($customerDetails['full_name'] ?? ($formData['full_name'] ?? 'Customer'));
+        }
+        $mobile = trim((string)($serviceRow['mobile'] ?? ''));
+        if (($mobile === '' || strtoupper($mobile) === 'N/A') && $pendingRow) {
+            $customerDetails = vs_rzp_json_array($pendingRow['customer_details'] ?? '');
+            $mobile = (string)($customerDetails['mobile'] ?? ($formData['mobile'] ?? ''));
+        }
+
+        if ($mobile === '' || strtoupper($mobile) === 'N/A') {
             return;
         }
 
-        vs_rzp_send_recovery_notifications($pendingRow, (string)$serviceRow['tracking_id']);
+        vs_service_request_send_initial_notifications($pdo, [
+            'tracking_id' => (string)$serviceRow['tracking_id'],
+            'category' => $category,
+            'customer_name' => $customerName !== '' ? $customerName : 'Customer',
+            'mobile' => $mobile,
+            'country_code' => $countryCode,
+            'custom_country_code' => $customCountryCode,
+            'form_data' => $formData,
+            'selected_products' => $selectedProducts,
+        ]);
     } catch (Throwable $e) {
         error_log('Razorpay webhook existing-row notification error for order_id=' . $orderId . ': ' . $e->getMessage());
     }
@@ -458,27 +476,23 @@ function vs_rzp_insert_service_request_from_pending(PDO $pdo, array $pendingRow,
     $trackingId = vs_rzp_generate_tracking_id($pdo);
     $createdAt = date('Y-m-d H:i:s');
 
-    $insertStmt = $pdo->prepare("INSERT INTO service_requests (
-        tracking_id, category_slug, customer_name, mobile, email, city,
-        form_data, selected_products, total_amount, payment_id, razorpay_order_id, razorpay_payment_id, payment_status, service_status, created_at
-    ) VALUES (
-        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Paid', 'Received', ?
-    )");
-
-    $insertStmt->execute([
-        $trackingId,
-        $category,
-        $customerName !== '' ? $customerName : 'N/A',
-        $mobile !== '' ? $mobile : 'N/A',
-        $email,
-        $city,
-        json_encode($formData),
-        json_encode($products),
-        $totalAmount,
-        $paymentId,
-        $orderId,
-        $paymentId,
-        $createdAt
+    vs_service_request_insert($pdo, [
+        'tracking_id' => $trackingId,
+        'category_slug' => $category,
+        'customer_name' => $customerName !== '' ? $customerName : 'N/A',
+        'mobile' => $mobile !== '' ? $mobile : 'N/A',
+        'email' => $email,
+        'city' => $city,
+        'form_data' => $formData,
+        'selected_products' => $products,
+        'total_amount' => $totalAmount,
+        'payment_id' => $paymentId,
+        'razorpay_order_id' => $orderId,
+        'razorpay_payment_id' => $paymentId,
+        'payment_status' => 'Paid',
+        'booking_status' => 'confirmed',
+        'service_status' => 'Received',
+        'created_at' => $createdAt,
     ]);
 
     return $trackingId;
@@ -536,7 +550,7 @@ function vs_rzp_recover_from_pending(PDO $pdo, string $orderId, string $paymentI
             error_log('Razorpay webhook recovery pending sync failed for order_id=' . $orderId . ': ' . $syncError->getMessage());
         }
 
-        vs_rzp_send_recovery_notifications($pendingRow, $trackingId);
+        vs_rzp_send_recovery_notifications($pdo, $pendingRow, $trackingId);
         error_log('Razorpay webhook recovery: service_request inserted for order_id=' . $orderId . ' tracking_id=' . $trackingId);
         return 'inserted:' . $trackingId;
     } catch (Throwable $e) {
@@ -659,7 +673,6 @@ switch ($data['event']) {
                     }
 
                     error_log('Razorpay webhook: payment confirmation success for order_id ' . $razorpayOrderId);
-                    vs_rzp_send_notifications_for_existing_row($pdo, $razorpayOrderId);
                 } else if ($row && $isPaid && (!$hasBookingStatus || $isConfirmed)) {
                     error_log('Razorpay webhook: already paid and confirmed for order_id ' . $razorpayOrderId);
                 } else if ($row && $isPaid) {
@@ -669,6 +682,10 @@ switch ($data['event']) {
                 } else {
                     $recoveryStatus = vs_rzp_recover_from_pending($pdo, $razorpayOrderId, $razorpayPaymentId);
                     error_log('Razorpay webhook recovery result for order_id ' . $razorpayOrderId . ': ' . $recoveryStatus);
+                }
+
+                if ($row) {
+                    vs_rzp_send_notifications_for_existing_row($pdo, $razorpayOrderId);
                 }
 
                 // Best effort status sync in pending_payments (if columns exist).

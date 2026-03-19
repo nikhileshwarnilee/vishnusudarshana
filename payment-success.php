@@ -29,6 +29,7 @@ $pageTitle = 'Payment Success | Vishnusudarshana';
 // Session is already started in header.php — DO NOT start here
 require_once __DIR__ . '/config/db.php';
 require_once __DIR__ . '/helpers/product_variants.php';
+require_once __DIR__ . '/helpers/service_request_notifications.php';
 
 vs_ensure_product_variant_schema($pdo);
 
@@ -357,18 +358,21 @@ if (isset($_GET['free']) && $_GET['free'] == 1) {
     // Generate tracking ID
     $tracking_id = 'VDSK-' . date('Ymd') . '-' . strtoupper(bin2hex(random_bytes(3)));
     $createdAt = date('Y-m-d H:i:s');
-    $stmt = $pdo->prepare("INSERT INTO service_requests (tracking_id, category_slug, customer_name, mobile, email, city, form_data, selected_products, total_amount, payment_id, payment_status, service_status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, '', 'Free', 'Received', ?)");
-    $stmt->execute([
-        $tracking_id,
-        $category,
-        $customerName ?: 'N/A',
-        $mobile ?: 'N/A',
-        $email ?: '',
-        $city ?: '',
-        json_encode($form_data),
-        json_encode($selected_products),
-        $totalAmount,
-        $createdAt
+    vs_service_request_insert($pdo, [
+        'tracking_id' => $tracking_id,
+        'category_slug' => $category,
+        'customer_name' => $customerName ?: 'N/A',
+        'mobile' => $mobile ?: 'N/A',
+        'email' => $email ?: '',
+        'city' => $city ?: '',
+        'form_data' => $form_data,
+        'selected_products' => $selected_products,
+        'total_amount' => $totalAmount,
+        'payment_id' => '',
+        'payment_status' => 'Free',
+        'booking_status' => 'confirmed',
+        'service_status' => 'Received',
+        'created_at' => $createdAt,
     ]);
     // Show success page
     require_once 'header.php';
@@ -491,23 +495,8 @@ $razorpay_order_id = $dbRecord['razorpay_order_id'] ?? $razorpay_order_id ?? nul
    All services (including appointments) follow this single path
    ====================== */
 
-// Create service tables if not exist
-$pdo->exec("CREATE TABLE IF NOT EXISTS service_requests (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    tracking_id VARCHAR(30) UNIQUE,
-    category_slug VARCHAR(50),
-    customer_name VARCHAR(255),
-    mobile VARCHAR(20),
-    email VARCHAR(255),
-    city VARCHAR(255),
-    form_data JSON,
-    selected_products JSON,
-    total_amount DECIMAL(10,2),
-    payment_id VARCHAR(100),
-    payment_status VARCHAR(20),
-    service_status VARCHAR(50),
-    created_at DATETIME NOT NULL
-);");
+// Keep service_requests schema aligned before inserts and notification checks.
+vs_service_request_ensure_schema($pdo);
 
 // Use pending data from database as source of truth (session not required)
 $category = $pending['category_slug'] ?? $pending['category'] ?? '';
@@ -548,145 +537,35 @@ try {
         $tracking_id = (string)($existingDuringInsert['tracking_id'] ?? $tracking_id);
         $alreadyProcessedInInsert = true;
     } else {
-        $stmt = $pdo->prepare("INSERT INTO service_requests (
-        tracking_id, category_slug, customer_name, mobile, email, city,
-        form_data, selected_products, total_amount, payment_id, razorpay_order_id, razorpay_payment_id, payment_status, service_status, created_at
-    ) VALUES (
-        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Paid', 'Received', ?
-    )");
-        $stmt->execute([
-        $tracking_id,
-        $category,
-        $customerName ?: 'N/A',
-        $mobile ?: 'N/A',
-        $email ?: '',
-        $city ?: '',
-        json_encode($formData),
-        json_encode($products),
-        $totalAmount,
-        $payment_id,
-        $razorpay_order_id,
-        $razorpay_payment_id,
-        $createdAt
+        vs_service_request_insert($pdo, [
+            'tracking_id' => $tracking_id,
+            'category_slug' => $category,
+            'customer_name' => $customerName ?: 'N/A',
+            'mobile' => $mobile ?: 'N/A',
+            'email' => $email ?: '',
+            'city' => $city ?: '',
+            'form_data' => $formData,
+            'selected_products' => $products,
+            'total_amount' => $totalAmount,
+            'payment_id' => $payment_id,
+            'razorpay_order_id' => $razorpay_order_id,
+            'razorpay_payment_id' => $razorpay_payment_id,
+            'payment_status' => 'Paid',
+            'booking_status' => 'confirmed',
+            'service_status' => 'Received',
+            'created_at' => $createdAt,
         ]);
 
-        // Format products list for WhatsApp message
-        $productsList = '';
-        if (!empty($products) && is_array($products)) {
-            $productNames = [];
-            foreach ($products as $product) {
-                $baseName = '';
-                if (!empty($product['name'])) {
-                    $baseName = (string)$product['name'];
-                } elseif (!empty($product['product_name'])) {
-                    $baseName = (string)$product['product_name'];
-                }
-
-                // Fallback: fetch by ID if present
-                $productId = $product['id'] ?? $product['product_id'] ?? null;
-                if ($baseName === '' && $productId) {
-                    try {
-                        $prodStmt = $pdo->prepare('SELECT product_name FROM products WHERE id = ? LIMIT 1');
-                        $prodStmt->execute([$productId]);
-                        $prodName = $prodStmt->fetchColumn();
-                        if ($prodName) {
-                            $baseName = (string)$prodName;
-                        } else {
-                            error_log('Product name not found for ID: ' . $productId);
-                            $baseName = 'Service Item';
-                        }
-                    } catch (Exception $e) {
-                        error_log('Product lookup failed for ID ' . $productId . ': ' . $e->getMessage());
-                        $baseName = 'Service Item';
-                    }
-                }
-
-                $variantValueName = trim((string)($product['variant_value_name'] ?? ''));
-                if ($baseName !== '' && $variantValueName !== '') {
-                    $productNames[] = $baseName . ' (' . $variantValueName . ')';
-                } elseif ($baseName !== '') {
-                    $productNames[] = $baseName;
-                } elseif ($variantValueName !== '') {
-                    $productNames[] = $variantValueName;
-                }
-            }
-            // Join with comma and space
-            $productsList = implode(', ', $productNames);
-        }
-        if (empty($productsList)) {
-            $productsList = ucwords(str_replace('-', ' ', $category));
-        }
-
-        // WhatsApp: Appointment Booked + Payment Successful (only for appointments)
-        if ($category === 'appointment') {
-            require_once __DIR__ . '/helpers/send_whatsapp.php';
-            try {
-                // Send automatic WhatsApp notification to customer
-                $whatsappResult = sendWhatsAppNotification('appointment_booked_payment_success', [
-                    'mobile' => $mobile,
-                    'country_code' => $customer['country_code'] ?? ($formData['country_code'] ?? ''),
-                    'custom_country_code' => $customer['custom_country_code'] ?? ($formData['custom_country_code'] ?? ''),
-                    'name' => $customerName ?: 'Customer',
-                    'category' => 'Appointment',
-                    'products_list' => $productsList,
-                    'tracking_url' => $tracking_id  // Ensure tracking_id is passed
-                ]);
-                    // Send WhatsApp alert to admin
-                    // Use ADMIN_WHATSAPP from config/admin_config.php
-                    require_once __DIR__ . '/config/admin_config.php';
-                    $adminMobile = defined('ADMIN_WHATSAPP') ? ADMIN_WHATSAPP : (defined('WHATSAPP_BUSINESS_PHONE') ? WHATSAPP_BUSINESS_PHONE : '918975224444');
-                    sendWhatsAppNotification('admin_services_alert', [
-                        'admin_mobile' => $adminMobile,
-                        'customer_name' => $customerName ?: 'Customer',
-                        'customer_mobile' => $mobile,
-                        'category' => 'Appointment',
-                        'products_list' => $productsList,
-                        'tracking_id' => $tracking_id
-                    ]);
-
-                if (!$whatsappResult['success']) {
-                    error_log('WhatsApp notification failed for appointment ' . $tracking_id . ': ' . $whatsappResult['message']);
-                } else {
-                    error_log('WhatsApp notification sent for appointment ' . $tracking_id);
-                }
-            } catch (Exception $e) {
-                error_log('WhatsApp error for appointment ' . $tracking_id . ': ' . $e->getMessage());
-            }
-        } else if ($category !== 'appointment') {
-            // For other services (Birth & Child, Marriage, Astrology, Muhurat, Pooja, Vastu)
-            require_once __DIR__ . '/helpers/send_whatsapp.php';
-            try {
-                $serviceCategoryDisplay = ucwords(str_replace('-', ' ', $category));
-                $whatsappResult = sendWhatsAppNotification('service_received', [
-                    'mobile' => $mobile,
-                    'country_code' => $customer['country_code'] ?? ($formData['country_code'] ?? ''),
-                    'custom_country_code' => $customer['custom_country_code'] ?? ($formData['custom_country_code'] ?? ''),
-                    'name' => $customerName ?: 'Customer',
-                    'category' => $serviceCategoryDisplay,
-                    'products_list' => $productsList,
-                    'tracking_url' => $tracking_id  // Ensure tracking_id is passed
-                ]);
-                    // Send WhatsApp alert to admin
-                    require_once __DIR__ . '/config/admin_config.php';
-                    $adminMobile = defined('ADMIN_WHATSAPP') ? ADMIN_WHATSAPP : (defined('WHATSAPP_BUSINESS_PHONE') ? WHATSAPP_BUSINESS_PHONE : '918975224444');
-                    sendWhatsAppNotification('admin_services_alert', [
-                        'admin_mobile' => $adminMobile,
-                        'customer_name' => $customerName ?: 'Customer',
-                        'customer_mobile' => $mobile,
-                        'category' => $serviceCategoryDisplay,
-                        'products_list' => $productsList,
-                        'tracking_id' => $tracking_id
-                    ]);
-
-                if (!$whatsappResult['success']) {
-                    error_log('WhatsApp notification failed for service ' . $tracking_id . ': ' . $whatsappResult['message']);
-                } else {
-                    error_log('WhatsApp notification sent for service ' . $tracking_id);
-                }
-            } catch (Exception $e) {
-                error_log('WhatsApp error for service ' . $tracking_id . ': ' . $e->getMessage());
-            }
-        }
+        vs_service_request_send_initial_notifications($pdo, [
+            'tracking_id' => $tracking_id,
+            'category' => $category,
+            'customer_name' => $customerName ?: 'Customer',
+            'mobile' => $mobile,
+            'country_code' => $pending['customer_details']['country_code'] ?? ($formData['country_code'] ?? ''),
+            'custom_country_code' => $pending['customer_details']['custom_country_code'] ?? ($formData['custom_country_code'] ?? ''),
+            'form_data' => $formData,
+            'selected_products' => $products,
+        ]);
     }
     
     // Old code reference (commented out - replaced with new event-based system above)
