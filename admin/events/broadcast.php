@@ -84,7 +84,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['send_broadcast'])) {
 
             $result = sendWhatsAppMessage(
                 $phone,
-                'APPOINTMENT_MESSAGE',
+                'event_broadcast_message',
                 [
                     'name' => (string)($recipient['name'] ?? 'Devotee'),
                     'message' => $messageText,

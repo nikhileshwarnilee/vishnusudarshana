@@ -574,6 +574,7 @@ $messageTitle = 'Registration Received';
 $messageBody = 'Your registration has been received.';
 $statusClass = 'pending';
 $qrTicketUrl = '';
+$ticketDownloadUrl = '';
 $cancelRequestStatus = strtolower(trim((string)($cancelRequestInfo['request_status'] ?? '')));
 $hasPendingCancelRequest = (!$isCancelled && $cancelRequestStatus === 'pending');
 if ($hasPendingCancelRequest) {
@@ -590,6 +591,7 @@ if (in_array($status, ['paid', 'success', 'successful'], true) || strtolower((st
         $row['qr_code_path'] = $qrPath;
     }
     $qrTicketUrl = 'event-qr-ticket.php?registration_id=' . (int)$registrationId . '&ref=' . urlencode((string)$row['booking_reference']);
+    $ticketDownloadUrl = 'event-ticket-download.php?registration_id=' . (int)$registrationId . '&ref=' . urlencode((string)$row['booking_reference']);
 } elseif (in_array($status, ['partial', 'partial paid'], true) || strtolower((string)$row['payment_status']) === 'partial paid') {
     $messageTitle = 'Advance Payment Successful';
     $messageBody = 'Advance payment was received. Please complete the remaining amount before event date.';
@@ -683,6 +685,9 @@ $bookingTimeline = $buildBookingTimeline([
                 <h1><?php echo htmlspecialchars($messageTitle); ?></h1>
                 <div class="hero-top-actions">
                     <span class="reference-badge">Booking Reference: <?php echo htmlspecialchars((string)($row['booking_reference'] ?? '')); ?></span>
+                    <?php if ($ticketDownloadUrl !== ''): ?>
+                        <a class="btn-main btn-alt" href="<?php echo htmlspecialchars($ticketDownloadUrl); ?>" data-no-loader>Download Ticket PDF</a>
+                    <?php endif; ?>
                     <a class="btn-main btn-track-top" href="event-track.php">Track Booking</a>
                     <button type="button" class="btn-main btn-print btn-print-top" onclick="printBookingSheet();">Print</button>
                 </div>
@@ -701,10 +706,15 @@ $bookingTimeline = $buildBookingTimeline([
         <?php if ($qrTicketUrl !== ''): ?>
             <div class="card qr-card">
                 <h2>Entry QR Ticket</h2>
-                <p>Show this QR ticket at event entry.</p>
+                <p>Show this QR ticket at event entry or download the complete ticket PDF.</p>
                 <a href="<?php echo htmlspecialchars($qrTicketUrl); ?>" target="_blank">
                     <img src="<?php echo htmlspecialchars($qrTicketUrl); ?>" alt="Entry QR Ticket">
                 </a>
+                <?php if ($ticketDownloadUrl !== ''): ?>
+                    <div class="btn-row" style="margin-top:12px;">
+                        <a class="btn-main btn-alt" href="<?php echo htmlspecialchars($ticketDownloadUrl); ?>" data-no-loader>Download Complete Ticket PDF</a>
+                    </div>
+                <?php endif; ?>
             </div>
         <?php endif; ?>
 
@@ -902,6 +912,9 @@ $bookingTimeline = $buildBookingTimeline([
 
         <div class="card action-card">
             <div class="btn-row">
+                <?php if ($ticketDownloadUrl !== ''): ?>
+                    <a class="btn-main btn-alt" href="<?php echo htmlspecialchars($ticketDownloadUrl); ?>" data-no-loader>Download Ticket PDF</a>
+                <?php endif; ?>
                 <?php if ($showMakePaymentButton): ?>
                     <a class="btn-main" href="event-payment.php?registration_id=<?php echo (int)$row['id']; ?>">Make Payment</a>
                 <?php endif; ?>

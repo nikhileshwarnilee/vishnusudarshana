@@ -3204,6 +3204,316 @@ if (!function_exists('vs_event_ensure_registration_qr')) {
     }
 }
 
+if (!function_exists('vs_event_fetch_remote_binary')) {
+    function vs_event_fetch_remote_binary(string $url, int $timeoutSeconds = 15): string
+    {
+        $url = trim($url);
+        if ($url === '') {
+            return '';
+        }
+
+        if (function_exists('curl_init')) {
+            $ch = curl_init($url);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_TIMEOUT, $timeoutSeconds);
+            curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+            $response = curl_exec($ch);
+            $httpCode = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+            if ($httpCode === 200 && is_string($response) && $response !== '') {
+                return $response;
+            }
+        }
+
+        $context = stream_context_create([
+            'http' => [
+                'timeout' => $timeoutSeconds,
+            ],
+        ]);
+        $response = @file_get_contents($url, false, $context);
+        if (is_string($response) && $response !== '') {
+            return $response;
+        }
+
+        return '';
+    }
+}
+
+if (!function_exists('vs_event_pdf_normalize_text')) {
+    function vs_event_pdf_normalize_text(string $text): string
+    {
+        $text = str_replace(["\r", "\n", "\t"], ' ', $text);
+        $text = preg_replace('/\s+/u', ' ', $text);
+        $text = trim((string)$text);
+
+        if ($text === '') {
+            return '';
+        }
+
+        if (function_exists('iconv')) {
+            $converted = @iconv('UTF-8', 'Windows-1252//TRANSLIT//IGNORE', $text);
+            if ($converted !== false) {
+                $text = $converted;
+            }
+        }
+
+        $text = preg_replace('/[^\x20-\x7E\xA0-\xFF]/', '', $text);
+        return trim((string)$text);
+    }
+}
+
+if (!function_exists('vs_event_pdf_escape_text')) {
+    function vs_event_pdf_escape_text(string $text): string
+    {
+        return str_replace(
+            ['\\', '(', ')'],
+            ['\\\\', '\\(', '\\)'],
+            $text
+        );
+    }
+}
+
+if (!function_exists('vs_event_build_ticket_pdf_binary')) {
+    function vs_event_build_ticket_pdf_binary(array $ticketData, string $qrJpegBinary = ''): string
+    {
+        $hasQrImage = (strncmp($qrJpegBinary, "\xFF\xD8", 2) === 0);
+        $title = vs_event_pdf_normalize_text('Vishnusudarshana Event Ticket');
+        $subtitle = vs_event_pdf_normalize_text('Please present this PDF at the entry point.');
+
+        $detailLines = [
+            'Attendee: ' . (string)($ticketData['name'] ?? 'Devotee'),
+            'Event: ' . (string)($ticketData['event_name'] ?? 'Event'),
+            'Package: ' . (string)($ticketData['package_name'] ?? 'Package'),
+            'Event Date: ' . (string)($ticketData['event_date'] ?? ''),
+            'Booking ID: ' . (string)($ticketData['booking_reference'] ?? ''),
+            'Persons: ' . (string)max((int)($ticketData['persons'] ?? 1), 1),
+        ];
+
+        $location = trim((string)($ticketData['location'] ?? ''));
+        if ($location !== '') {
+            $detailLines[] = 'Venue: ' . $location;
+        }
+
+        $detailLines[] = $hasQrImage
+            ? 'Scan the attached QR on this ticket at event entry.'
+            : 'Keep your booking ID ready for entry verification.';
+
+        $wrappedLines = [];
+        foreach ($detailLines as $line) {
+            $normalizedLine = vs_event_pdf_normalize_text($line);
+            if ($normalizedLine === '') {
+                continue;
+            }
+
+            $segments = explode("\n", wordwrap($normalizedLine, 48, "\n", true));
+            foreach ($segments as $segment) {
+                $segment = trim((string)$segment);
+                if ($segment !== '') {
+                    $wrappedLines[] = $segment;
+                }
+            }
+        }
+
+        $commands = [];
+        $commands[] = '0.49 0.11 0.11 RG';
+        $commands[] = '1 w';
+        $commands[] = '36 36 523 770 re S';
+        $commands[] = 'BT';
+        $commands[] = '/F2 22 Tf';
+        $commands[] = '1 0 0 1 52 790 Tm';
+        $commands[] = '(' . vs_event_pdf_escape_text($title) . ') Tj';
+        $commands[] = '/F1 11 Tf';
+        $commands[] = '1 0 0 1 52 768 Tm';
+        $commands[] = '(' . vs_event_pdf_escape_text($subtitle) . ') Tj';
+
+        $y = 728;
+        foreach ($wrappedLines as $line) {
+            $commands[] = '/F1 12 Tf';
+            $commands[] = '1 0 0 1 52 ' . number_format((float)$y, 2, '.', '') . ' Tm';
+            $commands[] = '(' . vs_event_pdf_escape_text($line) . ') Tj';
+            $y -= 20;
+        }
+
+        $footerLines = [
+            'Business: Vishnusudarshana Dharmik Sanskar Kendra',
+            'Please keep this PDF available on your phone until the event entry is complete.',
+        ];
+        $footerY = 108;
+        foreach ($footerLines as $line) {
+            $commands[] = '/F1 10 Tf';
+            $commands[] = '1 0 0 1 52 ' . number_format((float)$footerY, 2, '.', '') . ' Tm';
+            $commands[] = '(' . vs_event_pdf_escape_text(vs_event_pdf_normalize_text($line)) . ') Tj';
+            $footerY -= 16;
+        }
+        $commands[] = 'ET';
+
+        if ($hasQrImage) {
+            $commands[] = '0.49 0.11 0.11 RG';
+            $commands[] = '1 w';
+            $commands[] = '348 430 185 210 re S';
+            $commands[] = 'BT';
+            $commands[] = '/F2 13 Tf';
+            $commands[] = '1 0 0 1 365 618 Tm';
+            $commands[] = '(' . vs_event_pdf_escape_text(vs_event_pdf_normalize_text('Entry QR')) . ') Tj';
+            $commands[] = 'ET';
+            $commands[] = 'q';
+            $commands[] = '165 0 0 165 358 442 cm';
+            $commands[] = '/Im1 Do';
+            $commands[] = 'Q';
+        }
+
+        $contentStream = implode("\n", $commands) . "\n";
+
+        $objects = [];
+        $objects[1] = "<< /Type /Catalog /Pages 2 0 R >>";
+        $objects[2] = "<< /Type /Pages /Count 1 /Kids [3 0 R] >>";
+
+        $resources = "<< /Font << /F1 4 0 R /F2 5 0 R >>";
+        $contentObjectNumber = 6;
+        if ($hasQrImage) {
+            $resources .= " /XObject << /Im1 6 0 R >>";
+            $contentObjectNumber = 7;
+        }
+        $resources .= " >>";
+
+        $objects[3] = "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources " . $resources . " /Contents " . $contentObjectNumber . " 0 R >>";
+        $objects[4] = "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>";
+        $objects[5] = "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>";
+
+        if ($hasQrImage) {
+            $objects[6] = "<< /Type /XObject /Subtype /Image /Width 360 /Height 360 /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length " . strlen($qrJpegBinary) . " >>\nstream\n" . $qrJpegBinary . "\nendstream";
+        }
+
+        $objects[$contentObjectNumber] = "<< /Length " . strlen($contentStream) . " >>\nstream\n" . $contentStream . "endstream";
+
+        $pdf = "%PDF-1.4\n%\xE2\xE3\xCF\xD3\n";
+        $offsets = [0];
+        $maxObject = max(array_keys($objects));
+
+        for ($i = 1; $i <= $maxObject; $i++) {
+            if (!isset($objects[$i])) {
+                continue;
+            }
+            $offsets[$i] = strlen($pdf);
+            $pdf .= $i . " 0 obj\n" . $objects[$i] . "\nendobj\n";
+        }
+
+        $xrefOffset = strlen($pdf);
+        $pdf .= "xref\n0 " . ($maxObject + 1) . "\n";
+        $pdf .= "0000000000 65535 f \n";
+        for ($i = 1; $i <= $maxObject; $i++) {
+            $pdf .= sprintf("%010d 00000 n \n", (int)($offsets[$i] ?? 0));
+        }
+        $pdf .= "trailer\n<< /Size " . ($maxObject + 1) . " /Root 1 0 R >>\n";
+        $pdf .= "startxref\n" . $xrefOffset . "\n%%EOF";
+
+        return $pdf;
+    }
+}
+
+if (!function_exists('vs_event_ensure_registration_ticket_pdf')) {
+    function vs_event_ensure_registration_ticket_pdf(PDO $pdo, int $registrationId, array $overrides = []): string
+    {
+        if ($registrationId <= 0) {
+            return '';
+        }
+
+        $stmt = $pdo->prepare("SELECT
+            r.id,
+            r.booking_reference,
+            r.event_id,
+            r.package_id,
+            r.payment_status,
+            r.name,
+            r.persons,
+            e.title AS event_title,
+            e.location,
+            e.event_type,
+            p.package_name,
+            COALESCE(ed.event_date, e.event_date) AS selected_event_date
+        FROM event_registrations r
+        INNER JOIN events e ON e.id = r.event_id
+        INNER JOIN event_packages p ON p.id = r.package_id
+        LEFT JOIN event_dates ed ON ed.id = r.event_date_id
+        WHERE r.id = ?
+        LIMIT 1");
+        $stmt->execute([$registrationId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$row) {
+            return '';
+        }
+
+        if (strtolower((string)($row['payment_status'] ?? '')) !== 'paid') {
+            return '';
+        }
+
+        $bookingReference = trim((string)($overrides['booking_reference'] ?? $row['booking_reference'] ?? ''));
+        if ($bookingReference === '') {
+            $bookingReference = vs_event_assign_booking_reference($pdo, $registrationId);
+        }
+        if ($bookingReference === '') {
+            return '';
+        }
+
+        vs_event_ensure_registration_qr($pdo, $registrationId);
+
+        $eventDate = trim((string)($overrides['event_date'] ?? ''));
+        if ($eventDate === '') {
+            $eventDate = vs_event_get_registration_date_display(
+                $pdo,
+                $row,
+                (string)($row['selected_event_date'] ?? '')
+            );
+        }
+
+        $ticketData = [
+            'name' => (string)($overrides['name'] ?? $row['name'] ?? 'Devotee'),
+            'event_name' => (string)($overrides['event_name'] ?? $row['event_title'] ?? 'Event'),
+            'package_name' => (string)($overrides['package_name'] ?? $row['package_name'] ?? 'Package'),
+            'event_date' => $eventDate,
+            'booking_reference' => $bookingReference,
+            'persons' => max((int)($row['persons'] ?? 1), 1),
+            'location' => (string)($row['location'] ?? ''),
+            'event_id' => (int)($row['event_id'] ?? 0),
+            'package_id' => (int)($row['package_id'] ?? 0),
+        ];
+
+        $secret = (string)(getenv('EVENT_QR_SECRET') ?: getenv('APP_KEY') ?: 'vs_event_ticket_pdf_secret');
+        $hashSource = json_encode($ticketData, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        $fileHash = substr(sha1($registrationId . '|' . $hashSource . '|' . $secret), 0, 24);
+        $relativeDir = 'uploads/events/tickets';
+        $relativePath = $relativeDir . '/ticket_' . $fileHash . '.pdf';
+        $targetDir = __DIR__ . '/../' . $relativeDir;
+        $targetPath = $targetDir . '/ticket_' . $fileHash . '.pdf';
+
+        if (!is_dir($targetDir) && !mkdir($targetDir, 0775, true) && !is_dir($targetDir)) {
+            return '';
+        }
+
+        if (is_file($targetPath) && filesize($targetPath) > 0) {
+            return $relativePath;
+        }
+
+        $qrPayload = rawurlencode($bookingReference . '|' . (int)$ticketData['event_id'] . '|' . (int)$ticketData['package_id']);
+        $qrJpegBinary = vs_event_fetch_remote_binary(
+            'https://api.qrserver.com/v1/create-qr-code/?size=360x360&format=jpg&data=' . $qrPayload,
+            20
+        );
+
+        $pdfBinary = vs_event_build_ticket_pdf_binary($ticketData, $qrJpegBinary);
+        if ($pdfBinary === '') {
+            return '';
+        }
+
+        $writeOk = @file_put_contents($targetPath, $pdfBinary);
+        if ($writeOk === false || !is_file($targetPath)) {
+            return '';
+        }
+
+        return $relativePath;
+    }
+}
+
 if (!function_exists('vs_event_extract_booking_reference')) {
     function vs_event_extract_booking_reference(string $input): string
     {
@@ -3295,50 +3605,140 @@ if (!function_exists('vs_event_send_whatsapp_notice')) {
         $packageName = (string)($context['package_name'] ?? 'Package');
         $eventDate = (string)($context['event_date'] ?? $context['date'] ?? '');
         $amount = isset($context['amount']) ? (string)$context['amount'] : '';
+        $remainingAmount = isset($context['remaining_amount']) ? (string)$context['remaining_amount'] : '';
         $bookingReference = (string)($context['booking_reference'] ?? '');
         $registrationId = (int)($context['registration_id'] ?? 0);
-        $qrCodePath = trim((string)($context['qr_code_path'] ?? ''));
         if ($bookingReference === '') {
             $bookingReference = 'N/A';
         }
 
-        $templates = [
-            'registration_received' => 'Registration received for %s (%s). Event date: %s. Amount: Rs %s. Ref: %s.',
-            'payment_successful' => 'Payment successful for %s (%s). Event date: %s. Amount paid: Rs %s. Ref: %s.',
-            'payment_pending_verification' => 'Payment submitted and pending verification for %s (%s). Event date: %s. Amount: Rs %s. Ref: %s.',
-            'payment_approved' => 'Payment approved for %s (%s). Event date: %s. Amount: Rs %s. Ref: %s.',
-            'event_reminder' => 'Reminder: %s (%s) is scheduled on %s. Amount: Rs %s. Ref: %s.',
-            'ticket_delivery' => "Namaste %s\n\nYour booking for %s is confirmed.\n\nBooking ID: %s\n\nYour entry QR ticket is attached.\n\nEvent Date: %s\n\nThank you\nVishnusudarshana",
-        ];
+        if ($trigger === 'payment_successful') {
+            return sendWhatsAppMessage(
+                $phone,
+                'event_payment_successful',
+                [
+                    'name' => $name,
+                    'event_name' => $eventName,
+                    'package_name' => $packageName,
+                    'event_date' => $eventDate,
+                    'amount' => $amount,
+                    'booking_reference' => $bookingReference,
+                    'remaining_amount' => $remainingAmount,
+                ]
+            );
+        }
+
+        if ($trigger === 'payment_pending_verification') {
+            return sendWhatsAppMessage(
+                $phone,
+                'event_payment_pending_verification',
+                [
+                    'name' => $name,
+                    'event_name' => $eventName,
+                    'package_name' => $packageName,
+                    'event_date' => $eventDate,
+                    'amount' => $amount,
+                    'booking_reference' => $bookingReference,
+                ]
+            );
+        }
+
+        if ($trigger === 'payment_approved') {
+            return sendWhatsAppMessage(
+                $phone,
+                'event_payment_approved',
+                [
+                    'name' => $name,
+                    'event_name' => $eventName,
+                    'package_name' => $packageName,
+                    'event_date' => $eventDate,
+                    'amount' => $amount,
+                    'booking_reference' => $bookingReference,
+                ]
+            );
+        }
+
+        if ($trigger === 'event_reminder') {
+            return sendWhatsAppMessage(
+                $phone,
+                'event_reminder',
+                [
+                    'name' => $name,
+                    'event_name' => $eventName,
+                    'package_name' => $packageName,
+                    'event_date' => $eventDate,
+                    'booking_reference' => $bookingReference,
+                ]
+            );
+        }
 
         if ($trigger === 'ticket_delivery') {
-            $message = sprintf($templates['ticket_delivery'], $name, $eventName, $bookingReference, $eventDate);
-        } else {
-            $messagePattern = $templates[$trigger] ?? '%s (%s) update. Date: %s. Amount: Rs %s. Ref: %s.';
-            $message = sprintf($messagePattern, $eventName, $packageName, $eventDate, $amount, $bookingReference);
+            $payload = [
+                'name' => $name,
+                'event_name' => $eventName,
+                'booking_reference' => $bookingReference,
+                'event_date' => $eventDate,
+            ];
+
+            if ($registrationId > 0) {
+                $ticketPdo = null;
+                if (isset($context['pdo']) && $context['pdo'] instanceof PDO) {
+                    $ticketPdo = $context['pdo'];
+                }
+                if (!$ticketPdo instanceof PDO) {
+                    global $pdo;
+                    if (isset($pdo) && $pdo instanceof PDO) {
+                        $ticketPdo = $pdo;
+                    }
+                }
+                if (!$ticketPdo instanceof PDO) {
+                    require __DIR__ . '/../config/db.php';
+                    if (isset($pdo) && $pdo instanceof PDO) {
+                        $ticketPdo = $pdo;
+                    }
+                }
+
+                if ($ticketPdo instanceof PDO) {
+                    $ticketPdfPath = vs_event_ensure_registration_ticket_pdf($ticketPdo, $registrationId, [
+                        'name' => $name,
+                        'event_name' => $eventName,
+                        'package_name' => $packageName,
+                        'event_date' => $eventDate,
+                        'booking_reference' => $bookingReference,
+                    ]);
+                    if ($ticketPdfPath !== '') {
+                        $payload['file_path'] = $ticketPdfPath;
+                    }
+                }
+            }
+
+            if (empty($payload['file_path'])) {
+                if (function_exists('logWhatsAppActivity')) {
+                    logWhatsAppActivity($phone, 'event ticket delivery', 'EVENT_PDF_ERROR', 'Ticket PDF could not be generated');
+                }
+                return [
+                    'success' => false,
+                    'message' => 'Ticket PDF could not be generated.',
+                    'data' => null,
+                ];
+            }
+
+            return sendWhatsAppMessage($phone, 'event_ticket_delivery', $payload);
         }
 
-        $payload = [
+        $message = sprintf(
+            '%s (%s) update. Date: %s. Amount: Rs %s. Ref: %s.',
+            $eventName,
+            $packageName,
+            $eventDate,
+            $amount,
+            $bookingReference
+        );
+
+        return sendWhatsAppMessage($phone, 'APPOINTMENT_MESSAGE', [
             'name' => $name,
             'message' => $message,
-        ];
-
-        if ($trigger === 'ticket_delivery' && $qrCodePath !== '') {
-            $mediaPath = $qrCodePath;
-            if (strpos($mediaPath, 'uploads/events/') === 0) {
-                $mediaPath = '../events/' . ltrim(substr($mediaPath, strlen('uploads/events/')), '/');
-            }
-            if ($registrationId > 0 && $bookingReference !== '' && $bookingReference !== 'N/A') {
-                $payload['booking_reference'] = $bookingReference;
-            }
-            $payload['file_path'] = $mediaPath;
-        }
-
-        return sendWhatsAppMessage(
-            $phone,
-            'APPOINTMENT_MESSAGE',
-            $payload
-        );
+        ]);
     }
 }
 

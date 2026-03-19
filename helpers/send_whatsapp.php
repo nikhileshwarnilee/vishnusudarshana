@@ -30,6 +30,7 @@ function sendWhatsAppMessage($to, $templateName, $variables = [], $language = nu
         $variables['custom_country_code'] ?? null
     );
     if (!$to) {
+        logWhatsAppActivity((string)$to, (string)$templateName, 'VALIDATION_ERROR', 'Invalid phone number format');
         return [
             'success' => false,
             'message' => 'Invalid phone number format',
@@ -40,6 +41,7 @@ function sendWhatsAppMessage($to, $templateName, $variables = [], $language = nu
     // Validate template exists
     $templateActualName = getTemplateName($templateName);
     if (!$templateActualName) {
+        logWhatsAppActivity($to, (string)$templateName, 'VALIDATION_ERROR', "Template '$templateName' not found");
         return [
             'success' => false,
             'message' => "Template '$templateName' not found",
@@ -67,6 +69,7 @@ function sendWhatsAppMessage($to, $templateName, $variables = [], $language = nu
     
     // Validate AiSensy credentials
     if (!defined('AISENSY_API_KEY') || !AISENSY_API_KEY || !defined('AISENSY_API_URL')) {
+        logWhatsAppActivity($to, $templateActualName, 'CONFIG_ERROR', 'AiSensy API credentials not configured');
         return [
             'success' => false,
             'message' => 'AiSensy API credentials not configured',
@@ -103,7 +106,7 @@ function sendWhatsAppMessage($to, $templateName, $variables = [], $language = nu
     if (isset($variables['file_path']) && !empty($variables['file_path'])) {
         $filePath = $variables['file_path'];
         $fileName = basename($filePath);
-        $publicUrl = 'https://vishnusudarshana.com/uploads/services/' . $filePath;
+        $publicUrl = resolveWhatsAppMediaUrl($filePath);
         $payload['media'] = [
             'url' => $publicUrl,
             'filename' => $fileName
@@ -311,6 +314,39 @@ function buildAiSensyButtons($templateIdentifier, $variables) {
     }
     
     return $buttons;
+}
+
+/**
+ * Resolve a local project path into a public URL that AiSensy can fetch.
+ *
+ * Relative paths default to uploads/services for backwards compatibility.
+ *
+ * @param string $filePath Relative uploads path or absolute URL
+ * @return string
+ */
+function resolveWhatsAppMediaUrl($filePath) {
+    $filePath = trim((string)$filePath);
+    if ($filePath === '') {
+        return '';
+    }
+
+    if (preg_match('~^https?://~i', $filePath)) {
+        return $filePath;
+    }
+
+    $normalizedPath = str_replace('\\', '/', $filePath);
+    $normalizedPath = preg_replace('~^\./+~', '', $normalizedPath);
+    while (strpos($normalizedPath, '../') === 0) {
+        $normalizedPath = substr($normalizedPath, 3);
+    }
+    $normalizedPath = ltrim((string)$normalizedPath, '/');
+
+    $baseUrl = rtrim((string)(getenv('APP_URL') ?: getenv('SITE_URL') ?: 'https://vishnusudarshana.com'), '/');
+    if (strpos($normalizedPath, 'uploads/') === 0) {
+        return $baseUrl . '/' . $normalizedPath;
+    }
+
+    return $baseUrl . '/uploads/services/' . $normalizedPath;
 }
 
 

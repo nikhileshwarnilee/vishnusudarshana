@@ -66,6 +66,14 @@ define('WHATSAPP_TEMPLATES', [
     'CUSTOM_MESSAGE' => 'Website Service Request Confirmation',
     'APPOINTMENT_MESSAGE' => 'Admin Notes',
     
+    // Event module templates
+    'event_payment_pending_verification' => 'event payment pending verification',
+    'event_payment_approved' => 'event payment approved',
+    'event_ticket_delivery' => 'event ticket delivery',
+    'event_payment_successful' => 'event payment successful',
+    'event_reminder' => 'event reminder',
+    'event_broadcast_message' => 'event broadcast message',
+    
     // Offline Service Request - Admin submitted
     'OFFLINE_SERVICE_REQUEST_RECEIVED' => 'Offline Service Request Received',
 
@@ -130,6 +138,14 @@ define('WHATSAPP_TEMPLATE_VARIABLES', [
     'CUSTOM_MESSAGE' => ['name'],
     'OTP_VERIFICATION' => ['otp_code'],  // {{1}} = otp_code for message body
     'APPOINTMENT_MESSAGE' => ['name', 'message'],  // {{1}} = Customer Name, {{2}} = Custom message text
+    
+    // Event module templates
+    'event_payment_pending_verification' => ['name', 'event_name', 'package_name', 'event_date', 'amount', 'booking_reference'],
+    'event_payment_approved' => ['name', 'event_name', 'package_name', 'event_date', 'amount', 'booking_reference'],
+    'event_ticket_delivery' => ['name', 'event_name', 'booking_reference', 'event_date'],
+    'event_payment_successful' => ['name', 'event_name', 'package_name', 'event_date', 'amount', 'booking_reference', 'remaining_amount'],
+    'event_reminder' => ['name', 'event_name', 'package_name', 'event_date', 'booking_reference'],
+    'event_broadcast_message' => ['name', 'message'],
     
     // Offline Service Request - 4 parameters: name, category, products_list, tracking_id
     'OFFLINE_SERVICE_REQUEST_RECEIVED' => ['name', 'category', 'products_list', 'tracking_id'],

@@ -762,6 +762,10 @@ require_once 'header.php';
                             $canPartialCancel = $canCancel && (int)$row['persons'] > 1;
                             $latestCancel = !empty($cancelHistory) ? $cancelHistory[0] : null;
                             $latestCancelRequest = !empty($cancelRequestHistory) ? $cancelRequestHistory[0] : null;
+                            $ticketDownloadUrl = '';
+                            if (strtolower((string)($row['payment_status'] ?? '')) === 'paid') {
+                                $ticketDownloadUrl = 'event-ticket-download.php?registration_id=' . $registrationId . '&ref=' . urlencode((string)$row['booking_reference']);
+                            }
                             $bookingTimeline = $buildBookingTimeline([
                                 'created_at' => (string)($row['created_at'] ?? ''),
                                 'payment_status' => (string)($row['payment_status'] ?? ''),
@@ -920,6 +924,9 @@ require_once 'header.php';
 
                                 <div class="action-row">
                                     <a class="btn-main btn-alt" href="event-booking-confirmation.php?registration_id=<?php echo $registrationId; ?>" target="_blank">View / Print</a>
+                                    <?php if ($ticketDownloadUrl !== ''): ?>
+                                        <a class="btn-main btn-alt" href="<?php echo htmlspecialchars($ticketDownloadUrl); ?>" data-no-loader>Download Ticket PDF</a>
+                                    <?php endif; ?>
                                     <?php if ((int)($row['show_make_payment_button'] ?? 0) === 1 && !$hasPendingCancelRequest): ?>
                                         <a class="btn-main" href="event-payment.php?registration_id=<?php echo $registrationId; ?>">Make Payment</a>
                                     <?php endif; ?>

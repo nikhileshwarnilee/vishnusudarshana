@@ -699,6 +699,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                     'package_name' => (string)$locked['package_name'],
                     'event_date' => vs_event_get_registration_date_display($pdo, $locked, (string)($locked['selected_event_date'] ?? '')),
                     'amount' => (string)$dueNow,
+                    'remaining_amount' => (string)$remainingAfter,
                     'booking_reference' => (string)($locked['booking_reference'] ?? ''),
                     'registration_id' => $targetRegistrationId,
                     'event_id' => (int)($locked['event_id'] ?? 0),
