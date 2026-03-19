@@ -79,7 +79,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['user_ids']) && !empt
 			</label>
 		<?php endforeach; ?>
 		</div>
-		<div style="margin-bottom:18px; font-weight:600; color:#333;">Message to send (WhatsApp - Admin Notes):</div>
+		<div style="margin-bottom:18px; font-weight:600; color:#333;">Message to send (WhatsApp - admin notes):</div>
 		<textarea name="wa_message" rows="3" style="width:100%;max-width:600px;padding:10px;border-radius:6px;border:1px solid #ccc;font-size:1em;resize:vertical;margin-bottom:24px;" placeholder="Enter your message here..."></textarea>
 		<button type="submit" class="btn-main">Send via WhatsApp</button>
 		<div id="waMsgStatus" style="margin-top:16px;font-weight:600;">

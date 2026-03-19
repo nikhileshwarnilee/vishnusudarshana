@@ -52,7 +52,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         echo json_encode(['success' => false, 'message' => 'Exception: ' . $e->getMessage()]);
     }
 } elseif ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'custom_msg') {
-    // Send custom message using Admin Notes template
+    // Send custom message using admin notes template
     $customerId = isset($_POST['customer_id']) ? (int)$_POST['customer_id'] : 0;
     $customerName = trim($_POST['customer_name'] ?? '');
     $mobile = trim($_POST['mobile'] ?? '');

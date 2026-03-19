@@ -64,7 +64,7 @@ define('WHATSAPP_TEMPLATES', [
     'WELCOME_MESSAGE' => 'Website Service Request Confirmation',
     'OTP_VERIFICATION' => 'OTP for Download',
     'CUSTOM_MESSAGE' => 'Website Service Request Confirmation',
-    'APPOINTMENT_MESSAGE' => 'Admin Notes',
+    'APPOINTMENT_MESSAGE' => 'admin notes',
     
     // Event module templates
     'event_payment_pending_verification' => 'event payment pending verification',
