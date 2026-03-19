@@ -1659,7 +1659,7 @@ if (!function_exists('vs_event_build_registration_ticket_context')) {
 
         $proofRelativePath = trim((string)($row['screenshot'] ?? ''));
         $hashPayload = [
-            'layout_version' => 'event_ticket_pdf_v2',
+            'layout_version' => 'event_ticket_pdf_v3_single_page',
             'booking_reference' => $bookingReference,
             'message_title' => $messageTitle,
             'message_body' => $messageBody,
@@ -1676,7 +1676,7 @@ if (!function_exists('vs_event_build_registration_ticket_context')) {
         ];
 
         return array_merge($quickFacts, [
-            'layout_version' => 'event_ticket_pdf_v2',
+            'layout_version' => 'event_ticket_pdf_v3_single_page',
             'registration_id' => (int)$row['id'],
             'booking_reference' => $bookingReference,
             'message_title' => $messageTitle,
@@ -1704,11 +1704,544 @@ if (!function_exists('vs_event_build_registration_ticket_context')) {
     }
 }
 
+if (!function_exists('vs_event_pdf_print_metrics')) {
+    function vs_event_pdf_print_metrics(float $scale, float $contentWidth): array
+    {
+        $sectionPaddingX = 7.0 * $scale;
+        $tableWidth = max($contentWidth - ($sectionPaddingX * 2), 40.0);
+        $labelWidth = round($tableWidth * 0.18, 2);
+        $valueWidth = round($tableWidth * 0.32, 2);
+        $secondLabelWidth = round($tableWidth * 0.18, 2);
+        $secondValueWidth = round($tableWidth - $labelWidth - $valueWidth - $secondLabelWidth, 2);
+
+        return [
+            'scale' => $scale,
+            'content_width' => $contentWidth,
+            'table_width' => $tableWidth,
+            'col_widths' => [$labelWidth, $valueWidth, $secondLabelWidth, $secondValueWidth],
+            'header_height' => 58.0 * $scale,
+            'status_height' => 25.0 * $scale,
+            'payment_height' => 27.0 * $scale,
+            'section_gap' => 6.0 * $scale,
+            'section_padding_x' => $sectionPaddingX,
+            'section_padding_y' => 6.0 * $scale,
+            'section_title_font' => 8.2 * $scale,
+            'section_title_gap' => 5.0 * $scale,
+            'table_label_font' => 6.4 * $scale,
+            'table_value_font' => 6.6 * $scale,
+            'table_line_height' => 7.6 * $scale,
+            'table_pad_x' => 4.0 * $scale,
+            'table_pad_y' => 2.5 * $scale,
+            'qr_size' => 112.0 * $scale,
+            'proof_max_width' => 112.0 * $scale,
+            'proof_max_height' => 68.0 * $scale,
+            'footer_font' => 6.4 * $scale,
+            'footer_height' => 12.0 * $scale,
+        ];
+    }
+}
+
+if (!function_exists('vs_event_pdf_print_pair_buffer_to_row')) {
+    function vs_event_pdf_print_pair_buffer_to_row(array $pairs): array
+    {
+        $pairs = array_values($pairs);
+        if (count($pairs) >= 2) {
+            return [
+                ['text' => (string)($pairs[0]['label'] ?? ''), 'type' => 'label'],
+                ['text' => (string)($pairs[0]['value'] ?? '-'), 'type' => 'value'],
+                ['text' => (string)($pairs[1]['label'] ?? ''), 'type' => 'label'],
+                ['text' => (string)($pairs[1]['value'] ?? '-'), 'type' => 'value'],
+            ];
+        }
+
+        if (count($pairs) === 1) {
+            return [
+                ['text' => (string)($pairs[0]['label'] ?? ''), 'type' => 'label'],
+                ['text' => (string)($pairs[0]['value'] ?? '-'), 'type' => 'value', 'colspan' => 3],
+            ];
+        }
+
+        return [];
+    }
+}
+
+if (!function_exists('vs_event_pdf_print_build_summary_table_rows')) {
+    function vs_event_pdf_print_build_summary_table_rows(array $summaryRows): array
+    {
+        $tableRows = [];
+        foreach ($summaryRows as $row) {
+            $row = is_array($row) ? array_values($row) : [];
+            if (count($row) >= 2) {
+                $tableRows[] = [
+                    ['text' => (string)($row[0]['label'] ?? ''), 'type' => 'label'],
+                    ['text' => (string)($row[0]['value'] ?? '-'), 'type' => 'value'],
+                    ['text' => (string)($row[1]['label'] ?? ''), 'type' => 'label'],
+                    ['text' => (string)($row[1]['value'] ?? '-'), 'type' => 'value'],
+                ];
+                continue;
+            }
+
+            if (count($row) === 1) {
+                $tableRows[] = [
+                    ['text' => (string)($row[0]['label'] ?? ''), 'type' => 'label'],
+                    ['text' => (string)($row[0]['value'] ?? '-'), 'type' => 'value', 'colspan' => 3],
+                ];
+            }
+        }
+
+        return $tableRows;
+    }
+}
+
+if (!function_exists('vs_event_pdf_print_build_pair_table_rows')) {
+    function vs_event_pdf_print_build_pair_table_rows(array $items): array
+    {
+        $tableRows = [];
+        $buffer = [];
+        $wideLabels = ['reason', 'decision note'];
+
+        foreach ($items as $item) {
+            $label = trim((string)($item['label'] ?? ''));
+            $value = trim((string)($item['value'] ?? '-'));
+            if ($label === '' && $value === '') {
+                continue;
+            }
+
+            if (in_array(strtolower($label), $wideLabels, true)) {
+                $bufferRow = vs_event_pdf_print_pair_buffer_to_row($buffer);
+                if (!empty($bufferRow)) {
+                    $tableRows[] = $bufferRow;
+                }
+                $buffer = [];
+                $tableRows[] = [
+                    ['text' => $label, 'type' => 'label'],
+                    ['text' => $value, 'type' => 'value', 'colspan' => 3],
+                ];
+                continue;
+            }
+
+            $buffer[] = ['label' => $label, 'value' => $value];
+            if (count($buffer) === 2) {
+                $tableRows[] = vs_event_pdf_print_pair_buffer_to_row($buffer);
+                $buffer = [];
+            }
+        }
+
+        $bufferRow = vs_event_pdf_print_pair_buffer_to_row($buffer);
+        if (!empty($bufferRow)) {
+            $tableRows[] = $bufferRow;
+        }
+
+        return array_values(array_filter($tableRows));
+    }
+}
+
+if (!function_exists('vs_event_pdf_print_build_wide_table_rows')) {
+    function vs_event_pdf_print_build_wide_table_rows(array $items): array
+    {
+        $tableRows = [];
+        foreach ($items as $item) {
+            $label = trim((string)($item['label'] ?? ''));
+            $value = trim((string)($item['value'] ?? '-'));
+            if ($label === '' && $value === '') {
+                continue;
+            }
+
+            $tableRows[] = [
+                ['text' => $label, 'type' => 'label'],
+                ['text' => $value, 'type' => 'value', 'colspan' => 3],
+            ];
+        }
+
+        return $tableRows;
+    }
+}
+
+if (!function_exists('vs_event_pdf_print_cell_lines')) {
+    function vs_event_pdf_print_cell_lines(array $cell, float $width, array $metrics): array
+    {
+        $isLabel = (string)($cell['type'] ?? 'value') === 'label';
+        $fontSize = $isLabel ? (float)$metrics['table_label_font'] : (float)$metrics['table_value_font'];
+        $innerWidth = max($width - (((float)$metrics['table_pad_x']) * 2), 10.0);
+
+        return vs_event_pdf_wrap_text((string)($cell['text'] ?? '-'), $fontSize, $innerWidth, $isLabel);
+    }
+}
+
+if (!function_exists('vs_event_pdf_print_measure_table_row')) {
+    function vs_event_pdf_print_measure_table_row(array $cells, array $metrics): float
+    {
+        $colWidths = (array)($metrics['col_widths'] ?? []);
+        $rowHeight = 12.0 * (float)$metrics['scale'];
+        $colIndex = 0;
+
+        foreach ($cells as $cell) {
+            $colspan = max((int)($cell['colspan'] ?? 1), 1);
+            $width = array_sum(array_slice($colWidths, $colIndex, $colspan));
+            $colIndex += $colspan;
+
+            $lines = vs_event_pdf_print_cell_lines($cell, $width, $metrics);
+            $cellHeight = (((float)$metrics['table_pad_y']) * 2)
+                + (count($lines) * (float)$metrics['table_line_height']);
+            if ($cellHeight > $rowHeight) {
+                $rowHeight = $cellHeight;
+            }
+        }
+
+        return $rowHeight;
+    }
+}
+
+if (!function_exists('vs_event_pdf_print_measure_table_section')) {
+    function vs_event_pdf_print_measure_table_section(array $rows, array $metrics): float
+    {
+        if (empty($rows)) {
+            return 0.0;
+        }
+
+        $height = (((float)$metrics['section_padding_y']) * 2)
+            + (float)$metrics['section_title_font']
+            + (float)$metrics['section_title_gap'];
+
+        foreach ($rows as $row) {
+            $height += vs_event_pdf_print_measure_table_row($row, $metrics);
+        }
+
+        return $height;
+    }
+}
+
+if (!function_exists('vs_event_pdf_print_render_table_rows')) {
+    function vs_event_pdf_print_render_table_rows(
+        array &$document,
+        int $pageIndex,
+        float $x,
+        float $topY,
+        array $rows,
+        array $metrics,
+        array $palette
+    ): float {
+        $colWidths = (array)($metrics['col_widths'] ?? []);
+        $cursorY = $topY;
+
+        foreach ($rows as $row) {
+            $rowHeight = vs_event_pdf_print_measure_table_row($row, $metrics);
+            $cursorX = $x;
+            $colIndex = 0;
+
+            foreach ($row as $cell) {
+                $colspan = max((int)($cell['colspan'] ?? 1), 1);
+                $width = array_sum(array_slice($colWidths, $colIndex, $colspan));
+                $colIndex += $colspan;
+
+                $isLabel = (string)($cell['type'] ?? 'value') === 'label';
+                $lines = vs_event_pdf_print_cell_lines($cell, $width, $metrics);
+                $fillColor = $isLabel ? [253, 244, 244] : $palette['white'];
+                $textColor = $isLabel ? [122, 48, 48] : $palette['text'];
+
+                vs_event_pdf_draw_rect(
+                    $document,
+                    $pageIndex,
+                    $cursorX,
+                    $cursorY,
+                    $width,
+                    $rowHeight,
+                    $fillColor,
+                    [242, 226, 226],
+                    0.45
+                );
+
+                vs_event_pdf_draw_multiline_text(
+                    $document,
+                    $pageIndex,
+                    $cursorX + (float)$metrics['table_pad_x'],
+                    $cursorY + (float)$metrics['table_pad_y'],
+                    $lines,
+                    $isLabel ? (float)$metrics['table_label_font'] : (float)$metrics['table_value_font'],
+                    $isLabel,
+                    $textColor,
+                    (float)$metrics['table_line_height']
+                );
+
+                $cursorX += $width;
+            }
+
+            $cursorY += $rowHeight;
+        }
+
+        return $cursorY - $topY;
+    }
+}
+
+if (!function_exists('vs_event_pdf_print_render_table_section')) {
+    function vs_event_pdf_print_render_table_section(
+        array &$document,
+        int $pageIndex,
+        float $x,
+        float $topY,
+        string $title,
+        array $rows,
+        array $metrics,
+        array $palette
+    ): float {
+        if (empty($rows)) {
+            return 0.0;
+        }
+
+        $sectionHeight = vs_event_pdf_print_measure_table_section($rows, $metrics);
+        $contentWidth = (float)($metrics['content_width'] ?? 0.0);
+        $innerX = $x + (float)$metrics['section_padding_x'];
+        $innerY = $topY + (float)$metrics['section_padding_y'];
+
+        vs_event_pdf_draw_rect(
+            $document,
+            $pageIndex,
+            $x,
+            $topY,
+            $contentWidth,
+            $sectionHeight,
+            $palette['white'],
+            $palette['border'],
+            0.8
+        );
+
+        vs_event_pdf_draw_text(
+            $document,
+            $pageIndex,
+            $innerX,
+            $innerY,
+            $title,
+            (float)$metrics['section_title_font'],
+            true,
+            $palette['maroon']
+        );
+
+        $tableTop = $innerY + (float)$metrics['section_title_font'] + (float)$metrics['section_title_gap'];
+        vs_event_pdf_print_render_table_rows(
+            $document,
+            $pageIndex,
+            $innerX,
+            $tableTop,
+            $rows,
+            $metrics,
+            $palette
+        );
+
+        return $sectionHeight;
+    }
+}
+
+if (!function_exists('vs_event_pdf_print_measure_qr_section')) {
+    function vs_event_pdf_print_measure_qr_section(bool $hasQr, array $metrics): float
+    {
+        if (!$hasQr) {
+            return 0.0;
+        }
+
+        return (((float)$metrics['section_padding_y']) * 2)
+            + (float)$metrics['section_title_font']
+            + (float)$metrics['section_title_gap']
+            + (float)$metrics['qr_size']
+            + (8.0 * (float)$metrics['scale']);
+    }
+}
+
+if (!function_exists('vs_event_pdf_print_render_qr_section')) {
+    function vs_event_pdf_print_render_qr_section(
+        array &$document,
+        int $pageIndex,
+        float $x,
+        float $topY,
+        string $qrKey,
+        array $metrics,
+        array $palette
+    ): float {
+        if ($qrKey === '' || !isset($document['images'][$qrKey])) {
+            return 0.0;
+        }
+
+        $sectionHeight = vs_event_pdf_print_measure_qr_section(true, $metrics);
+        $contentWidth = (float)($metrics['content_width'] ?? 0.0);
+        $innerX = $x + (float)$metrics['section_padding_x'];
+        $innerY = $topY + (float)$metrics['section_padding_y'];
+        $qrSize = (float)$metrics['qr_size'];
+        $boxSize = $qrSize + (6.0 * (float)$metrics['scale']);
+        $boxX = $x + (($contentWidth - $boxSize) / 2);
+        $imageX = $x + (($contentWidth - $qrSize) / 2);
+        $imageTop = $innerY + (float)$metrics['section_title_font'] + (float)$metrics['section_title_gap'] + (3.0 * (float)$metrics['scale']);
+
+        vs_event_pdf_draw_rect(
+            $document,
+            $pageIndex,
+            $x,
+            $topY,
+            $contentWidth,
+            $sectionHeight,
+            $palette['white'],
+            $palette['border'],
+            0.8
+        );
+
+        vs_event_pdf_draw_text(
+            $document,
+            $pageIndex,
+            $innerX,
+            $innerY,
+            'Entry QR Ticket',
+            (float)$metrics['section_title_font'],
+            true,
+            $palette['maroon']
+        );
+
+        vs_event_pdf_draw_rect(
+            $document,
+            $pageIndex,
+            $boxX,
+            $imageTop - (3.0 * (float)$metrics['scale']),
+            $boxSize,
+            $boxSize,
+            $palette['white'],
+            [221, 221, 221],
+            0.7
+        );
+
+        vs_event_pdf_draw_image($document, $pageIndex, $qrKey, $imageX, $imageTop, $qrSize, $qrSize);
+
+        return $sectionHeight;
+    }
+}
+
+if (!function_exists('vs_event_pdf_print_measure_proof_block')) {
+    function vs_event_pdf_print_measure_proof_block(bool $hasProof, array $metrics): float
+    {
+        if (!$hasProof) {
+            return 0.0;
+        }
+
+        return max((float)$metrics['proof_max_height'], 12.0 * (float)$metrics['scale']) + (6.0 * (float)$metrics['scale']);
+    }
+}
+
+if (!function_exists('vs_event_pdf_print_render_proof_block')) {
+    function vs_event_pdf_print_render_proof_block(
+        array &$document,
+        int $pageIndex,
+        float $x,
+        float $topY,
+        string $proofKey,
+        array $metrics,
+        array $palette
+    ): float {
+        if ($proofKey === '' || !isset($document['images'][$proofKey])) {
+            return 0.0;
+        }
+
+        $proofData = $document['images'][$proofKey];
+        $maxWidth = (float)$metrics['proof_max_width'];
+        $maxHeight = (float)$metrics['proof_max_height'];
+        $scale = min(
+            $maxWidth / max((float)$proofData['width'], 1.0),
+            $maxHeight / max((float)$proofData['height'], 1.0),
+            1.0
+        );
+        $imageWidth = max((float)$proofData['width'] * $scale, 18.0 * (float)$metrics['scale']);
+        $imageHeight = max((float)$proofData['height'] * $scale, 18.0 * (float)$metrics['scale']);
+        $textTop = $topY + (4.0 * (float)$metrics['scale']);
+        $imageX = $x + (82.0 * (float)$metrics['scale']);
+        $imageTop = $topY;
+        $blockHeight = max($imageHeight, 12.0 * (float)$metrics['scale']) + (6.0 * (float)$metrics['scale']);
+
+        vs_event_pdf_draw_text(
+            $document,
+            $pageIndex,
+            $x,
+            $textTop,
+            'Payment Proof:',
+            7.0 * (float)$metrics['scale'],
+            true,
+            $palette['text']
+        );
+
+        vs_event_pdf_draw_rect(
+            $document,
+            $pageIndex,
+            $imageX - (3.0 * (float)$metrics['scale']),
+            $imageTop,
+            $imageWidth + (6.0 * (float)$metrics['scale']),
+            $imageHeight + (4.0 * (float)$metrics['scale']),
+            $palette['white'],
+            [238, 238, 238],
+            0.5
+        );
+        vs_event_pdf_draw_image($document, $pageIndex, $proofKey, $imageX, $imageTop + (2.0 * (float)$metrics['scale']), $imageWidth, $imageHeight);
+
+        return $blockHeight;
+    }
+}
+
+if (!function_exists('vs_event_pdf_print_state_symbol')) {
+    function vs_event_pdf_print_state_symbol(string $state): string
+    {
+        switch (strtolower(trim($state))) {
+            case 'approved':
+            case 'success':
+                return 'V';
+            case 'pending':
+                return '!';
+            case 'rejected':
+            case 'failed':
+            case 'danger':
+                return 'X';
+            default:
+                return 'i';
+        }
+    }
+}
+
+if (!function_exists('vs_event_pdf_print_measure_total_height')) {
+    function vs_event_pdf_print_measure_total_height(
+        array $summaryRows,
+        array $registrationRows,
+        array $cancellationRows,
+        array $cancellationRequestRows,
+        bool $hasQr,
+        bool $hasProof,
+        array $metrics
+    ): float {
+        $height = (float)$metrics['header_height']
+            + (float)$metrics['section_gap']
+            + (float)$metrics['status_height']
+            + (float)$metrics['section_gap']
+            + (float)$metrics['payment_height']
+            + (float)$metrics['section_gap'];
+
+        if ($hasQr) {
+            $height += vs_event_pdf_print_measure_qr_section(true, $metrics) + (float)$metrics['section_gap'];
+        }
+
+        $height += vs_event_pdf_print_measure_table_section($summaryRows, $metrics) + (float)$metrics['section_gap'];
+
+        if (!empty($registrationRows)) {
+            $height += vs_event_pdf_print_measure_table_section($registrationRows, $metrics) + (float)$metrics['section_gap'];
+        }
+        if (!empty($cancellationRows)) {
+            $height += vs_event_pdf_print_measure_table_section($cancellationRows, $metrics) + (float)$metrics['section_gap'];
+        }
+        if (!empty($cancellationRequestRows)) {
+            $height += vs_event_pdf_print_measure_table_section($cancellationRequestRows, $metrics) + (float)$metrics['section_gap'];
+        }
+        if ($hasProof) {
+            $height += vs_event_pdf_print_measure_proof_block(true, $metrics) + (float)$metrics['section_gap'];
+        }
+
+        return $height + (float)$metrics['footer_height'];
+    }
+}
+
 if (!function_exists('vs_event_build_ticket_pdf_binary')) {
     function vs_event_build_ticket_pdf_binary(array $ticketData, string $qrJpegBinary = ''): string
     {
-        $renderer = vs_event_pdf_create_renderer($ticketData);
-
+        $document = vs_event_pdf_new_document();
         $logoPath = vs_event_pdf_resolve_project_path((string)($ticketData['logo_relative_path'] ?? ''), ['assets/images/logo']);
         $qrPath = vs_event_pdf_resolve_project_path((string)($ticketData['qr_relative_path'] ?? ''), ['uploads/events/qrcodes']);
         $proofPath = vs_event_pdf_resolve_project_path((string)($ticketData['proof_relative_path'] ?? ''), ['uploads/events/payments', 'uploads/events']);
@@ -1718,33 +2251,346 @@ if (!function_exists('vs_event_build_ticket_pdf_binary')) {
         $proofKey = '';
 
         if ($logoPath !== '') {
-            $logoKey = vs_event_pdf_register_image($renderer['document'], vs_event_pdf_prepare_image_from_path($logoPath, 88));
+            $logoKey = vs_event_pdf_register_image($document, vs_event_pdf_prepare_image_from_path($logoPath, 82));
         }
         if ($qrPath !== '') {
-            $qrKey = vs_event_pdf_register_image($renderer['document'], vs_event_pdf_prepare_image_from_path($qrPath, 90));
+            $qrKey = vs_event_pdf_register_image($document, vs_event_pdf_prepare_image_from_path($qrPath, 76));
         }
         if ($proofPath !== '') {
-            $proofKey = vs_event_pdf_register_image($renderer['document'], vs_event_pdf_prepare_image_from_path($proofPath, 84));
+            $proofKey = vs_event_pdf_register_image($document, vs_event_pdf_prepare_image_from_path($proofPath, 72));
         }
 
-        $renderer['context']['images'] = [
-            'logo' => $logoKey,
-            'qr' => $qrKey,
-            'proof' => $proofKey,
-        ];
+        $summaryRows = vs_event_pdf_print_build_summary_table_rows(
+            isset($ticketData['summary_rows']) && is_array($ticketData['summary_rows']) ? $ticketData['summary_rows'] : []
+        );
+        $registrationRows = vs_event_pdf_print_build_wide_table_rows(
+            isset($ticketData['registration_fields']) && is_array($ticketData['registration_fields']) ? $ticketData['registration_fields'] : []
+        );
+        $cancellationRows = vs_event_pdf_print_build_pair_table_rows(
+            isset($ticketData['cancellation_rows']) && is_array($ticketData['cancellation_rows']) ? $ticketData['cancellation_rows'] : []
+        );
+        $cancellationRequestRows = vs_event_pdf_print_build_pair_table_rows(
+            isset($ticketData['cancellation_request_rows']) && is_array($ticketData['cancellation_request_rows']) ? $ticketData['cancellation_request_rows'] : []
+        );
 
-        vs_event_pdf_start_page($renderer);
-        vs_event_pdf_render_status_card($renderer, (string)($ticketData['message_title'] ?? 'Booking Confirmed'), (string)($ticketData['message_body'] ?? ''), (string)($ticketData['status_class'] ?? 'success'));
-        vs_event_pdf_render_status_card($renderer, (string)($ticketData['payment_highlight_title'] ?? 'Payment Verified'), (string)($ticketData['payment_highlight_message'] ?? ''), (string)($ticketData['payment_highlight_state'] ?? 'approved'));
-        vs_event_pdf_render_hero($renderer);
-        vs_event_pdf_render_two_col_section($renderer, 'Booking, Event & Payment Summary', isset($ticketData['summary_rows']) && is_array($ticketData['summary_rows']) ? $ticketData['summary_rows'] : []);
-        vs_event_pdf_render_list_section($renderer, 'Registration Form Data', isset($ticketData['registration_fields']) && is_array($ticketData['registration_fields']) ? $ticketData['registration_fields'] : []);
-        vs_event_pdf_render_list_section($renderer, 'Cancellation / Refund', isset($ticketData['cancellation_rows']) && is_array($ticketData['cancellation_rows']) ? $ticketData['cancellation_rows'] : []);
-        vs_event_pdf_render_list_section($renderer, 'Cancellation Request', isset($ticketData['cancellation_request_rows']) && is_array($ticketData['cancellation_request_rows']) ? $ticketData['cancellation_request_rows'] : []);
-        vs_event_pdf_render_image_section($renderer, 'Payment Proof', $proofKey, 'Stored payment proof linked with this booking.');
-        vs_event_pdf_render_footer_note($renderer, isset($ticketData['footer_lines']) && is_array($ticketData['footer_lines']) ? $ticketData['footer_lines'] : []);
+        if (empty($summaryRows)) {
+            return '';
+        }
 
-        return vs_event_pdf_compile_document($renderer['document']);
+        $baseContentWidth = 559.0;
+        $baseMetrics = vs_event_pdf_print_metrics(1.0, $baseContentWidth);
+        $totalHeight = vs_event_pdf_print_measure_total_height(
+            $summaryRows,
+            $registrationRows,
+            $cancellationRows,
+            $cancellationRequestRows,
+            $qrKey !== '',
+            $proofKey !== '',
+            $baseMetrics
+        );
+
+        $availableHeight = 806.0;
+        $scale = min(1.0, $availableHeight / max($totalHeight, 1.0));
+        if ($scale <= 0) {
+            $scale = 1.0;
+        }
+
+        $contentWidth = $baseContentWidth * $scale;
+        $metrics = vs_event_pdf_print_metrics($scale, $contentWidth);
+        $palette = vs_event_pdf_color_palette();
+        $pageIndex = vs_event_pdf_add_page($document);
+        $x = (595.0 - $contentWidth) / 2;
+        $y = 18.0;
+
+        $logoAreaWidth = 220.0 * $scale;
+        if ($logoKey !== '' && isset($document['images'][$logoKey])) {
+            $logoData = $document['images'][$logoKey];
+            $maxLogoWidth = 188.0 * $scale;
+            $maxLogoHeight = 50.0 * $scale;
+            $logoScale = min(
+                $maxLogoWidth / max((float)$logoData['width'], 1.0),
+                $maxLogoHeight / max((float)$logoData['height'], 1.0),
+                1.0
+            );
+            $logoWidth = (float)$logoData['width'] * $logoScale;
+            $logoHeight = (float)$logoData['height'] * $logoScale;
+            vs_event_pdf_draw_image($document, $pageIndex, $logoKey, $x, $y + (2.0 * $scale), $logoWidth, $logoHeight);
+        } else {
+            vs_event_pdf_draw_text(
+                $document,
+                $pageIndex,
+                $x,
+                $y + (8.0 * $scale),
+                (string)($ticketData['business_name'] ?? 'Vishnusudarshana Dharmik Sanskar Kendra'),
+                12.0 * $scale,
+                true,
+                $palette['maroon']
+            );
+        }
+
+        $rightX = $x + $contentWidth - (220.0 * $scale);
+        $rightWidth = 220.0 * $scale;
+        vs_event_pdf_draw_text(
+            $document,
+            $pageIndex,
+            $rightX,
+            $y + (3.0 * $scale),
+            'Event Booking Confirmation',
+            8.2 * $scale,
+            true,
+            $palette['maroon'],
+            'right',
+            $rightWidth
+        );
+        vs_event_pdf_draw_text(
+            $document,
+            $pageIndex,
+            $rightX,
+            $y + (14.0 * $scale),
+            'Booking Ref: ' . (string)($ticketData['booking_reference'] ?? ''),
+            7.2 * $scale,
+            false,
+            $palette['maroon'],
+            'right',
+            $rightWidth
+        );
+        vs_event_pdf_draw_text(
+            $document,
+            $pageIndex,
+            $rightX,
+            $y + (30.0 * $scale),
+            'Contact: ' . (string)($ticketData['contact_number_display'] ?? 'Not Available'),
+            6.5 * $scale,
+            false,
+            $palette['text'],
+            'right',
+            $rightWidth
+        );
+        vs_event_pdf_draw_text(
+            $document,
+            $pageIndex,
+            $rightX,
+            $y + (40.0 * $scale),
+            'Printed: ' . (string)($ticketData['generated_at'] ?? ''),
+            6.5 * $scale,
+            false,
+            $palette['text'],
+            'right',
+            $rightWidth
+        );
+        vs_event_pdf_draw_rect(
+            $document,
+            $pageIndex,
+            $x,
+            $y + (float)$metrics['header_height'] - (1.6 * $scale),
+            $contentWidth,
+            1.6 * $scale,
+            $palette['maroon'],
+            $palette['maroon'],
+            0.2
+        );
+
+        $y += (float)$metrics['header_height'] + (float)$metrics['section_gap'];
+
+        $statusColors = vs_event_pdf_card_colors((string)($ticketData['status_class'] ?? 'success'));
+        vs_event_pdf_draw_rect(
+            $document,
+            $pageIndex,
+            $x,
+            $y,
+            $contentWidth,
+            (float)$metrics['status_height'],
+            $statusColors['fill'],
+            $statusColors['stroke'],
+            0.8
+        );
+        vs_event_pdf_draw_text(
+            $document,
+            $pageIndex,
+            $x + (8.0 * $scale),
+            $y + (4.0 * $scale),
+            (string)($ticketData['message_title'] ?? 'Booking Confirmed'),
+            7.2 * $scale,
+            true,
+            $palette['text']
+        );
+        vs_event_pdf_draw_text(
+            $document,
+            $pageIndex,
+            $x + (8.0 * $scale),
+            $y + (13.0 * $scale),
+            (string)($ticketData['message_body'] ?? ''),
+            6.2 * $scale,
+            false,
+            $palette['text']
+        );
+
+        $y += (float)$metrics['status_height'] + (float)$metrics['section_gap'];
+
+        $paymentColors = vs_event_pdf_card_colors((string)($ticketData['payment_highlight_state'] ?? 'approved'));
+        $iconSize = 14.0 * $scale;
+        $iconX = $x + (8.0 * $scale);
+        $iconY = $y + (6.0 * $scale);
+        vs_event_pdf_draw_rect(
+            $document,
+            $pageIndex,
+            $x,
+            $y,
+            $contentWidth,
+            (float)$metrics['payment_height'],
+            $paymentColors['fill'],
+            $paymentColors['stroke'],
+            0.8
+        );
+        vs_event_pdf_draw_rect(
+            $document,
+            $pageIndex,
+            $iconX,
+            $iconY,
+            $iconSize,
+            $iconSize,
+            $paymentColors['text'],
+            $paymentColors['text'],
+            0.5
+        );
+        vs_event_pdf_draw_text(
+            $document,
+            $pageIndex,
+            $iconX,
+            $iconY + (2.0 * $scale),
+            vs_event_pdf_print_state_symbol((string)($ticketData['payment_highlight_state'] ?? 'approved')),
+            7.0 * $scale,
+            true,
+            $palette['white'],
+            'center',
+            $iconSize
+        );
+        $paymentTextX = $iconX + $iconSize + (8.0 * $scale);
+        $paymentTextWidth = $contentWidth - ($paymentTextX - $x) - (8.0 * $scale);
+        vs_event_pdf_draw_text(
+            $document,
+            $pageIndex,
+            $paymentTextX,
+            $y + (4.0 * $scale),
+            (string)($ticketData['payment_highlight_title'] ?? 'Payment Verified'),
+            6.8 * $scale,
+            true,
+            $palette['maroon_dark']
+        );
+        $paymentMessageLines = vs_event_pdf_wrap_text(
+            (string)($ticketData['payment_highlight_message'] ?? ''),
+            6.0 * $scale,
+            $paymentTextWidth,
+            false
+        );
+        vs_event_pdf_draw_multiline_text(
+            $document,
+            $pageIndex,
+            $paymentTextX,
+            $y + (12.0 * $scale),
+            array_slice($paymentMessageLines, 0, 2),
+            6.0 * $scale,
+            false,
+            $palette['muted'],
+            6.8 * $scale
+        );
+
+        $y += (float)$metrics['payment_height'] + (float)$metrics['section_gap'];
+
+        if ($qrKey !== '') {
+            $y += vs_event_pdf_print_render_qr_section($document, $pageIndex, $x, $y, $qrKey, $metrics, $palette);
+            $y += (float)$metrics['section_gap'];
+        }
+
+        $y += vs_event_pdf_print_render_table_section(
+            $document,
+            $pageIndex,
+            $x,
+            $y,
+            'Booking, Event & Payment Summary',
+            $summaryRows,
+            $metrics,
+            $palette
+        );
+        $y += (float)$metrics['section_gap'];
+
+        if (!empty($registrationRows)) {
+            $y += vs_event_pdf_print_render_table_section(
+                $document,
+                $pageIndex,
+                $x,
+                $y,
+                'Registration Form Data',
+                $registrationRows,
+                $metrics,
+                $palette
+            );
+            $y += (float)$metrics['section_gap'];
+        }
+
+        if (!empty($cancellationRows)) {
+            $y += vs_event_pdf_print_render_table_section(
+                $document,
+                $pageIndex,
+                $x,
+                $y,
+                'Cancellation / Refund',
+                $cancellationRows,
+                $metrics,
+                $palette
+            );
+            $y += (float)$metrics['section_gap'];
+        }
+
+        if (!empty($cancellationRequestRows)) {
+            $y += vs_event_pdf_print_render_table_section(
+                $document,
+                $pageIndex,
+                $x,
+                $y,
+                'Cancellation Request',
+                $cancellationRequestRows,
+                $metrics,
+                $palette
+            );
+            $y += (float)$metrics['section_gap'];
+        }
+
+        if ($proofKey !== '') {
+            $y += vs_event_pdf_print_render_proof_block($document, $pageIndex, $x, $y, $proofKey, $metrics, $palette);
+            $y += (float)$metrics['section_gap'];
+        }
+
+        $footerLineTop = $y;
+        vs_event_pdf_draw_rect(
+            $document,
+            $pageIndex,
+            $x,
+            $footerLineTop,
+            $contentWidth,
+            0.7 * $scale,
+            [184, 184, 184],
+            [184, 184, 184],
+            0.2
+        );
+        $footerText = 'This is a system-generated event booking acknowledgment.';
+        if (!empty($ticketData['footer_lines']) && is_array($ticketData['footer_lines'])) {
+            $footerText = (string)reset($ticketData['footer_lines']);
+        }
+        vs_event_pdf_draw_text(
+            $document,
+            $pageIndex,
+            $x,
+            $footerLineTop + (3.0 * $scale),
+            $footerText,
+            (float)$metrics['footer_font'],
+            false,
+            [85, 85, 85],
+            'center',
+            $contentWidth
+        );
+
+        return vs_event_pdf_compile_document($document);
     }
 }
 
