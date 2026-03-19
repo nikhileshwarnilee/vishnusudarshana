@@ -3514,6 +3514,69 @@ if (!function_exists('vs_event_ensure_registration_ticket_pdf')) {
     }
 }
 
+if (!function_exists('vs_event_build_ticket_media_url')) {
+    function vs_event_build_ticket_media_url(int $registrationId, string $bookingReference): string
+    {
+        if ($registrationId <= 0) {
+            return '';
+        }
+
+        $bookingReference = trim($bookingReference);
+        if ($bookingReference === '') {
+            return '';
+        }
+
+        require_once __DIR__ . '/share.php';
+
+        $query = http_build_query([
+            'registration_id' => $registrationId,
+            'ref' => $bookingReference,
+            'mode' => 'media',
+        ]);
+
+        $configuredBaseUrl = trim((string)(getenv('APP_URL') ?: getenv('SITE_URL') ?: ''));
+        if ($configuredBaseUrl !== '') {
+            return rtrim($configuredBaseUrl, '/') . '/event-ticket-download.php?' . $query;
+        }
+
+        $host = trim((string)($_SERVER['HTTP_HOST'] ?? $_SERVER['SERVER_NAME'] ?? ''));
+        $isLocalHost = ($host === '');
+        if (!$isLocalHost && function_exists('vs_is_local_host')) {
+            $isLocalHost = vs_is_local_host($host);
+        } elseif (!$isLocalHost) {
+            $hostLower = strtolower($host);
+            $isLocalHost = $hostLower === 'localhost'
+                || $hostLower === '127.0.0.1'
+                || $hostLower === '::1'
+                || strpos($hostLower, '127.') === 0
+                || substr($hostLower, -6) === '.local';
+        }
+
+        if (!$isLocalHost && $host !== '') {
+            $scheme = 'https';
+            if (function_exists('vs_request_scheme')) {
+                $scheme = vs_request_scheme();
+            } elseif (!empty($_SERVER['HTTPS']) && strtolower((string)$_SERVER['HTTPS']) !== 'off' && (string)$_SERVER['HTTPS'] !== '0') {
+                $scheme = 'https';
+            } else {
+                $scheme = 'http';
+            }
+
+            $prefix = '';
+            if (function_exists('vs_get_base_url_prefix')) {
+                $prefix = rtrim((string)vs_get_base_url_prefix(), '/');
+                if ($prefix === '/' || $prefix === '.') {
+                    $prefix = '';
+                }
+            }
+
+            return $scheme . '://' . $host . $prefix . '/event-ticket-download.php?' . $query;
+        }
+
+        return 'https://vishnusudarshana.com/event-ticket-download.php?' . $query;
+    }
+}
+
 if (!function_exists('vs_event_extract_booking_reference')) {
     function vs_event_extract_booking_reference(string $input): string
     {
@@ -3673,11 +3736,17 @@ if (!function_exists('vs_event_send_whatsapp_notice')) {
         }
 
         if ($trigger === 'ticket_delivery') {
+            $mediaFilenameBase = preg_replace('/[^A-Za-z0-9_-]/', '-', $bookingReference ?: 'event-ticket');
+            if (!is_string($mediaFilenameBase) || trim($mediaFilenameBase) === '') {
+                $mediaFilenameBase = 'event-ticket';
+            }
+
             $payload = [
                 'name' => $name,
                 'event_name' => $eventName,
                 'booking_reference' => $bookingReference,
                 'event_date' => $eventDate,
+                'media_filename' => $mediaFilenameBase . '.pdf',
             ];
 
             if ($registrationId > 0) {
@@ -3708,6 +3777,10 @@ if (!function_exists('vs_event_send_whatsapp_notice')) {
                     ]);
                     if ($ticketPdfPath !== '') {
                         $payload['file_path'] = $ticketPdfPath;
+                        $ticketMediaUrl = vs_event_build_ticket_media_url($registrationId, $bookingReference);
+                        if ($ticketMediaUrl !== '') {
+                            $payload['public_media_url'] = $ticketMediaUrl;
+                        }
                     }
                 }
             }
