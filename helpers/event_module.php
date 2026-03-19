@@ -3360,6 +3360,8 @@ if (!function_exists('vs_event_ensure_registration_qr')) {
     }
 }
 
+require_once __DIR__ . '/event_ticket_pdf.php';
+
 if (!function_exists('vs_event_fetch_remote_binary')) {
     function vs_event_fetch_remote_binary(string $url, int $timeoutSeconds = 15): string
     {
