@@ -6,8 +6,6 @@ vs_event_ensure_tables($pdo);
 
 $registrationId = isset($_GET['registration_id']) ? (int)$_GET['registration_id'] : 0;
 $bookingReference = trim((string)($_GET['ref'] ?? ''));
-$mode = strtolower(trim((string)($_GET['mode'] ?? 'download')));
-$isMediaRequest = ($mode === 'media');
 
 if ($registrationId <= 0 || $bookingReference === '') {
     http_response_code(404);
@@ -59,12 +57,8 @@ if (!is_string($safeReference) || $safeReference === '') {
 
 header('Content-Type: application/pdf');
 header('Content-Length: ' . (string)filesize($fullPath));
-header('Content-Disposition: ' . ($isMediaRequest ? 'inline' : 'attachment') . '; filename="' . $safeReference . '.pdf"');
-header('Cache-Control: ' . ($isMediaRequest ? 'public' : 'private') . ', max-age=300');
+header('Content-Disposition: attachment; filename="' . $safeReference . '.pdf"');
+header('Cache-Control: private, max-age=300');
 header('X-Content-Type-Options: nosniff');
-header('Accept-Ranges: bytes');
-if (strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) === 'HEAD') {
-    exit;
-}
 readfile($fullPath);
 exit;

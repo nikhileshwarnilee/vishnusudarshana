@@ -52,7 +52,15 @@ foreach ($packages as $package) {
 $selectedPackageId = (int)($_GET['package'] ?? $_POST['package_id'] ?? 0);
 $errors = [];
 $success = '';
-$old = ['name' => '', 'phone' => '', 'persons' => '1', 'package_id' => $selectedPackageId > 0 ? (string)$selectedPackageId : '', 'event_date_id' => (string)$selectedDateId];
+$old = [
+    'name' => '',
+    'phone' => '',
+    'country_code' => '+91',
+    'custom_country_code' => '',
+    'persons' => '1',
+    'package_id' => $selectedPackageId > 0 ? (string)$selectedPackageId : '',
+    'event_date_id' => (string)$selectedDateId
+];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $selectedPackageId = (int)($_POST['package_id'] ?? 0);
@@ -70,19 +78,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     $name = trim((string)($_POST['name'] ?? ''));
     $phoneRaw = trim((string)($_POST['phone'] ?? ''));
-    $phone = preg_replace('/[^0-9]/', '', $phoneRaw);
-    if (strlen($phone) === 10) { $phone = '91' . $phone; }
+    $countryContext = vs_event_resolve_country_context(
+        (string)($_POST['country_code'] ?? '+91'),
+        (string)($_POST['custom_country_code'] ?? '')
+    );
+    $countryCode = (string)($countryContext['country_code'] ?? '+91');
+    $customCountryCode = (string)($countryContext['custom_country_code'] ?? '');
+    $phone = vs_event_normalize_phone($phoneRaw, $countryCode, $customCountryCode);
     $persons = (int)($_POST['persons'] ?? 1);
     if ($persons <= 0) { $persons = 1; }
 
     $old['name'] = $name;
     $old['phone'] = $phoneRaw;
+    $old['country_code'] = $countryCode;
+    $old['custom_country_code'] = $customCountryCode;
     $old['persons'] = (string)$persons;
     $old['package_id'] = (string)$selectedPackageId;
     $old['event_date_id'] = (string)$selectedDateId;
 
     if ($name === '') { $errors[] = 'Name is required.'; }
-    if ($phone === '' || strlen($phone) < 10) { $errors[] = 'A valid phone number is required.'; }
+    if ($countryCode === 'other' && $customCountryCode === '') { $errors[] = 'Please enter a valid country code.'; }
+    if ($phone === '') { $errors[] = 'A valid phone number is required.'; }
     if (!isset($packageMap[$selectedPackageId])) { $errors[] = 'Please select a valid package.'; }
     if ($eventType === 'multi_select_dates' && !empty($eventDates)) {
         $validDate = false;
@@ -106,7 +122,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $phone,
                 $persons,
                 [],
-                $forceWaitlist
+                $forceWaitlist,
+                $countryCode,
+                $customCountryCode
             );
             $pkg = $packageMap[$selectedPackageId];
             $bookingReference = trim((string)($waitlistResult['booking_reference'] ?? ''));
@@ -120,7 +138,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $success .= ' Current waitlist position: #' . $waitlistPosition . '.';
             }
 
-            $old = ['name' => '', 'phone' => '', 'persons' => '1', 'package_id' => (string)$selectedPackageId, 'event_date_id' => (string)$selectedDateId];
+            $old = [
+                'name' => '',
+                'phone' => '',
+                'country_code' => '+91',
+                'custom_country_code' => '',
+                'persons' => '1',
+                'package_id' => (string)$selectedPackageId,
+                'event_date_id' => (string)$selectedDateId
+            ];
         } catch (Throwable $e) {
             $message = trim((string)$e->getMessage());
             if ($message !== '' && stripos($message, 'Seats are available') !== false) {
@@ -185,7 +211,25 @@ require_once 'header.php';
                         </select>
                     </div>
                     <div class="form-group"><label>Full Name</label><input type="text" name="name" value="<?php echo htmlspecialchars((string)$old['name']); ?>" required></div>
-                    <div class="form-group"><label>Phone</label><input type="text" name="phone" value="<?php echo htmlspecialchars((string)$old['phone']); ?>" required></div>
+                    <div class="form-group">
+                        <label>Phone</label>
+                        <div class="phone-input-row">
+                            <select name="country_code" id="country_code_select" class="phone-country-select">
+                                <option value="+91" <?php echo ((string)$old['country_code'] === '+91') ? 'selected' : ''; ?>>+91 India</option>
+                                <option value="other" <?php echo ((string)$old['country_code'] === 'other') ? 'selected' : ''; ?>>Other</option>
+                            </select>
+                            <input
+                                type="text"
+                                name="custom_country_code"
+                                id="custom_country_code_input"
+                                class="phone-country-custom"
+                                placeholder="+__"
+                                value="<?php echo htmlspecialchars((string)$old['custom_country_code']); ?>"
+                                pattern="^\+\d{1,4}$"
+                            >
+                            <input type="text" name="phone" value="<?php echo htmlspecialchars((string)$old['phone']); ?>" required>
+                        </div>
+                    </div>
                     <div class="form-group"><label>Persons</label><input type="number" name="persons" min="1" max="25" value="<?php echo htmlspecialchars((string)$old['persons']); ?>" required></div>
                 </div>
                 <button type="submit" class="submit-btn">Join Waitlist</button>
@@ -193,8 +237,29 @@ require_once 'header.php';
         </div>
     </section>
 </main>
+<script>
+(function () {
+    const countrySelect = document.getElementById('country_code_select');
+    const customCountryInput = document.getElementById('custom_country_code_input');
+    if (!countrySelect || !customCountryInput) {
+        return;
+    }
+
+    function syncCountryCodeInput() {
+        const showCustom = countrySelect.value === 'other';
+        customCountryInput.style.display = showCustom ? 'block' : 'none';
+        customCountryInput.required = showCustom;
+        if (!showCustom) {
+            customCountryInput.value = '';
+        }
+    }
+
+    syncCountryCodeInput();
+    countrySelect.addEventListener('change', syncCountryCodeInput);
+})();
+</script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Marcellus&display=swap');
-html,body{font-family:'Marcellus',serif!important}.event-waitlist-main{min-height:100vh;padding:1.5rem 0 5rem}.event-waitlist-wrap{max-width:860px;margin:0 auto;padding:0 14px}.back-link{display:inline-block;color:#800000;text-decoration:none;font-weight:700;margin-bottom:10px}.card{background:#fff;border:1px solid #ecd3d3;border-radius:14px;box-shadow:0 4px 14px rgba(128,0,0,.08);padding:14px}h1{margin:0 0 8px;color:#800000;font-size:1.6rem}.small{margin:4px 0;color:#555;font-size:.9rem}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-top:10px}.form-group{display:flex;flex-direction:column;gap:6px}label{color:#800000;font-weight:700;font-size:.92rem}input,select{width:100%;box-sizing:border-box;border:1px solid #e0bebe;border-radius:8px;padding:9px 10px;font-size:.94rem;background:#fff}.notice{margin:10px 0;padding:10px 12px;border-radius:8px;font-weight:600}.notice.ok{background:#e7f7ed;color:#1a8917}.notice.err{background:#ffeaea;color:#b00020}.submit-btn{margin-top:14px;width:100%;border:none;border-radius:8px;background:#0b7285;color:#fff;font-weight:700;font-size:1rem;padding:11px 12px;cursor:pointer}
+html,body{font-family:'Marcellus',serif!important}.event-waitlist-main{min-height:100vh;padding:1.5rem 0 5rem}.event-waitlist-wrap{max-width:860px;margin:0 auto;padding:0 14px}.back-link{display:inline-block;color:#800000;text-decoration:none;font-weight:700;margin-bottom:10px}.card{background:#fff;border:1px solid #ecd3d3;border-radius:14px;box-shadow:0 4px 14px rgba(128,0,0,.08);padding:14px}h1{margin:0 0 8px;color:#800000;font-size:1.6rem}.small{margin:4px 0;color:#555;font-size:.9rem}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-top:10px}.form-group{display:flex;flex-direction:column;gap:6px}label{color:#800000;font-weight:700;font-size:.92rem}input,select{width:100%;box-sizing:border-box;border:1px solid #e0bebe;border-radius:8px;padding:9px 10px;font-size:.94rem;background:#fff}.notice{margin:10px 0;padding:10px 12px;border-radius:8px;font-weight:600}.notice.ok{background:#e7f7ed;color:#1a8917}.notice.err{background:#ffeaea;color:#b00020}.submit-btn{margin-top:14px;width:100%;border:none;border-radius:8px;background:#0b7285;color:#fff;font-weight:700;font-size:1rem;padding:11px 12px;cursor:pointer}.phone-input-row{display:flex;gap:8px;align-items:center}.phone-country-select{width:140px;flex:0 0 140px}.phone-country-custom{width:88px;flex:0 0 88px;display:none}
 </style>
 <?php require_once 'footer.php'; ?>

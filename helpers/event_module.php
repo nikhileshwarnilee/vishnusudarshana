@@ -1678,18 +1678,92 @@ if (!function_exists('vs_event_build_registration_payment_context')) {
 }
 
 if (!function_exists('vs_event_normalize_phone')) {
-    function vs_event_normalize_phone(string $phone): string
+    function vs_event_normalize_phone(string $phone, ?string $countryCode = null, ?string $customCountryCode = null): string
     {
-        $digits = preg_replace('/[^0-9]/', '', $phone);
+        $rawPhone = trim($phone);
+        if ($rawPhone === '') {
+            return '';
+        }
+
+        $countryCodeRaw = trim((string)$countryCode);
+        $customCountryCodeRaw = trim((string)$customCountryCode);
+        if (strtolower($countryCodeRaw) === 'other') {
+            $countryCodeRaw = $customCountryCodeRaw;
+        }
+
+        $countryCodeDigits = preg_replace('/[^0-9]/', '', $countryCodeRaw);
+        $countryCodeDigits = is_string($countryCodeDigits) ? trim($countryCodeDigits) : '';
+
+        $defaultCountryCodeDigits = defined('WHATSAPP_COUNTRY_CODE') ? preg_replace('/[^0-9]/', '', (string)WHATSAPP_COUNTRY_CODE) : '91';
+        $defaultCountryCodeDigits = is_string($defaultCountryCodeDigits) ? trim($defaultCountryCodeDigits) : '';
+        if ($defaultCountryCodeDigits === '') {
+            $defaultCountryCodeDigits = '91';
+        }
+
+        $hasExplicitIntlPrefix = (strpos($rawPhone, '+') === 0 || strpos($rawPhone, '00') === 0);
+        if (strpos($rawPhone, '00') === 0) {
+            $rawPhone = '+' . substr($rawPhone, 2);
+        }
+
+        $digits = preg_replace('/[^0-9]/', '', $rawPhone);
+        $digits = is_string($digits) ? trim($digits) : '';
+        $digits = ltrim($digits, '0');
         if ($digits === '') {
             return '';
         }
 
+        if (
+            $countryCodeDigits !== ''
+            && !$hasExplicitIntlPrefix
+            && strpos($digits, $countryCodeDigits) !== 0
+            && strlen($digits) >= 6
+            && strlen($digits) <= 12
+        ) {
+            $digits = $countryCodeDigits . $digits;
+        }
+
         if (strlen($digits) === 10) {
-            return '91' . $digits;
+            $digits = $defaultCountryCodeDigits . $digits;
+        }
+
+        if (!preg_match('/^\d{8,15}$/', $digits)) {
+            return '';
         }
 
         return $digits;
+    }
+}
+
+if (!function_exists('vs_event_resolve_country_context')) {
+    function vs_event_resolve_country_context(?string $countryCode = null, ?string $customCountryCode = null): array
+    {
+        $countryCodeRaw = trim((string)$countryCode);
+        $customCountryCodeRaw = trim((string)$customCountryCode);
+
+        if ($countryCodeRaw === '') {
+            $countryCodeRaw = '+91';
+        }
+
+        if (strtolower($countryCodeRaw) === 'other') {
+            $customDigits = preg_replace('/[^0-9]/', '', $customCountryCodeRaw);
+            $customDigits = is_string($customDigits) ? trim($customDigits) : '';
+
+            return [
+                'country_code' => 'other',
+                'custom_country_code' => $customDigits !== '' ? ('+' . $customDigits) : '',
+            ];
+        }
+
+        $countryDigits = preg_replace('/[^0-9]/', '', $countryCodeRaw);
+        $countryDigits = is_string($countryDigits) ? trim($countryDigits) : '';
+        if ($countryDigits === '') {
+            $countryDigits = '91';
+        }
+
+        return [
+            'country_code' => '+' . $countryDigits,
+            'custom_country_code' => '',
+        ];
     }
 }
 
@@ -1739,7 +1813,9 @@ if (!function_exists('vs_event_create_waitlisted_registration')) {
         string $phone,
         int $persons = 1,
         array $dynamicValues = [],
-        bool $forceWaitlist = false
+        bool $forceWaitlist = false,
+        ?string $countryCode = null,
+        ?string $customCountryCode = null
     ): array
     {
         $eventId = max($eventId, 0);
@@ -1906,6 +1982,11 @@ if (!function_exists('vs_event_create_waitlisted_registration')) {
             $insertDataStmt = $pdo->prepare("INSERT INTO event_registration_data (registration_id, field_name, value) VALUES (?, ?, ?)");
             $insertDataStmt->execute([$registrationId, 'Name', $name]);
             $insertDataStmt->execute([$registrationId, 'Phone', $phone]);
+            $resolvedCountryContext = vs_event_resolve_country_context($countryCode, $customCountryCode);
+            $insertDataStmt->execute([$registrationId, 'Country Code', (string)($resolvedCountryContext['country_code'] ?? '+91')]);
+            if ((string)($resolvedCountryContext['custom_country_code'] ?? '') !== '') {
+                $insertDataStmt->execute([$registrationId, 'Custom Country Code', (string)$resolvedCountryContext['custom_country_code']]);
+            }
             $insertDataStmt->execute([$registrationId, 'Persons', (string)$persons]);
             $insertDataStmt->execute([$registrationId, 'Booking Reference', $bookingReference]);
             $insertDataStmt->execute([$registrationId, 'Source', 'Waitlist']);
@@ -1925,11 +2006,37 @@ if (!function_exists('vs_event_create_waitlisted_registration')) {
 
             $pdo->commit();
 
-            return [
+            $waitlistPosition = vs_event_get_waitlist_position($pdo, $registrationId);
+            $result = [
                 'registration_id' => $registrationId,
                 'booking_reference' => $bookingReference,
-                'waitlist_position' => vs_event_get_waitlist_position($pdo, $registrationId),
+                'waitlist_position' => $waitlistPosition,
             ];
+
+            if (vs_event_is_whatsapp_enabled($pdo, $eventId)) {
+                $eventDateDisplay = vs_event_get_registration_date_display(
+                    $pdo,
+                    [
+                        'event_id' => $eventId,
+                        'event_type' => $eventType,
+                        'event_date_id' => $eventDateId,
+                        'selected_event_date' => (string)($dateRow['event_date'] ?? ''),
+                        'event_date' => (string)($packageRow['event_date'] ?? ''),
+                    ],
+                    (string)($dateRow['event_date'] ?? $packageRow['event_date'] ?? '')
+                );
+
+                $result['whatsapp_result'] = vs_event_send_whatsapp_notice('waitlist_joined', $phone, [
+                    'name' => $name,
+                    'event_name' => (string)($packageRow['event_title'] ?? 'Event'),
+                    'package_name' => (string)($packageRow['package_name'] ?? 'Package'),
+                    'event_date' => $eventDateDisplay,
+                    'booking_reference' => $bookingReference,
+                    'waitlist_position' => $waitlistPosition > 0 ? ('#' . $waitlistPosition) : 'Pending',
+                ]);
+            }
+
+            return $result;
         } catch (Throwable $e) {
             if ($pdo->inTransaction()) {
                 $pdo->rollBack();
@@ -1973,6 +2080,7 @@ if (!function_exists('vs_event_confirm_waitlisted_registration')) {
                     r.package_upi_id_snapshot,
                     r.package_upi_qr_snapshot,
                     p.id AS package_row_id,
+                    p.package_name,
                     p.status AS package_status,
                     p.is_paid,
                     p.payment_methods,
@@ -1980,11 +2088,15 @@ if (!function_exists('vs_event_confirm_waitlisted_registration')) {
                     p.upi_qr_image,
                     p.seat_limit AS package_seat_limit,
                     p.waitlist_confirmation_mode,
+                    e.title AS event_title,
+                    e.event_date AS event_date,
                     e.status AS event_status,
-                    e.event_type
+                    e.event_type,
+                    COALESCE(ed.event_date, e.event_date) AS selected_event_date
                 FROM event_registrations r
                 INNER JOIN event_packages p ON p.id = r.package_id
                 INNER JOIN events e ON e.id = r.event_id
+                LEFT JOIN event_dates ed ON ed.id = r.event_date_id
                 WHERE r.id = ?
                 LIMIT 1
                 FOR UPDATE");
@@ -2125,8 +2237,40 @@ if (!function_exists('vs_event_confirm_waitlisted_registration')) {
                 $pdo->prepare("DELETE FROM event_payments WHERE registration_id = ? AND status = 'Created'")->execute([$registrationId]);
             }
 
+            $notification = [];
+            if (vs_event_is_whatsapp_enabled($pdo, $eventId)) {
+                $eventDateDisplay = vs_event_get_registration_date_display(
+                    $pdo,
+                    [
+                        'event_id' => $eventId,
+                        'event_type' => (string)($row['event_type'] ?? ''),
+                        'event_date_id' => $eventDateId,
+                        'selected_event_date' => (string)($row['selected_event_date'] ?? ''),
+                        'event_date' => (string)($row['event_date'] ?? ''),
+                    ],
+                    (string)($row['selected_event_date'] ?? $row['event_date'] ?? '')
+                );
+
+                $notification = [
+                    'trigger' => $isPaidPackage ? 'waitlist_confirmed' : 'waitlist_confirmed_free',
+                    'phone' => (string)($row['phone'] ?? ''),
+                    'context' => [
+                        'name' => (string)($row['name'] ?? 'Devotee'),
+                        'event_name' => (string)($row['event_title'] ?? 'Event'),
+                        'package_name' => (string)($row['package_name'] ?? 'Package'),
+                        'event_date' => $eventDateDisplay,
+                        'booking_reference' => (string)($row['booking_reference'] ?? ''),
+                        'registration_id' => $registrationId,
+                        'pdo' => $pdo,
+                    ],
+                ];
+            }
+
             if (!$useExistingTransaction) {
                 $pdo->commit();
+                if (!empty($notification)) {
+                    vs_event_dispatch_whatsapp_notifications([$notification]);
+                }
             }
 
             return [
@@ -2134,6 +2278,7 @@ if (!function_exists('vs_event_confirm_waitlisted_registration')) {
                 'booking_reference' => (string)($row['booking_reference'] ?? ''),
                 'payment_status' => $paymentStatus,
                 'verification_status' => $verificationStatus,
+                'whatsapp_notification' => $notification,
             ];
         } catch (Throwable $e) {
             if (!$useExistingTransaction && $pdo->inTransaction()) {
@@ -2163,7 +2308,7 @@ if (!function_exists('vs_event_promote_waitlisted_registrations')) {
         $availableSeats = max($availableSeats, 0);
 
         if ($eventId <= 0 || $packageId <= 0 || $availableSeats <= 0) {
-            return ['mode' => 'manual', 'promoted_count' => 0, 'promoted_registration_ids' => []];
+            return ['mode' => 'manual', 'promoted_count' => 0, 'promoted_registration_ids' => [], 'whatsapp_notifications' => []];
         }
 
         try {
@@ -2183,7 +2328,7 @@ if (!function_exists('vs_event_promote_waitlisted_registrations')) {
                 if (!$useExistingTransaction) {
                     $pdo->commit();
                 }
-                return ['mode' => 'manual', 'promoted_count' => 0, 'promoted_registration_ids' => []];
+                return ['mode' => 'manual', 'promoted_count' => 0, 'promoted_registration_ids' => [], 'whatsapp_notifications' => []];
             }
 
             $mode = strtolower(trim((string)($packageRow['waitlist_confirmation_mode'] ?? 'auto')));
@@ -2194,7 +2339,7 @@ if (!function_exists('vs_event_promote_waitlisted_registrations')) {
                 if (!$useExistingTransaction) {
                     $pdo->commit();
                 }
-                return ['mode' => 'manual', 'promoted_count' => 0, 'promoted_registration_ids' => []];
+                return ['mode' => 'manual', 'promoted_count' => 0, 'promoted_registration_ids' => [], 'whatsapp_notifications' => []];
             }
 
             $waitStmt = $pdo->prepare("SELECT id, persons
@@ -2209,6 +2354,7 @@ if (!function_exists('vs_event_promote_waitlisted_registrations')) {
             $waitRows = $waitStmt->fetchAll(PDO::FETCH_ASSOC);
 
             $promotedIds = [];
+            $whatsappNotifications = [];
             foreach ($waitRows as $waitRow) {
                 $waitRegistrationId = (int)($waitRow['id'] ?? 0);
                 $waitPersons = max((int)($waitRow['persons'] ?? 1), 1);
@@ -2219,19 +2365,26 @@ if (!function_exists('vs_event_promote_waitlisted_registrations')) {
                     break;
                 }
 
-                vs_event_confirm_waitlisted_registration($pdo, $waitRegistrationId, true);
+                $confirmResult = vs_event_confirm_waitlisted_registration($pdo, $waitRegistrationId, true);
                 $availableSeats -= $waitPersons;
                 $promotedIds[] = $waitRegistrationId;
+                if (!empty($confirmResult['whatsapp_notification']) && is_array($confirmResult['whatsapp_notification'])) {
+                    $whatsappNotifications[] = $confirmResult['whatsapp_notification'];
+                }
             }
 
             if (!$useExistingTransaction) {
                 $pdo->commit();
+                if (!empty($whatsappNotifications)) {
+                    vs_event_dispatch_whatsapp_notifications($whatsappNotifications);
+                }
             }
 
             return [
                 'mode' => 'auto',
                 'promoted_count' => count($promotedIds),
                 'promoted_registration_ids' => $promotedIds,
+                'whatsapp_notifications' => $whatsappNotifications,
             ];
         } catch (Throwable $e) {
             if (!$useExistingTransaction && $pdo->inTransaction()) {
@@ -2460,6 +2613,9 @@ if (!function_exists('vs_event_cancel_registration')) {
 
             if (!$useExistingTransaction) {
                 $pdo->commit();
+                if (!empty($waitlistPromotion['whatsapp_notifications']) && is_array($waitlistPromotion['whatsapp_notifications'])) {
+                    vs_event_dispatch_whatsapp_notifications($waitlistPromotion['whatsapp_notifications']);
+                }
             }
 
             return [
@@ -3514,69 +3670,6 @@ if (!function_exists('vs_event_ensure_registration_ticket_pdf')) {
     }
 }
 
-if (!function_exists('vs_event_build_ticket_media_url')) {
-    function vs_event_build_ticket_media_url(int $registrationId, string $bookingReference): string
-    {
-        if ($registrationId <= 0) {
-            return '';
-        }
-
-        $bookingReference = trim($bookingReference);
-        if ($bookingReference === '') {
-            return '';
-        }
-
-        require_once __DIR__ . '/share.php';
-
-        $query = http_build_query([
-            'registration_id' => $registrationId,
-            'ref' => $bookingReference,
-            'mode' => 'media',
-        ]);
-
-        $configuredBaseUrl = trim((string)(getenv('APP_URL') ?: getenv('SITE_URL') ?: ''));
-        if ($configuredBaseUrl !== '') {
-            return rtrim($configuredBaseUrl, '/') . '/event-ticket-download.php?' . $query;
-        }
-
-        $host = trim((string)($_SERVER['HTTP_HOST'] ?? $_SERVER['SERVER_NAME'] ?? ''));
-        $isLocalHost = ($host === '');
-        if (!$isLocalHost && function_exists('vs_is_local_host')) {
-            $isLocalHost = vs_is_local_host($host);
-        } elseif (!$isLocalHost) {
-            $hostLower = strtolower($host);
-            $isLocalHost = $hostLower === 'localhost'
-                || $hostLower === '127.0.0.1'
-                || $hostLower === '::1'
-                || strpos($hostLower, '127.') === 0
-                || substr($hostLower, -6) === '.local';
-        }
-
-        if (!$isLocalHost && $host !== '') {
-            $scheme = 'https';
-            if (function_exists('vs_request_scheme')) {
-                $scheme = vs_request_scheme();
-            } elseif (!empty($_SERVER['HTTPS']) && strtolower((string)$_SERVER['HTTPS']) !== 'off' && (string)$_SERVER['HTTPS'] !== '0') {
-                $scheme = 'https';
-            } else {
-                $scheme = 'http';
-            }
-
-            $prefix = '';
-            if (function_exists('vs_get_base_url_prefix')) {
-                $prefix = rtrim((string)vs_get_base_url_prefix(), '/');
-                if ($prefix === '/' || $prefix === '.') {
-                    $prefix = '';
-                }
-            }
-
-            return $scheme . '://' . $host . $prefix . '/event-ticket-download.php?' . $query;
-        }
-
-        return 'https://vishnusudarshana.com/event-ticket-download.php?' . $query;
-    }
-}
-
 if (!function_exists('vs_event_extract_booking_reference')) {
     function vs_event_extract_booking_reference(string $input): string
     {
@@ -3653,6 +3746,33 @@ if (!function_exists('vs_event_is_whatsapp_enabled')) {
     }
 }
 
+if (!function_exists('vs_event_dispatch_whatsapp_notifications')) {
+    function vs_event_dispatch_whatsapp_notifications(array $notifications): void
+    {
+        foreach ($notifications as $notification) {
+            if (!is_array($notification)) {
+                continue;
+            }
+
+            $trigger = trim((string)($notification['trigger'] ?? ''));
+            $phone = trim((string)($notification['phone'] ?? ''));
+            if ($trigger === '' || $phone === '') {
+                continue;
+            }
+
+            $context = isset($notification['context']) && is_array($notification['context'])
+                ? $notification['context']
+                : [];
+
+            try {
+                vs_event_send_whatsapp_notice($trigger, $phone, $context);
+            } catch (Throwable $e) {
+                error_log('Event WhatsApp dispatch failed: ' . $e->getMessage());
+            }
+        }
+    }
+}
+
 if (!function_exists('vs_event_send_whatsapp_notice')) {
     function vs_event_send_whatsapp_notice(string $trigger, string $phone, array $context = []): array
     {
@@ -3670,6 +3790,7 @@ if (!function_exists('vs_event_send_whatsapp_notice')) {
         $amount = isset($context['amount']) ? (string)$context['amount'] : '';
         $remainingAmount = isset($context['remaining_amount']) ? (string)$context['remaining_amount'] : '';
         $bookingReference = (string)($context['booking_reference'] ?? '');
+        $waitlistPosition = isset($context['waitlist_position']) ? (string)$context['waitlist_position'] : '';
         $registrationId = (int)($context['registration_id'] ?? 0);
         if ($bookingReference === '') {
             $bookingReference = 'N/A';
@@ -3735,18 +3856,55 @@ if (!function_exists('vs_event_send_whatsapp_notice')) {
             );
         }
 
-        if ($trigger === 'ticket_delivery') {
-            $mediaFilenameBase = preg_replace('/[^A-Za-z0-9_-]/', '-', $bookingReference ?: 'event-ticket');
-            if (!is_string($mediaFilenameBase) || trim($mediaFilenameBase) === '') {
-                $mediaFilenameBase = 'event-ticket';
-            }
+        if ($trigger === 'waitlist_joined') {
+            return sendWhatsAppMessage(
+                $phone,
+                'event_waitlist_joined',
+                [
+                    'name' => $name,
+                    'event_name' => $eventName,
+                    'package_name' => $packageName,
+                    'event_date' => $eventDate,
+                    'booking_reference' => $bookingReference,
+                    'waitlist_position' => $waitlistPosition !== '' ? $waitlistPosition : 'Pending',
+                ]
+            );
+        }
 
+        if ($trigger === 'waitlist_confirmed') {
+            return sendWhatsAppMessage(
+                $phone,
+                'event_waitlist_confirmed',
+                [
+                    'name' => $name,
+                    'event_name' => $eventName,
+                    'package_name' => $packageName,
+                    'event_date' => $eventDate,
+                    'booking_reference' => $bookingReference,
+                ]
+            );
+        }
+
+        if ($trigger === 'waitlist_confirmed_free') {
+            return sendWhatsAppMessage(
+                $phone,
+                'event_waitlist_confirmed_free',
+                [
+                    'name' => $name,
+                    'event_name' => $eventName,
+                    'package_name' => $packageName,
+                    'event_date' => $eventDate,
+                    'booking_reference' => $bookingReference,
+                ]
+            );
+        }
+
+        if ($trigger === 'ticket_delivery') {
             $payload = [
                 'name' => $name,
                 'event_name' => $eventName,
                 'booking_reference' => $bookingReference,
                 'event_date' => $eventDate,
-                'media_filename' => $mediaFilenameBase . '.pdf',
             ];
 
             if ($registrationId > 0) {
@@ -3777,10 +3935,6 @@ if (!function_exists('vs_event_send_whatsapp_notice')) {
                     ]);
                     if ($ticketPdfPath !== '') {
                         $payload['file_path'] = $ticketPdfPath;
-                        $ticketMediaUrl = vs_event_build_ticket_media_url($registrationId, $bookingReference);
-                        if ($ticketMediaUrl !== '') {
-                            $payload['public_media_url'] = $ticketMediaUrl;
-                        }
                     }
                 }
             }

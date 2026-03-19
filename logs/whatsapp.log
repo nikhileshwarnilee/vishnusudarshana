@@ -141,3 +141,19 @@
 [2026-03-19 14:28:51] TO: 919595744266 | TEMPLATE: event reminder | STATUS: SUCCESS | DETAILS: {"success":"true","submitted_message_id":"8d29d7f2-11fe-4ffc-967b-4c3bcb5a9511"}
 [2026-03-19 20:08:27] TO: 919595744266 | TEMPLATE: event ticket delivery | STATUS: SUCCESS | DETAILS: {"success":"true","submitted_message_id":"8376c079-733d-484d-82d9-14e2aa23dceb"}
 [2026-03-19 20:34:18] TO: 919922550797 | TEMPLATE: event ticket delivery | STATUS: SUCCESS | DETAILS: {"success":"true","submitted_message_id":"00015d8e-f3a0-4bec-a782-54bb8ae4509a"}
+[2026-03-19 20:50:36] TO: 917841946380 | TEMPLATE: event ticket delivery | STATUS: SUCCESS | DETAILS: {"success":"true","submitted_message_id":"11609226-10c0-48eb-97f4-64f324a14883"}
+[2026-03-19 20:57:41] TO: 919922550797 | TEMPLATE: event payment successful | STATUS: SUCCESS | DETAILS: {"success":"true","submitted_message_id":"8d7b9009-eb76-44be-8fd0-fcaa209554ca"}
+[2026-03-19 21:03:37] TO: 919922550797 | TEMPLATE: event ticket delivery | STATUS: SUCCESS | DETAILS: {"success":"true","submitted_message_id":"7306af27-d118-446b-9a2d-558746b9af53"}
+[2026-03-19 21:05:05] TO: 919922550797 | TEMPLATE: event payment pending verification | STATUS: SUCCESS | DETAILS: {"success":"true","submitted_message_id":"e66836b0-2a2d-4211-a949-224eab3ca0d0"}
+[2026-03-19 21:07:25] TO: 919922550797 | TEMPLATE: event payment approved | STATUS: SUCCESS | DETAILS: {"success":"true","submitted_message_id":"e9c54e25-98c5-4c71-91cb-745c3de3fd22"}
+[2026-03-19 21:38:01] TO: 919922550797 | TEMPLATE: event payment approved | STATUS: SUCCESS | DETAILS: {"success":"true","submitted_message_id":"35a70e03-bcdd-4d81-871b-7249260500f8"}
+[2026-03-19 21:42:45] TO: 919922550797 | TEMPLATE: event broadcast message | STATUS: SUCCESS | DETAILS: {"success":"true","submitted_message_id":"f570db0c-9687-4990-b0f1-b57c66b3b6a6"}
+[2026-03-19 21:42:47] TO: 919595744266 | TEMPLATE: event broadcast message | STATUS: SUCCESS | DETAILS: {"success":"true","submitted_message_id":"264eb5ab-8910-4dce-bc5d-0dc5cd4ade4b"}
+[2026-03-19 21:42:48] TO: 916565656565 | TEMPLATE: event broadcast message | STATUS: SUCCESS | DETAILS: {"success":"true","submitted_message_id":"2c531a34-563a-4c01-ac4d-a9416fd14f98"}
+[2026-03-19 21:42:50] TO: 915555555555 | TEMPLATE: event broadcast message | STATUS: SUCCESS | DETAILS: {"success":"true","submitted_message_id":"1991d443-d186-42f2-b904-12a1d1f9c1d2"}
+[2026-03-19 21:50:05] TO: 915555555555 | TEMPLATE: event reminder | STATUS: SUCCESS | DETAILS: {"success":"true","submitted_message_id":"7729dc73-0b5b-4130-a1e8-0ec252875ce6"}
+[2026-03-19 21:50:06] TO: 916565656565 | TEMPLATE: event reminder | STATUS: SUCCESS | DETAILS: {"success":"true","submitted_message_id":"5ff325c4-0733-47b4-968c-de0b605f2ef2"}
+[2026-03-19 21:50:07] TO: 919595744266 | TEMPLATE: event reminder | STATUS: SUCCESS | DETAILS: {"success":"true","submitted_message_id":"6cd81cbd-d9dc-42ee-8657-70e1ed9ac17e"}
+[2026-03-19 21:50:08] TO: 919595744266 | TEMPLATE: event reminder | STATUS: SUCCESS | DETAILS: {"success":"true","submitted_message_id":"c39d58c0-9c91-47d5-8a34-b6f171cd1bf1"}
+[2026-03-19 21:50:10] TO: 919922550797 | TEMPLATE: event reminder | STATUS: SUCCESS | DETAILS: {"success":"true","submitted_message_id":"3a444cd2-8382-42bd-80b6-34c25f23b878"}
+[2026-03-19 21:50:11] TO: 919922550797 | TEMPLATE: event reminder | STATUS: SUCCESS | DETAILS: {"success":"true","submitted_message_id":"fc2a205f-5c54-4e70-ac83-f9e1360adc68"}

@@ -250,6 +250,8 @@ $materializeDraft = static function (PDO $pdo, array $draft, bool $markAsPaidFor
     }
     $name = trim((string)($draft['name'] ?? ''));
     $phone = trim((string)($draft['phone'] ?? ''));
+    $countryCode = trim((string)($draft['country_code'] ?? '+91'));
+    $customCountryCode = trim((string)($draft['custom_country_code'] ?? ''));
     $persons = max((int)($draft['persons'] ?? 1), 1);
     $dynamicValues = isset($draft['dynamic_values']) && is_array($draft['dynamic_values']) ? $draft['dynamic_values'] : [];
 
@@ -385,6 +387,11 @@ $materializeDraft = static function (PDO $pdo, array $draft, bool $markAsPaidFor
         $dataInsert = $pdo->prepare('INSERT INTO event_registration_data (registration_id, field_name, value) VALUES (?, ?, ?)');
         $dataInsert->execute([$newRegId, 'Name', $name]);
         $dataInsert->execute([$newRegId, 'Phone', $phone]);
+        $resolvedCountryContext = vs_event_resolve_country_context($countryCode, $customCountryCode);
+        $dataInsert->execute([$newRegId, 'Country Code', (string)($resolvedCountryContext['country_code'] ?? '+91')]);
+        if ((string)($resolvedCountryContext['custom_country_code'] ?? '') !== '') {
+            $dataInsert->execute([$newRegId, 'Custom Country Code', (string)$resolvedCountryContext['custom_country_code']]);
+        }
         $dataInsert->execute([$newRegId, 'Persons', (string)$persons]);
         $dataInsert->execute([$newRegId, 'Booking Reference', $bookingReference]);
         if ($lockedDate) {

@@ -10,7 +10,6 @@
 
 // Load configuration
 require_once __DIR__ . '/../config/whatsapp_config.php';
-require_once __DIR__ . '/share.php';
 
 /**
  * Send WhatsApp message using AiSensy API
@@ -103,26 +102,11 @@ function sendWhatsAppMessage($to, $templateName, $variables = [], $language = nu
         $payload['buttons'] = $buttons;
     }
     
-    // Add media object if file_path/public_media_url is provided (for document sending)
-    if (
-        (!empty($variables['public_media_url']) && is_string($variables['public_media_url']))
-        || (!empty($variables['file_path']) && is_string($variables['file_path']))
-    ) {
-        $filePath = isset($variables['file_path']) ? (string)$variables['file_path'] : '';
-        $mediaUrlSource = !empty($variables['public_media_url'])
-            ? (string)$variables['public_media_url']
-            : $filePath;
-        $publicUrl = !empty($variables['public_media_url'])
-            ? resolveWhatsAppMediaUrl($mediaUrlSource, false)
-            : resolveWhatsAppMediaUrl($mediaUrlSource, true);
-        $fileName = trim((string)($variables['media_filename'] ?? ''));
-        if ($fileName === '') {
-            $pathForName = parse_url($publicUrl, PHP_URL_PATH);
-            $fileName = basename((string)($pathForName ?: $filePath));
-        }
-        if ($fileName === '') {
-            $fileName = 'document.pdf';
-        }
+    // Add media object if file_path is provided (for document sending)
+    if (isset($variables['file_path']) && !empty($variables['file_path'])) {
+        $filePath = $variables['file_path'];
+        $fileName = basename($filePath);
+        $publicUrl = resolveWhatsAppMediaUrl($filePath);
         $payload['media'] = [
             'url' => $publicUrl,
             'filename' => $fileName
@@ -340,7 +324,7 @@ function buildAiSensyButtons($templateIdentifier, $variables) {
  * @param string $filePath Relative uploads path or absolute URL
  * @return string
  */
-function resolveWhatsAppMediaUrl($filePath, $defaultToUploadsServices = true) {
+function resolveWhatsAppMediaUrl($filePath) {
     $filePath = trim((string)$filePath);
     if ($filePath === '') {
         return '';
@@ -357,63 +341,12 @@ function resolveWhatsAppMediaUrl($filePath, $defaultToUploadsServices = true) {
     }
     $normalizedPath = ltrim((string)$normalizedPath, '/');
 
-    $baseUrl = getWhatsAppPublicBaseUrl();
+    $baseUrl = rtrim((string)(getenv('APP_URL') ?: getenv('SITE_URL') ?: 'https://vishnusudarshana.com'), '/');
     if (strpos($normalizedPath, 'uploads/') === 0) {
         return $baseUrl . '/' . $normalizedPath;
     }
 
-    if (!$defaultToUploadsServices) {
-        return $baseUrl . '/' . $normalizedPath;
-    }
-
     return $baseUrl . '/uploads/services/' . $normalizedPath;
-}
-
-if (!function_exists('getWhatsAppPublicBaseUrl')) {
-    function getWhatsAppPublicBaseUrl() {
-        $configured = trim((string)(getenv('APP_URL') ?: getenv('SITE_URL') ?: ''));
-        if ($configured !== '') {
-            return rtrim($configured, '/');
-        }
-
-        $host = trim((string)($_SERVER['HTTP_HOST'] ?? $_SERVER['SERVER_NAME'] ?? ''));
-        $isLocalHost = false;
-        if ($host !== '') {
-            if (function_exists('vs_is_local_host')) {
-                $isLocalHost = vs_is_local_host($host);
-            } else {
-                $hostLower = strtolower($host);
-                $isLocalHost = $hostLower === 'localhost'
-                    || $hostLower === '127.0.0.1'
-                    || $hostLower === '::1'
-                    || strpos($hostLower, '127.') === 0
-                    || substr($hostLower, -6) === '.local';
-            }
-        }
-
-        if ($host !== '' && !$isLocalHost) {
-            $scheme = 'https';
-            if (function_exists('vs_request_scheme')) {
-                $scheme = vs_request_scheme();
-            } elseif (!empty($_SERVER['HTTPS']) && strtolower((string)$_SERVER['HTTPS']) !== 'off' && (string)$_SERVER['HTTPS'] !== '0') {
-                $scheme = 'https';
-            } else {
-                $scheme = 'http';
-            }
-
-            $prefix = '';
-            if (function_exists('vs_get_base_url_prefix')) {
-                $prefix = rtrim((string)vs_get_base_url_prefix(), '/');
-                if ($prefix === '/' || $prefix === '.') {
-                    $prefix = '';
-                }
-            }
-
-            return $scheme . '://' . $host . $prefix;
-        }
-
-        return 'https://vishnusudarshana.com';
-    }
 }
 
 

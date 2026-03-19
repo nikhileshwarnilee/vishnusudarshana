@@ -93,6 +93,8 @@ $errors = [];
 $old = [
     'name' => '',
     'phone' => '',
+    'country_code' => '+91',
+    'custom_country_code' => '',
     'persons' => '1',
     'package_id' => $selectedPackageId > 0 ? (string)$selectedPackageId : '',
     'event_date_id' => (string)$selectedDateId,
@@ -138,6 +140,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $name = trim((string)($_POST['name'] ?? ''));
     $phoneRaw = trim((string)($_POST['phone'] ?? ''));
+    $countryContext = vs_event_resolve_country_context(
+        (string)($_POST['country_code'] ?? '+91'),
+        (string)($_POST['custom_country_code'] ?? '')
+    );
+    $countryCode = (string)($countryContext['country_code'] ?? '+91');
+    $customCountryCode = (string)($countryContext['custom_country_code'] ?? '');
     $persons = (int)($_POST['persons'] ?? 1);
     if ($persons <= 0) {
         $persons = 1;
@@ -146,6 +154,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $old['name'] = $name;
     $old['phone'] = $phoneRaw;
+    $old['country_code'] = $countryCode;
+    $old['custom_country_code'] = $customCountryCode;
     $old['persons'] = (string)$persons;
     $old['package_id'] = (string)$selectedPackageId;
     $old['event_date_id'] = (string)$selectedDateId;
@@ -247,17 +257,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($phoneRaw === '' && $phoneFromDynamic !== '') {
             $phoneRaw = $phoneFromDynamic;
         }
-        $phone = preg_replace('/[^0-9]/', '', $phoneRaw);
-        if (strlen($phone) === 10) {
-            $phone = '91' . $phone;
-        }
+        $phone = vs_event_normalize_phone($phoneRaw, $countryCode, $customCountryCode);
         $old['name'] = $name;
         $old['phone'] = $phoneRaw;
 
+        if ($countryCode === 'other' && $customCountryCode === '') {
+            $errors[] = 'Please enter a valid country code.';
+        }
         if ($name === '') {
             $errors[] = 'Name is required in registration form.';
         }
-        if ($phone === '' || strlen($phone) < 10) {
+        if ($phone === '') {
             $errors[] = 'A valid phone is required in registration form.';
         }
     }
@@ -314,13 +324,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $waitlistResult = vs_event_create_waitlisted_registration(
                         $pdo,
                         (int)$event['id'],
-                        $selectedPackageId,
-                        $selectedDateId,
-                        $name,
-                        $phone,
-                        $persons,
-                        $dynamicValues
-                    );
+                    $selectedPackageId,
+                    $selectedDateId,
+                    $name,
+                    $phone,
+                    $persons,
+                    $dynamicValues,
+                    false,
+                    $countryCode,
+                    $customCountryCode
+                );
                     $waitlistedRegistrationId = (int)($waitlistResult['registration_id'] ?? 0);
                     if ($waitlistedRegistrationId > 0) {
                         header('Location: event-booking-confirmation.php?registration_id=' . $waitlistedRegistrationId . '&status=waitlisted');
@@ -360,6 +373,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'package_id' => $selectedPackageId,
                 'name' => $name,
                 'phone' => $phone,
+                'country_code' => $countryCode,
+                'custom_country_code' => $customCountryCode,
                 'persons' => $persons,
                 'dynamic_values' => $dynamicValues,
             ];
@@ -512,12 +527,31 @@ require_once 'header.php';
                     </div>
                     <input type="hidden" name="package_id" value="<?php echo (int)$selectedPackageId; ?>">
                     <?php if ($hasNameField): ?>
-                        <input type="hidden" name="name" value="<?php echo htmlspecialchars((string)$old['name']); ?>">
+                        <input type="hidden" name="name" value="">
                     <?php else: ?>
                         <div class="form-group"><label>Full Name</label><input type="text" name="name" value="<?php echo htmlspecialchars((string)$old['name']); ?>" required></div>
                     <?php endif; ?>
+                    <div class="form-group">
+                        <label>Country Code</label>
+                        <div class="phone-input-row">
+                            <select name="country_code" id="country_code_select" class="phone-country-select">
+                                <option value="+91" <?php echo ((string)$old['country_code'] === '+91') ? 'selected' : ''; ?>>+91 India</option>
+                                <option value="other" <?php echo ((string)$old['country_code'] === 'other') ? 'selected' : ''; ?>>Other</option>
+                            </select>
+                            <input
+                                type="text"
+                                name="custom_country_code"
+                                id="custom_country_code_input"
+                                class="phone-country-custom"
+                                placeholder="+__"
+                                value="<?php echo htmlspecialchars((string)$old['custom_country_code']); ?>"
+                                pattern="^\+\d{1,4}$"
+                            >
+                        </div>
+                        <small class="phone-note">Default is +91. Change this only if your WhatsApp number uses another country code.</small>
+                    </div>
                     <?php if ($hasPhoneField): ?>
-                        <input type="hidden" name="phone" value="<?php echo htmlspecialchars((string)$old['phone']); ?>">
+                        <input type="hidden" name="phone" value="">
                     <?php else: ?>
                         <div class="form-group">
                             <label>WhatsApp Number</label>
@@ -745,9 +779,29 @@ require_once 'header.php';
     updateSeats();
     updateSubmitAction();
 })();
+
+(function () {
+    const countrySelect = document.getElementById('country_code_select');
+    const customCountryInput = document.getElementById('custom_country_code_input');
+    if (!countrySelect || !customCountryInput) {
+        return;
+    }
+
+    function syncCountryCodeInput() {
+        const showCustom = countrySelect.value === 'other';
+        customCountryInput.style.display = showCustom ? 'block' : 'none';
+        customCountryInput.required = showCustom;
+        if (!showCustom) {
+            customCountryInput.value = '';
+        }
+    }
+
+    syncCountryCodeInput();
+    countrySelect.addEventListener('change', syncCountryCodeInput);
+})();
 </script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Marcellus&display=swap');
-html,body{font-family:'Marcellus',serif!important}.event-register-main{min-height:100vh;padding:1.5rem 0 5rem}.event-register-wrap{max-width:980px;margin:0 auto;padding:0 14px}.back-link{display:inline-block;color:#800000;text-decoration:none;font-weight:700;margin-bottom:10px}.card{background:#fff;border:1px solid #ecd3d3;border-radius:14px;box-shadow:0 4px 14px rgba(128,0,0,.08);padding:14px}h1{margin:0 0 8px;color:#800000;font-size:1.6rem}.small{margin:4px 0;color:#555;font-size:.9rem}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;margin-top:10px}.form-group{display:flex;flex-direction:column;gap:6px}label{color:#800000;font-weight:700;font-size:.92rem}input,select,textarea{width:100%;box-sizing:border-box;border:1px solid #e0bebe;border-radius:8px;padding:9px 10px;font-size:.94rem;background:#fff}.package-summary{margin-top:12px;border:1px solid #f1d6d6;background:#fffaf8;border-radius:10px;padding:12px}.package-summary-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:8px 14px;color:#4a3f3f;font-size:.93rem}.pkg-groups{display:flex;flex-direction:column;gap:10px}.pkg-group{background:#fff;border:1px solid #ecdede;border-radius:8px;padding:10px}.pkg-group-title{margin:0 0 8px;color:#7b1f1f;font-size:.94rem;letter-spacing:.2px}.pkg-note{margin:10px 0 0;font-size:.84rem;color:#6a5a5a}.pkg-desc-block{margin:10px 0 0;color:#444;line-height:1.45}.section-title{color:#800000;margin:14px 0 6px;font-size:1.1rem}.req{color:#b00020}.notice{margin:10px 0;padding:10px 12px;border-radius:8px;font-weight:600}.notice.err{background:#ffeaea;color:#b00020}textarea{min-height:90px;resize:vertical}.submit-btn{margin-top:14px;width:100%;border:none;border-radius:8px;background:#800000;color:#fff;font-weight:700;font-size:1rem;padding:11px 12px;cursor:pointer}.submit-btn.waitlist-mode{background:#0b7285}.submit-btn:disabled{background:#999;cursor:not-allowed}.waitlist-mode-hint{margin-top:10px;padding:10px 12px;border-radius:8px;background:#eef9fc;color:#0b5d70;font-size:.9rem}.phone-note{margin-top:2px;color:#666;font-size:.82rem;line-height:1.35}
+html,body{font-family:'Marcellus',serif!important}.event-register-main{min-height:100vh;padding:1.5rem 0 5rem}.event-register-wrap{max-width:980px;margin:0 auto;padding:0 14px}.back-link{display:inline-block;color:#800000;text-decoration:none;font-weight:700;margin-bottom:10px}.card{background:#fff;border:1px solid #ecd3d3;border-radius:14px;box-shadow:0 4px 14px rgba(128,0,0,.08);padding:14px}h1{margin:0 0 8px;color:#800000;font-size:1.6rem}.small{margin:4px 0;color:#555;font-size:.9rem}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;margin-top:10px}.form-group{display:flex;flex-direction:column;gap:6px}label{color:#800000;font-weight:700;font-size:.92rem}input,select,textarea{width:100%;box-sizing:border-box;border:1px solid #e0bebe;border-radius:8px;padding:9px 10px;font-size:.94rem;background:#fff}.package-summary{margin-top:12px;border:1px solid #f1d6d6;background:#fffaf8;border-radius:10px;padding:12px}.package-summary-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:8px 14px;color:#4a3f3f;font-size:.93rem}.pkg-groups{display:flex;flex-direction:column;gap:10px}.pkg-group{background:#fff;border:1px solid #ecdede;border-radius:8px;padding:10px}.pkg-group-title{margin:0 0 8px;color:#7b1f1f;font-size:.94rem;letter-spacing:.2px}.pkg-note{margin:10px 0 0;font-size:.84rem;color:#6a5a5a}.pkg-desc-block{margin:10px 0 0;color:#444;line-height:1.45}.section-title{color:#800000;margin:14px 0 6px;font-size:1.1rem}.req{color:#b00020}.notice{margin:10px 0;padding:10px 12px;border-radius:8px;font-weight:600}.notice.err{background:#ffeaea;color:#b00020}textarea{min-height:90px;resize:vertical}.submit-btn{margin-top:14px;width:100%;border:none;border-radius:8px;background:#800000;color:#fff;font-weight:700;font-size:1rem;padding:11px 12px;cursor:pointer}.submit-btn.waitlist-mode{background:#0b7285}.submit-btn:disabled{background:#999;cursor:not-allowed}.waitlist-mode-hint{margin-top:10px;padding:10px 12px;border-radius:8px;background:#eef9fc;color:#0b5d70;font-size:.9rem}.phone-note{margin-top:2px;color:#666;font-size:.82rem;line-height:1.35}.phone-input-row{display:flex;gap:8px;align-items:center}.phone-country-select{width:140px;flex:0 0 140px}.phone-country-custom{width:88px;flex:0 0 88px;display:none}
 </style>
 <?php require_once 'footer.php'; ?>

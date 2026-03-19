@@ -73,6 +73,9 @@ define('WHATSAPP_TEMPLATES', [
     'event_payment_successful' => 'event payment successful',
     'event_reminder' => 'event reminder',
     'event_broadcast_message' => 'event broadcast message',
+    'event_waitlist_joined' => 'event waitlist joined',
+    'event_waitlist_confirmed' => 'event waitlist confirmed',
+    'event_waitlist_confirmed_free' => 'event waitlist confirmed free',
     
     // Offline Service Request - Admin submitted
     'OFFLINE_SERVICE_REQUEST_RECEIVED' => 'Offline Service Request Received',
@@ -146,6 +149,9 @@ define('WHATSAPP_TEMPLATE_VARIABLES', [
     'event_payment_successful' => ['name', 'event_name', 'package_name', 'event_date', 'amount', 'booking_reference', 'remaining_amount'],
     'event_reminder' => ['name', 'event_name', 'package_name', 'event_date', 'booking_reference'],
     'event_broadcast_message' => ['name', 'message'],
+    'event_waitlist_joined' => ['name', 'event_name', 'package_name', 'event_date', 'booking_reference', 'waitlist_position'],
+    'event_waitlist_confirmed' => ['name', 'event_name', 'package_name', 'event_date', 'booking_reference'],
+    'event_waitlist_confirmed_free' => ['name', 'event_name', 'package_name', 'event_date', 'booking_reference'],
     
     // Offline Service Request - 4 parameters: name, category, products_list, tracking_id
     'OFFLINE_SERVICE_REQUEST_RECEIVED' => ['name', 'category', 'products_list', 'tracking_id'],
