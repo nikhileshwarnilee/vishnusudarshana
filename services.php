@@ -1,10 +1,19 @@
-<?php $pageTitle = 'Services'; include 'header.php'; ?>
+<?php
+$pageTitle = 'Services';
+require_once __DIR__ . '/config/db.php';
+require_once __DIR__ . '/helpers/system_settings.php';
+
+$servicesPageMarqueeHtml = vs_settings_get_marquee_html($pdo, 'services_page_marquee_html');
+include 'header.php';
+?>
 
 <main class="services-main">
     <section class="service-categories">
-        <marquee style="font-size:1.08em;color:#800000;margin-bottom:18px;display:block;">
-            For in-person office token services, visit <a href="offlineservices.php" style="color:#800000;font-weight:700;text-decoration:underline;">Offline Services</a> page.
-        </marquee>
+        <?php if ($servicesPageMarqueeHtml !== ''): ?>
+            <marquee style="font-size:1.08em;color:#800000;margin-bottom:18px;display:block;">
+                <?= $servicesPageMarqueeHtml ?>
+            </marquee>
+        <?php endif; ?>
         <h1 class="services-title">Book Online Services</h1>
         <div class="categories-grid home-top-cards-container">
             <!-- Book an Appointment Card -->

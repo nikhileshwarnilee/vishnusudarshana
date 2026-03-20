@@ -638,7 +638,11 @@ if ($eventId > 0 && $selectedEvent !== null) {
         return $b['active_persons'] <=> $a['active_persons'];
     });
 
-    $eventDateInsights = vs_event_fetch_event_dates_with_booked_seats($pdo, $eventId);
+    $eventDateInsights = vs_event_fetch_report_event_date_occupancy_rows(
+        $pdo,
+        $eventId,
+        (string)($selectedEvent['event_type'] ?? 'single_day')
+    );
     foreach ($eventDateInsights as &$dateRow) {
         $seatLimitRaw = (int)($dateRow['seat_limit'] ?? 0);
         $bookedSeats = (int)($dateRow['booked_seats'] ?? 0);
@@ -660,9 +664,11 @@ $exportUrl = 'export-registrations.php';
 if (!empty($exportQuery)) {
     $exportUrl .= '?' . http_build_query($exportQuery);
 }
+$pdfQuery = $exportQuery;
+$pdfQuery['autoprint'] = 1;
 $pdfUrl = 'export-pdf.php';
-if (!empty($exportQuery)) {
-    $pdfUrl .= '?' . http_build_query($exportQuery);
+if (!empty($pdfQuery)) {
+    $pdfUrl .= '?' . http_build_query($pdfQuery);
 }
 ?>
 <!DOCTYPE html>
@@ -673,6 +679,7 @@ if (!empty($exportQuery)) {
     <title>Event Reports</title>
     <link rel="stylesheet" href="../../assets/css/style.css">
     <link rel="stylesheet" href="../includes/responsive-tables.css">
+    <link rel="stylesheet" href="export-actions.css">
     <style>
         body { font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background:#f7f7fa; margin:0; }
         .admin-container { max-width:1500px; margin:0 auto; padding:24px 12px; }
@@ -756,9 +763,35 @@ if (!empty($exportQuery)) {
                 <label>To Date (Booking)</label>
                 <input type="date" name="to_date" value="<?php echo htmlspecialchars($toDate); ?>">
             </div>
-            <div class="form-group"><button class="btn-main" type="submit">Apply</button></div>
-            <div class="form-group"><a class="btn-main btn-alt" href="<?php echo htmlspecialchars($exportUrl); ?>">Export To Excel</a></div>
-            <div class="form-group"><a class="btn-main btn-alt" href="<?php echo htmlspecialchars($pdfUrl); ?>" target="_blank">Export PDF</a></div>
+            <div class="report-filter-actions">
+                <button type="submit" class="report-action report-action--filter">
+                    <span class="report-action__icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24"><path d="M3 5h18l-7 8v5l-4 2v-7L3 5z"/></svg>
+                    </span>
+                    <span class="report-action__body">
+                        <span class="report-action__title">Refresh Report</span>
+                        <span class="report-action__meta">Apply the booking-date filters</span>
+                    </span>
+                </button>
+                <a class="report-action report-action--excel" href="<?php echo htmlspecialchars($exportUrl); ?>">
+                    <span class="report-action__icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9zm0 2.5L17.5 9H14zM8.8 16.9 10.9 13l-2-3.9h1.9l1.1 2.5 1.1-2.5H15l-2 3.8 2.1 4H13l-1.2-2.6-1.2 2.6z"/></svg>
+                    </span>
+                    <span class="report-action__body">
+                        <span class="report-action__title">Export Excel</span>
+                        <span class="report-action__meta">Workbook-ready event report</span>
+                    </span>
+                </a>
+                <a class="report-action report-action--pdf" href="<?php echo htmlspecialchars($pdfUrl); ?>" target="_blank" rel="noopener">
+                    <span class="report-action__icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24"><path d="M7 3h10v4H7zm11 6a3 3 0 0 1 3 3v4h-3v5H6v-5H3v-4a3 3 0 0 1 3-3zm-2 10v-5H8v5zm2-5h1v-2a1 1 0 0 0-1-1H6a1 1 0 0 0-1 1v2h1v-2h12z"/></svg>
+                    </span>
+                    <span class="report-action__body">
+                        <span class="report-action__title">Export PDF</span>
+                        <span class="report-action__meta">Open the print-friendly report</span>
+                    </span>
+                </a>
+            </div>
         </form>
     </div>
 
@@ -1041,6 +1074,11 @@ if (!empty($exportQuery)) {
                     </thead>
                     <tbody>
                     <?php foreach ($eventDateInsights as $dateRow): ?>
+                        <?php
+                        $seatLimitRaw = (int)($dateRow['seat_limit'] ?? 0);
+                        $seatLimitLabel = trim((string)($dateRow['seat_limit_label'] ?? ''));
+                        $hasFiniteSeatLimit = $seatLimitRaw > 0;
+                        ?>
                         <tr>
                             <td><?php echo htmlspecialchars((string)($dateRow['event_date'] ?? '-')); ?></td>
                             <td>
@@ -1048,12 +1086,22 @@ if (!empty($exportQuery)) {
                                     <?php echo htmlspecialchars((string)($dateRow['status'] ?? 'Active')); ?>
                                 </span>
                             </td>
-                            <td><?php echo ((int)($dateRow['seat_limit'] ?? 0) > 0) ? (int)$dateRow['seat_limit'] : 'Unlimited'; ?></td>
+                            <td>
+                                <?php if ($hasFiniteSeatLimit): ?>
+                                    <?php echo $seatLimitRaw; ?>
+                                <?php elseif ($seatLimitLabel !== ''): ?>
+                                    <?php echo htmlspecialchars($seatLimitLabel); ?>
+                                <?php else: ?>
+                                    Unlimited
+                                <?php endif; ?>
+                            </td>
                             <td><?php echo (int)($dateRow['booked_seats'] ?? 0); ?></td>
                             <td>
-                                <?php if ((int)($dateRow['seat_limit'] ?? 0) > 0): ?>
+                                <?php if ($hasFiniteSeatLimit): ?>
                                     <?php echo (int)($dateRow['seats_left'] ?? 0); ?>
                                     <?php if ((int)($dateRow['overbooked'] ?? 0) > 0): ?><br><span class="txt-danger">Over by <?php echo (int)$dateRow['overbooked']; ?></span><?php endif; ?>
+                                <?php elseif ($seatLimitLabel === 'Varies'): ?>
+                                    -
                                 <?php else: ?>
                                     Unlimited
                                 <?php endif; ?>

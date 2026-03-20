@@ -17,12 +17,14 @@ $welcomeIntroCssHref = $assetPrefix . 'assets/css/welcome-intro.css';
 $languageJsSrc = $assetPrefix . 'assets/js/language.js';
 $welcomeIntroJsSrc = $assetPrefix . 'assets/js/welcome-intro.js';
 $dateFormatJsSrc = $assetPrefix . 'assets/js/date-format-global.js';
+$marqueeFallbackJsSrc = $assetPrefix . 'assets/js/marquee-fallback.js';
 
 $styleFile = __DIR__ . '/assets/css/style.css';
 $welcomeIntroCssFile = __DIR__ . '/assets/css/welcome-intro.css';
 $languageJsFile = __DIR__ . '/assets/js/language.js';
 $welcomeIntroJsFile = __DIR__ . '/assets/js/welcome-intro.js';
 $dateFormatJsFile = __DIR__ . '/assets/js/date-format-global.js';
+$marqueeFallbackJsFile = __DIR__ . '/assets/js/marquee-fallback.js';
 
 if (is_file($styleFile)) {
     $styleHref .= '?v=' . filemtime($styleFile);
@@ -38,6 +40,9 @@ if (is_file($welcomeIntroJsFile)) {
 }
 if (is_file($dateFormatJsFile)) {
     $dateFormatJsSrc .= '?v=' . filemtime($dateFormatJsFile);
+}
+if (is_file($marqueeFallbackJsFile)) {
+    $marqueeFallbackJsSrc .= '?v=' . filemtime($marqueeFallbackJsFile);
 }
 
 $currentRequestPath = parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH);
@@ -58,6 +63,7 @@ $isActiveTopNav = static function (array $pages) use ($currentPage) {
     <link rel="stylesheet" href="<?php echo htmlspecialchars($welcomeIntroCssHref, ENT_QUOTES, 'UTF-8'); ?>">
     <script src="<?php echo htmlspecialchars($languageJsSrc, ENT_QUOTES, 'UTF-8'); ?>" defer></script>
     <script src="<?php echo htmlspecialchars($dateFormatJsSrc, ENT_QUOTES, 'UTF-8'); ?>" defer></script>
+    <script src="<?php echo htmlspecialchars($marqueeFallbackJsSrc, ENT_QUOTES, 'UTF-8'); ?>" defer></script>
     <!-- <script src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script> -->
     <script src="<?php echo htmlspecialchars($welcomeIntroJsSrc, ENT_QUOTES, 'UTF-8'); ?>" defer></script>
     <style>

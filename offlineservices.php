@@ -1,13 +1,22 @@
-<?php $pageTitle = 'Offline Services'; include 'header.php'; ?>
+<?php
+$pageTitle = 'Offline Services';
+require_once __DIR__ . '/config/db.php';
+require_once __DIR__ . '/helpers/system_settings.php';
+
+$offlineServicesPageMarqueeHtml = vs_settings_get_marquee_html($pdo, 'offline_services_page_marquee_html');
+include 'header.php';
+?>
 
 <main class="services-main">
     <section class="service-categories">
         <div style="display:flex;gap:16px;justify-content:center;margin-bottom:18px;flex-wrap:wrap;">
             <button class="redesigned-cta-btn" style="flex:1 1 260px;max-width:340px;border:3px solid #FFD700;box-shadow:0 4px 18px rgba(212,175,55,0.13);" onclick="window.location.href='live-token.php'">Live Token Status</button>
         </div>
-        <marquee style="font-size:1.08em;color:#800000;margin-bottom:18px;display:block;">
-            For online appointments and digital services, visit <a href="services.php" style="color:#800000;font-weight:700;text-decoration:underline;">Online Services</a> page.
-        </marquee>
+        <?php if ($offlineServicesPageMarqueeHtml !== ''): ?>
+            <marquee style="font-size:1.08em;color:#800000;margin-bottom:18px;display:block;">
+                <?= $offlineServicesPageMarqueeHtml ?>
+            </marquee>
+        <?php endif; ?>
         <h1 class="services-title">Offline Services at Office</h1>
         <div class="categories-grid home-top-cards-container">
             <!-- Offline Token Booking Card -->

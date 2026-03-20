@@ -907,6 +907,70 @@ if (!function_exists('vs_event_fetch_event_dates_with_booked_seats')) {
     }
 }
 
+if (!function_exists('vs_event_fetch_report_event_date_occupancy_rows')) {
+    function vs_event_fetch_report_event_date_occupancy_rows(PDO $pdo, int $eventId, ?string $eventType = null): array
+    {
+        $eventId = max($eventId, 0);
+        if ($eventId <= 0) {
+            return [];
+        }
+
+        $rows = vs_event_fetch_event_dates_with_booked_seats($pdo, $eventId);
+        if (empty($rows)) {
+            return [];
+        }
+
+        $resolvedType = vs_event_normalize_event_type($eventType ?? vs_event_get_event_type($pdo, $eventId, 'single_day'));
+        if ($resolvedType !== 'date_range') {
+            return $rows;
+        }
+
+        $firstRow = $rows[0];
+        $rangeLabel = vs_event_build_range_label($rows, (string)($firstRow['event_date'] ?? ''));
+        $bookedSeats = 0;
+        $statusMap = [];
+        $seatLimitMap = [];
+
+        foreach ($rows as $row) {
+            $bookedSeats += max((int)($row['booked_seats'] ?? 0), 0);
+
+            $status = trim((string)($row['status'] ?? 'Active'));
+            if ($status !== '') {
+                $statusMap[$status] = true;
+            }
+
+            $seatLimit = (int)($row['seat_limit'] ?? 0);
+            if ($seatLimit > 0) {
+                $seatLimitMap[$seatLimit] = true;
+            }
+        }
+
+        $statusLabel = count($statusMap) === 1 ? (string)array_key_first($statusMap) : 'Mixed';
+        $seatLimit = null;
+        $seatLimitLabel = 'Unlimited';
+
+        if (!empty($seatLimitMap)) {
+            if (count($seatLimitMap) === 1) {
+                $seatLimit = (int)array_key_first($seatLimitMap);
+                $seatLimitLabel = (string)$seatLimit;
+            } else {
+                $seatLimitLabel = 'Varies';
+            }
+        }
+
+        return [[
+            'id' => (int)($firstRow['id'] ?? 0),
+            'event_id' => $eventId,
+            'event_date' => $rangeLabel !== '' ? $rangeLabel : (string)($firstRow['event_date'] ?? ''),
+            'seat_limit' => $seatLimit,
+            'seat_limit_label' => $seatLimitLabel,
+            'status' => $statusLabel,
+            'booked_seats' => $bookedSeats,
+            'is_range_summary' => 1,
+        ]];
+    }
+}
+
 if (!function_exists('vs_event_fetch_packages_with_seats')) {
     function vs_event_fetch_packages_with_seats(PDO $pdo, int $eventId, bool $onlyActive = true, int $eventDateId = 0): array
     {

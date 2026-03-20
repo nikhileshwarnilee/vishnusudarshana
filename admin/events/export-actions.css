@@ -1,0 +1,114 @@
+.report-filter-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: stretch;
+    grid-column: 1 / -1;
+    margin-top: 6px;
+}
+
+.report-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 210px;
+    min-height: 60px;
+    padding: 12px 16px;
+    border: 1px solid #ead7d0;
+    border-radius: 16px;
+    text-decoration: none;
+    font-weight: 700;
+    font-family: inherit;
+    cursor: pointer;
+    transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+    box-shadow: 0 12px 26px rgba(120, 32, 32, 0.09);
+}
+
+.report-action:hover {
+    transform: translateY(-2px);
+    text-decoration: none;
+    box-shadow: 0 16px 28px rgba(120, 32, 32, 0.14);
+}
+
+.report-action:focus-visible {
+    outline: 3px solid rgba(128, 0, 0, 0.18);
+    outline-offset: 3px;
+}
+
+.report-action__icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 42px;
+}
+
+.report-action__icon svg {
+    width: 20px;
+    height: 20px;
+    fill: currentColor;
+}
+
+.report-action__body {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    line-height: 1.15;
+}
+
+.report-action__title {
+    font-size: 0.97rem;
+    font-weight: 800;
+}
+
+.report-action__meta {
+    font-size: 0.78rem;
+    font-weight: 600;
+    opacity: 0.82;
+}
+
+.report-action--filter {
+    background: linear-gradient(135deg, #7a1818 0%, #982828 100%);
+    border-color: #7a1818;
+    color: #fff6f1;
+}
+
+.report-action--filter .report-action__icon {
+    background: rgba(255, 255, 255, 0.16);
+    color: #fff7f2;
+}
+
+.report-action--excel {
+    background: linear-gradient(135deg, #f6fff9 0%, #e4f7ea 100%);
+    border-color: #b9dec0;
+    color: #14532d;
+}
+
+.report-action--excel .report-action__icon {
+    background: #d5f1dd;
+    color: #14532d;
+}
+
+.report-action--pdf {
+    background: linear-gradient(135deg, #fff8fa 0%, #ffe7ee 100%);
+    border-color: #efc0cc;
+    color: #7a1f2f;
+}
+
+.report-action--pdf .report-action__icon {
+    background: #ffd9e3;
+    color: #7a1f2f;
+}
+
+@media (max-width: 720px) {
+    .report-filter-actions {
+        flex-direction: column;
+    }
+
+    .report-action {
+        width: 100%;
+        min-width: 0;
+    }
+}
