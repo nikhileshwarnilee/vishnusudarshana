@@ -259,7 +259,7 @@ body.fullscreen-mode .calendar-card {
 			<button class="redesigned-cta-btn" style="flex:1 1 260px;max-width:340px;border:3px solid #FFD700;box-shadow:0 4px 18px rgba(212,175,55,0.13);" onclick="window.location.href='book-token.php'">Book Token</button>
 		</div>
 		<h1 class="live-token-title">Live Token Status</h1>
-		<p class="live-token-subtitle">Live status updates, refreshed every 10 seconds</p>
+		<p class="live-token-subtitle">Live status updates, checked every second</p>
 
 		<div class="cards-row">
 			<section class="calendar-card" data-city="solapur">
@@ -332,10 +332,20 @@ const cardsRow = document.querySelector('.cards-row');
 const apiUrl = 'api/live-tokens-previous.php';
 const visibilityUrl = 'api/live-token-visibility.php';
 const settingsUrl = 'api/get-settings.php';
+const LIVE_TOKEN_REFRESH_MS = 1000;
+const VISIBILITY_REFRESH_MS = 10000;
+const SETTINGS_REFRESH_MS = 30000;
 const urlParams = new URLSearchParams(window.location.search);
 const fullscreenCity = urlParams.get('fullscreen');
 let announcementLanguage = 'marathi';
 let announcementEnabled = true;
+let announcementCursor = null;
+let lastProcessedAnnouncementCursor = null;
+let hasLoadedInitialSnapshot = false;
+let liveTokensFetchInFlight = false;
+let visibilityFetchInFlight = false;
+let settingsFetchInFlight = false;
+let announcementQueue = Promise.resolve();
 const announcedTokenByCity = {};
 const initializedTokenByCity = {};
 
@@ -361,7 +371,70 @@ function parseTokenValue(value) {
 	return cleaned ? parseInt(cleaned, 10) : NaN;
 }
 
+function normalizeAnnouncementCursor(cursor) {
+	if (!cursor || typeof cursor !== 'object') {
+		return null;
+	}
+	const updatedAt = String(cursor.updated_at || '').trim();
+	if (!updatedAt) {
+		return null;
+	}
+	return {
+		updated_at: updatedAt,
+		booking_id: Math.max(0, parseInt(cursor.booking_id || cursor.id || 0, 10) || 0)
+	};
+}
+
+function compareAnnouncementCursors(left, right) {
+	if (!left && !right) {
+		return 0;
+	}
+	if (!left) {
+		return -1;
+	}
+	if (!right) {
+		return 1;
+	}
+	if (left.updated_at < right.updated_at) {
+		return -1;
+	}
+	if (left.updated_at > right.updated_at) {
+		return 1;
+	}
+	if (left.booking_id < right.booking_id) {
+		return -1;
+	}
+	if (left.booking_id > right.booking_id) {
+		return 1;
+	}
+	return 0;
+}
+
+function setAnnouncementCursor(cursor) {
+	const normalized = normalizeAnnouncementCursor(cursor);
+	if (!normalized) {
+		return;
+	}
+	if (compareAnnouncementCursors(normalized, announcementCursor) > 0) {
+		announcementCursor = normalized;
+	}
+}
+
+function setProcessedAnnouncementCursor(cursor) {
+	const normalized = normalizeAnnouncementCursor(cursor);
+	if (!normalized) {
+		return;
+	}
+	if (compareAnnouncementCursors(normalized, lastProcessedAnnouncementCursor) > 0) {
+		lastProcessedAnnouncementCursor = normalized;
+	}
+}
+
 async function loadAnnouncementSettings() {
+	if (settingsFetchInFlight) {
+		return;
+	}
+	settingsFetchInFlight = true;
 	try {
 		const res = await fetch(settingsUrl, { cache: 'no-store' });
 		const data = await res.json();
@@ -375,31 +448,133 @@ async function loadAnnouncementSettings() {
 	} catch (err) {
 		announcementLanguage = 'marathi';
 		announcementEnabled = true;
+	} finally {
+		settingsFetchInFlight = false;
 	}
 }
 
+function buildLiveTokenRequestUrl() {
+	const params = new URLSearchParams();
+	if (announcementCursor && announcementCursor.updated_at) {
+		params.set('announcement_since', announcementCursor.updated_at);
+		params.set('announcement_after_id', String(announcementCursor.booking_id || 0));
+	}
+	const queryString = params.toString();
+	return queryString ? `${apiUrl}?${queryString}` : apiUrl;
+}
+
+function primeAnnouncementState(city, currentTokenRaw) {
+	const normalizedCity = String(city || '').trim().toLowerCase();
+	const token = parseTokenValue(currentTokenRaw);
+	initializedTokenByCity[normalizedCity] = true;
+	announcedTokenByCity[normalizedCity] = Number.isFinite(token) && token > 0 ? token : null;
+}
+
+function enqueueLiveTokenAnnouncement(token, nextTokenRaw) {
+	if (!announcementEnabled) {
+		return;
+	}
+	if (!window.TokenAnnouncement || typeof window.TokenAnnouncement.announceLiveTokenStatus !== 'function') {
+		return;
+	}
+	announcementQueue = announcementQueue
+		.catch(() => {})
+		.then(() => window.TokenAnnouncement.announceLiveTokenStatus(token, nextTokenRaw, announcementLanguage));
+}
+
 function maybeAnnounceCurrentToken(city, currentTokenRaw, nextTokenRaw) {
+	const normalizedCity = String(city || '').trim().toLowerCase();
+	if (!Object.prototype.hasOwnProperty.call(initializedTokenByCity, normalizedCity)) {
+		primeAnnouncementState(normalizedCity, currentTokenRaw);
+		return;
+	}
+
 	const token = parseTokenValue(currentTokenRaw);
 	if (!Number.isFinite(token) || token <= 0) {
 		return;
 	}
 
-	if (!Object.prototype.hasOwnProperty.call(initializedTokenByCity, city)) {
-		initializedTokenByCity[city] = true;
-		announcedTokenByCity[city] = token;
+	if (announcedTokenByCity[normalizedCity] === token) {
 		return;
 	}
 
-	if (announcedTokenByCity[city] === token) {
-		return;
+	initializedTokenByCity[normalizedCity] = true;
+	announcedTokenByCity[normalizedCity] = token;
+	enqueueLiveTokenAnnouncement(token, nextTokenRaw);
+}
+
+function processAnnouncementEvents(events) {
+	if (!Array.isArray(events) || events.length === 0) {
+		return false;
 	}
 
-	announcedTokenByCity[city] = token;
-	if (!announcementEnabled) {
+	events.forEach(event => {
+		const eventCursor = normalizeAnnouncementCursor(event);
+		if (eventCursor && compareAnnouncementCursors(eventCursor, lastProcessedAnnouncementCursor) <= 0) {
+			return;
+		}
+
+		const normalizedCity = String((event && event.city) || '').trim().toLowerCase();
+		if (!normalizedCity) {
+			if (eventCursor) {
+				setProcessedAnnouncementCursor(eventCursor);
+			}
+			return;
+		}
+
+		const token = parseTokenValue(event.token_no);
+		if (Number.isFinite(token) && token > 0) {
+			initializedTokenByCity[normalizedCity] = true;
+			if (announcedTokenByCity[normalizedCity] !== token) {
+				announcedTokenByCity[normalizedCity] = token;
+				enqueueLiveTokenAnnouncement(token, null);
+			}
+		}
+
+		if (eventCursor) {
+			setProcessedAnnouncementCursor(eventCursor);
+		}
+	});
+
+	return true;
+}
+
+function cityDataFor(card, citiesData) {
+	const city = card.getAttribute('data-city');
+	return (citiesData && citiesData[city]) ? citiesData[city] : {};
+}
+
+function primeAnnouncementStatesFromSnapshot(citiesData) {
+	cards.forEach(card => {
+		const city = card.getAttribute('data-city');
+		const cityData = cityDataFor(card, citiesData);
+		primeAnnouncementState(city, cityData.current_token);
+	});
+}
+
+function maybeAnnounceSnapshotChanges(citiesData) {
+	cards.forEach(card => {
+		const city = card.getAttribute('data-city');
+		const cityData = cityDataFor(card, citiesData);
+		maybeAnnounceCurrentToken(city, cityData.current_token, cityData.next_token);
+	});
+}
+
+function renderSnapshot(citiesData, dateStr) {
+	cards.forEach(card => {
+		renderCard(card, cityDataFor(card, citiesData), dateStr);
+	});
+}
+
+function applyAnnouncementCursorState(responseCursor, receivedEvents) {
+	if (!hasLoadedInitialSnapshot) {
+		if (responseCursor) {
+			setProcessedAnnouncementCursor(responseCursor);
+		}
 		return;
 	}
-	if (window.TokenAnnouncement && typeof window.TokenAnnouncement.announceLiveTokenStatus === 'function') {
-		window.TokenAnnouncement.announceLiveTokenStatus(token, nextTokenRaw, announcementLanguage);
+	if (receivedEvents || responseCursor) {
+		setProcessedAnnouncementCursor(responseCursor);
 	}
 }
 
@@ -435,24 +610,43 @@ function renderCard(card, data, dateStr) {
 }
 
 async function fetchLiveTokens() {
+	if (liveTokensFetchInFlight) {
+		return;
+	}
+	liveTokensFetchInFlight = true;
 	try {
-		const res = await fetch(apiUrl, { cache: 'no-store' });
+		const res = await fetch(buildLiveTokenRequestUrl(), { cache: 'no-store' });
 		const data = await res.json();
-		if (!data.success) return;
+		if (!data || !data.success) return;
 
-		cards.forEach(card => {
-			const city = card.getAttribute('data-city');
-			const cityData = (data.cities && data.cities[city]) ? data.cities[city] : {};
-			maybeAnnounceCurrentToken(city, cityData.current_token, cityData.next_token);
-			renderCard(card, cityData, data.date);
-		});
+		const citiesData = data.cities || {};
+		const responseCursor = normalizeAnnouncementCursor(data.announcement && data.announcement.cursor);
+		const receivedEvents = processAnnouncementEvents(data.announcement && data.announcement.events);
+
+		renderSnapshot(citiesData, data.date);
+
+		if (!hasLoadedInitialSnapshot) {
+			primeAnnouncementStatesFromSnapshot(citiesData);
+			hasLoadedInitialSnapshot = true;
+		} else if (!receivedEvents) {
+			maybeAnnounceSnapshotChanges(citiesData);
+		}
+
+		applyAnnouncementCursorState(responseCursor, receivedEvents);
+		setAnnouncementCursor(responseCursor);
 	} catch (err) {
 		// Silent fail for live refresh
+	} finally {
+		liveTokensFetchInFlight = false;
 	}
 }
 
 
 async function updateVisibility() {
+	if (visibilityFetchInFlight) {
+		return;
+	}
+	visibilityFetchInFlight = true;
 	try {
 		const res = await fetch(visibilityUrl, { cache: 'no-store' });
 		const data = await res.json();
@@ -473,17 +667,27 @@ async function updateVisibility() {
 		if (cardsRow) {
 			cardsRow.classList.toggle('two-cards', !fullscreenCity && visible.length === 2);
 		}
-	} catch (err) {}
-}
-
-async function liveUpdate() {
-	await Promise.all([fetchLiveTokens(), updateVisibility()]);
+	} catch (err) {
+		// Silent fail for visibility refresh
+	} finally {
+		visibilityFetchInFlight = false;
+	}
 }
 
 loadAnnouncementSettings();
-setInterval(loadAnnouncementSettings, 30000);
-liveUpdate();
-setInterval(liveUpdate, 10000);
+updateVisibility();
+fetchLiveTokens();
+setInterval(loadAnnouncementSettings, SETTINGS_REFRESH_MS);
+setInterval(updateVisibility, VISIBILITY_REFRESH_MS);
+setInterval(fetchLiveTokens, LIVE_TOKEN_REFRESH_MS);
+
+document.addEventListener('visibilitychange', () => {
+	if (!document.hidden) {
+		loadAnnouncementSettings();
+		updateVisibility();
+		fetchLiveTokens();
+	}
+});
 
 if (fullscreenCity) {
 	document.body.classList.add('fullscreen-mode');

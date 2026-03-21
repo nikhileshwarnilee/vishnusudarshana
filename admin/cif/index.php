@@ -579,6 +579,7 @@ $(function() {
                                 <td><?= htmlspecialchars($selected_client['birth_place']) ?></td>
                                 <td>
                                     <button type="button" id="editClientBtn" class="btn btn-edit">Edit</button>
+                                    <a href="remedy.php?client_id=<?= (int)$selected_client['id'] ?>" class="btn btn-save" style="display:inline-block;margin-left:8px;text-decoration:none;">Manage Remedies</a>
                                 </td>
                             </tr>
                         </tbody>

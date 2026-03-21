@@ -163,6 +163,7 @@ if (!function_exists('vs_admin_permission_map')) {
             'cif/index.php' => ['pairs' => [['CIF', 'CIF Home']]],
             'cif/category.php' => ['pairs' => [['CIF', 'Category']]],
             'cif/clients.php' => ['pairs' => [['CIF', 'Clients']]],
+            'cif/remedy.php' => ['pairs' => [['CIF', 'CIF Home'], ['CIF', 'Clients']]],
             'cif/ajax_search_clients.php' => ['pairs' => [['CIF', 'Clients']], 'action' => 'view'],
 
             // Schedule
