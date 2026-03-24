@@ -15,13 +15,94 @@ if (session_status() === PHP_SESSION_NONE) {
 
 }
 require_once __DIR__ . '/../../config/db.php';
+require_once __DIR__ . '/../../helpers/system_settings.php';
+
+if (!function_exists('vs_appointments_is_valid_time')) {
+    function vs_appointments_is_valid_time(string $value): bool
+    {
+        return preg_match('/^(?:[01]\d|2[0-3]):[0-5]\d$/', $value) === 1;
+    }
+}
+
+if (!function_exists('vs_appointments_normalize_time_setting')) {
+    function vs_appointments_normalize_time_setting(?string $value, string $fallback): string
+    {
+        $value = trim((string) $value);
+
+        return vs_appointments_is_valid_time($value) ? $value : $fallback;
+    }
+}
+
+if (!function_exists('vs_appointments_format_time_label')) {
+    function vs_appointments_format_time_label(string $value): string
+    {
+        $timeObject = DateTime::createFromFormat('H:i', $value);
+
+        return $timeObject ? $timeObject->format('g:i A') : $value;
+    }
+}
+
+$appointmentDefaultTimeFromKey = 'appointment_default_time_from';
+$appointmentDefaultTimeToKey = 'appointment_default_time_to';
+$appointmentDefaultTimeFrom = '09:00';
+$appointmentDefaultTimeTo = '21:00';
+$appointmentSettingsSaved = isset($_GET['settings']) && $_GET['settings'] === 'saved';
+$appointmentSettingsErrorMessage = '';
+
+try {
+    vs_settings_ensure_table($pdo);
+    $appointmentDefaultTimeFrom = vs_appointments_normalize_time_setting(
+        vs_settings_get_value($pdo, $appointmentDefaultTimeFromKey),
+        $appointmentDefaultTimeFrom
+    );
+    $appointmentDefaultTimeTo = vs_appointments_normalize_time_setting(
+        vs_settings_get_value($pdo, $appointmentDefaultTimeToKey),
+        $appointmentDefaultTimeTo
+    );
+} catch (Throwable $e) {
+    error_log('Unable to load appointment schedule defaults: ' . $e->getMessage());
+}
 
 /* ============================================================
     HANDLE ACCEPT ACTION (Simplified)
    ============================================================ */
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (isset($_POST['action']) && $_POST['action'] === 'accept') {
+    $postAction = (string) ($_POST['action'] ?? '');
+
+    if ($postAction === 'save_schedule_defaults') {
+        $submittedDefaultTimeFrom = trim((string) ($_POST['default_time_from'] ?? ''));
+        $submittedDefaultTimeTo = trim((string) ($_POST['default_time_to'] ?? ''));
+
+        $appointmentDefaultTimeFrom = vs_appointments_normalize_time_setting(
+            $submittedDefaultTimeFrom,
+            $appointmentDefaultTimeFrom
+        );
+        $appointmentDefaultTimeTo = vs_appointments_normalize_time_setting(
+            $submittedDefaultTimeTo,
+            $appointmentDefaultTimeTo
+        );
+
+        if (
+            !vs_appointments_is_valid_time($submittedDefaultTimeFrom) ||
+            !vs_appointments_is_valid_time($submittedDefaultTimeTo) ||
+            $submittedDefaultTimeFrom >= $submittedDefaultTimeTo
+        ) {
+            $appointmentSettingsErrorMessage = 'Please choose a valid default time range.';
+        } else {
+            try {
+                vs_settings_ensure_table($pdo);
+                vs_settings_upsert($pdo, $appointmentDefaultTimeFromKey, $submittedDefaultTimeFrom);
+                vs_settings_upsert($pdo, $appointmentDefaultTimeToKey, $submittedDefaultTimeTo);
+
+                header('Location: appointments.php?settings=saved');
+                exit;
+            } catch (Throwable $e) {
+                error_log('Unable to save appointment schedule defaults: ' . $e->getMessage());
+                $appointmentSettingsErrorMessage = 'Unable to save default schedule time right now.';
+            }
+        }
+    } elseif ($postAction === 'accept') {
         $appointmentIds = $_POST['appointment_ids'] ?? [];
         $assignedDate = $_POST['assigned_date'] ?? '';
         $timeFrom = $_POST['time_from'] ?? '';
@@ -87,8 +168,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             header('Location: appointments.php?success=accepted');
             exit;
         }
-    }
-    if (isset($_POST['action']) && $_POST['action'] === 'mark_completed') {
+    } elseif ($postAction === 'mark_completed') {
         $appointmentIds = $_POST['appointment_ids'] ?? [];
         if (!empty($appointmentIds)) {
             $placeholders = implode(',', array_fill(0, count($appointmentIds), '?'));
@@ -135,6 +215,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 }
+
+$appointmentDefaultTimeFromLabel = vs_appointments_format_time_label($appointmentDefaultTimeFrom);
+$appointmentDefaultTimeToLabel = vs_appointments_format_time_label($appointmentDefaultTimeTo);
+$reopenScheduleSettingsModal = $appointmentSettingsErrorMessage !== '';
 
 /* ============================================================
     DASHBOARD STATISTICS (Optional)
@@ -321,6 +405,61 @@ h1 {
     color: #800000;
     margin-bottom: 18px;
 }
+.page-title {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+.page-title h1 {
+    margin-bottom: 6px;
+}
+.page-title-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+.current-default-note {
+    color: #6b4a4a;
+    font-size: 0.95em;
+    font-weight: 600;
+}
+.icon-action-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    border: 1px solid #d8c0c0;
+    background: #fff;
+    color: #800000;
+    cursor: pointer;
+    box-shadow: 0 2px 12px rgba(128, 0, 0, 0.08);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.icon-action-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 14px rgba(128, 0, 0, 0.16);
+}
+.notice-banner {
+    margin-bottom: 14px;
+    padding: 12px 14px;
+    border-radius: 10px;
+    font-weight: 600;
+}
+.notice-success {
+    background: #e8f8ec;
+    border: 1px solid #b9e0c1;
+    color: #1f6f2c;
+}
+.notice-error {
+    background: #fff1f1;
+    border: 1px solid #e9b7b7;
+    color: #9f2525;
+}
 /* Summary cards now in responsive-cards.css */
 .filter-bar {
     display: flex;
@@ -490,6 +629,16 @@ h1 {
     margin-bottom: 6px;
     color: #333;
 }
+.settings-form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 14px;
+}
+.settings-help-text {
+    margin: 0 0 16px;
+    color: #6b4a4a;
+    line-height: 1.5;
+}
 .form-group input,
 .form-group textarea {
     width: 100%;
@@ -565,14 +714,43 @@ h1 {
 <?php include __DIR__ . '/../includes/top-menu.php'; ?>
 
 <div class="admin-container">
-<h1 style="display:flex;align-items:center;gap:12px;">Appointment Management
-    <button id="refreshRollbackBtn" title="Run Auto Rollback" style="background:none;border:none;cursor:pointer;padding:0;margin-left:8px;">
-        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none" viewBox="0 0 24 24"><path fill="#007bff" d="M12 6V3l-5 5 5 5V8c3.31 0 6 2.69 6 6 0 1.3-.42 2.5-1.13 3.47l1.46 1.46A7.938 7.938 0 0020 14c0-4.42-3.58-8-8-8zm-6.87 2.53L3.67 7.07A7.938 7.938 0 004 10c0 4.42 3.58 8 8 8v3l5-5-5-5v3c-3.31 0-6-2.69-6-6 0-1.3.42-2.5 1.13-3.47z"/></svg>
-        <span style="font-size:0.9em;color:#007bff;vertical-align:middle;">Refresh</span>
-    </button>
-</h1>
+<div class="page-title">
+    <div>
+        <h1>Appointment Management</h1>
+        <div class="current-default-note">
+            Accept popup default time: <?= htmlspecialchars($appointmentDefaultTimeFromLabel) ?> to <?= htmlspecialchars($appointmentDefaultTimeToLabel) ?>
+        </div>
+    </div>
+    <div class="page-title-actions">
+        <button id="refreshRollbackBtn" title="Run Auto Rollback" style="background:none;border:none;cursor:pointer;padding:0;display:inline-flex;align-items:center;gap:6px;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none" viewBox="0 0 24 24"><path fill="#007bff" d="M12 6V3l-5 5 5 5V8c3.31 0 6 2.69 6 6 0 1.3-.42 2.5-1.13 3.47l1.46 1.46A7.938 7.938 0 0020 14c0-4.42-3.58-8-8-8zm-6.87 2.53L3.67 7.07A7.938 7.938 0 004 10c0 4.42 3.58 8 8 8v3l5-5-5-5v3c-3.31 0-6-2.69-6-6 0-1.3.42-2.5 1.13-3.47z"/></svg>
+            <span style="font-size:0.9em;color:#007bff;vertical-align:middle;">Refresh</span>
+        </button>
+        <button
+            type="button"
+            class="icon-action-btn"
+            onclick="openScheduleSettingsModal()"
+            title="Default schedule settings"
+            aria-label="Open default schedule settings"
+        >
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <circle cx="12" cy="12" r="3.2" stroke="currentColor" stroke-width="1.8"/>
+                <path d="M12 2.75v2.1M12 19.15v2.1M21.25 12h-2.1M4.85 12H2.75M18.54 5.46l-1.48 1.48M6.94 17.06l-1.48 1.48M18.54 18.54l-1.48-1.48M6.94 6.94L5.46 5.46" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+            </svg>
+        </button>
+    </div>
+</div>
 <div id="rollbackMsg" style="margin-bottom:12px;font-weight:600;color:#007bff;"></div>
-</script>
+<?php if ($appointmentSettingsSaved): ?>
+    <div class="notice-banner notice-success">
+        Default appointment schedule time saved. New accept popups will open with <?= htmlspecialchars($appointmentDefaultTimeFromLabel) ?> to <?= htmlspecialchars($appointmentDefaultTimeToLabel) ?>.
+    </div>
+<?php endif; ?>
+<?php if ($appointmentSettingsErrorMessage !== ''): ?>
+    <div class="notice-banner notice-error">
+        <?= htmlspecialchars($appointmentSettingsErrorMessage) ?>
+    </div>
+<?php endif; ?>
 <script>
 document.getElementById('refreshRollbackBtn').onclick = function() {
     var btn = this;
@@ -641,26 +819,6 @@ document.getElementById('refreshRollbackBtn').onclick = function() {
             <span class="action-bar-label"><span id="selectedCount-<?= htmlspecialchars($date) ?>">0</span> appointment(s) selected</span>
             <button class="action-btn btn-accept" onclick="openAcceptModal('<?= htmlspecialchars($date) ?>')">Accept Selected</button>
             <button class="action-btn btn-completed" onclick="submitMarkCompleted('<?= htmlspecialchars($date) ?>')" style="background:#007bff;color:#fff;">Mark Completed</button>
-        <script>
-        function submitMarkCompleted(date) {
-            if (!selectedAppointmentsByDate[date] || selectedAppointmentsByDate[date].length === 0) return;
-            const ids = selectedAppointmentsByDate[date].map(a => a.id);
-            if (!confirm(`Mark ${ids.length} appointment(s) as completed?`)) return;
-            const form = document.createElement('form');
-            form.method = 'POST';
-            form.action = '';
-            form.innerHTML = `<input type="hidden" name="action" value="mark_completed">`;
-            ids.forEach(id => {
-                const input = document.createElement('input');
-                input.type = 'hidden';
-                input.name = 'appointment_ids[]';
-                input.value = id;
-                form.appendChild(input);
-            });
-            document.body.appendChild(form);
-            form.submit();
-        }
-        </script>
         </div>
         <table class="service-table">
             <thead>
@@ -760,6 +918,35 @@ document.getElementById('refreshRollbackBtn').onclick = function() {
 
 </div>
 
+<div class="modal" id="scheduleSettingsModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Default Schedule Settings</h2>
+            <button class="modal-close" type="button" onclick="closeScheduleSettingsModal()">&times;</button>
+        </div>
+        <form method="POST" onsubmit="return validateScheduleSettingsForm()">
+            <input type="hidden" name="action" value="save_schedule_defaults">
+            <p class="settings-help-text">
+                These times are used to prefill the Accept Appointment popup whenever you schedule pending appointments.
+            </p>
+            <div class="settings-form-grid">
+                <div class="form-group">
+                    <label for="defaultTimeFrom">Default Time From *</label>
+                    <input type="time" id="defaultTimeFrom" name="default_time_from" value="<?= htmlspecialchars($appointmentDefaultTimeFrom) ?>" required>
+                </div>
+                <div class="form-group">
+                    <label for="defaultTimeTo">Default Time To *</label>
+                    <input type="time" id="defaultTimeTo" name="default_time_to" value="<?= htmlspecialchars($appointmentDefaultTimeTo) ?>" required>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-cancel" onclick="closeScheduleSettingsModal()">Cancel</button>
+                <button type="submit" class="btn-submit">Save Settings</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <!-- PHASE 3 - ACCEPT APPOINTMENT MODAL -->
 <div class="modal" id="acceptModal">
     <div class="modal-content">
@@ -800,20 +987,96 @@ document.getElementById('refreshRollbackBtn').onclick = function() {
 <!-- Reschedule removed in simplified flow -->
 
 <script>
+const appointmentDefaultTimeFrom = <?= json_encode($appointmentDefaultTimeFrom, JSON_UNESCAPED_SLASHES) ?>;
+const appointmentDefaultTimeTo = <?= json_encode($appointmentDefaultTimeTo, JSON_UNESCAPED_SLASHES) ?>;
+const reopenScheduleSettingsModal = <?= $reopenScheduleSettingsModal ? 'true' : 'false' ?>;
+
+let selectedAppointmentsByDate = {};
+let activeAcceptModalDate = null;
+
 // Global search filter for all tables
 document.addEventListener('DOMContentLoaded', function() {
     const searchInput = document.getElementById('globalSearch');
-    if (!searchInput) return;
-    searchInput.addEventListener('input', function() {
-        const val = this.value.trim().toLowerCase();
-        document.querySelectorAll('.service-table tbody tr').forEach(row => {
-            const text = row.textContent.toLowerCase();
-            row.style.display = val === '' || text.includes(val) ? '' : 'none';
+    if (searchInput) {
+        searchInput.addEventListener('input', function() {
+            const val = this.value.trim().toLowerCase();
+            document.querySelectorAll('.service-table tbody tr').forEach(row => {
+                const text = row.textContent.toLowerCase();
+                row.style.display = val === '' || text.includes(val) ? '' : 'none';
+            });
         });
-    });
+    }
+
+    if (reopenScheduleSettingsModal) {
+        openScheduleSettingsModal();
+    }
+
+    const setTodayBtn = document.getElementById('setTodayBtn');
+    if (setTodayBtn) {
+        setTodayBtn.onclick = function() {
+            const today = new Date();
+            const yyyy = today.getFullYear();
+            const mm = String(today.getMonth() + 1).padStart(2, '0');
+            const dd = String(today.getDate()).padStart(2, '0');
+            document.getElementById('assignedDate').value = `${yyyy}-${mm}-${dd}`;
+        };
+    }
+
+    setTimeout(function() {
+        document.querySelectorAll('.selectAll').forEach(selectAll => {
+            const date = selectAll.getAttribute('data-date');
+            selectAll.addEventListener('change', function() {
+                document.querySelectorAll('.rowCheckbox[data-date="' + date + '"]').forEach(cb => {
+                    cb.checked = selectAll.checked;
+                });
+                updateActionBar(date);
+            });
+        });
+
+        document.querySelectorAll('.rowCheckbox').forEach(checkbox => {
+            const date = checkbox.getAttribute('data-date');
+            checkbox.addEventListener('change', function() {
+                updateActionBar(date);
+            });
+        });
+    }, 100);
 });
-// Track selected appointments per date
-let selectedAppointmentsByDate = {};
+
+document.addEventListener('click', function(event) {
+    if (event.target.id === 'acceptModal') {
+        closeAcceptModal();
+    }
+    if (event.target.id === 'scheduleSettingsModal') {
+        closeScheduleSettingsModal();
+    }
+});
+
+document.addEventListener('keydown', function(event) {
+    if (event.key === 'Escape') {
+        closeAcceptModal();
+        closeScheduleSettingsModal();
+    }
+});
+
+function openScheduleSettingsModal() {
+    document.getElementById('scheduleSettingsModal').classList.add('show');
+}
+
+function closeScheduleSettingsModal() {
+    document.getElementById('scheduleSettingsModal').classList.remove('show');
+}
+
+function validateScheduleSettingsForm() {
+    const defaultTimeFrom = document.getElementById('defaultTimeFrom').value;
+    const defaultTimeTo = document.getElementById('defaultTimeTo').value;
+
+    if (!defaultTimeFrom || !defaultTimeTo || defaultTimeFrom >= defaultTimeTo) {
+        alert('Default Time From must be before Default Time To');
+        return false;
+    }
+
+    return true;
+}
 
 function updateActionBar(date) {
     const checkboxes = document.querySelectorAll('.rowCheckbox[data-date="' + date + '"]:checked');
@@ -828,18 +1091,20 @@ function updateActionBar(date) {
 
 function openAcceptModal(date) {
     if (!selectedAppointmentsByDate[date] || selectedAppointmentsByDate[date].length === 0) return;
+    activeAcceptModalDate = date;
     // Set appointment IDs
     const ids = selectedAppointmentsByDate[date].map(a => a.id);
     document.getElementById('acceptAppointmentIds').value = ids.join(',');
     // Set assigned date to preferred date
     document.getElementById('assignedDate').value = date;
-    // Set default time from 09:00 and to 21:00
-    document.getElementById('timeFrom').value = '09:00';
-    document.getElementById('timeTo').value = '21:00';
+    // Set configured default time range
+    document.getElementById('timeFrom').value = appointmentDefaultTimeFrom;
+    document.getElementById('timeTo').value = appointmentDefaultTimeTo;
     document.getElementById('acceptModal').classList.add('show');
 }
 
 function closeAcceptModal() {
+    activeAcceptModalDate = null;
     document.getElementById('acceptModal').classList.remove('show');
 }
 
@@ -850,25 +1115,19 @@ function validateAcceptForm() {
         alert('Time From must be before Time To');
         return false;
     }
-    // Find which date's action bar is open
-    let selectedDate = null;
-    let count = 0;
-    for (const date in selectedAppointmentsByDate) {
-        if (selectedAppointmentsByDate[date] && selectedAppointmentsByDate[date].length > 0) {
-            selectedDate = date;
-            count = selectedAppointmentsByDate[date].length;
-            break;
-        }
+
+    const selectedDate = activeAcceptModalDate;
+    if (!selectedDate || !selectedAppointmentsByDate[selectedDate] || selectedAppointmentsByDate[selectedDate].length === 0) {
+        return false;
     }
-    if (!selectedDate) return false;
-    // Use the actual checked checkboxes count for confirmation
+
     const checked = document.querySelectorAll('.rowCheckbox[data-date="' + selectedDate + '"]:checked').length;
     if (!confirm(`Accept ${checked} appointment(s)?`)) {
         return false;
     }
-    // Convert single hidden input to multiple
-    const form = event.target;
-    form.querySelector('#acceptAppointmentIds').remove();
+
+    const form = document.querySelector('#acceptModal form');
+    form.querySelectorAll('input[name="appointment_ids[]"]').forEach(input => input.remove());
     selectedAppointmentsByDate[selectedDate].forEach(a => {
         const input = document.createElement('input');
         input.type = 'hidden';
@@ -876,38 +1135,33 @@ function validateAcceptForm() {
         input.value = a.id;
         form.appendChild(input);
     });
+
     return true;
 }
 
-// Select/Deselect all checkboxes per table
-setTimeout(function() {
-    document.querySelectorAll('.selectAll').forEach(selectAll => {
-        const date = selectAll.getAttribute('data-date');
-        selectAll.addEventListener('change', function () {
-            document.querySelectorAll('.rowCheckbox[data-date="' + date + '"]').forEach(cb => {
-                cb.checked = selectAll.checked;
-            });
-            updateActionBar(date);
-        });
-    });
-    // Listen to individual checkbox changes per table
-    document.querySelectorAll('.rowCheckbox').forEach(checkbox => {
-        const date = checkbox.getAttribute('data-date');
-        checkbox.addEventListener('change', function() {
-            updateActionBar(date);
-        });
-    });
-}, 100);
+function submitMarkCompleted(date) {
+    if (!selectedAppointmentsByDate[date] || selectedAppointmentsByDate[date].length === 0) return;
 
-// Set today's date in assigned date input when button is clicked
-document.getElementById('setTodayBtn').onclick = function() {
-    const today = new Date();
-    const yyyy = today.getFullYear();
-    const mm = String(today.getMonth() + 1).padStart(2, '0');
-    const dd = String(today.getDate()).padStart(2, '0');
-    const todayStr = `${yyyy}-${mm}-${dd}`;
-    document.getElementById('assignedDate').value = todayStr;
-};
+    const ids = selectedAppointmentsByDate[date].map(a => a.id);
+    if (!confirm(`Mark ${ids.length} appointment(s) as completed?`)) {
+        return;
+    }
+
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '';
+    form.innerHTML = '<input type="hidden" name="action" value="mark_completed">';
+    ids.forEach(id => {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'appointment_ids[]';
+        input.value = id;
+        form.appendChild(input);
+    });
+
+    document.body.appendChild(form);
+    form.submit();
+}
 </script>
 
 
