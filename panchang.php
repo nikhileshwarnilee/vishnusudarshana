@@ -14,6 +14,63 @@ $shareImage = vs_project_absolute_url('assets/images/logo/panchang.png');
 
 $panchangWhatsAppText = "🪔 Panchang ({$todayDateText})\n\n\n🪔 आजचे पंचांग पहा - शुभ मुहूर्त जाणून घ्या.\n\n\n🪔 View today's Panchang - know the auspicious timings.\n\n{$panchangWhatsAppUrl}";
 
+if (!function_exists('vs_panchang_load_timezones')) {
+    function vs_panchang_load_timezones(): array
+    {
+        $timezones = [];
+        $timezoneFile = __DIR__ . '/timezones.php';
+
+        if (is_file($timezoneFile) && is_readable($timezoneFile)) {
+            ob_start();
+            try {
+                $loadedTimezones = include $timezoneFile;
+            } catch (Throwable $e) {
+                $loadedTimezones = [];
+            }
+            ob_end_clean();
+
+            if (is_array($loadedTimezones)) {
+                $timezones = $loadedTimezones;
+            }
+        }
+
+        $timezones = array_values(array_filter($timezones, static function ($timezone): bool {
+            return is_array($timezone)
+                && isset($timezone['name'], $timezone['offset'], $timezone['offset_str']);
+        }));
+
+        if (!$timezones) {
+            foreach (DateTimeZone::listIdentifiers() as $identifier) {
+                $dateTimeZone = new DateTimeZone($identifier);
+                $now = new DateTime('now', $dateTimeZone);
+                $offset = $dateTimeZone->getOffset($now);
+                $sign = ($offset < 0) ? '-' : '+';
+                $absOffset = abs($offset);
+                $hours = floor($absOffset / 3600);
+                $minutes = floor(($absOffset % 3600) / 60);
+
+                $timezones[] = [
+                    'name' => $identifier,
+                    'offset' => $offset / 3600,
+                    'offset_str' => sprintf('%s%02d:%02d', $sign, $hours, $minutes),
+                ];
+            }
+        }
+
+        usort($timezones, static function (array $a, array $b): int {
+            if ($a['offset'] === $b['offset']) {
+                return strcmp($a['name'], $b['name']);
+            }
+
+            return $a['offset'] <=> $b['offset'];
+        });
+
+        return $timezones;
+    }
+}
+
+$timezoneOptions = vs_panchang_load_timezones();
+
 include 'header.php';
 ?>
 
@@ -300,15 +357,11 @@ include 'header.php';
                     <label for="tz">TimeZone</label>
                     <select id="tz" name="tz" required style="width:100%">
                         <?php
-                        include_once __DIR__ . '/timezones.php';
                         $userTz = 'Asia/Kolkata';
-                        usort($timezones, function($a, $b) {
-                            return $a['offset'] <=> $b['offset'];
-                        });
-                        foreach ($timezones as $tz) {
-                            $selected = ($tz['name'] === $userTz) ? 'selected' : '';
-                            $label = $tz['name'] . ' (UTC ' . $tz['offset_str'] . ')';
-                            echo "<option value=\"{$tz['name']}\" $selected>$label</option>";
+                        foreach ($timezoneOptions as $timezoneOption) {
+                            $selected = ($timezoneOption['name'] === $userTz) ? 'selected' : '';
+                            $label = $timezoneOption['name'] . ' (UTC ' . $timezoneOption['offset_str'] . ')';
+                            echo "<option value=\"{$timezoneOption['name']}\" $selected>$label</option>";
                         }
                         ?>
                     </select>

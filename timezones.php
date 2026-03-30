@@ -137,3 +137,5 @@ foreach ($tzIdentifiers as $tz) {
 		'offset_str' => $offsetStr
 	];
 }
+
+return $timezones;
