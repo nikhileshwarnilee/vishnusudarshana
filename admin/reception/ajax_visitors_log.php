@@ -9,6 +9,45 @@ require_once '../../helpers/mobile_display.php';
 
 $action = $_POST['action'] ?? '';
 
+if (!function_exists('vs_insert_visitor_ticket')) {
+    function vs_insert_visitor_ticket(
+        PDO $pdo,
+        string $name,
+        string $contact,
+        string $address,
+        string $purpose,
+        string $visitType,
+        string $priority,
+        string $status
+    ): array {
+        $name = trim($name);
+        $contact = trim($contact);
+        $address = trim($address);
+        $purpose = trim($purpose);
+        $visitType = in_array($visitType, ['inoffice', 'call'], true) ? $visitType : 'inoffice';
+        $priority = in_array($priority, ['normal', 'urgent'], true) ? $priority : 'normal';
+        $status = in_array($status, ['open', 'closed'], true) ? $status : 'open';
+
+        if ($name === '') {
+            return ['success' => false, 'error' => 'Visitor name is required'];
+        }
+
+        $inTime = date('Y-m-d H:i:s');
+        $outTime = $status === 'closed' ? $inTime : null;
+
+        $stmt = $pdo->prepare("INSERT INTO visitor_tickets
+            (visitor_name, contact_number, address, purpose, visit_type, priority, in_time, out_time, status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $ok = $stmt->execute([$name, $contact, $address, $purpose, $visitType, $priority, $inTime, $outTime, $status]);
+
+        if (!$ok) {
+            return ['success' => false, 'error' => 'DB error'];
+        }
+
+        return ['success' => true, 'id' => $pdo->lastInsertId()];
+    }
+}
+
 
 switch ($action) {
     case 'list':
@@ -62,19 +101,16 @@ switch ($action) {
         $purpose = trim($_POST['purpose'] ?? '');
         $visit_type = $_POST['visit_type'] ?? 'inoffice';
         $priority = $_POST['priority'] ?? 'normal';
-        $in_time = date('Y-m-d H:i:s');
-        // $in_time is already set using PHP date in IST
-        if ($name === '') {
-            echo json_encode(['success' => false, 'error' => 'Visitor name is required']);
-            exit;
-        }
-        $stmt = $pdo->prepare("INSERT INTO visitor_tickets (visitor_name, contact_number, address, purpose, visit_type, priority, in_time, status) VALUES (?, ?, ?, ?, ?, ?, ?, 'open')");
-        $ok = $stmt->execute([$name, $contact, $address, $purpose, $visit_type, $priority, $in_time]);
-        if ($ok) {
-            echo json_encode(['success' => true, 'id' => $pdo->lastInsertId()]);
-        } else {
-            echo json_encode(['success' => false, 'error' => 'DB error']);
-        }
+        echo json_encode(vs_insert_visitor_ticket($pdo, $name, $contact, $address, $purpose, $visit_type, $priority, 'open'));
+        break;
+    case 'add_customer':
+        $name = trim($_POST['visitor_name'] ?? '');
+        $contact = trim($_POST['contact_number'] ?? '');
+        $address = trim($_POST['address'] ?? '');
+        $purpose = trim($_POST['purpose'] ?? '');
+        $visit_type = $_POST['visit_type'] ?? 'inoffice';
+        $priority = $_POST['priority'] ?? 'normal';
+        echo json_encode(vs_insert_visitor_ticket($pdo, $name, $contact, $address, $purpose, $visit_type, $priority, 'closed'));
         break;
     case 'close':
         $id = intval($_POST['id'] ?? 0);

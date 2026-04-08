@@ -10,6 +10,12 @@ if (!isset($_SESSION['user_id'])) {
     header('Location: ../login.php');
     exit;
 }
+$actorUserId = (int)($_SESSION['user_id'] ?? 0);
+$actorUserName = trim((string)($_SESSION['user_name'] ?? ''));
+$actorRole = (function_exists('vs_admin_is_super_admin') && vs_admin_is_super_admin()) ? 'admin' : 'staff';
+if ($actorUserName === '') {
+    $actorUserName = $actorRole === 'admin' ? 'Admin' : 'Staff';
+}
 
 require_once __DIR__ . '/../../config/db.php';
 require_once __DIR__ . '/../../helpers/event_module.php';
@@ -110,6 +116,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['verify_action'], $_PO
                         SET status = 'Approved', payment_type = ?, amount_paid = ?, remaining_amount = ?
                         WHERE id = ?")
                         ->execute([$newPaymentType, $newPaid, $remainingAfter, $paymentId]);
+                    vs_event_review_latest_payment_activity(
+                        $pdo,
+                        (int)$paymentRow['registration_id'],
+                        'Approved',
+                        $actorUserId,
+                        $actorUserName,
+                        $actorRole
+                    );
                     $pdo->prepare("UPDATE event_registrations SET payment_status = ?, verification_status = 'Approved' WHERE id = ?")
                         ->execute([$newPaymentStatus, (int)$paymentRow['registration_id']]);
 
@@ -146,6 +160,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['verify_action'], $_PO
                     $message = 'Payment approved successfully.';
                 } else {
                     $pdo->prepare("UPDATE event_payments SET status = 'Rejected' WHERE id = ?")->execute([$paymentId]);
+                    vs_event_review_latest_payment_activity(
+                        $pdo,
+                        (int)$paymentRow['registration_id'],
+                        'Rejected',
+                        $actorUserId,
+                        $actorUserName,
+                        $actorRole
+                    );
                     $fallbackStatus = ((float)($paymentRow['amount_paid'] ?? 0) > 0) ? 'Partial Paid' : 'Failed';
                     $pdo->prepare("UPDATE event_registrations SET payment_status = ?, verification_status = 'Rejected' WHERE id = ?")
                         ->execute([$fallbackStatus, (int)$paymentRow['registration_id']]);
@@ -202,7 +224,7 @@ INNER JOIN event_registrations r ON r.id = ep.registration_id
 INNER JOIN events e ON e.id = r.event_id
 LEFT JOIN event_dates d ON d.id = r.event_date_id
 INNER JOIN event_packages p ON p.id = r.package_id
-WHERE ep.payment_method IN ('Manual UPI', 'Cash')
+WHERE ep.payment_method IN ('Manual UPI', 'Cash', 'Online Payment')
   AND ep.status IN ('Pending', 'Pending Verification')
 ORDER BY ep.id DESC";
 $pendingPayments = $pdo->query($pendingSql)->fetchAll(PDO::FETCH_ASSOC);
@@ -250,7 +272,7 @@ INNER JOIN event_registrations r ON r.id = ep.registration_id
 INNER JOIN events e ON e.id = r.event_id
 LEFT JOIN event_dates d ON d.id = r.event_date_id
 INNER JOIN event_packages p ON p.id = r.package_id
-WHERE ep.payment_method IN ('Manual UPI', 'Cash')
+WHERE ep.payment_method IN ('Manual UPI', 'Cash', 'Online Payment')
   AND ep.status IN ('Approved', 'Rejected')
 ORDER BY ep.updated_at DESC
 LIMIT 25";
@@ -381,7 +403,7 @@ $buildTabUrl = static function (string $tab, int $eventId): string {
 
     <section class="tab-panel <?php echo $activeTab === 'payment' ? '' : 'hidden'; ?>">
         <div class="card">
-            <h3 style="margin-top:0; color:#800000;">Payment Verification (UPI / Cash)</h3>
+            <h3 style="margin-top:0; color:#800000;">Payment Verification (Cash / Online)</h3>
             <table class="list-table">
                 <thead>
                     <tr>
@@ -392,7 +414,7 @@ $buildTabUrl = static function (string $tab, int $eventId): string {
                         <th>Booking Ref</th>
                         <th>Type</th>
                         <th>Method</th>
-                        <th>UPI Account</th>
+                        <th>Payment Account</th>
                         <th>Amount</th>
                         <th>Paid So Far</th>
                         <th>Remaining</th>
@@ -405,7 +427,7 @@ $buildTabUrl = static function (string $tab, int $eventId): string {
                 </thead>
                 <tbody>
                 <?php if (empty($pendingPayments)): ?>
-                    <tr><td colspan="16" style="text-align:center; padding:20px; color:#666;">No pending manual payments.</td></tr>
+                    <tr><td colspan="16" style="text-align:center; padding:20px; color:#666;">No pending cash or online payments.</td></tr>
                 <?php else: ?>
                     <?php foreach ($pendingPayments as $row): ?>
                         <tr>
@@ -437,7 +459,7 @@ $buildTabUrl = static function (string $tab, int $eventId): string {
                             <td>
                                 <?php if (!empty($row['screenshot'])): ?>
                                     <a href="../../<?php echo htmlspecialchars(ltrim((string)$row['screenshot'], '/')); ?>" target="_blank">
-                                        <img class="screenshot" src="../../<?php echo htmlspecialchars(ltrim((string)$row['screenshot'], '/')); ?>" alt="UPI Screenshot">
+                                        <img class="screenshot" src="../../<?php echo htmlspecialchars(ltrim((string)$row['screenshot'], '/')); ?>" alt="Payment Proof">
                                     </a>
                                 <?php else: ?>
                                     <span class="small">Not uploaded</span>
@@ -471,7 +493,7 @@ $buildTabUrl = static function (string $tab, int $eventId): string {
                         <th>Booking Ref</th>
                         <th>Type</th>
                         <th>Method</th>
-                        <th>UPI Account</th>
+                        <th>Payment Account</th>
                         <th>Amount</th>
                         <th>Paid Total</th>
                         <th>Remaining</th>
@@ -484,7 +506,7 @@ $buildTabUrl = static function (string $tab, int $eventId): string {
                 </thead>
                 <tbody>
                 <?php if (empty($recentPayments)): ?>
-                    <tr><td colspan="16" style="text-align:center; padding:18px; color:#666;">No approved/rejected manual payments yet.</td></tr>
+                    <tr><td colspan="16" style="text-align:center; padding:18px; color:#666;">No approved or rejected cash/online payments yet.</td></tr>
                 <?php else: ?>
                     <?php foreach ($recentPayments as $row): ?>
                         <tr>

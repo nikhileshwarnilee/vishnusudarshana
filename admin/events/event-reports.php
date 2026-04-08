@@ -816,6 +816,7 @@ if (!empty($pdfQuery)) {
                     <a class="quick-link" href="cancellations.php?event_id=<?php echo (int)$eventId; ?>">View Cancellations</a>
                     <a class="quick-link" href="event-packages.php?event_id=<?php echo (int)$eventId; ?>">Manage Packages</a>
                     <a class="quick-link" href="pending-payments.php?event_id=<?php echo (int)$eventId; ?>">Pending Payments</a>
+                    <a class="quick-link" href="payment-collections.php?event_id=<?php echo (int)$eventId; ?>">Payment Collections</a>
                 </div>
             </div>
         </div>

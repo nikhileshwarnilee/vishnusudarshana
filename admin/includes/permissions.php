@@ -68,6 +68,9 @@ if (!function_exists('vs_admin_permission_map')) {
             'reception/ajax_visitors_log.php' => ['pairs' => [['Reception', 'Visitors Log'], ['Reception', 'Closed Visitors Log']], 'action' => 'view'],
             'reception/ajax_get_notes.php' => ['pairs' => [['Reception', 'Visitors Log'], ['Reception', 'Closed Visitors Log']], 'action' => 'view'],
             'reception/ajax_add_note.php' => ['pairs' => [['Reception', 'Visitors Log'], ['Reception', 'Closed Visitors Log']], 'action' => 'edit'],
+            'reception/vastu-visits.php' => ['pairs' => [['Reception', 'Vastu Visits']]],
+            'reception/closed-vastu-visits.php' => ['pairs' => [['Reception', 'Closed Vastu Visits']]],
+            'reception/vastu-visit-areas.php' => ['pairs' => [['Reception', 'Vastu Visits']], 'action' => 'edit'],
 
             // Appointments
             'services/appointments.php' => ['pairs' => [['Appointments', 'Pending Appointments']]],
@@ -121,6 +124,7 @@ if (!function_exists('vs_admin_permission_map')) {
             'events/event-packages.php' => ['pairs' => [['Events', 'Event Packages']]],
             'events/update-package-order.php' => ['pairs' => [['Events', 'Event Packages']], 'action' => 'edit'],
             'events/registrations.php' => ['pairs' => [['Events', 'Registrations']]],
+            'events/create-registration.php' => ['pairs' => [['Events', 'Registrations']], 'action' => 'edit'],
             'events/registration-view.php' => ['pairs' => [['Events', 'Registrations']]],
             'events/cancellations.php' => ['pairs' => [['Events', 'Cancellations']]],
             'events/checkin.php' => ['pairs' => [['Events', 'Check-In']]],
@@ -130,6 +134,7 @@ if (!function_exists('vs_admin_permission_map')) {
             'events/verifications.php' => ['pairs' => [['Events', 'Verifications'], ['Events', 'Payment Verification'], ['Events', 'Cancellations']]],
             'events/payment-verification.php' => ['pairs' => [['Events', 'Payment Verification']]],
             'events/event-reports.php' => ['pairs' => [['Events', 'Event Reports']]],
+            'events/payment-collections.php' => ['pairs' => [['Events', 'Event Reports']], 'action' => 'view'],
             'events/export-registrations.php' => ['pairs' => [['Events', 'Event Reports']], 'action' => 'view'],
             'events/export-pdf.php' => ['pairs' => [['Events', 'Event Reports']], 'action' => 'view'],
             'events/broadcast.php' => ['pairs' => [['Events', 'Broadcast']]],

@@ -66,6 +66,21 @@ $default_categories = [
         'logo' => '',
     ],
 ];
+$fixedCategorySlugs = array_values(array_map(static function (array $cat): string {
+    return (string)($cat['category_slug'] ?? '');
+}, $default_categories));
+$isFixedCategorySlug = static function (string $slug) use ($fixedCategorySlugs): bool {
+    return in_array($slug, $fixedCategorySlugs, true);
+};
+$fetchCategoryById = static function (PDO $pdoRef, int $id): ?array {
+    if ($id <= 0) {
+        return null;
+    }
+    $stmt = $pdoRef->prepare("SELECT * FROM service_categories WHERE id = ? LIMIT 1");
+    $stmt->execute([$id]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    return $row ?: null;
+};
 
 // Insert default categories if not present
 foreach ($default_categories as $cat) {
@@ -125,6 +140,46 @@ if (isset($_POST['reorder']) && isset($_POST['id']) && isset($_POST['direction']
     exit;
 }
 
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_id'])) {
+    admin_enforce_mapped_permission('delete');
+    $deleteId = (int)($_POST['delete_id'] ?? 0);
+    $categoryRow = $fetchCategoryById($pdo, $deleteId);
+    if (!$categoryRow) {
+        echo json_encode(['success' => false, 'errors' => ['Category not found.']]);
+        exit;
+    }
+
+    $categorySlug = trim((string)($categoryRow['category_slug'] ?? ''));
+    if ($isFixedCategorySlug($categorySlug)) {
+        echo json_encode(['success' => false, 'errors' => ['Fixed categories cannot be deleted.']]);
+        exit;
+    }
+
+    $productsCountStmt = $pdo->prepare("SELECT COUNT(*) FROM products WHERE category_slug = ?");
+    $productsCountStmt->execute([$categorySlug]);
+    $productsCount = (int)$productsCountStmt->fetchColumn();
+
+    $requestsCountStmt = $pdo->prepare("SELECT COUNT(*) FROM service_requests WHERE category_slug = ?");
+    $requestsCountStmt->execute([$categorySlug]);
+    $requestsCount = (int)$requestsCountStmt->fetchColumn();
+
+    if ($productsCount > 0 || $requestsCount > 0) {
+        $reasons = [];
+        if ($productsCount > 0) {
+            $reasons[] = $productsCount . ' product(s)';
+        }
+        if ($requestsCount > 0) {
+            $reasons[] = $requestsCount . ' service request(s)';
+        }
+        echo json_encode(['success' => false, 'errors' => ['Category cannot be deleted because it is used in ' . implode(' and ', $reasons) . '.']]);
+        exit;
+    }
+
+    $pdo->prepare("DELETE FROM service_categories WHERE id = ? LIMIT 1")->execute([$deleteId]);
+    echo json_encode(['success' => true]);
+    exit;
+}
+
 // Handle AJAX form submission (add or update)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax'])) {
     $category_name = trim($_POST['category_name'] ?? '');
@@ -134,6 +189,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax'])) {
     $id = isset($_POST['id']) ? intval($_POST['id']) : 0;
     $errors = [];
     $logo_filename = '';
+    $existingCategory = $id > 0 ? $fetchCategoryById($pdo, $id) : null;
+    if ($id > 0 && !$existingCategory) {
+        $errors[] = 'Category not found.';
+    }
+    $existingSlug = trim((string)($existingCategory['category_slug'] ?? ''));
+    $isEditingFixedCategory = $existingSlug !== '' && $isFixedCategorySlug($existingSlug);
+    if ($isEditingFixedCategory) {
+        $category_slug = $existingSlug;
+    }
 
     if ($category_name === '') $errors[] = 'Category name is required.';
     if ($category_slug === '') $errors[] = 'Category slug is required.';
@@ -193,6 +257,10 @@ foreach ($default_categories as $i => $cat) {
 // Fetch categories for table (ordered by sequence)
 $stmt = $pdo->query("SELECT * FROM service_categories ORDER BY sequence ASC, id ASC");
 $categories = $stmt->fetchAll(PDO::FETCH_ASSOC);
+foreach ($categories as &$categoryRow) {
+    $categoryRow['is_fixed'] = $isFixedCategorySlug((string)($categoryRow['category_slug'] ?? ''));
+}
+unset($categoryRow);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -218,7 +286,13 @@ $categories = $stmt->fetchAll(PDO::FETCH_ASSOC);
     .category-table tr:last-child td { border-bottom: none; }
     .action-btn { background: #007bff; color: #fff; padding: 6px 14px; border-radius: 6px; text-decoration: none; font-weight: 600; margin-right: 6px; transition: background 0.15s; }
     .action-btn:hover { background: #0056b3; }
+    .action-btn.delete-btn { background:#c62828; }
+    .action-btn.delete-btn:hover { background:#8e1d1d; }
     .cat-logo { width: 48px; height: 48px; object-fit: contain; border-radius: 8px; background: #f3f3f3; border: 1px solid #eee; }
+    .type-badge { display:inline-block; padding:4px 10px; border-radius:999px; font-size:0.85em; font-weight:700; }
+    .type-badge.fixed { background:#eef9f1; color:#1a7f37; }
+    .type-badge.custom { background:#f4fbff; color:#0b7285; }
+    .field-note { display:block; margin-top:-8px; margin-bottom:14px; color:#666; font-size:0.9em; }
     </style>
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 </head>
@@ -235,6 +309,7 @@ $categories = $stmt->fetchAll(PDO::FETCH_ASSOC);
         <label class="form-label">Category Slug:
             <input type="text" name="category_slug" id="category_slug" class="form-input" required>
         </label>
+        <span class="field-note" id="category_slug_note" style="display:none;">Fixed category slugs are locked because they are used in the service forms and public pages.</span>
         <label class="form-label">Description:
             <textarea name="description" class="form-textarea" rows="2" id="category_desc"></textarea>
         </label>
@@ -257,13 +332,22 @@ $categories = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 <th>Slug</th>
                 <th>Description</th>
                 <th>Services Include</th>
+                <th>Type</th>
                 <th>Order</th>
                 <th>Actions</th>
             </tr>
         </thead>
         <tbody>
         <?php foreach ($categories as $idx => $cat): ?>
-            <tr>
+            <tr
+                data-id="<?php echo (int)$cat['id']; ?>"
+                data-name="<?php echo htmlspecialchars((string)$cat['category_name'], ENT_QUOTES); ?>"
+                data-slug="<?php echo htmlspecialchars((string)$cat['category_slug'], ENT_QUOTES); ?>"
+                data-desc="<?php echo htmlspecialchars((string)$cat['description'], ENT_QUOTES); ?>"
+                data-services="<?php echo htmlspecialchars((string)$cat['services_include'], ENT_QUOTES); ?>"
+                data-logo="<?php echo htmlspecialchars((string)($cat['logo'] ?? ''), ENT_QUOTES); ?>"
+                data-fixed="<?php echo !empty($cat['is_fixed']) ? '1' : '0'; ?>"
+            >
                 <td><?php echo $cat['id']; ?></td>
                 <td>
                     <?php if (!empty($cat['logo'])): ?>
@@ -277,17 +361,35 @@ $categories = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 <td><?php echo htmlspecialchars($cat['description']); ?></td>
                 <td><?php echo htmlspecialchars($cat['services_include']); ?></td>
                 <td>
+                    <span class="type-badge <?php echo !empty($cat['is_fixed']) ? 'fixed' : 'custom'; ?>">
+                        <?php echo !empty($cat['is_fixed']) ? 'Fixed' : 'Custom'; ?>
+                    </span>
+                </td>
+                <td>
                     <button class="order-btn" data-id="<?php echo $cat['id']; ?>" data-dir="up" <?php if ($idx==0) echo 'disabled'; ?>>&#8593;</button>
                     <button class="order-btn" data-id="<?php echo $cat['id']; ?>" data-dir="down" <?php if ($idx==count($categories)-1) echo 'disabled'; ?>>&#8595;</button>
                 </td>
-                <td><a href="#" class="action-btn edit-btn">Edit</a></td>
+                <td>
+                    <a href="#" class="action-btn edit-btn">Edit</a>
+                    <?php if (empty($cat['is_fixed'])): ?>
+                        <a href="#" class="action-btn delete-btn">Delete</a>
+                    <?php endif; ?>
+                </td>
             </tr>
         <?php endforeach; ?>
         </tbody>
     </table>
     <script>
+    function setSlugLockState(isLocked) {
+        $('#category_slug').prop('readonly', !!isLocked);
+        $('#category_slug_note').toggle(!!isLocked);
+        $('#category_slug').css('background', isLocked ? '#f3f4f6' : '#fff');
+    }
     // Instant slug generation
     $('#category_name').on('input', function() {
+        if ($('#category_slug').prop('readonly')) {
+            return;
+        }
         var name = $(this).val();
         var slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
         $('#category_slug').val(slug);
@@ -326,15 +428,17 @@ $categories = $stmt->fetchAll(PDO::FETCH_ASSOC);
         });
     });
     // Edit button handler
-    $('.edit-btn, .action-btn').on('click', function(e) {
+    $('.edit-btn').on('click', function(e) {
         e.preventDefault();
         var row = $(this).closest('tr');
-        $('#category_id').val(row.find('td:eq(0)').text().trim());
-        $('#category_name').val(row.find('td:eq(2)').text().trim());
-        $('#category_slug').val(row.find('td:eq(3)').text().trim());
-        $('#category_desc').val(row.find('td:eq(4)').text().trim());
-        $('#category_services').val(row.find('td:eq(5)').text().trim());
-        var logo = row.find('img.cat-logo').attr('src');
+        var isFixed = String(row.data('fixed')) === '1';
+        $('#category_id').val(String(row.data('id') || ''));
+        $('#category_name').val(String(row.data('name') || ''));
+        $('#category_slug').val(String(row.data('slug') || ''));
+        $('#category_desc').val(String(row.data('desc') || ''));
+        $('#category_services').val(String(row.data('services') || ''));
+        setSlugLockState(isFixed);
+        var logo = row.data('logo') ? '/assets/images/logo/' + row.data('logo') : '';
         if (logo) {
             $('#currentLogo').html('<img src="'+logo+'" class="cat-logo" style="margin-top:8px;">');
         } else {
@@ -351,6 +455,39 @@ $categories = $stmt->fetchAll(PDO::FETCH_ASSOC);
         $('#formBtn').text('Add Category');
         $('#cancelEdit').hide();
         $('#currentLogo').html('');
+        setSlugLockState(false);
+    });
+    // Delete button handler
+    $('.delete-btn').on('click', function(e) {
+        e.preventDefault();
+        var row = $(this).closest('tr');
+        var id = parseInt(row.data('id'), 10) || 0;
+        var name = String(row.data('name') || 'this category');
+        if (id <= 0) return;
+        if (!confirm('Delete ' + name + '? This is only allowed when it is not linked to any products or service requests.')) {
+            return;
+        }
+        $('#form-messages').html('<div class="loading">Deleting category...</div>');
+        $.ajax({
+            url: window.location.pathname,
+            type: 'POST',
+            dataType: 'json',
+            data: { delete_id: id },
+            success: function(res) {
+                if (res.success) {
+                    $('#form-messages').html('<div class="success-msg">Category deleted.</div>');
+                    setTimeout(function(){ location.reload(); }, 500);
+                } else if (res.errors) {
+                    var html = '<ul class="error-list">';
+                    res.errors.forEach(function(msg) { html += '<li>' + msg + '</li>'; });
+                    html += '</ul>';
+                    $('#form-messages').html(html);
+                }
+            },
+            error: function() {
+                $('#form-messages').html('<ul class="error-list"><li>Unable to delete category right now.</li></ul>');
+            }
+        });
     });
     // Order up/down
     $(document).on('click', '.order-btn', function(e) {
@@ -361,6 +498,7 @@ $categories = $stmt->fetchAll(PDO::FETCH_ASSOC);
             if (res.success) location.reload();
         }, 'json');
     });
+    setSlugLockState(false);
     </script>
 </div>
 </body>

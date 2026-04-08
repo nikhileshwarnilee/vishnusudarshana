@@ -165,6 +165,35 @@ if (!function_exists('vs_event_ensure_tables')) {
                 CONSTRAINT fk_event_payments_registration FOREIGN KEY (registration_id) REFERENCES event_registrations(id) ON DELETE CASCADE
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
 
+            "CREATE TABLE IF NOT EXISTS event_payment_activity (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                registration_id INT NOT NULL,
+                payment_method VARCHAR(50) NOT NULL,
+                payment_type VARCHAR(30) DEFAULT NULL,
+                amount DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+                transaction_id VARCHAR(255) DEFAULT NULL,
+                screenshot VARCHAR(255) DEFAULT NULL,
+                remarks TEXT NULL,
+                status VARCHAR(50) NOT NULL DEFAULT 'Pending Verification',
+                collected_by_user_id INT DEFAULT NULL,
+                collected_by_user_name VARCHAR(255) DEFAULT NULL,
+                collected_by_role VARCHAR(30) DEFAULT NULL,
+                collected_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                reviewed_by_user_id INT DEFAULT NULL,
+                reviewed_by_user_name VARCHAR(255) DEFAULT NULL,
+                reviewed_by_role VARCHAR(30) DEFAULT NULL,
+                reviewed_at DATETIME DEFAULT NULL,
+                source_label VARCHAR(120) DEFAULT NULL,
+                legacy_migrated TINYINT(1) NOT NULL DEFAULT 0,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                KEY idx_event_payment_activity_registration_id (registration_id),
+                KEY idx_event_payment_activity_collected_at (collected_at),
+                KEY idx_event_payment_activity_status (status),
+                KEY idx_event_payment_activity_collector (collected_by_role, collected_by_user_id),
+                CONSTRAINT fk_event_payment_activity_registration FOREIGN KEY (registration_id) REFERENCES event_registrations(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
             "CREATE TABLE IF NOT EXISTS event_waitlist (
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 event_id INT NOT NULL,
@@ -408,6 +437,60 @@ if (!function_exists('vs_event_ensure_tables')) {
         if (!$hasColumn('event_payments', 'upi_qr_used')) {
             $pdo->exec("ALTER TABLE event_payments ADD COLUMN upi_qr_used VARCHAR(255) DEFAULT NULL AFTER upi_id_used");
         }
+        if (!$hasColumn('event_payment_activity', 'payment_type')) {
+            $pdo->exec("ALTER TABLE event_payment_activity ADD COLUMN payment_type VARCHAR(30) DEFAULT NULL AFTER payment_method");
+        }
+        if (!$hasColumn('event_payment_activity', 'transaction_id')) {
+            $pdo->exec("ALTER TABLE event_payment_activity ADD COLUMN transaction_id VARCHAR(255) DEFAULT NULL AFTER amount");
+        }
+        if (!$hasColumn('event_payment_activity', 'screenshot')) {
+            $pdo->exec("ALTER TABLE event_payment_activity ADD COLUMN screenshot VARCHAR(255) DEFAULT NULL AFTER transaction_id");
+        }
+        if (!$hasColumn('event_payment_activity', 'remarks')) {
+            $pdo->exec("ALTER TABLE event_payment_activity ADD COLUMN remarks TEXT NULL AFTER screenshot");
+        }
+        if (!$hasColumn('event_payment_activity', 'status')) {
+            $pdo->exec("ALTER TABLE event_payment_activity ADD COLUMN status VARCHAR(50) NOT NULL DEFAULT 'Pending Verification' AFTER remarks");
+        }
+        if (!$hasColumn('event_payment_activity', 'collected_by_user_id')) {
+            $pdo->exec("ALTER TABLE event_payment_activity ADD COLUMN collected_by_user_id INT DEFAULT NULL AFTER status");
+        }
+        if (!$hasColumn('event_payment_activity', 'collected_by_user_name')) {
+            $pdo->exec("ALTER TABLE event_payment_activity ADD COLUMN collected_by_user_name VARCHAR(255) DEFAULT NULL AFTER collected_by_user_id");
+        }
+        if (!$hasColumn('event_payment_activity', 'collected_by_role')) {
+            $pdo->exec("ALTER TABLE event_payment_activity ADD COLUMN collected_by_role VARCHAR(30) DEFAULT NULL AFTER collected_by_user_name");
+        }
+        if (!$hasColumn('event_payment_activity', 'collected_at')) {
+            $pdo->exec("ALTER TABLE event_payment_activity ADD COLUMN collected_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP AFTER collected_by_role");
+        }
+        if (!$hasColumn('event_payment_activity', 'reviewed_by_user_id')) {
+            $pdo->exec("ALTER TABLE event_payment_activity ADD COLUMN reviewed_by_user_id INT DEFAULT NULL AFTER collected_at");
+        }
+        if (!$hasColumn('event_payment_activity', 'reviewed_by_user_name')) {
+            $pdo->exec("ALTER TABLE event_payment_activity ADD COLUMN reviewed_by_user_name VARCHAR(255) DEFAULT NULL AFTER reviewed_by_user_id");
+        }
+        if (!$hasColumn('event_payment_activity', 'reviewed_by_role')) {
+            $pdo->exec("ALTER TABLE event_payment_activity ADD COLUMN reviewed_by_role VARCHAR(30) DEFAULT NULL AFTER reviewed_by_user_name");
+        }
+        if (!$hasColumn('event_payment_activity', 'reviewed_at')) {
+            $pdo->exec("ALTER TABLE event_payment_activity ADD COLUMN reviewed_at DATETIME DEFAULT NULL AFTER reviewed_by_role");
+        }
+        if (!$hasColumn('event_payment_activity', 'source_label')) {
+            $pdo->exec("ALTER TABLE event_payment_activity ADD COLUMN source_label VARCHAR(120) DEFAULT NULL AFTER reviewed_at");
+        }
+        if (!$hasColumn('event_payment_activity', 'legacy_migrated')) {
+            $pdo->exec("ALTER TABLE event_payment_activity ADD COLUMN legacy_migrated TINYINT(1) NOT NULL DEFAULT 0 AFTER source_label");
+        }
+        if (!$hasIndex('event_payment_activity', 'idx_event_payment_activity_collected_at')) {
+            $pdo->exec("ALTER TABLE event_payment_activity ADD KEY idx_event_payment_activity_collected_at (collected_at)");
+        }
+        if (!$hasIndex('event_payment_activity', 'idx_event_payment_activity_status')) {
+            $pdo->exec("ALTER TABLE event_payment_activity ADD KEY idx_event_payment_activity_status (status)");
+        }
+        if (!$hasIndex('event_payment_activity', 'idx_event_payment_activity_collector')) {
+            $pdo->exec("ALTER TABLE event_payment_activity ADD KEY idx_event_payment_activity_collector (collected_by_role, collected_by_user_id)");
+        }
         $pdo->exec("UPDATE event_payments ep
             INNER JOIN event_registrations r ON r.id = ep.registration_id
             SET ep.upi_id_used = CASE
@@ -428,6 +511,58 @@ if (!function_exists('vs_event_ensure_tables')) {
                 WHEN amount_paid <= 0 AND status IN ('Paid', 'Approved') THEN amount
                 ELSE amount_paid
             END");
+        $pdo->exec("INSERT INTO event_payment_activity (
+                registration_id,
+                payment_method,
+                payment_type,
+                amount,
+                transaction_id,
+                screenshot,
+                remarks,
+                status,
+                collected_by_role,
+                collected_at,
+                reviewed_at,
+                source_label,
+                legacy_migrated
+            )
+            SELECT
+                ep.registration_id,
+                COALESCE(NULLIF(TRIM(ep.payment_method), ''), 'Unknown'),
+                NULLIF(TRIM(COALESCE(ep.payment_type, '')), ''),
+                CASE
+                    WHEN COALESCE(ep.amount, 0) > 0 THEN ep.amount
+                    WHEN COALESCE(ep.amount_paid, 0) > 0 AND LOWER(COALESCE(ep.status, '')) IN ('approved', 'paid') THEN ep.amount_paid
+                    ELSE 0
+                END,
+                NULLIF(TRIM(COALESCE(ep.transaction_id, '')), ''),
+                NULLIF(TRIM(COALESCE(ep.screenshot, '')), ''),
+                ep.remarks,
+                CASE
+                    WHEN COALESCE(TRIM(ep.status), '') = '' THEN 'Approved'
+                    ELSE ep.status
+                END,
+                CASE
+                    WHEN LOWER(COALESCE(ep.payment_method, '')) = 'razorpay' THEN 'website'
+                    WHEN LOWER(COALESCE(ep.payment_method, '')) = 'free' THEN 'system'
+                    ELSE 'unknown'
+                END,
+                COALESCE(ep.updated_at, ep.created_at, NOW()),
+                CASE
+                    WHEN LOWER(COALESCE(ep.status, '')) IN ('approved', 'paid') THEN COALESCE(ep.updated_at, ep.created_at, NOW())
+                    ELSE NULL
+                END,
+                'Legacy Payment Snapshot',
+                1
+            FROM event_payments ep
+            LEFT JOIN event_payment_activity epa ON epa.registration_id = ep.registration_id
+            WHERE epa.id IS NULL
+              AND LOWER(COALESCE(ep.status, '')) <> 'created'
+              AND (
+                  COALESCE(ep.amount, 0) > 0
+                  OR COALESCE(ep.amount_paid, 0) > 0
+                  OR LOWER(COALESCE(ep.payment_method, '')) = 'free'
+              )");
 
         if (!$hasColumn('event_waitlist', 'event_date_id')) {
             $pdo->exec("ALTER TABLE event_waitlist ADD COLUMN event_date_id INT DEFAULT NULL AFTER package_id");
@@ -1840,6 +1975,277 @@ if (!function_exists('vs_event_phone_last10')) {
         }
 
         return substr($normalized, -10);
+    }
+}
+
+if (!function_exists('vs_event_create_registration')) {
+    function vs_event_create_registration(PDO $pdo, array $payload, array $options = []): array
+    {
+        $eventId = max((int)($payload['event_id'] ?? 0), 0);
+        $packageId = max((int)($payload['package_id'] ?? 0), 0);
+        $eventType = vs_event_normalize_event_type((string)($payload['event_type'] ?? 'single_day'));
+        $selectedDateId = max((int)($payload['event_date_id'] ?? 0), 0);
+        if ($eventType === 'date_range') {
+            $selectedDateId = 0;
+        }
+
+        $name = trim((string)($payload['name'] ?? ''));
+        $phone = trim((string)($payload['phone'] ?? ''));
+        $countryCode = trim((string)($payload['country_code'] ?? '+91'));
+        $customCountryCode = trim((string)($payload['custom_country_code'] ?? ''));
+        $persons = max((int)($payload['persons'] ?? 1), 1);
+        $dynamicValues = isset($payload['dynamic_values']) && is_array($payload['dynamic_values'])
+            ? $payload['dynamic_values']
+            : [];
+
+        $markAsPaidForFree = !empty($options['mark_as_paid_for_free']);
+        $sourceLabel = trim((string)($options['source_label'] ?? ''));
+        $useExistingTransaction = !empty($options['use_existing_transaction']);
+        $ignoreRegistrationWindow = !empty($options['ignore_registration_window']);
+        $startedTransaction = false;
+
+        if ($eventId <= 0 || $packageId <= 0 || $name === '' || $phone === '') {
+            throw new RuntimeException('Registration data is incomplete.');
+        }
+
+        try {
+            if (!$useExistingTransaction) {
+                $pdo->beginTransaction();
+                $startedTransaction = true;
+            }
+
+            $lockStmt = $pdo->prepare('SELECT
+                    p.id,
+                    p.event_id,
+                    p.package_name,
+                    p.is_paid,
+                    p.payment_methods,
+                    p.upi_id,
+                    p.upi_qr_image,
+                    p.price,
+                    p.price_total,
+                    p.advance_amount,
+                    p.payment_mode,
+                    p.seat_limit,
+                    p.status,
+                    e.title AS event_title,
+                    e.event_type,
+                    e.event_date,
+                    e.registration_start,
+                    e.registration_end,
+                    e.registration_end_time,
+                    e.status AS event_status
+                FROM event_packages p
+                INNER JOIN events e ON e.id = p.event_id
+                WHERE p.id = ?
+                  AND p.event_id = ?
+                LIMIT 1
+                FOR UPDATE');
+            $lockStmt->execute([$packageId, $eventId]);
+            $lockedPackage = $lockStmt->fetch(PDO::FETCH_ASSOC);
+            if ($lockedPackage) {
+                $effectivePrice = (float)($lockedPackage['price_total'] ?? $lockedPackage['price'] ?? 0);
+                if ($selectedDateId > 0) {
+                    $priceStmt = $pdo->prepare('SELECT price_total
+                        FROM event_package_date_prices
+                        WHERE package_id = ?
+                          AND event_date_id = ?
+                        LIMIT 1');
+                    $priceStmt->execute([$packageId, $selectedDateId]);
+                    $datePrice = $priceStmt->fetchColumn();
+                    if ($datePrice !== false && $datePrice !== null) {
+                        $effectivePrice = (float)$datePrice;
+                    }
+                }
+                $lockedPackage['price_total'] = $effectivePrice;
+                $lockedPackage['price'] = $effectivePrice;
+            }
+
+            if (!$lockedPackage || (string)($lockedPackage['status'] ?? '') !== 'Active') {
+                throw new RuntimeException('Selected package is not available.');
+            }
+            if ((string)($lockedPackage['event_status'] ?? '') !== 'Active') {
+                throw new RuntimeException('Event is currently closed.');
+            }
+
+            if (
+                !$ignoreRegistrationWindow
+                && !vs_event_is_registration_open([
+                    'registration_start' => (string)($lockedPackage['registration_start'] ?? ''),
+                    'registration_end' => (string)($lockedPackage['registration_end'] ?? ''),
+                    'registration_end_time' => (string)($lockedPackage['registration_end_time'] ?? ''),
+                ])
+            ) {
+                throw new RuntimeException('Registration window is closed for this event.');
+            }
+
+            $actualEventType = vs_event_normalize_event_type((string)($lockedPackage['event_type'] ?? $eventType));
+            $lockedDate = null;
+            if ($actualEventType === 'single_day') {
+                $singleDateStmt = $pdo->prepare("SELECT id, event_date, seat_limit, status
+                    FROM event_dates
+                    WHERE event_id = ?
+                      AND status = 'Active'
+                    ORDER BY event_date ASC, id ASC
+                    LIMIT 1
+                    FOR UPDATE");
+                $singleDateStmt->execute([$eventId]);
+                $lockedDate = $singleDateStmt->fetch(PDO::FETCH_ASSOC);
+                if (!$lockedDate) {
+                    throw new RuntimeException('Configured event date is not available.');
+                }
+                $selectedDateId = (int)$lockedDate['id'];
+            } elseif ($actualEventType === 'multi_select_dates') {
+                if ($selectedDateId <= 0) {
+                    throw new RuntimeException('Please select a valid event date.');
+                }
+                $dateLockStmt = $pdo->prepare("SELECT id, event_date, seat_limit, status
+                    FROM event_dates
+                    WHERE id = ?
+                      AND event_id = ?
+                    LIMIT 1
+                    FOR UPDATE");
+                $dateLockStmt->execute([$selectedDateId, $eventId]);
+                $lockedDate = $dateLockStmt->fetch(PDO::FETCH_ASSOC);
+                if (!$lockedDate || (string)($lockedDate['status'] ?? '') !== 'Active') {
+                    throw new RuntimeException('Selected event date is not available.');
+                }
+            } else {
+                $selectedDateId = 0;
+            }
+
+            $packageSeatLimit = isset($lockedPackage['seat_limit']) ? (int)$lockedPackage['seat_limit'] : 0;
+            if ($packageSeatLimit > 0) {
+                $usedStmt = $pdo->prepare("SELECT COALESCE(SUM(persons), 0)
+                    FROM event_registrations
+                    WHERE package_id = ?
+                      AND verification_status IN ('Pending', 'Approved', 'Auto Verified')
+                      AND payment_status NOT IN ('Failed', 'Cancelled')
+                      AND (? = 0 OR event_date_id = ?)
+                    FOR UPDATE");
+                $usedStmt->execute([$packageId, $selectedDateId, $selectedDateId]);
+                $usedSeats = (int)$usedStmt->fetchColumn();
+                if (($usedSeats + $persons) > $packageSeatLimit) {
+                    throw new RuntimeException('Seats are full for the selected package and date.');
+                }
+            }
+
+            if ($lockedDate && (int)($lockedDate['seat_limit'] ?? 0) > 0) {
+                $dateSeatLimit = (int)$lockedDate['seat_limit'];
+                $dateUsedStmt = $pdo->prepare("SELECT COALESCE(SUM(persons), 0)
+                    FROM event_registrations
+                    WHERE event_id = ?
+                      AND event_date_id = ?
+                      AND verification_status IN ('Pending', 'Approved', 'Auto Verified')
+                      AND payment_status NOT IN ('Failed', 'Cancelled')
+                    FOR UPDATE");
+                $dateUsedStmt->execute([$eventId, $selectedDateId]);
+                $dateUsed = (int)$dateUsedStmt->fetchColumn();
+                if (($dateUsed + $persons) > $dateSeatLimit) {
+                    throw new RuntimeException('Selected date is fully booked. You can join waitlist.');
+                }
+            }
+
+            $isPaidPackage = vs_event_is_package_paid($lockedPackage);
+            if ($markAsPaidForFree && $isPaidPackage) {
+                throw new RuntimeException('Free confirmation is not available for this package.');
+            }
+
+            $registrationPaymentStatus = ($markAsPaidForFree || !$isPaidPackage) ? 'Paid' : 'Unpaid';
+            $registrationVerificationStatus = ($markAsPaidForFree || !$isPaidPackage) ? 'Auto Verified' : 'Pending';
+
+            $lockedPackageMethods = vs_event_payment_methods_from_csv((string)($lockedPackage['payment_methods'] ?? ''), $isPaidPackage);
+            $registrationUpiIdSnapshot = null;
+            $registrationUpiQrSnapshot = null;
+            if ($isPaidPackage && in_array('upi', $lockedPackageMethods, true)) {
+                $tmpUpiId = trim((string)($lockedPackage['upi_id'] ?? ''));
+                $tmpUpiQr = trim((string)($lockedPackage['upi_qr_image'] ?? ''));
+                $registrationUpiIdSnapshot = ($tmpUpiId !== '') ? $tmpUpiId : null;
+                $registrationUpiQrSnapshot = ($tmpUpiQr !== '') ? $tmpUpiQr : null;
+            }
+
+            $insertReg = $pdo->prepare('INSERT INTO event_registrations
+                (event_id, package_id, event_date_id, package_upi_id_snapshot, package_upi_qr_snapshot, name, phone, persons, payment_status, verification_status)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+            $insertReg->execute([
+                $eventId,
+                $packageId,
+                $selectedDateId > 0 ? $selectedDateId : null,
+                $registrationUpiIdSnapshot,
+                $registrationUpiQrSnapshot,
+                $name,
+                $phone,
+                $persons,
+                $registrationPaymentStatus,
+                $registrationVerificationStatus,
+            ]);
+
+            $registrationId = (int)$pdo->lastInsertId();
+            $bookingReference = vs_event_assign_booking_reference($pdo, $registrationId);
+
+            $dataInsert = $pdo->prepare('INSERT INTO event_registration_data (registration_id, field_name, value) VALUES (?, ?, ?)');
+            $dataInsert->execute([$registrationId, 'Name', $name]);
+            $dataInsert->execute([$registrationId, 'Phone', $phone]);
+            $resolvedCountryContext = vs_event_resolve_country_context($countryCode, $customCountryCode);
+            $dataInsert->execute([$registrationId, 'Country Code', (string)($resolvedCountryContext['country_code'] ?? '+91')]);
+            if ((string)($resolvedCountryContext['custom_country_code'] ?? '') !== '') {
+                $dataInsert->execute([$registrationId, 'Custom Country Code', (string)$resolvedCountryContext['custom_country_code']]);
+            }
+            $dataInsert->execute([$registrationId, 'Persons', (string)$persons]);
+            $dataInsert->execute([$registrationId, 'Booking Reference', $bookingReference]);
+            if ($sourceLabel !== '') {
+                $dataInsert->execute([$registrationId, 'Source', $sourceLabel]);
+            }
+            if ($lockedDate) {
+                $dataInsert->execute([$registrationId, 'Selected Event Date', (string)$lockedDate['event_date']]);
+            } elseif ($actualEventType === 'date_range') {
+                $rangeLabel = vs_event_get_event_date_display($pdo, $eventId, (string)$lockedPackage['event_date'], 'date_range');
+                $dataInsert->execute([$registrationId, 'Selected Event Date', $rangeLabel]);
+            } else {
+                $dataInsert->execute([$registrationId, 'Selected Event Date', (string)$lockedPackage['event_date']]);
+            }
+            foreach ($dynamicValues as $dv) {
+                $fieldName = trim((string)($dv['field_name'] ?? ''));
+                if ($fieldName === '') {
+                    continue;
+                }
+                $dataInsert->execute([$registrationId, $fieldName, (string)($dv['value'] ?? '')]);
+            }
+
+            if ($markAsPaidForFree || !$isPaidPackage) {
+                $freePayment = $pdo->prepare("INSERT INTO event_payments (registration_id, amount, payment_type, amount_paid, remaining_amount, payment_method, transaction_id, screenshot, status)
+                    VALUES (?, 0, 'full', 0, 0, 'Free', 'FREE', '', 'Paid')
+                    ON DUPLICATE KEY UPDATE
+                        amount = VALUES(amount),
+                        payment_type = VALUES(payment_type),
+                        amount_paid = VALUES(amount_paid),
+                        remaining_amount = VALUES(remaining_amount),
+                        payment_method = VALUES(payment_method),
+                        transaction_id = VALUES(transaction_id),
+                        screenshot = VALUES(screenshot),
+                        status = VALUES(status)");
+                $freePayment->execute([$registrationId]);
+            }
+
+            if ($startedTransaction) {
+                $pdo->commit();
+            }
+
+            return [
+                'registration_id' => $registrationId,
+                'booking_reference' => $bookingReference,
+                'payment_status' => $registrationPaymentStatus,
+                'verification_status' => $registrationVerificationStatus,
+            ];
+        } catch (Throwable $e) {
+            if ($startedTransaction && $pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            if ($e instanceof RuntimeException) {
+                throw $e;
+            }
+            throw new RuntimeException('Unable to create registration right now.');
+        }
     }
 }
 
@@ -4032,6 +4438,210 @@ if (!function_exists('vs_event_send_whatsapp_notice')) {
             'name' => $name,
             'message' => $message,
         ]);
+    }
+}
+
+if (!function_exists('vs_event_normalize_activity_role')) {
+    function vs_event_normalize_activity_role(?string $role): ?string
+    {
+        $role = strtolower(trim((string)$role));
+        if ($role === '') {
+            return null;
+        }
+        if (in_array($role, ['admin', 'staff', 'website', 'system', 'unknown'], true)) {
+            return $role;
+        }
+
+        return 'unknown';
+    }
+}
+
+if (!function_exists('vs_event_record_payment_activity')) {
+    function vs_event_record_payment_activity(PDO $pdo, array $data): int
+    {
+        $registrationId = (int)($data['registration_id'] ?? 0);
+        if ($registrationId <= 0) {
+            throw new InvalidArgumentException('Registration ID is required to record payment activity.');
+        }
+
+        $paymentMethod = trim((string)($data['payment_method'] ?? ''));
+        if ($paymentMethod === '') {
+            $paymentMethod = 'Unknown';
+        }
+
+        $paymentType = trim((string)($data['payment_type'] ?? ''));
+        if ($paymentType === '') {
+            $paymentType = null;
+        }
+
+        $status = trim((string)($data['status'] ?? 'Pending Verification'));
+        if ($status === '') {
+            $status = 'Pending Verification';
+        }
+
+        $amount = round((float)($data['amount'] ?? 0), 2);
+        $transactionId = trim((string)($data['transaction_id'] ?? ''));
+        if ($transactionId === '') {
+            $transactionId = null;
+        }
+        $screenshot = trim((string)($data['screenshot'] ?? ''));
+        if ($screenshot === '') {
+            $screenshot = null;
+        }
+        $remarks = isset($data['remarks']) ? trim((string)$data['remarks']) : null;
+        if ($remarks === '') {
+            $remarks = null;
+        }
+        $sourceLabel = isset($data['source_label']) ? trim((string)$data['source_label']) : null;
+        if ($sourceLabel === '') {
+            $sourceLabel = null;
+        }
+
+        $collectedByUserId = isset($data['collected_by_user_id']) ? (int)$data['collected_by_user_id'] : null;
+        if ($collectedByUserId !== null && $collectedByUserId <= 0) {
+            $collectedByUserId = null;
+        }
+        $collectedByUserName = isset($data['collected_by_user_name']) ? trim((string)$data['collected_by_user_name']) : null;
+        if ($collectedByUserName === '') {
+            $collectedByUserName = null;
+        }
+        $collectedByRole = vs_event_normalize_activity_role(isset($data['collected_by_role']) ? (string)$data['collected_by_role'] : null);
+
+        $reviewedByUserId = isset($data['reviewed_by_user_id']) ? (int)$data['reviewed_by_user_id'] : null;
+        if ($reviewedByUserId !== null && $reviewedByUserId <= 0) {
+            $reviewedByUserId = null;
+        }
+        $reviewedByUserName = isset($data['reviewed_by_user_name']) ? trim((string)$data['reviewed_by_user_name']) : null;
+        if ($reviewedByUserName === '') {
+            $reviewedByUserName = null;
+        }
+        $reviewedByRole = vs_event_normalize_activity_role(isset($data['reviewed_by_role']) ? (string)$data['reviewed_by_role'] : null);
+
+        $collectedAt = trim((string)($data['collected_at'] ?? ''));
+        if ($collectedAt === '') {
+            $collectedAt = date('Y-m-d H:i:s');
+        }
+        $reviewedAt = trim((string)($data['reviewed_at'] ?? ''));
+        if ($reviewedAt === '') {
+            $reviewedAt = null;
+        }
+
+        $legacyMigrated = !empty($data['legacy_migrated']) ? 1 : 0;
+
+        $stmt = $pdo->prepare("INSERT INTO event_payment_activity (
+                registration_id,
+                payment_method,
+                payment_type,
+                amount,
+                transaction_id,
+                screenshot,
+                remarks,
+                status,
+                collected_by_user_id,
+                collected_by_user_name,
+                collected_by_role,
+                collected_at,
+                reviewed_by_user_id,
+                reviewed_by_user_name,
+                reviewed_by_role,
+                reviewed_at,
+                source_label,
+                legacy_migrated
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt->execute([
+            $registrationId,
+            $paymentMethod,
+            $paymentType,
+            $amount,
+            $transactionId,
+            $screenshot,
+            $remarks,
+            $status,
+            $collectedByUserId,
+            $collectedByUserName,
+            $collectedByRole,
+            $collectedAt,
+            $reviewedByUserId,
+            $reviewedByUserName,
+            $reviewedByRole,
+            $reviewedAt,
+            $sourceLabel,
+            $legacyMigrated,
+        ]);
+
+        return (int)$pdo->lastInsertId();
+    }
+}
+
+if (!function_exists('vs_event_review_latest_payment_activity')) {
+    function vs_event_review_latest_payment_activity(
+        PDO $pdo,
+        int $registrationId,
+        string $status,
+        ?int $reviewedByUserId = null,
+        ?string $reviewedByUserName = null,
+        ?string $reviewedByRole = null,
+        array $pendingStatuses = ['Pending', 'Pending Verification']
+    ): bool {
+        if ($registrationId <= 0) {
+            return false;
+        }
+
+        $normalizedPendingStatuses = [];
+        foreach ($pendingStatuses as $pendingStatus) {
+            $pendingStatus = trim((string)$pendingStatus);
+            if ($pendingStatus !== '') {
+                $normalizedPendingStatuses[] = $pendingStatus;
+            }
+        }
+        if (empty($normalizedPendingStatuses)) {
+            $normalizedPendingStatuses = ['Pending', 'Pending Verification'];
+        }
+
+        $placeholders = implode(', ', array_fill(0, count($normalizedPendingStatuses), '?'));
+        $select = $pdo->prepare("SELECT id
+            FROM event_payment_activity
+            WHERE registration_id = ?
+              AND status IN ($placeholders)
+            ORDER BY id DESC
+            LIMIT 1
+            FOR UPDATE");
+        $select->execute(array_merge([$registrationId], $normalizedPendingStatuses));
+        $activityId = (int)$select->fetchColumn();
+        if ($activityId <= 0) {
+            return false;
+        }
+
+        $reviewedByRole = vs_event_normalize_activity_role($reviewedByRole);
+        if ($reviewedByUserId !== null && $reviewedByUserId <= 0) {
+            $reviewedByUserId = null;
+        }
+        $reviewedByUserName = trim((string)$reviewedByUserName);
+        if ($reviewedByUserName === '') {
+            $reviewedByUserName = null;
+        }
+
+        $newStatus = trim($status);
+        if ($newStatus === '') {
+            $newStatus = 'Approved';
+        }
+
+        $update = $pdo->prepare("UPDATE event_payment_activity
+            SET status = ?,
+                reviewed_by_user_id = ?,
+                reviewed_by_user_name = ?,
+                reviewed_by_role = ?,
+                reviewed_at = NOW()
+            WHERE id = ?");
+        $update->execute([
+            $newStatus,
+            $reviewedByUserId,
+            $reviewedByUserName,
+            $reviewedByRole,
+            $activityId,
+        ]);
+
+        return true;
     }
 }
 

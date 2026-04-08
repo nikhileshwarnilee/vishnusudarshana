@@ -3,6 +3,55 @@ require_once (is_file(__DIR__ . '/includes/permissions.php') ? __DIR__ . '/inclu
 admin_enforce_mapped_permission('auto');
 // admin/customers/crm/index.php
 
+if (!function_exists('vs_crm_customer_union_sql')) {
+    function vs_crm_customer_union_sql(): string
+    {
+        $collation = 'utf8mb4_unicode_ci';
+
+        return "
+            SELECT
+                CONVERT(COALESCE(name, '') USING utf8mb4) COLLATE {$collation} AS name,
+                CONVERT(COALESCE(mobile, '') USING utf8mb4) COLLATE {$collation} AS mobile,
+                CONVERT(COALESCE(address, '') USING utf8mb4) COLLATE {$collation} AS address_city
+            FROM cif_clients
+            UNION ALL
+            SELECT
+                CONVERT(COALESCE(name, '') USING utf8mb4) COLLATE {$collation} AS name,
+                CONVERT(COALESCE(mobile, '') USING utf8mb4) COLLATE {$collation} AS mobile,
+                CONVERT(COALESCE(address, '') USING utf8mb4) COLLATE {$collation} AS address_city
+            FROM customers
+            UNION ALL
+            SELECT
+                CONVERT(COALESCE(customer_name, '') USING utf8mb4) COLLATE {$collation} AS name,
+                CONVERT(COALESCE(mobile, '') USING utf8mb4) COLLATE {$collation} AS mobile,
+                CONVERT(COALESCE(city, '') USING utf8mb4) COLLATE {$collation} AS address_city
+            FROM service_requests
+            UNION ALL
+            SELECT
+                CONVERT(COALESCE(r.name, '') USING utf8mb4) COLLATE {$collation} AS name,
+                CONVERT(COALESCE(r.phone, '') USING utf8mb4) COLLATE {$collation} AS mobile,
+                CONVERT(COALESCE(NULLIF(TRIM(event_meta.address_city), ''), '') USING utf8mb4) COLLATE {$collation} AS address_city
+            FROM event_registrations r
+            LEFT JOIN (
+                SELECT
+                    registration_id,
+                    MAX(
+                        CASE
+                            WHEN LOWER(REPLACE(field_name, '_', ' ')) LIKE '%city%'
+                              OR LOWER(REPLACE(field_name, '_', ' ')) LIKE '%address%'
+                              OR LOWER(REPLACE(field_name, '_', ' ')) LIKE '%location%'
+                            THEN CONVERT(COALESCE(value, '') USING utf8mb4) COLLATE {$collation}
+                            ELSE NULL
+                        END
+                    ) AS address_city
+                FROM event_registration_data
+                GROUP BY registration_id
+            ) AS event_meta ON event_meta.registration_id = r.id
+            WHERE COALESCE(TRIM(r.phone), '') <> ''
+        ";
+    }
+}
+
 // Handle AJAX custom message FIRST (before any output)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax']) && $_POST['ajax'] === 'custom_msg') {
     require_once __DIR__ . '/../../helpers/send_whatsapp.php';
@@ -53,11 +102,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax']) && $_POST['aj
     try {
         // Get all customers from unified query
         $sql = "
-            SELECT name, mobile FROM cif_clients
-            UNION ALL
-            SELECT name, mobile FROM customers
-            UNION ALL
-            SELECT customer_name as name, mobile FROM service_requests
+            SELECT name, mobile
+            FROM (" . vs_crm_customer_union_sql() . ") AS all_customers
+            WHERE COALESCE(TRIM(mobile), '') <> ''
         ";
         $stmt = $pdo->query($sql);
         $customers = $stmt->fetchAll();
@@ -114,22 +161,14 @@ if ($search !== '') {
     $params['q'] = "%$search%";
 }
 
+$customerUnionSql = vs_crm_customer_union_sql();
+
 // Build unified query using UNION ALL
-$sql = "
-    SELECT name, mobile, address as address_city FROM cif_clients
-    UNION ALL
-    SELECT name, mobile, address as address_city FROM customers
-    UNION ALL
-    SELECT customer_name as name, mobile, city as address_city FROM service_requests
-";
+$sql = $customerUnionSql;
 if ($search !== '') {
     $sql = "
         SELECT * FROM (
-            SELECT name, mobile, address as address_city FROM cif_clients
-            UNION ALL
-            SELECT name, mobile, address as address_city FROM customers
-            UNION ALL
-            SELECT customer_name as name, mobile, city as address_city FROM service_requests
+            $customerUnionSql
         ) AS all_customers
         $where
     ";

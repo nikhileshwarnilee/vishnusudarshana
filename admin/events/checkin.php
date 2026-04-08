@@ -14,6 +14,12 @@ if (!isset($_SESSION['user_id'])) {
 $isMainAdminActor = function_exists('vs_admin_is_super_admin')
     ? vs_admin_is_super_admin()
     : ((int)($_SESSION['user_id'] ?? 0) === 1);
+$actorUserId = (int)($_SESSION['user_id'] ?? 0);
+$actorUserName = trim((string)($_SESSION['user_name'] ?? ''));
+$actorRole = $isMainAdminActor ? 'admin' : 'staff';
+if ($actorUserName === '') {
+    $actorUserName = $isMainAdminActor ? 'Admin' : 'Staff';
+}
 
 require_once __DIR__ . '/../../config/db.php';
 require_once __DIR__ . '/../../helpers/event_module.php';
@@ -112,13 +118,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['verify_action'], $_PO
                 $newPaymentStatus = $remainingAfter > 0 ? 'Partial Paid' : 'Paid';
                 $newPaymentType = $remainingAfter > 0 ? (string)($paymentRow['payment_type'] ?? 'advance') : 'full';
 
-                $pdo->prepare("UPDATE event_payments
+                    $pdo->prepare("UPDATE event_payments
                     SET status = 'Approved',
                         payment_type = ?,
                         amount_paid = ?,
                         remaining_amount = ?
                     WHERE id = ?")
                     ->execute([$newPaymentType, $newPaid, $remainingAfter, $paymentId]);
+                vs_event_review_latest_payment_activity(
+                    $pdo,
+                    (int)$paymentRow['registration_id'],
+                    'Approved',
+                    $actorUserId,
+                    $actorUserName,
+                    $actorRole
+                );
                 $pdo->prepare("UPDATE event_registrations
                     SET payment_status = ?,
                         verification_status = 'Approved'
@@ -162,6 +176,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['verify_action'], $_PO
             } else {
                 $pdo->prepare("UPDATE event_payments SET status = 'Rejected' WHERE id = ?")
                     ->execute([$paymentId]);
+                vs_event_review_latest_payment_activity(
+                    $pdo,
+                    (int)$paymentRow['registration_id'],
+                    'Rejected',
+                    $actorUserId,
+                    $actorUserName,
+                    $actorRole
+                );
                 $fallbackStatus = ((float)($paymentRow['amount_paid'] ?? 0) > 0) ? 'Partial Paid' : 'Failed';
                 $pdo->prepare("UPDATE event_registrations
                     SET payment_status = ?,
@@ -366,6 +388,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['checkin_action'], $_P
                         $proofPath,
                         $remark,
                     ]);
+                    vs_event_record_payment_activity($pdo, [
+                        'registration_id' => $registrationId,
+                        'payment_method' => $paymentMethod,
+                        'payment_type' => $newPaymentType,
+                        'amount' => $remainingDue,
+                        'transaction_id' => $transactionId,
+                        'screenshot' => $proofPath,
+                        'remarks' => $remark,
+                        'status' => 'Approved',
+                        'collected_by_user_id' => $actorUserId,
+                        'collected_by_user_name' => $actorUserName,
+                        'collected_by_role' => $actorRole,
+                        'reviewed_by_user_id' => $actorUserId,
+                        'reviewed_by_user_name' => $actorUserName,
+                        'reviewed_by_role' => $actorRole,
+                        'reviewed_at' => date('Y-m-d H:i:s'),
+                        'source_label' => 'Check-In Settlement',
+                    ]);
 
                     $pdo->prepare("UPDATE event_registrations
                         SET payment_status = ?,
@@ -430,6 +470,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['checkin_action'], $_P
                         $transactionId,
                         $proofPath,
                         $remark,
+                    ]);
+                    vs_event_record_payment_activity($pdo, [
+                        'registration_id' => $registrationId,
+                        'payment_method' => $paymentMethod,
+                        'payment_type' => $paymentType,
+                        'amount' => $remainingDue,
+                        'transaction_id' => $transactionId,
+                        'screenshot' => $proofPath,
+                        'remarks' => $remark,
+                        'status' => 'Pending Verification',
+                        'collected_by_user_id' => $actorUserId,
+                        'collected_by_user_name' => $actorUserName,
+                        'collected_by_role' => $actorRole,
+                        'source_label' => 'Check-In Settlement',
                     ]);
 
                     $pdo->prepare("UPDATE event_registrations

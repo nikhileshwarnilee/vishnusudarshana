@@ -14,6 +14,12 @@ if (!isset($_SESSION['user_id'])) {
 $isMainAdminActor = function_exists('vs_admin_is_super_admin')
     ? vs_admin_is_super_admin()
     : ((int)($_SESSION['user_id'] ?? 0) === 1);
+$actorUserId = (int)($_SESSION['user_id'] ?? 0);
+$actorUserName = trim((string)($_SESSION['user_name'] ?? ''));
+$actorRole = $isMainAdminActor ? 'admin' : 'staff';
+if ($actorUserName === '') {
+    $actorUserName = $isMainAdminActor ? 'Admin' : 'Staff';
+}
 
 require_once __DIR__ . '/../../config/db.php';
 require_once __DIR__ . '/../../helpers/event_module.php';
@@ -195,13 +201,13 @@ $computeDisplayAmounts = static function (array $row, array $baseAmounts): array
     $paymentRecordStatus = strtolower(trim((string)($row['payment_record_status'] ?? '')));
     $submittedAmount = round(max((float)($row['payment_amount'] ?? 0), 0), 2);
 
-    $isManualOrCash = in_array($paymentMethod, ['manual upi', 'cash'], true);
-    $isPendingVerification = $isManualOrCash && (
+    $isManualCollection = in_array($paymentMethod, ['manual upi', 'cash', 'online payment'], true);
+    $isPendingVerification = $isManualCollection && (
         in_array($paymentStatus, ['pending', 'pending verification'], true) ||
         in_array($verificationStatus, ['pending', 'pending verification'], true) ||
         in_array($paymentRecordStatus, ['pending', 'pending verification'], true)
     );
-    $isRejectedVerification = $isManualOrCash && (
+    $isRejectedVerification = $isManualCollection && (
         in_array($verificationStatus, ['rejected'], true) ||
         in_array($paymentRecordStatus, ['rejected'], true) ||
         in_array($paymentStatus, ['failed', 'rejected'], true)
@@ -363,6 +369,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['quick_collect_payment
                 $proofPath,
                 $remark,
             ]);
+            vs_event_record_payment_activity($pdo, [
+                'registration_id' => $registrationId,
+                'payment_method' => $paymentMethod,
+                'payment_type' => $newPaymentType,
+                'amount' => $collectAmount,
+                'transaction_id' => $transactionId,
+                'screenshot' => $proofPath,
+                'remarks' => $remark,
+                'status' => 'Approved',
+                'collected_by_user_id' => $actorUserId,
+                'collected_by_user_name' => $actorUserName,
+                'collected_by_role' => $actorRole,
+                'reviewed_by_user_id' => $actorUserId,
+                'reviewed_by_user_name' => $actorUserName,
+                'reviewed_by_role' => $actorRole,
+                'reviewed_at' => date('Y-m-d H:i:s'),
+                'source_label' => 'Registrations Quick Collect',
+            ]);
 
             $pdo->prepare("UPDATE event_registrations
                 SET payment_status = ?,
@@ -436,6 +460,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['quick_collect_payment
             $transactionId,
             $proofPath,
             $remark,
+        ]);
+        vs_event_record_payment_activity($pdo, [
+            'registration_id' => $registrationId,
+            'payment_method' => $paymentMethod,
+            'payment_type' => $paymentType,
+            'amount' => $collectAmount,
+            'transaction_id' => $transactionId,
+            'screenshot' => $proofPath,
+            'remarks' => $remark,
+            'status' => 'Pending Verification',
+            'collected_by_user_id' => $actorUserId,
+            'collected_by_user_name' => $actorUserName,
+            'collected_by_role' => $actorRole,
+            'source_label' => 'Registrations Quick Collect',
         ]);
 
         $pdo->prepare("UPDATE event_registrations
@@ -546,6 +584,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['quick_verify_payment'
                     remaining_amount = ?
                 WHERE id = ?")
                 ->execute([$newPaymentType, $newPaid, $remainingAfter, $paymentId]);
+            vs_event_review_latest_payment_activity(
+                $pdo,
+                (int)$paymentRow['registration_id'],
+                'Approved',
+                $actorUserId,
+                $actorUserName,
+                $actorRole
+            );
 
             $pdo->prepare("UPDATE event_registrations
                 SET payment_status = ?,
@@ -585,6 +631,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['quick_verify_payment'
             $okMessage = 'Payment approved successfully.';
         } else {
             $pdo->prepare("UPDATE event_payments SET status = 'Rejected' WHERE id = ?")->execute([$paymentId]);
+            vs_event_review_latest_payment_activity(
+                $pdo,
+                (int)$paymentRow['registration_id'],
+                'Rejected',
+                $actorUserId,
+                $actorUserName,
+                $actorRole
+            );
             $fallbackStatus = ((float)($paymentRow['amount_paid'] ?? 0) > 0) ? 'Partial Paid' : 'Failed';
             $pdo->prepare("UPDATE event_registrations
                 SET payment_status = ?,
@@ -708,6 +762,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['quick_mark_paid'], $_
                 $finalRemark,
             ]);
         }
+        vs_event_record_payment_activity($pdo, [
+            'registration_id' => $registrationId,
+            'payment_method' => $manualMethod,
+            'payment_type' => 'full',
+            'amount' => ($currentCollectionAmount > 0 ? $currentCollectionAmount : $totalAmount),
+            'transaction_id' => $transactionId,
+            'remarks' => $finalRemark,
+            'status' => 'Approved',
+            'collected_by_user_id' => $actorUserId,
+            'collected_by_user_name' => $actorUserName,
+            'collected_by_role' => $actorRole,
+            'reviewed_by_user_id' => $actorUserId,
+            'reviewed_by_user_name' => $actorUserName,
+            'reviewed_by_role' => $actorRole,
+            'reviewed_at' => date('Y-m-d H:i:s'),
+            'source_label' => 'Registrations Mark Paid',
+        ]);
 
         $markPaidVerificationStatus = $isMainAdminActor ? 'Auto Verified' : 'Approved';
         $pdo->prepare("UPDATE event_registrations
@@ -922,6 +993,15 @@ if (!empty($pdfQueryParams)) {
     $pdfUrl .= '?' . http_build_query($pdfQueryParams);
 }
 $currentListUrl = $buildListUrl();
+$createRegistrationParams = [];
+if ($eventId > 0) {
+    $createRegistrationParams['event_id'] = $eventId;
+}
+$canCreateRegistration = vs_admin_can_access_route((int)($_SESSION['user_id'] ?? 0), 'events/create-registration.php', 'edit');
+$createRegistrationUrl = 'create-registration.php';
+if (!empty($createRegistrationParams)) {
+    $createRegistrationUrl .= '?' . http_build_query($createRegistrationParams);
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -936,6 +1016,8 @@ $currentListUrl = $buildListUrl();
         body { font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background:#f7f7fa; margin:0; }
         .admin-container { max-width:1500px; margin:0 auto; padding:24px 12px; }
         h1 { color:#800000; margin-bottom:14px; }
+        .page-head { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:14px; flex-wrap:wrap; }
+        .page-head h1 { margin:0; }
         .card { background:#fff; border-radius:12px; box-shadow:0 2px 12px #e0bebe22; padding:14px; margin-bottom:16px; }
         .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:10px; align-items:end; }
         .form-group { display:flex; flex-direction:column; gap:6px; }
@@ -1013,7 +1095,12 @@ $currentListUrl = $buildListUrl();
 <?php include __DIR__ . '/../includes/top-menu.php'; ?>
 
 <div class="admin-container">
-    <h1>Registrations</h1>
+    <div class="page-head">
+        <h1>Registrations</h1>
+        <?php if ($canCreateRegistration): ?>
+            <a class="btn-main btn-success" href="<?php echo htmlspecialchars($createRegistrationUrl); ?>">Create Registration</a>
+        <?php endif; ?>
+    </div>
     <?php if ($message !== ''): ?>
         <div class="notice <?php echo ($messageType === 'ok') ? 'ok' : 'err'; ?>"><?php echo htmlspecialchars($message); ?></div>
     <?php endif; ?>

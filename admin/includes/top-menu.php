@@ -55,6 +55,8 @@ $menu = [
             'Book Token' => $baseUrl . '/admin/token-management/book-token-offline.php',
             'Visitors Log' => $baseUrl . '/admin/reception/visitors-log.php',
             'Closed Visitors Log' => $baseUrl . '/admin/reception/closed-visitors-log.php',
+            'Vastu Visits' => $baseUrl . '/admin/reception/vastu-visits.php',
+            'Closed Vastu Visits' => $baseUrl . '/admin/reception/closed-vastu-visits.php',
         ]
     ],
 
@@ -87,11 +89,13 @@ $menu = [
         'submenu' => [
             'Dashboard' => $baseUrl . '/admin/events/dashboard.php',
             'All Events' => $baseUrl . '/admin/events/all-events.php',
+            'New Registration' => $baseUrl . '/admin/events/create-registration.php',
             'Registrations' => $baseUrl . '/admin/events/registrations.php',
             'Verifications' => $baseUrl . '/admin/events/verifications.php',
             'Check-In' => $baseUrl . '/admin/events/checkin.php',
             'Pending Payments' => $baseUrl . '/admin/events/pending-payments.php',
             'Event Reports' => $baseUrl . '/admin/events/event-reports.php',
+            'Payment Collections' => $baseUrl . '/admin/events/payment-collections.php',
             'Waitlist' => $baseUrl . '/admin/events/waitlist.php',
             'Broadcast' => $baseUrl . '/admin/events/broadcast.php',
         ]
@@ -381,6 +385,18 @@ if (isset($_SESSION['user_id']) && !vs_admin_is_super_admin()) {
     $perms = $pdo->prepare('SELECT menu, submenu FROM user_permissions WHERE user_id=? AND action="view"');
     $perms->execute([$user_id]);
     $allowed = [];
+    $submenuPermissionAliases = [
+        'Events' => [
+            'New Registration' => [
+                'aliases' => ['Registrations'],
+                'action' => 'edit',
+            ],
+            'Payment Collections' => [
+                'aliases' => ['Event Reports'],
+                'action' => 'view',
+            ],
+        ],
+    ];
     foreach ($perms->fetchAll(PDO::FETCH_ASSOC) as $p) {
         $allowed[$p['menu']][$p['submenu']] = true;
     }
@@ -399,7 +415,26 @@ if (isset($_SESSION['user_id']) && !vs_admin_is_super_admin()) {
             }
         } else if (isset($menuItem['submenu'])) {
             foreach ($menuItem['submenu'] as $subLabel => $subUrl) {
-                if (empty($allowed[$menuLabel][$subLabel])) {
+                $isAllowedSubmenu = !empty($allowed[$menuLabel][$subLabel]);
+                if (
+                    !$isAllowedSubmenu
+                    && !empty($submenuPermissionAliases[$menuLabel][$subLabel])
+                ) {
+                    $aliasConfig = $submenuPermissionAliases[$menuLabel][$subLabel];
+                    $aliasLabels = is_array($aliasConfig) && isset($aliasConfig['aliases']) && is_array($aliasConfig['aliases'])
+                        ? $aliasConfig['aliases']
+                        : (is_array($aliasConfig) ? $aliasConfig : []);
+                    $aliasAction = is_array($aliasConfig) && isset($aliasConfig['action'])
+                        ? strtolower((string)$aliasConfig['action'])
+                        : 'view';
+                    foreach ($aliasLabels as $aliasLabel) {
+                        if (vs_admin_user_has_permission($user_id, $menuLabel, (string)$aliasLabel, $aliasAction)) {
+                            $isAllowedSubmenu = true;
+                            break;
+                        }
+                    }
+                }
+                if (!$isAllowedSubmenu) {
                     unset($menuItem['submenu'][$subLabel]);
                 }
             }

@@ -14,6 +14,12 @@ if (!isset($_SESSION['user_id'])) {
 $isMainAdminActor = function_exists('vs_admin_is_super_admin')
     ? vs_admin_is_super_admin()
     : ((int)($_SESSION['user_id'] ?? 0) === 1);
+$actorUserId = (int)($_SESSION['user_id'] ?? 0);
+$actorUserName = trim((string)($_SESSION['user_name'] ?? ''));
+$actorRole = $isMainAdminActor ? 'admin' : 'staff';
+if ($actorUserName === '') {
+    $actorUserName = $isMainAdminActor ? 'Admin' : 'Staff';
+}
 
 require_once __DIR__ . '/../../config/db.php';
 require_once __DIR__ . '/../../helpers/event_module.php';
@@ -249,6 +255,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['collect_remaining_pay
                 $proofPath,
                 $remark,
             ]);
+            vs_event_record_payment_activity($pdo, [
+                'registration_id' => $registrationId,
+                'payment_method' => $paymentMethod,
+                'payment_type' => $newPaymentType,
+                'amount' => $remainingDue,
+                'transaction_id' => $transactionId,
+                'screenshot' => $proofPath,
+                'remarks' => $remark,
+                'status' => 'Approved',
+                'collected_by_user_id' => $actorUserId,
+                'collected_by_user_name' => $actorUserName,
+                'collected_by_role' => $actorRole,
+                'reviewed_by_user_id' => $actorUserId,
+                'reviewed_by_user_name' => $actorUserName,
+                'reviewed_by_role' => $actorRole,
+                'reviewed_at' => date('Y-m-d H:i:s'),
+                'source_label' => 'Registration View Remaining Payment',
+            ]);
 
             $pdo->prepare("UPDATE event_registrations
                 SET payment_status = ?,
@@ -318,6 +342,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['collect_remaining_pay
             $transactionId,
             $proofPath,
             $remark,
+        ]);
+        vs_event_record_payment_activity($pdo, [
+            'registration_id' => $registrationId,
+            'payment_method' => $paymentMethod,
+            'payment_type' => 'remaining',
+            'amount' => $remainingDue,
+            'transaction_id' => $transactionId,
+            'screenshot' => $proofPath,
+            'remarks' => $remark,
+            'status' => 'Pending Verification',
+            'collected_by_user_id' => $actorUserId,
+            'collected_by_user_name' => $actorUserName,
+            'collected_by_role' => $actorRole,
+            'source_label' => 'Registration View Remaining Payment',
         ]);
 
         $pdo->prepare("UPDATE event_registrations
@@ -440,13 +478,13 @@ $isCancelledBooking = ($paymentStatusLower === 'cancelled' || $verificationStatu
 $paymentMethodLower = strtolower(trim((string)($registration['payment_method'] ?? '')));
 $paymentRecordStatusLower = strtolower(trim((string)($registration['payment_record_status'] ?? '')));
 $submittedManualAmount = round(max((float)($registration['payment_amount'] ?? 0), 0), 2);
-$isManualOrCash = in_array($paymentMethodLower, ['manual upi', 'cash'], true);
-$isPendingManualVerification = $isManualOrCash && (
+$isManualCollection = in_array($paymentMethodLower, ['manual upi', 'cash', 'online payment'], true);
+$isPendingManualVerification = $isManualCollection && (
     in_array($paymentStatusLower, ['pending', 'pending verification'], true) ||
     in_array($verificationStatusLower, ['pending', 'pending verification'], true) ||
     in_array($paymentRecordStatusLower, ['pending', 'pending verification'], true)
 );
-$isRejectedManualVerification = $isManualOrCash && (
+$isRejectedManualVerification = $isManualCollection && (
     in_array($verificationStatusLower, ['rejected'], true) ||
     in_array($paymentRecordStatusLower, ['rejected'], true) ||
     in_array($paymentStatusLower, ['failed', 'rejected'], true)
@@ -491,7 +529,7 @@ if ($isCancelledBooking) {
     $paymentVisualState = 'pending';
     $paymentVisualIcon = '&#9203;';
     $paymentVisualTitle = 'Under Verification';
-    $paymentVisualMessage = 'Manual payment proof is submitted and waiting for admin approval.';
+    $paymentVisualMessage = 'Payment proof is submitted and waiting for admin approval.';
 } elseif ($isRejectedManualVerification) {
     $paymentVisualState = 'rejected';
     $paymentVisualIcon = '&#10006;';
@@ -515,6 +553,15 @@ $paymentVisualStatClass = in_array($paymentVisualState, ['pending', 'approved', 
     : '';
 
 $canCollectRemaining = ($paymentStatusLower === 'partial paid' && $remainingAmount > 0);
+$isWaitlistedBooking = vs_event_is_waitlisted_registration($registration);
+$canOpenCustomerPaymentPage = (
+    !$isCancelledBooking &&
+    !$isWaitlistedBooking &&
+    !$canCollectRemaining &&
+    $paymentStatusLower !== 'paid' &&
+    $paymentStatusLower !== 'partial paid' &&
+    $paymentStatusLower !== 'pending verification'
+);
 
 $detailUpiAccount = trim((string)($registration['upi_id_used'] ?? ''));
 if ($detailUpiAccount === '') {
@@ -830,6 +877,9 @@ $pageTitle = 'Registration View';
     <div class="surface action-bar">
         <a class="btn btn-secondary" href="<?php echo htmlspecialchars($returnUrl); ?>">Back To Registrations</a>
         <button type="button" class="btn btn-primary" onclick="printRegistrationTicket(<?php echo (int)$registration['id']; ?>);">Print</button>
+        <?php if ($canOpenCustomerPaymentPage): ?>
+            <a class="btn btn-outline" href="../../event-payment.php?registration_id=<?php echo (int)$registration['id']; ?>" target="_blank">Open Customer Payment Page</a>
+        <?php endif; ?>
         <?php if ($canCollectRemaining): ?>
             <a class="btn btn-outline" href="../../event-remaining-payment.php?booking_reference=<?php echo urlencode((string)$registration['booking_reference']); ?>&phone=<?php echo urlencode((string)$registration['phone']); ?>" target="_blank">Open Customer Remaining Payment Page</a>
         <?php endif; ?>

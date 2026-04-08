@@ -14,6 +14,12 @@ if (!isset($_SESSION['user_id'])) {
 $isMainAdminActor = function_exists('vs_admin_is_super_admin')
     ? vs_admin_is_super_admin()
     : ((int)($_SESSION['user_id'] ?? 0) === 1);
+$actorUserId = (int)($_SESSION['user_id'] ?? 0);
+$actorUserName = trim((string)($_SESSION['user_name'] ?? ''));
+$actorRole = $isMainAdminActor ? 'admin' : 'staff';
+if ($actorUserName === '') {
+    $actorUserName = $isMainAdminActor ? 'Admin' : 'Staff';
+}
 
 require_once __DIR__ . '/../../config/db.php';
 require_once __DIR__ . '/../../helpers/event_module.php';
@@ -312,6 +318,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['collect_payment'], $_
                 $proofPath,
                 $remark,
             ]);
+            vs_event_record_payment_activity($pdo, [
+                'registration_id' => $registrationId,
+                'payment_method' => $paymentMethod,
+                'payment_type' => $newPaymentType,
+                'amount' => $collectAmount,
+                'transaction_id' => $transactionId,
+                'screenshot' => $proofPath,
+                'remarks' => $remark,
+                'status' => 'Approved',
+                'collected_by_user_id' => $actorUserId,
+                'collected_by_user_name' => $actorUserName,
+                'collected_by_role' => $actorRole,
+                'reviewed_by_user_id' => $actorUserId,
+                'reviewed_by_user_name' => $actorUserName,
+                'reviewed_by_role' => $actorRole,
+                'reviewed_at' => date('Y-m-d H:i:s'),
+                'source_label' => 'Pending Payments Collect',
+            ]);
 
             $pdo->prepare("UPDATE event_registrations
                 SET payment_status = ?,
@@ -386,6 +410,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['collect_payment'], $_
             $transactionId,
             $proofPath,
             $remark,
+        ]);
+        vs_event_record_payment_activity($pdo, [
+            'registration_id' => $registrationId,
+            'payment_method' => $paymentMethod,
+            'payment_type' => $paymentType,
+            'amount' => $collectAmount,
+            'transaction_id' => $transactionId,
+            'screenshot' => $proofPath,
+            'remarks' => $remark,
+            'status' => 'Pending Verification',
+            'collected_by_user_id' => $actorUserId,
+            'collected_by_user_name' => $actorUserName,
+            'collected_by_role' => $actorRole,
+            'source_label' => 'Pending Payments Collect',
         ]);
 
         $pdo->prepare("UPDATE event_registrations

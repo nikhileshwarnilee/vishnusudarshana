@@ -5,23 +5,32 @@ date_default_timezone_set('Asia/Kolkata');
 require_once __DIR__ . '/../../config/db.php';
 require_once __DIR__ . '/../../helpers/send_whatsapp.php';
 
-// Fetch categories for dropdown
-$catStmt = $pdo->query("SELECT category_slug, category_name FROM service_categories ORDER BY sequence ASC, id ASC");
+$fixedCategoryMap = [
+    'appointment' => 'Appointment',
+    'birth-child' => 'Birth & Child Services',
+    'marriage-matching' => 'Marriage & Matching',
+    'astrology-consultation' => 'Astrology Consultation',
+    'muhurat-event' => 'Muhurat & Event Guidance',
+    'pooja-vastu-enquiry' => 'Pooja, Ritual & Vastu Enquiry',
+];
+$fixedCategorySlugs = array_keys($fixedCategoryMap);
+$catPlaceholders = implode(',', array_fill(0, count($fixedCategorySlugs), '?'));
+$catStmt = $pdo->prepare("SELECT category_slug, category_name FROM service_categories WHERE category_slug IN ($catPlaceholders) ORDER BY sequence ASC, id ASC");
+$catStmt->execute($fixedCategorySlugs);
 $categoryOptions = $catStmt->fetchAll(PDO::FETCH_ASSOC);
+$categoryOptionsBySlug = [];
+foreach ($categoryOptions as $categoryRow) {
+    $categoryOptionsBySlug[(string)($categoryRow['category_slug'] ?? '')] = (string)($categoryRow['category_name'] ?? '');
+}
 
 // Field definitions (copy from service-form.php)
 $commonFields = [
     ['label' => 'Full Name', 'name' => 'full_name', 'type' => 'text', 'required' => true],
     ['label' => 'Mobile Number', 'name' => 'mobile', 'type' => 'tel', 'required' => true],
-    ['label' => 'Email', 'name' => 'email', 'type' => 'email', 'required' => false],
-    ['label' => 'City / Location', 'name' => 'city', 'type' => 'text', 'required' => false],
 ];
-$categoryFields = [
+$categoryFieldTemplates = [
     'appointment' => [
         ['label' => 'Preferred Date', 'name' => 'preferred_date', 'type' => 'date', 'required' => true],
-        ['label' => 'Preferred Time Slot', 'name' => 'preferred_time', 'type' => 'text', 'required' => true],
-        ['label' => 'Consultation Type', 'name' => 'consultation_type', 'type' => 'select', 'options' => ['Online', 'In-person'], 'required' => true],
-        ['label' => 'Topic', 'name' => 'topic', 'type' => 'select', 'options' => ['Astrology', 'Vastu', 'Rituals', 'General Guidance', 'Other'], 'required' => true],
     ],
     'birth-child' => [
         ['label' => 'Child Name', 'name' => 'child_name', 'type' => 'text', 'required' => false],
@@ -45,102 +54,88 @@ $categoryFields = [
         ['label' => 'Time of Birth', 'name' => 'tob', 'type' => 'time', 'required' => true],
         ['label' => 'Place of Birth', 'name' => 'pob', 'type' => 'text', 'required' => true],
     ],
-    'muhurat-event' => [
-        ['label' => 'Event Type', 'name' => 'event_type', 'type' => 'select', 'options' => ['Marriage', 'Griha Pravesh', 'Vehicle Purchase', 'Business Start', 'Other'], 'required' => true],
-        ['label' => 'Preferred Date or Month', 'name' => 'preferred_date', 'type' => 'text', 'required' => true],
-        ['label' => 'City', 'name' => 'event_city', 'type' => 'text', 'required' => true],
-    ],
-    'pooja-vastu-enquiry' => [
-        ['label' => 'Service Topic', 'name' => 'service_topic', 'type' => 'select', 'options' => ['Pooja & Ritual', 'Shanti & Dosh Nivaran', 'Yagya & Havan', 'Vastu Consultation', 'Other'], 'required' => true],
-        ['label' => 'Problem Description', 'name' => 'problem_desc', 'type' => 'textarea', 'required' => true],
-        ['label' => 'City', 'name' => 'enquiry_city', 'type' => 'text', 'required' => true],
-    ],
+    'muhurat-event' => [],
+    'pooja-vastu-enquiry' => [],
 ];
-foreach ($categoryFields as $catKey => &$fields) {
-    $fields[] = [
-        'label' => 'Describe Your Question in Detail',
-        'name' => 'questions',
-        'type' => 'textarea',
-        'required' => false,
-    ];
+$detailField = [
+    'label' => 'Describe Your Question in Detail',
+    'name' => 'questions',
+    'type' => 'textarea',
+    'required' => false,
+];
+$categoryFields = [];
+foreach ($categoryOptions as $categoryRow) {
+    $catSlug = (string)($categoryRow['category_slug'] ?? '');
+    $categoryFields[$catSlug] = $categoryFieldTemplates[$catSlug] ?? [];
+    $categoryFields[$catSlug][] = $detailField;
 }
-unset($fields);
 
 // Handle form submission
 $successMsg = '';
 $errorMsg = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['category_slug'])) {
-    $category = $_POST['category_slug'];
-    $formData = $_POST;
-    $fields = array_merge($commonFields, $categoryFields[$category] ?? []);
-    $data = [];
-    foreach ($fields as $f) {
-        $data[$f['name']] = trim($formData[$f['name']] ?? '');
+    $category = trim((string)($_POST['category_slug'] ?? ''));
+    if ($category === '' || !isset($categoryOptionsBySlug[$category])) {
+        $errorMsg = 'Please select a valid service category.';
     }
-    $selected_products = isset($_POST['selected_products']) ? $_POST['selected_products'] : '[]';
-    $total_amount = isset($_POST['total_amount']) ? floatval($_POST['total_amount']) : 0;
-    // Generate unique tracking ID (e.g., SR20251224XXXX)
-    $tracking_id = 'SR' . date('Ymd') . strtoupper(substr(uniqid(), -4));
-    // Insert into service_requests
-    $createdAt = date('Y-m-d H:i:s');
-    $stmt = $pdo->prepare("INSERT INTO service_requests (category_slug, customer_name, mobile, email, form_data, payment_status, selected_products, total_amount, tracking_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-    $stmt->execute([
-        $category,
-        $data['full_name'] ?? '',
-        $data['mobile'] ?? '',
-        $data['email'] ?? '',
-        json_encode($data),
-        'Unpaid',
-        $selected_products,
-        $total_amount,
-        $tracking_id,
-        $createdAt
-    ]);
-    $successMsg = 'Service request added successfully! Tracking ID: ' . $tracking_id;
-    
-    // Send WhatsApp notification
-    try {
-        $customerName = $data['full_name'] ?? 'Customer';
-        $customerMobile = $data['mobile'] ?? '';
-        
-        // Get category name
-        $categoryStmt = $pdo->prepare("SELECT category_name FROM service_categories WHERE category_slug = ?");
-        $categoryStmt->execute([$category]);
-        $categoryRow = $categoryStmt->fetch(PDO::FETCH_ASSOC);
-        $categoryName = $categoryRow ? $categoryRow['category_name'] : ucfirst(str_replace('-', ' ', $category));
-        
-        // Parse selected products for message
-        $productsArray = json_decode($selected_products, true) ?: [];
-        $productsList = '';
-        if (is_array($productsArray) && count($productsArray) > 0) {
-            foreach ($productsArray as $prod) {
-                $qty = isset($prod['qty']) ? $prod['qty'] : 1;
-                // Fetch product name
-                $pstmt = $pdo->prepare("SELECT product_name FROM products WHERE id = ?");
-                $pstmt->execute([$prod['id'] ?? 0]);
-                $prow = $pstmt->fetch(PDO::FETCH_ASSOC);
-                $prodName = $prow ? $prow['product_name'] : 'Product #' . ($prod['id'] ?? 'N/A');
-                $productsList .= ($productsList ? ', ' : '') . $prodName . ' (Qty: ' . $qty . ')';
-            }
-        } else {
-            $productsList = 'No products selected';
+    $formData = $_POST;
+    if ($errorMsg === '') {
+        $fields = array_merge($commonFields, $categoryFields[$category] ?? [$detailField]);
+        $data = [];
+        foreach ($fields as $f) {
+            $data[$f['name']] = trim($formData[$f['name']] ?? '');
         }
+        $selected_products = isset($_POST['selected_products']) ? $_POST['selected_products'] : '[]';
+        $total_amount = isset($_POST['total_amount']) ? floatval($_POST['total_amount']) : 0;
+        $tracking_id = 'SR' . date('Ymd') . strtoupper(substr(uniqid(), -4));
+        $createdAt = date('Y-m-d H:i:s');
+        $stmt = $pdo->prepare("INSERT INTO service_requests (category_slug, customer_name, mobile, email, form_data, payment_status, selected_products, total_amount, tracking_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt->execute([
+            $category,
+            $data['full_name'] ?? '',
+            $data['mobile'] ?? '',
+            '',
+            json_encode($data),
+            'Unpaid',
+            $selected_products,
+            $total_amount,
+            $tracking_id,
+            $createdAt
+        ]);
+        $successMsg = 'Service request added successfully! Tracking ID: ' . $tracking_id;
         
-        // Send via WhatsApp using OFFLINE_SERVICE_REQUEST_RECEIVED template
-        sendWhatsAppMessage(
-            $customerMobile,
-            'OFFLINE_SERVICE_REQUEST_RECEIVED',
-            [
-                'name' => $customerName,
-                'category' => $categoryName,
-                'products_list' => $productsList,
-                'tracking_id' => $tracking_id
-            ]
-        );
-        error_log("Offline service request WhatsApp sent to $customerMobile for tracking ID $tracking_id");
-    } catch (Throwable $e) {
-        error_log('Offline service request WhatsApp failed: ' . $e->getMessage());
-        // Don't fail the request, just log the error
+        try {
+            $customerName = $data['full_name'] ?? 'Customer';
+            $customerMobile = $data['mobile'] ?? '';
+            $categoryName = $categoryOptionsBySlug[$category] ?? ucfirst(str_replace('-', ' ', $category));
+            $productsArray = json_decode($selected_products, true) ?: [];
+            $productsList = '';
+            if (is_array($productsArray) && count($productsArray) > 0) {
+                foreach ($productsArray as $prod) {
+                    $qty = isset($prod['qty']) ? $prod['qty'] : 1;
+                    $pstmt = $pdo->prepare("SELECT product_name FROM products WHERE id = ?");
+                    $pstmt->execute([$prod['id'] ?? 0]);
+                    $prow = $pstmt->fetch(PDO::FETCH_ASSOC);
+                    $prodName = $prow ? $prow['product_name'] : 'Product #' . ($prod['id'] ?? 'N/A');
+                    $productsList .= ($productsList ? ', ' : '') . $prodName . ' (Qty: ' . $qty . ')';
+                }
+            } else {
+                $productsList = 'No products selected';
+            }
+            sendWhatsAppMessage(
+                $customerMobile,
+                'OFFLINE_SERVICE_REQUEST_RECEIVED',
+                [
+                    'name' => $customerName,
+                    'category' => $categoryName,
+                    'products_list' => $productsList,
+                    'tracking_id' => $tracking_id
+                ]
+            );
+            error_log("Offline service request WhatsApp sent to $customerMobile for tracking ID $tracking_id");
+        } catch (Throwable $e) {
+            error_log('Offline service request WhatsApp failed: ' . $e->getMessage());
+        }
     }
 }
 ?>
@@ -182,8 +177,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['category_slug'])) {
 </head>
 <body>
 <?php include __DIR__ . '/../includes/top-menu.php'; ?>
-<div class="admin-container">
+    <div class="admin-container">
     <h1>Offline Service Request</h1>
+    <?php if ($errorMsg): ?><div class="error-list"><?= htmlspecialchars($errorMsg) ?></div><?php endif; ?>
     <?php if ($successMsg): ?><div class="success-msg"><?= $successMsg ?></div><?php endif; ?>
     <form id="offlineServiceForm" method="post" autocomplete="off">
         <label class="form-label">Select Category:

@@ -66,6 +66,12 @@ require_once __DIR__ . '/../includes/top-menu.php';
         color: #fff;
         box-shadow: 0 4px 16px #80000033;
     }
+    .btn-customer {
+        background: #1a8917;
+    }
+    .btn-customer:hover {
+        background: #146b12;
+    }
     </style>
 </head>
 <body>
@@ -91,7 +97,9 @@ require_once __DIR__ . '/../includes/top-menu.php';
                 <option value="normal">Normal</option>
                 <option value="urgent">Urgent</option>
             </select>
-            <button type="submit" class="btn-main" style="margin-left:auto;">Add Visitor</button>
+            <input type="hidden" name="submit_mode" id="submit-mode" value="add">
+            <button type="submit" class="btn-main" id="add-visitor-btn" style="margin-left:auto;">Add Visitor</button>
+            <button type="button" class="btn-main btn-customer" id="add-customer-btn">Add Customer</button>
         </div>
     </form>
     <div id="alert-area"></div>
@@ -206,23 +214,53 @@ document.getElementById('add-visitor-form').onsubmit = function(e) {
     e.preventDefault();
     const form = e.target;
     const fd = new FormData(form);
+    const submitMode = (fd.get('submit_mode') || 'add').toString();
+    fd.delete('submit_mode');
     const params = new URLSearchParams(fd).toString();
     fetch('ajax_visitors_log.php', {
         method: 'POST',
         headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-        body: 'action=add&' + params
+        body: 'action=' + encodeURIComponent(submitMode) + '&' + params
     })
     .then(r => r.json())
     .then(data => {
         if (data.success) {
             form.reset();
-            showAlert('Visitor added successfully.');
+            document.getElementById('submit-mode').value = 'add';
+            if (submitMode === 'add_customer') {
+                showAlert('Customer added to closed log successfully.');
+            } else {
+                showAlert('Visitor added successfully.');
+            }
             loadVisitorsLog();
         } else {
-            showAlert('Error adding visitor', 'danger');
+            showAlert(submitMode === 'add_customer' ? 'Error adding customer' : 'Error adding visitor', 'danger');
         }
     });
 };
+
+const addVisitorBtn = document.getElementById('add-visitor-btn');
+if (addVisitorBtn) {
+    addVisitorBtn.addEventListener('click', function() {
+        document.getElementById('submit-mode').value = 'add';
+    });
+}
+
+const addCustomerBtn = document.getElementById('add-customer-btn');
+if (addCustomerBtn) {
+    addCustomerBtn.addEventListener('click', function() {
+        const form = document.getElementById('add-visitor-form');
+        document.getElementById('submit-mode').value = 'add_customer';
+        if (typeof form.reportValidity === 'function' && !form.reportValidity()) {
+            return;
+        }
+        if (typeof form.requestSubmit === 'function') {
+            form.requestSubmit();
+        } else {
+            form.dispatchEvent(new Event('submit', {cancelable: true}));
+        }
+    });
+}
 
 // Attach search bar event listeners ONCE
 const searchBtn = document.getElementById('search-btn');

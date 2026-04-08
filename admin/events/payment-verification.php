@@ -10,6 +10,12 @@ if (!isset($_SESSION['user_id'])) {
     header('Location: ../login.php');
     exit;
 }
+$actorUserId = (int)($_SESSION['user_id'] ?? 0);
+$actorUserName = trim((string)($_SESSION['user_name'] ?? ''));
+$actorRole = (function_exists('vs_admin_is_super_admin') && vs_admin_is_super_admin()) ? 'admin' : 'staff';
+if ($actorUserName === '') {
+    $actorUserName = $actorRole === 'admin' ? 'Admin' : 'Staff';
+}
 
 require_once __DIR__ . '/../../config/db.php';
 require_once __DIR__ . '/../../helpers/event_module.php';
@@ -92,6 +98,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['verify_action'], $_PO
                         SET status = 'Approved', payment_type = ?, amount_paid = ?, remaining_amount = ?
                         WHERE id = ?")
                         ->execute([$newPaymentType, $newPaid, $remainingAfter, $paymentId]);
+                    vs_event_review_latest_payment_activity(
+                        $pdo,
+                        (int)$paymentRow['registration_id'],
+                        'Approved',
+                        $actorUserId,
+                        $actorUserName,
+                        $actorRole
+                    );
                     $pdo->prepare("UPDATE event_registrations SET payment_status = ?, verification_status = 'Approved' WHERE id = ?")
                         ->execute([$newPaymentStatus, (int)$paymentRow['registration_id']]);
 
@@ -128,6 +142,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['verify_action'], $_PO
                     $message = 'Payment approved successfully.';
                 } else {
                     $pdo->prepare("UPDATE event_payments SET status = 'Rejected' WHERE id = ?")->execute([$paymentId]);
+                    vs_event_review_latest_payment_activity(
+                        $pdo,
+                        (int)$paymentRow['registration_id'],
+                        'Rejected',
+                        $actorUserId,
+                        $actorUserName,
+                        $actorRole
+                    );
                     $fallbackStatus = ((float)($paymentRow['amount_paid'] ?? 0) > 0) ? 'Partial Paid' : 'Failed';
                     $pdo->prepare("UPDATE event_registrations SET payment_status = ?, verification_status = 'Rejected' WHERE id = ?")
                         ->execute([$fallbackStatus, (int)$paymentRow['registration_id']]);
