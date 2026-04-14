@@ -2,8 +2,25 @@
 
 $pageTitle = 'Service Form | Vishnusudarshana';
 require_once __DIR__ . '/config/db.php';
+require_once __DIR__ . '/helpers/system_settings.php';
 require_once 'header.php';
 $category = $_GET['category'] ?? '';
+
+if (!function_exists('vs_service_form_is_valid_time')) {
+    function vs_service_form_is_valid_time(string $value): bool
+    {
+        return preg_match('/^(?:[01]\d|2[0-3]):[0-5]\d$/', $value) === 1;
+    }
+}
+
+if (!function_exists('vs_service_form_normalize_time_setting')) {
+    function vs_service_form_normalize_time_setting(?string $value, string $fallback): string
+    {
+        $value = trim((string) $value);
+
+        return vs_service_form_is_valid_time($value) ? $value : $fallback;
+    }
+}
 
 $categories = [
     'appointment' => 'Book an Appointment',
@@ -74,6 +91,20 @@ foreach ($categoryFields as $catKey => &$fields) {
 }
 unset($fields);
 
+$appointmentSameDayCutoffTime = '11:30';
+
+if ($category === 'appointment') {
+    try {
+        vs_settings_ensure_table($pdo);
+        $appointmentSameDayCutoffTime = vs_service_form_normalize_time_setting(
+            vs_settings_get_value($pdo, 'appointment_same_day_booking_cutoff_time'),
+            $appointmentSameDayCutoffTime
+        );
+    } catch (Throwable $e) {
+        error_log('Unable to load appointment same-day cutoff: ' . $e->getMessage());
+    }
+}
+
 // No PHP redirect logic here. Form will post directly to service-review.php.
 ?>
 <main class="main-content" style="background-color:var(--cream-bg);">
@@ -134,17 +165,29 @@ unset($fields);
     } catch (Throwable $e) {}
     ?>
     <script>
-    // Set min date to today in IST, but after 11:30 AM IST, only allow future dates for Preferred Date
+    // Set min date to today in IST, but after the configured cutoff only allow future dates for Preferred Date
     document.addEventListener('DOMContentLoaded', function() {
         var dateInput = document.getElementById('preferred_date_input');
         var blockedDates = <?php echo json_encode($blockedDates); ?>;
         var blockedMsgs = <?php echo json_encode($blockedMsgs); ?>;
+        var sameDayCutoffTime = <?php echo json_encode($appointmentSameDayCutoffTime); ?>;
         if (dateInput) {
             function getISTNow() {
                 var now = new Date();
                 var utc = now.getTime() + (now.getTimezoneOffset() * 60000);
                 var istOffset = 5.5 * 60 * 60 * 1000;
                 return new Date(utc + istOffset);
+            }
+            function getCutoffParts(value) {
+                var parts = String(value || '').split(':');
+                var hours = parseInt(parts[0], 10);
+                var minutes = parseInt(parts[1], 10);
+
+                if (isNaN(hours) || hours < 0 || hours > 23 || isNaN(minutes) || minutes < 0 || minutes > 59) {
+                    return { hours: 11, minutes: 30 };
+                }
+
+                return { hours: hours, minutes: minutes };
             }
             function getDateStr(dateObj) {
                 var yyyy = dateObj.getFullYear();
@@ -153,10 +196,11 @@ unset($fields);
                 return yyyy + '-' + mm + '-' + dd;
             }
             var istNow = getISTNow();
+            var cutoffParts = getCutoffParts(sameDayCutoffTime);
             var todayStr = getDateStr(istNow);
             var minDateStr = todayStr;
-            // If after 11:30 AM IST, set min date to tomorrow
-            if (istNow.getHours() > 11 || (istNow.getHours() === 11 && istNow.getMinutes() >= 30)) {
+            // If after the configured cutoff time in IST, set min date to tomorrow
+            if (istNow.getHours() > cutoffParts.hours || (istNow.getHours() === cutoffParts.hours && istNow.getMinutes() >= cutoffParts.minutes)) {
                 var tomorrow = new Date(istNow.getTime() + 24 * 60 * 60 * 1000);
                 minDateStr = getDateStr(tomorrow);
             }

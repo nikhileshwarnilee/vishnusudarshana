@@ -44,8 +44,10 @@ if (!function_exists('vs_appointments_format_time_label')) {
 
 $appointmentDefaultTimeFromKey = 'appointment_default_time_from';
 $appointmentDefaultTimeToKey = 'appointment_default_time_to';
+$appointmentSameDayCutoffKey = 'appointment_same_day_booking_cutoff_time';
 $appointmentDefaultTimeFrom = '09:00';
 $appointmentDefaultTimeTo = '21:00';
+$appointmentSameDayCutoffTime = '11:30';
 $appointmentSettingsSaved = isset($_GET['settings']) && $_GET['settings'] === 'saved';
 $appointmentSettingsErrorMessage = '';
 
@@ -58,6 +60,10 @@ try {
     $appointmentDefaultTimeTo = vs_appointments_normalize_time_setting(
         vs_settings_get_value($pdo, $appointmentDefaultTimeToKey),
         $appointmentDefaultTimeTo
+    );
+    $appointmentSameDayCutoffTime = vs_appointments_normalize_time_setting(
+        vs_settings_get_value($pdo, $appointmentSameDayCutoffKey),
+        $appointmentSameDayCutoffTime
     );
 } catch (Throwable $e) {
     error_log('Unable to load appointment schedule defaults: ' . $e->getMessage());
@@ -73,6 +79,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($postAction === 'save_schedule_defaults') {
         $submittedDefaultTimeFrom = trim((string) ($_POST['default_time_from'] ?? ''));
         $submittedDefaultTimeTo = trim((string) ($_POST['default_time_to'] ?? ''));
+        $submittedSameDayCutoffTime = trim((string) ($_POST['same_day_booking_cutoff_time'] ?? ''));
 
         $appointmentDefaultTimeFrom = vs_appointments_normalize_time_setting(
             $submittedDefaultTimeFrom,
@@ -82,24 +89,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $submittedDefaultTimeTo,
             $appointmentDefaultTimeTo
         );
+        $appointmentSameDayCutoffTime = vs_appointments_normalize_time_setting(
+            $submittedSameDayCutoffTime,
+            $appointmentSameDayCutoffTime
+        );
 
         if (
             !vs_appointments_is_valid_time($submittedDefaultTimeFrom) ||
             !vs_appointments_is_valid_time($submittedDefaultTimeTo) ||
+            !vs_appointments_is_valid_time($submittedSameDayCutoffTime) ||
             $submittedDefaultTimeFrom >= $submittedDefaultTimeTo
         ) {
-            $appointmentSettingsErrorMessage = 'Please choose a valid default time range.';
+            $appointmentSettingsErrorMessage = 'Please choose a valid default schedule and cutoff time.';
         } else {
             try {
                 vs_settings_ensure_table($pdo);
                 vs_settings_upsert($pdo, $appointmentDefaultTimeFromKey, $submittedDefaultTimeFrom);
                 vs_settings_upsert($pdo, $appointmentDefaultTimeToKey, $submittedDefaultTimeTo);
+                vs_settings_upsert($pdo, $appointmentSameDayCutoffKey, $submittedSameDayCutoffTime);
 
                 header('Location: appointments.php?settings=saved');
                 exit;
             } catch (Throwable $e) {
                 error_log('Unable to save appointment schedule defaults: ' . $e->getMessage());
-                $appointmentSettingsErrorMessage = 'Unable to save default schedule time right now.';
+                $appointmentSettingsErrorMessage = 'Unable to save default schedule settings right now.';
             }
         }
     } elseif ($postAction === 'accept') {
@@ -218,6 +231,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 $appointmentDefaultTimeFromLabel = vs_appointments_format_time_label($appointmentDefaultTimeFrom);
 $appointmentDefaultTimeToLabel = vs_appointments_format_time_label($appointmentDefaultTimeTo);
+$appointmentSameDayCutoffLabel = vs_appointments_format_time_label($appointmentSameDayCutoffTime);
 $reopenScheduleSettingsModal = $appointmentSettingsErrorMessage !== '';
 
 /* ============================================================
@@ -718,7 +732,7 @@ h1 {
     <div>
         <h1>Appointment Management</h1>
         <div class="current-default-note">
-            Accept popup default time: <?= htmlspecialchars($appointmentDefaultTimeFromLabel) ?> to <?= htmlspecialchars($appointmentDefaultTimeToLabel) ?>
+            Accept popup default time: <?= htmlspecialchars($appointmentDefaultTimeFromLabel) ?> to <?= htmlspecialchars($appointmentDefaultTimeToLabel) ?> | Same-day public booking cutoff: <?= htmlspecialchars($appointmentSameDayCutoffLabel) ?> IST
         </div>
     </div>
     <div class="page-title-actions">
@@ -743,7 +757,7 @@ h1 {
 <div id="rollbackMsg" style="margin-bottom:12px;font-weight:600;color:#007bff;"></div>
 <?php if ($appointmentSettingsSaved): ?>
     <div class="notice-banner notice-success">
-        Default appointment schedule time saved. New accept popups will open with <?= htmlspecialchars($appointmentDefaultTimeFromLabel) ?> to <?= htmlspecialchars($appointmentDefaultTimeToLabel) ?>.
+        Default appointment schedule settings saved. New accept popups will open with <?= htmlspecialchars($appointmentDefaultTimeFromLabel) ?> to <?= htmlspecialchars($appointmentDefaultTimeToLabel) ?>, and same-day public booking will stay open until <?= htmlspecialchars($appointmentSameDayCutoffLabel) ?> IST.
     </div>
 <?php endif; ?>
 <?php if ($appointmentSettingsErrorMessage !== ''): ?>
@@ -927,7 +941,7 @@ document.getElementById('refreshRollbackBtn').onclick = function() {
         <form method="POST" onsubmit="return validateScheduleSettingsForm()">
             <input type="hidden" name="action" value="save_schedule_defaults">
             <p class="settings-help-text">
-                These times are used to prefill the Accept Appointment popup whenever you schedule pending appointments.
+                These settings control the default Accept Appointment popup time range and the same-day cutoff used on the public appointment booking form.
             </p>
             <div class="settings-form-grid">
                 <div class="form-group">
@@ -937,6 +951,10 @@ document.getElementById('refreshRollbackBtn').onclick = function() {
                 <div class="form-group">
                     <label for="defaultTimeTo">Default Time To *</label>
                     <input type="time" id="defaultTimeTo" name="default_time_to" value="<?= htmlspecialchars($appointmentDefaultTimeTo) ?>" required>
+                </div>
+                <div class="form-group">
+                    <label for="sameDayBookingCutoffTime">Same-Day Booking Cutoff Time *</label>
+                    <input type="time" id="sameDayBookingCutoffTime" name="same_day_booking_cutoff_time" value="<?= htmlspecialchars($appointmentSameDayCutoffTime) ?>" required>
                 </div>
             </div>
             <div class="modal-footer">
@@ -1069,9 +1087,10 @@ function closeScheduleSettingsModal() {
 function validateScheduleSettingsForm() {
     const defaultTimeFrom = document.getElementById('defaultTimeFrom').value;
     const defaultTimeTo = document.getElementById('defaultTimeTo').value;
+    const sameDayBookingCutoffTime = document.getElementById('sameDayBookingCutoffTime').value;
 
-    if (!defaultTimeFrom || !defaultTimeTo || defaultTimeFrom >= defaultTimeTo) {
-        alert('Default Time From must be before Default Time To');
+    if (!defaultTimeFrom || !defaultTimeTo || !sameDayBookingCutoffTime || defaultTimeFrom >= defaultTimeTo) {
+        alert('Please choose a valid default schedule and cutoff time.');
         return false;
     }
 
