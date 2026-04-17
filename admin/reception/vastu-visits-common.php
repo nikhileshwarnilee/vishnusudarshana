@@ -34,6 +34,18 @@ if (!function_exists('vs_reception_vastu_bootstrap')) {
                 CONSTRAINT fk_vastu_visits_area FOREIGN KEY (area_id) REFERENCES vastu_visit_areas(id) ON DELETE RESTRICT
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
         ");
+
+        $pdo->exec("
+            CREATE TABLE IF NOT EXISTS vastu_visit_notes (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                visit_id INT NOT NULL,
+                note_text TEXT NOT NULL,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                KEY idx_vastu_visit_notes_visit (visit_id),
+                KEY idx_vastu_visit_notes_created (created_at),
+                CONSTRAINT fk_vastu_visit_notes_visit FOREIGN KEY (visit_id) REFERENCES vastu_visits(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
     }
 }
 
@@ -125,9 +137,12 @@ if (!function_exists('vs_reception_vastu_fetch_grouped_visits')) {
         ");
         $stmt->execute([$status]);
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $notesByVisit = vs_reception_vastu_fetch_notes_for_visits($pdo, array_column($rows, 'id'));
 
         $grouped = [];
         foreach ($rows as $row) {
+            $visitId = (int)($row['id'] ?? 0);
+            $row['notes'] = $notesByVisit[$visitId] ?? [];
             $areaName = trim((string)($row['area_name'] ?? ''));
             if ($areaName === '') {
                 $areaName = 'Unassigned Area';
@@ -139,5 +154,121 @@ if (!function_exists('vs_reception_vastu_fetch_grouped_visits')) {
         }
 
         return $grouped;
+    }
+}
+
+if (!function_exists('vs_reception_vastu_fetch_notes_for_visits')) {
+    function vs_reception_vastu_fetch_notes_for_visits(PDO $pdo, array $visitIds): array
+    {
+        $visitIds = array_values(array_unique(array_filter(array_map('intval', $visitIds), static function ($visitId) {
+            return $visitId > 0;
+        })));
+
+        if (empty($visitIds)) {
+            return [];
+        }
+
+        $placeholders = implode(',', array_fill(0, count($visitIds), '?'));
+        $stmt = $pdo->prepare("
+            SELECT id, visit_id, note_text, created_at
+            FROM vastu_visit_notes
+            WHERE visit_id IN ($placeholders)
+            ORDER BY created_at DESC, id DESC
+        ");
+        $stmt->execute($visitIds);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $notesByVisit = [];
+        foreach ($rows as $row) {
+            $visitId = (int)($row['visit_id'] ?? 0);
+            if ($visitId <= 0) {
+                continue;
+            }
+            if (!isset($notesByVisit[$visitId])) {
+                $notesByVisit[$visitId] = [];
+            }
+            $notesByVisit[$visitId][] = $row;
+        }
+
+        return $notesByVisit;
+    }
+}
+
+if (!function_exists('vs_reception_vastu_fetch_notes')) {
+    function vs_reception_vastu_fetch_notes(PDO $pdo, int $visitId): array
+    {
+        if ($visitId <= 0) {
+            return [];
+        }
+
+        $notesByVisit = vs_reception_vastu_fetch_notes_for_visits($pdo, [$visitId]);
+        return $notesByVisit[$visitId] ?? [];
+    }
+}
+
+if (!function_exists('vs_reception_vastu_add_note')) {
+    function vs_reception_vastu_add_note(PDO $pdo, int $visitId, string $noteText): bool
+    {
+        $noteText = trim($noteText);
+        if ($visitId <= 0 || $noteText === '') {
+            return false;
+        }
+
+        $stmt = $pdo->prepare("INSERT INTO vastu_visit_notes (visit_id, note_text) VALUES (?, ?)");
+        return $stmt->execute([$visitId, $noteText]);
+    }
+}
+
+if (!function_exists('vs_reception_vastu_find_note')) {
+    function vs_reception_vastu_find_note(PDO $pdo, int $noteId, int $visitId = 0): ?array
+    {
+        if ($noteId <= 0) {
+            return null;
+        }
+
+        $sql = "SELECT id, visit_id, note_text, created_at FROM vastu_visit_notes WHERE id = ?";
+        $params = [$noteId];
+        if ($visitId > 0) {
+            $sql .= " AND visit_id = ?";
+            $params[] = $visitId;
+        }
+        $sql .= " LIMIT 1";
+
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $row ?: null;
+    }
+}
+
+if (!function_exists('vs_reception_vastu_update_note')) {
+    function vs_reception_vastu_update_note(PDO $pdo, int $noteId, int $visitId, string $noteText): bool
+    {
+        $noteText = trim($noteText);
+        if ($noteId <= 0 || $visitId <= 0 || $noteText === '') {
+            return false;
+        }
+
+        $stmt = $pdo->prepare("
+            UPDATE vastu_visit_notes
+            SET note_text = ?
+            WHERE id = ? AND visit_id = ?
+            LIMIT 1
+        ");
+        $stmt->execute([$noteText, $noteId, $visitId]);
+        return $stmt->rowCount() > 0;
+    }
+}
+
+if (!function_exists('vs_reception_vastu_delete_note')) {
+    function vs_reception_vastu_delete_note(PDO $pdo, int $noteId, int $visitId): bool
+    {
+        if ($noteId <= 0 || $visitId <= 0) {
+            return false;
+        }
+
+        $stmt = $pdo->prepare("DELETE FROM vastu_visit_notes WHERE id = ? AND visit_id = ? LIMIT 1");
+        $stmt->execute([$noteId, $visitId]);
+        return $stmt->rowCount() > 0;
     }
 }

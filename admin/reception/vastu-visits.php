@@ -13,8 +13,6 @@ $defaultForm = [
     'vastu_type' => '',
     'area_id' => '',
     'address_line1' => '',
-    'address_line2' => '',
-    'landmark' => '',
     'details' => '',
 ];
 $form = $defaultForm;
@@ -37,8 +35,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'vastu_type' => trim((string)($_POST['vastu_type'] ?? '')),
             'area_id' => trim((string)($_POST['area_id'] ?? '')),
             'address_line1' => trim((string)($_POST['address_line1'] ?? '')),
-            'address_line2' => trim((string)($_POST['address_line2'] ?? '')),
-            'landmark' => trim((string)($_POST['landmark'] ?? '')),
             'details' => trim((string)($_POST['details'] ?? '')),
         ];
 
@@ -47,12 +43,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         if ($form['contact_number'] === '') {
             $errors[] = 'Customer number is required.';
-        }
-        if ($form['vastu_type'] === '') {
-            $errors[] = 'Vastu type is required.';
-        }
-        if ($form['details'] === '') {
-            $errors[] = 'Details are required.';
         }
 
         $areaId = (int)$form['area_id'];
@@ -74,8 +64,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         vastu_type = ?,
                         area_id = ?,
                         address_line1 = ?,
-                        address_line2 = ?,
-                        landmark = ?,
+                        address_line2 = NULL,
+                        landmark = NULL,
                         closed_at = CASE WHEN status = 'closed' THEN COALESCE(closed_at, NOW()) ELSE NULL END
                     WHERE id = ?
                     LIMIT 1
@@ -87,8 +77,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $form['vastu_type'],
                     $areaId,
                     $form['address_line1'],
-                    $form['address_line2'],
-                    $form['landmark'],
                     $visitId,
                 ]);
 
@@ -98,9 +86,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $stmt = $pdo->prepare("
                 INSERT INTO vastu_visits
-                    (customer_name, contact_number, details, vastu_type, area_id, address_line1, address_line2, landmark, status)
+                    (customer_name, contact_number, details, vastu_type, area_id, address_line1, status)
                 VALUES
-                    (?, ?, ?, ?, ?, ?, ?, ?, 'open')
+                    (?, ?, ?, ?, ?, ?, 'open')
             ");
             $stmt->execute([
                 $form['customer_name'],
@@ -109,8 +97,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $form['vastu_type'],
                 $areaId,
                 $form['address_line1'],
-                $form['address_line2'],
-                $form['landmark'],
             ]);
 
             header('Location: ' . $redirectBase . '?notice=' . rawurlencode('Vastu visit added successfully.') . '&type=success');
@@ -120,6 +106,73 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($existingVisit) {
             $editVisit = array_merge($existingVisit, $form, ['area_id' => $areaId]);
         }
+    } elseif ($action === 'add_note') {
+        $visitId = (int)($_POST['visit_id'] ?? 0);
+        $noteText = trim((string)($_POST['note_text'] ?? ''));
+        $target = vs_reception_vastu_allowed_return_page($_POST['return_page'] ?? $redirectBase);
+        $visit = vs_reception_vastu_find_visit($pdo, $visitId);
+
+        if (!$visit) {
+            header('Location: ' . $target . '?notice=' . rawurlencode('Vastu visit not found.') . '&type=danger');
+            exit;
+        }
+
+        if ($noteText === '') {
+            header('Location: ' . $target . '?notice=' . rawurlencode('Note cannot be empty.') . '&type=danger');
+            exit;
+        }
+
+        if (vs_reception_vastu_add_note($pdo, $visitId, $noteText)) {
+            header('Location: ' . $target . '?notice=' . rawurlencode('Note saved successfully.') . '&type=success');
+            exit;
+        }
+
+        header('Location: ' . $target . '?notice=' . rawurlencode('Unable to save note right now.') . '&type=danger');
+        exit;
+    } elseif ($action === 'edit_note') {
+        $visitId = (int)($_POST['visit_id'] ?? 0);
+        $noteId = (int)($_POST['note_id'] ?? 0);
+        $noteText = trim((string)($_POST['note_text'] ?? ''));
+        $target = vs_reception_vastu_allowed_return_page($_POST['return_page'] ?? $redirectBase);
+        $visit = vs_reception_vastu_find_visit($pdo, $visitId);
+        $note = vs_reception_vastu_find_note($pdo, $noteId, $visitId);
+
+        if (!$visit || !$note) {
+            header('Location: ' . $target . '?notice=' . rawurlencode('Note not found.') . '&type=danger');
+            exit;
+        }
+
+        if ($noteText === '') {
+            header('Location: ' . $target . '?notice=' . rawurlencode('Note cannot be empty.') . '&type=danger');
+            exit;
+        }
+
+        if (vs_reception_vastu_update_note($pdo, $noteId, $visitId, $noteText)) {
+            header('Location: ' . $target . '?notice=' . rawurlencode('Note updated successfully.') . '&type=success');
+            exit;
+        }
+
+        header('Location: ' . $target . '?notice=' . rawurlencode('No note changes were saved.') . '&type=warn');
+        exit;
+    } elseif ($action === 'delete_note') {
+        $visitId = (int)($_POST['visit_id'] ?? 0);
+        $noteId = (int)($_POST['note_id'] ?? 0);
+        $target = vs_reception_vastu_allowed_return_page($_POST['return_page'] ?? $redirectBase);
+        $visit = vs_reception_vastu_find_visit($pdo, $visitId);
+        $note = vs_reception_vastu_find_note($pdo, $noteId, $visitId);
+
+        if (!$visit || !$note) {
+            header('Location: ' . $target . '?notice=' . rawurlencode('Note not found.') . '&type=danger');
+            exit;
+        }
+
+        if (vs_reception_vastu_delete_note($pdo, $noteId, $visitId)) {
+            header('Location: ' . $target . '?notice=' . rawurlencode('Note deleted successfully.') . '&type=success');
+            exit;
+        }
+
+        header('Location: ' . $target . '?notice=' . rawurlencode('Unable to delete note right now.') . '&type=danger');
+        exit;
     } elseif ($action === 'close_visit') {
         $visitId = (int)($_POST['visit_id'] ?? 0);
         $visit = vs_reception_vastu_find_visit($pdo, $visitId);
@@ -152,8 +205,6 @@ if ($editVisit === null && isset($_GET['edit'])) {
                 'vastu_type' => (string)($editVisit['vastu_type'] ?? ''),
                 'area_id' => (string)($editVisit['area_id'] ?? ''),
                 'address_line1' => (string)($editVisit['address_line1'] ?? ''),
-                'address_line2' => (string)($editVisit['address_line2'] ?? ''),
-                'landmark' => (string)($editVisit['landmark'] ?? ''),
                 'details' => (string)($editVisit['details'] ?? ''),
             ];
         } else {
@@ -198,10 +249,14 @@ require_once __DIR__ . '/../includes/top-menu.php';
         label { color:#800000; font-weight:700; font-size:0.95em; }
         input, select, textarea { width:100%; box-sizing:border-box; padding:10px 12px; border:1px solid #e0bebe; border-radius:8px; font-size:0.95em; background:#fff; }
         textarea { min-height:110px; resize:vertical; }
+        .area-options { display:flex; flex-wrap:wrap; gap:10px; }
+        .area-option { display:flex; align-items:center; gap:10px; padding:12px 14px; border:1px solid #e0bebe; border-radius:10px; background:#fff8f8; cursor:pointer; font-weight:600; color:#5f2222; }
+        .area-option input { width:auto; margin:0; accent-color:#800000; }
         .form-actions { display:flex; gap:10px; flex-wrap:wrap; margin-top:14px; }
         .section-title { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:10px; }
         .area-card { background:#fff; border-radius:16px; box-shadow:0 2px 14px #e0bebe22; margin-bottom:20px; overflow:hidden; }
         .area-head { display:flex; justify-content:space-between; align-items:center; gap:12px; background:#f9eaea; color:#800000; padding:14px 16px; font-weight:700; }
+        .area-head-actions { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
         .area-count { font-size:0.9em; background:#fff; color:#800000; border-radius:999px; padding:4px 10px; }
         table { width:100%; border-collapse:collapse; background:#fff; table-layout:auto; font-size:0.9em; }
         table th, table td { padding:10px 8px; text-align:left; border-bottom:1px solid #f3caca; vertical-align:top; }
@@ -210,10 +265,33 @@ require_once __DIR__ . '/../includes/top-menu.php';
         .small { font-size:0.84em; color:#666; }
         .details-cell { min-width:240px; white-space:pre-wrap; }
         .address-cell { min-width:220px; white-space:pre-wrap; }
+        .notes-cell { min-width:280px; }
+        .note-list { display:flex; flex-direction:column; gap:8px; }
+        .note-item { border-left:3px solid #800000; background:#fff8f8; border-radius:8px; padding:8px 10px; }
+        .note-text { color:#333; white-space:pre-wrap; }
+        .note-meta { font-size:0.82em; color:#7a6161; }
+        .note-tools { margin-top:6px; display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; }
+        .note-actions { display:flex; align-items:center; gap:8px; }
+        .note-delete-form { margin:0; }
+        .note-icon-btn { display:inline-flex; align-items:center; justify-content:center; width:34px; height:34px; border:none; border-radius:50%; cursor:pointer; }
+        .note-icon-btn svg { width:16px; height:16px; }
+        .note-icon-btn.edit { background:#fff; color:#0d6efd; border:1px solid #cfe1ff; }
+        .note-icon-btn.delete { background:#fff; color:#b00020; border:1px solid #f1c0ca; }
+        .note-edit-form { margin-top:8px; display:flex; flex-direction:column; gap:8px; }
+        .note-edit-form[hidden] { display:none !important; }
+        .note-edit-form textarea { min-height:90px; }
+        .note-edit-actions { display:flex; gap:8px; flex-wrap:wrap; }
+        .note-item.is-editing .note-text,
+        .note-item.is-editing .note-tools { display:none; }
+        .note-item.is-editing .note-edit-form { margin-top:0; }
+        .note-entry-row td { background:#fffaf9; }
+        .note-form { display:flex; flex-direction:column; gap:10px; }
         .status-badge { display:inline-block; padding:5px 10px; border-radius:999px; background:#e5f0ff; color:#0056b3; font-weight:700; font-size:0.85em; text-transform:capitalize; }
         .action-row { display:flex; gap:8px; flex-wrap:wrap; }
         .btn-inline { display:inline-flex; align-items:center; justify-content:center; padding:7px 12px; border:none; border-radius:7px; color:#fff; font-weight:600; text-decoration:none; cursor:pointer; }
         .btn-edit { background:#0d6efd; }
+        .btn-note { background:#8f4b00; }
+        .btn-print { background:#5b2c83; }
         .btn-close { background:#1a8917; }
         .btn-delete { background:#b00020; }
         .empty-state { padding:18px; text-align:center; color:#777; background:#fff; border-radius:16px; box-shadow:0 2px 14px #e0bebe22; }
@@ -223,8 +301,28 @@ require_once __DIR__ . '/../includes/top-menu.php';
             .head-actions { width:100%; }
             .btn-main { width:100%; }
             .icon-btn { width:100%; height:auto; padding:10px 16px; }
+            .area-options { flex-direction:column; }
             .action-row { flex-direction:column; }
             .btn-inline { width:100%; }
+        }
+        @media print {
+            body { background:#fff; }
+            .admin-top-menu, .page-head, .card, .notice, .empty-state { display:none !important; }
+            .admin-container { max-width:none; padding:0; }
+            .area-card { display:none !important; box-shadow:none; border-radius:0; margin:0; }
+            .area-card.print-target { display:block !important; }
+            .area-card.print-target .note-entry-row,
+            .area-card.print-target .actions-col,
+            .area-card.print-target .note-tools,
+            .area-card.print-target .note-edit-form,
+            .area-card.print-target .area-head-actions,
+            .area-card.print-target .area-count,
+            .area-card.print-target [data-print-area] { display:none !important; }
+            .area-card.print-target .area-head { background:#fff !important; color:#000 !important; padding:0 0 12px; border-bottom:2px solid #ccc; }
+            .area-card.print-target table { font-size:12px; }
+            .area-card.print-target table th,
+            .area-card.print-target table td { border-color:#ddd; }
+            .note-item { background:#fff !important; }
         }
     </style>
 </head>
@@ -286,35 +384,34 @@ require_once __DIR__ . '/../includes/top-menu.php';
                     <input type="text" id="contact_number" name="contact_number" value="<?php echo htmlspecialchars($form['contact_number']); ?>" required maxlength="30">
                 </div>
                 <div class="form-group">
-                    <label for="vastu_type">Vastu Type *</label>
-                    <input type="text" id="vastu_type" name="vastu_type" value="<?php echo htmlspecialchars($form['vastu_type']); ?>" required maxlength="150">
+                    <label for="vastu_type">Vastu Type</label>
+                    <input type="text" id="vastu_type" name="vastu_type" value="<?php echo htmlspecialchars($form['vastu_type']); ?>" maxlength="150">
                 </div>
-                <div class="form-group">
-                    <label for="area_id">Area *</label>
-                    <select id="area_id" name="area_id" required <?php echo empty($areas) ? 'disabled' : ''; ?>>
-                        <option value="">Select Area</option>
-                        <?php foreach ($areas as $area): ?>
-                            <option value="<?php echo (int)$area['id']; ?>" <?php echo ((string)$form['area_id'] === (string)$area['id']) ? 'selected' : ''; ?>>
-                                <?php echo htmlspecialchars((string)$area['area_name']); ?>
-                            </option>
+                <div class="form-group full">
+                    <label>Area *</label>
+                    <div class="area-options">
+                        <?php foreach ($areas as $index => $area): ?>
+                            <label class="area-option">
+                                <input
+                                    type="radio"
+                                    name="area_id"
+                                    value="<?php echo (int)$area['id']; ?>"
+                                    <?php echo ((string)$form['area_id'] === (string)$area['id']) ? 'checked' : ''; ?>
+                                    <?php echo ($index === 0 && !empty($areas)) ? 'required' : ''; ?>
+                                    <?php echo empty($areas) ? 'disabled' : ''; ?>
+                                >
+                                <span><?php echo htmlspecialchars((string)$area['area_name']); ?></span>
+                            </label>
                         <?php endforeach; ?>
-                    </select>
+                    </div>
                 </div>
-                <div class="form-group">
+                <div class="form-group full">
                     <label for="address_line1">Address Line 1</label>
                     <input type="text" id="address_line1" name="address_line1" value="<?php echo htmlspecialchars($form['address_line1']); ?>" maxlength="255">
                 </div>
-                <div class="form-group">
-                    <label for="address_line2">Address Line 2</label>
-                    <input type="text" id="address_line2" name="address_line2" value="<?php echo htmlspecialchars($form['address_line2']); ?>" maxlength="255">
-                </div>
                 <div class="form-group full">
-                    <label for="landmark">Landmark</label>
-                    <input type="text" id="landmark" name="landmark" value="<?php echo htmlspecialchars($form['landmark']); ?>" maxlength="255">
-                </div>
-                <div class="form-group full">
-                    <label for="details">Details *</label>
-                    <textarea id="details" name="details" required><?php echo htmlspecialchars($form['details']); ?></textarea>
+                    <label for="details">Details</label>
+                    <textarea id="details" name="details"><?php echo htmlspecialchars($form['details']); ?></textarea>
                 </div>
             </div>
             <div class="form-actions">
@@ -331,11 +428,16 @@ require_once __DIR__ . '/../includes/top-menu.php';
     <?php if (empty($groupedVisits)): ?>
         <div class="empty-state">No open vastu visits found.</div>
     <?php else: ?>
+        <?php $areaCardIndex = 0; ?>
         <?php foreach ($groupedVisits as $areaName => $rows): ?>
-            <div class="area-card">
+            <?php $areaCardIndex++; $areaPrintId = 'open-area-card-' . $areaCardIndex; ?>
+            <div class="area-card" data-print-card="<?php echo htmlspecialchars($areaPrintId); ?>">
                 <div class="area-head">
                     <span><?php echo htmlspecialchars($areaName); ?></span>
-                    <span class="area-count"><?php echo count($rows); ?> visits</span>
+                    <div class="area-head-actions">
+                        <span class="area-count"><?php echo count($rows); ?> visits</span>
+                        <button type="button" class="btn-inline btn-print" data-print-area="<?php echo htmlspecialchars($areaPrintId); ?>">Print List</button>
+                    </div>
                 </div>
                 <table>
                     <thead>
@@ -346,29 +448,83 @@ require_once __DIR__ . '/../includes/top-menu.php';
                             <th>Vastu Type</th>
                             <th>Details</th>
                             <th>Address</th>
+                            <th>Notes</th>
                             <th>Created</th>
                             <th>Status</th>
-                            <th>Actions</th>
+                            <th class="actions-col">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                     <?php foreach ($rows as $row): ?>
                         <?php
-                        $addressParts = array_filter([
-                            trim((string)($row['address_line1'] ?? '')),
-                            trim((string)($row['address_line2'] ?? '')),
-                            trim((string)($row['landmark'] ?? '')),
-                        ], static function ($value) {
-                            return $value !== '';
-                        });
+                        $visitId = (int)($row['id'] ?? 0);
+                        $addressLine1 = trim((string)($row['address_line1'] ?? ''));
+                        $notes = isset($row['notes']) && is_array($row['notes']) ? $row['notes'] : [];
                         ?>
                         <tr>
-                            <td><?php echo (int)$row['id']; ?></td>
+                            <td><?php echo $visitId; ?></td>
                             <td><?php echo htmlspecialchars((string)($row['customer_name'] ?? '')); ?></td>
                             <td><?php echo htmlspecialchars(function_exists('vs_format_mobile_for_display') ? vs_format_mobile_for_display((string)($row['contact_number'] ?? '')) : (string)($row['contact_number'] ?? '')); ?></td>
                             <td><?php echo htmlspecialchars((string)($row['vastu_type'] ?? '')); ?></td>
-                            <td class="details-cell"><?php echo nl2br(htmlspecialchars((string)($row['details'] ?? ''))); ?></td>
-                            <td class="address-cell"><?php echo $addressParts ? nl2br(htmlspecialchars(implode("\n", $addressParts))) : '<span class="small">-</span>'; ?></td>
+                            <td class="details-cell"><?php echo trim((string)($row['details'] ?? '')) !== '' ? nl2br(htmlspecialchars((string)($row['details'] ?? ''))) : '<span class="small">-</span>'; ?></td>
+                            <td class="address-cell"><?php echo $addressLine1 !== '' ? nl2br(htmlspecialchars($addressLine1)) : '<span class="small">-</span>'; ?></td>
+                            <td class="notes-cell">
+                                <?php if (!empty($notes)): ?>
+                                    <div class="note-list">
+                                        <?php foreach ($notes as $note): ?>
+                                            <?php
+                                            $noteId = (int)($note['id'] ?? 0);
+                                            $noteCreatedAt = trim((string)($note['created_at'] ?? ''));
+                                            $noteEditKey = 'open-note-' . $noteId;
+                                            ?>
+                                            <div class="note-item">
+                                                <div class="note-text"><?php echo nl2br(htmlspecialchars((string)($note['note_text'] ?? ''))); ?></div>
+                                                <div class="note-tools">
+                                                    <div class="stack" style="gap:2px;">
+                                                        <?php if ($noteCreatedAt !== ''): ?>
+                                                            <div class="note-meta"><?php echo htmlspecialchars(date('d M Y, h:i A', strtotime($noteCreatedAt))); ?></div>
+                                                        <?php endif; ?>
+                                                    </div>
+                                                    <div class="note-actions">
+                                                        <button type="button" class="note-icon-btn edit" data-note-edit-toggle="<?php echo htmlspecialchars($noteEditKey); ?>" title="Edit note" aria-label="Edit note">
+                                                            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                                                <path d="M4 15.5V20h4.5L19 9.5 14.5 5 4 15.5Z" fill="currentColor"></path>
+                                                                <path d="M13.5 6l4.5 4.5" stroke="#fff" stroke-width="1.4" stroke-linecap="round"></path>
+                                                            </svg>
+                                                        </button>
+                                                        <form method="post" class="note-delete-form" onsubmit="return confirm('Delete this note permanently?');">
+                                                            <input type="hidden" name="action" value="delete_note">
+                                                            <input type="hidden" name="visit_id" value="<?php echo $visitId; ?>">
+                                                            <input type="hidden" name="note_id" value="<?php echo $noteId; ?>">
+                                                            <input type="hidden" name="return_page" value="vastu-visits.php">
+                                                            <button type="submit" class="note-icon-btn delete" title="Delete note" aria-label="Delete note">
+                                                                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                                                    <path d="M6 7h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path>
+                                                                    <path d="M9 7V5h6v2" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path>
+                                                                    <path d="M8 7l1 12h6l1-12" fill="currentColor"></path>
+                                                                </svg>
+                                                            </button>
+                                                        </form>
+                                                    </div>
+                                                </div>
+                                                <form method="post" class="note-edit-form" data-note-edit-form="<?php echo htmlspecialchars($noteEditKey); ?>" hidden>
+                                                    <input type="hidden" name="action" value="edit_note">
+                                                    <input type="hidden" name="visit_id" value="<?php echo $visitId; ?>">
+                                                    <input type="hidden" name="note_id" value="<?php echo $noteId; ?>">
+                                                    <input type="hidden" name="return_page" value="vastu-visits.php">
+                                                    <textarea name="note_text" required><?php echo htmlspecialchars((string)($note['note_text'] ?? '')); ?></textarea>
+                                                    <div class="note-edit-actions">
+                                                        <button type="submit" class="btn-main">Save Changes</button>
+                                                        <button type="button" class="btn-main btn-alt" data-note-edit-cancel="<?php echo htmlspecialchars($noteEditKey); ?>">Cancel</button>
+                                                    </div>
+                                                </form>
+                                            </div>
+                                        <?php endforeach; ?>
+                                    </div>
+                                <?php else: ?>
+                                    <span class="small">No notes</span>
+                                <?php endif; ?>
+                            </td>
                             <td>
                                 <div class="stack">
                                     <span><?php echo htmlspecialchars(date('d M Y', strtotime((string)$row['created_at']))); ?></span>
@@ -376,21 +532,37 @@ require_once __DIR__ . '/../includes/top-menu.php';
                                 </div>
                             </td>
                             <td><span class="status-badge"><?php echo htmlspecialchars((string)($row['status'] ?? 'open')); ?></span></td>
-                            <td>
+                            <td class="actions-col">
                                 <div class="action-row">
-                                    <a class="btn-inline btn-edit" href="vastu-visits.php?edit=<?php echo (int)$row['id']; ?>">Edit</a>
+                                    <a class="btn-inline btn-edit" href="vastu-visits.php?edit=<?php echo $visitId; ?>">Edit</a>
+                                    <button type="button" class="btn-inline btn-note" data-note-toggle="<?php echo $visitId; ?>">Add Note</button>
                                     <form method="post" onsubmit="return confirm('Move this vastu visit to closed list?');">
                                         <input type="hidden" name="action" value="close_visit">
-                                        <input type="hidden" name="visit_id" value="<?php echo (int)$row['id']; ?>">
+                                        <input type="hidden" name="visit_id" value="<?php echo $visitId; ?>">
                                         <button type="submit" class="btn-inline btn-close">Close</button>
                                     </form>
                                     <form method="post" onsubmit="return confirm('Delete this vastu visit permanently?');">
                                         <input type="hidden" name="action" value="delete_visit">
-                                        <input type="hidden" name="visit_id" value="<?php echo (int)$row['id']; ?>">
+                                        <input type="hidden" name="visit_id" value="<?php echo $visitId; ?>">
                                         <input type="hidden" name="return_page" value="vastu-visits.php">
                                         <button type="submit" class="btn-inline btn-delete">Delete</button>
                                     </form>
                                 </div>
+                            </td>
+                        </tr>
+                        <tr class="note-entry-row" data-note-row="<?php echo $visitId; ?>" hidden>
+                            <td colspan="10">
+                                <form method="post" class="note-form">
+                                    <input type="hidden" name="action" value="add_note">
+                                    <input type="hidden" name="visit_id" value="<?php echo $visitId; ?>">
+                                    <input type="hidden" name="return_page" value="vastu-visits.php">
+                                    <label for="note_text_<?php echo $visitId; ?>">Add Note For <?php echo htmlspecialchars((string)($row['customer_name'] ?? ('Visit #' . $visitId))); ?></label>
+                                    <textarea id="note_text_<?php echo $visitId; ?>" name="note_text" required placeholder="Enter note"></textarea>
+                                    <div class="form-actions">
+                                        <button type="submit" class="btn-main">Save Note</button>
+                                        <button type="button" class="btn-main btn-alt" data-note-cancel="<?php echo $visitId; ?>">Cancel</button>
+                                    </div>
+                                </form>
                             </td>
                         </tr>
                     <?php endforeach; ?>
@@ -401,5 +573,127 @@ require_once __DIR__ . '/../includes/top-menu.php';
     <?php endif; ?>
 </div>
 <script src="../includes/responsive-tables.js"></script>
+<script>
+    (function () {
+        function clearPrintTargets() {
+            document.querySelectorAll('.area-card.print-target').forEach(function (card) {
+                card.classList.remove('print-target');
+            });
+        }
+
+        function closeNoteEditForm(key) {
+            var form = document.querySelector('[data-note-edit-form="' + key + '"]');
+            if (form) {
+                form.hidden = true;
+                var noteItem = form.closest('.note-item');
+                if (noteItem) {
+                    noteItem.classList.remove('is-editing');
+                }
+            }
+        }
+
+        function closeAllNoteEditForms() {
+            document.querySelectorAll('[data-note-edit-form]').forEach(function (form) {
+                form.hidden = true;
+                var noteItem = form.closest('.note-item');
+                if (noteItem) {
+                    noteItem.classList.remove('is-editing');
+                }
+            });
+        }
+
+        function closeNoteRow(visitId) {
+            var row = document.querySelector('[data-note-row="' + visitId + '"]');
+            var button = document.querySelector('[data-note-toggle="' + visitId + '"]');
+            if (row) {
+                row.hidden = true;
+            }
+            if (button) {
+                button.textContent = 'Add Note';
+            }
+        }
+
+        document.addEventListener('click', function (event) {
+            var printButton = event.target.closest('[data-print-area]');
+            if (printButton) {
+                var printId = printButton.getAttribute('data-print-area');
+                var card = document.querySelector('[data-print-card="' + printId + '"]');
+                if (!card) {
+                    return;
+                }
+
+                document.querySelectorAll('[data-note-row]').forEach(function (noteRow) {
+                    closeNoteRow(noteRow.getAttribute('data-note-row'));
+                });
+                clearPrintTargets();
+                card.classList.add('print-target');
+                window.print();
+                return;
+            }
+
+            var noteEditToggle = event.target.closest('[data-note-edit-toggle]');
+            if (noteEditToggle) {
+                var key = noteEditToggle.getAttribute('data-note-edit-toggle');
+                var form = document.querySelector('[data-note-edit-form="' + key + '"]');
+                if (!form) {
+                    return;
+                }
+
+                var shouldOpen = form.hidden;
+                closeAllNoteEditForms();
+                if (shouldOpen) {
+                    form.hidden = false;
+                    var noteItem = form.closest('.note-item');
+                    if (noteItem) {
+                        noteItem.classList.add('is-editing');
+                    }
+                    var textarea = form.querySelector('textarea');
+                    if (textarea) {
+                        textarea.focus();
+                        textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+                    }
+                }
+                return;
+            }
+
+            var noteEditCancel = event.target.closest('[data-note-edit-cancel]');
+            if (noteEditCancel) {
+                closeNoteEditForm(noteEditCancel.getAttribute('data-note-edit-cancel'));
+                return;
+            }
+
+            var toggleButton = event.target.closest('[data-note-toggle]');
+            if (toggleButton) {
+                var visitId = toggleButton.getAttribute('data-note-toggle');
+                var row = document.querySelector('[data-note-row="' + visitId + '"]');
+                if (!row) {
+                    return;
+                }
+
+                var shouldOpen = row.hidden;
+                document.querySelectorAll('[data-note-row]').forEach(function (noteRow) {
+                    closeNoteRow(noteRow.getAttribute('data-note-row'));
+                });
+
+                if (shouldOpen) {
+                    row.hidden = false;
+                    toggleButton.textContent = 'Hide Note Form';
+                    var textarea = row.querySelector('textarea');
+                    if (textarea) {
+                        textarea.focus();
+                    }
+                }
+                return;
+            }
+
+            var cancelButton = event.target.closest('[data-note-cancel]');
+            if (cancelButton) {
+                closeNoteRow(cancelButton.getAttribute('data-note-cancel'));
+            }
+        });
+
+        window.addEventListener('afterprint', clearPrintTargets);
+    }());
+</script>
 </body>
 </html>
