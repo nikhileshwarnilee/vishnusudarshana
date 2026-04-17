@@ -96,12 +96,48 @@ function vs_rzp_ensure_logs_table(PDO $pdo): void
 }
 
 /**
+ * Keep webhook logs bounded so the table stays operational over time.
+ */
+function vs_rzp_log_retention_days(): int
+{
+    $days = (int)vs_rzp_env('RAZORPAY_LOG_RETENTION_DAYS', '45');
+    if ($days < 7) {
+        return 7;
+    }
+    if ($days > 365) {
+        return 365;
+    }
+
+    return $days;
+}
+
+function vs_rzp_cleanup_old_logs(PDO $pdo): void
+{
+    static $cleaned = false;
+    if ($cleaned) {
+        return;
+    }
+
+    $cleaned = true;
+
+    try {
+        vs_rzp_ensure_logs_table($pdo);
+        $cutoff = date('Y-m-d H:i:s', time() - (vs_rzp_log_retention_days() * 86400));
+        $stmt = $pdo->prepare('DELETE FROM razorpay_webhook_logs WHERE created_at < ?');
+        $stmt->execute([$cutoff]);
+    } catch (Throwable $e) {
+        error_log('Razorpay webhook log cleanup failed: ' . $e->getMessage());
+    }
+}
+
+/**
  * Log each webhook event payload for production debugging.
  */
 function vs_rzp_log_event(PDO $pdo, string $eventType, string $orderId, string $paymentId, string $payload): void
 {
     try {
         vs_rzp_ensure_logs_table($pdo);
+        vs_rzp_cleanup_old_logs($pdo);
         $stmt = $pdo->prepare("
             INSERT INTO razorpay_webhook_logs
                 (event_type, razorpay_order_id, razorpay_payment_id, payload)
@@ -408,9 +444,15 @@ function vs_rzp_resolve_captured_payment_id_from_order(string $orderId): string
         return '';
     }
 
+    static $cache = [];
+    if (array_key_exists($orderId, $cache)) {
+        return $cache[$orderId];
+    }
+
     $keyId = vs_rzp_env('RAZORPAY_KEY_ID', '');
     $keySecret = vs_rzp_env('RAZORPAY_KEY_SECRET', '');
     if ($keyId === '' || $keySecret === '') {
+        $cache[$orderId] = '';
         return '';
     }
 
@@ -421,13 +463,15 @@ function vs_rzp_resolve_captured_payment_id_from_order(string $orderId): string
         foreach ($items as $item) {
             $status = strtolower((string)($item['status'] ?? ''));
             if ($status === 'captured' && !empty($item['id'])) {
-                return (string)$item['id'];
+                $cache[$orderId] = (string)$item['id'];
+                return $cache[$orderId];
             }
         }
     } catch (Throwable $e) {
         error_log('Razorpay webhook payment id fallback failed for order_id=' . $orderId . ': ' . $e->getMessage());
     }
 
+    $cache[$orderId] = '';
     return '';
 }
 
@@ -702,22 +746,87 @@ switch ($data['event']) {
 
     case 'payment.failed':
         try {
+            $failedPaymentId = isset($data['payload']['payment']['entity']['id'])
+                ? (string)$data['payload']['payment']['entity']['id']
+                : '';
             $razorpayOrderId = isset($data['payload']['payment']['entity']['order_id'])
-                ? $data['payload']['payment']['entity']['order_id']
-                : null;
-            error_log('Razorpay webhook order_id: ' . ($razorpayOrderId ?: 'not set'));
-            if ($razorpayOrderId) {
+                ? (string)$data['payload']['payment']['entity']['order_id']
+                : '';
+            error_log(
+                'Razorpay webhook order_id: '
+                . ($razorpayOrderId !== '' ? $razorpayOrderId : 'not set')
+                . ' payment_id=' . ($failedPaymentId !== '' ? $failedPaymentId : 'not set')
+            );
+            if ($razorpayOrderId !== '') {
                 $serviceColumns = vs_rzp_service_columns($pdo);
                 $hasPaymentStatus = isset($serviceColumns['payment_status']);
                 $hasBookingStatus = isset($serviceColumns['booking_status']);
+                $hasRazorpayPaymentColumn = isset($serviceColumns['razorpay_payment_id']);
 
                 $selectCols = ['id'];
                 if ($hasPaymentStatus) {
                     $selectCols[] = 'payment_status';
                 }
+                if ($hasBookingStatus) {
+                    $selectCols[] = 'booking_status';
+                }
+                if ($hasRazorpayPaymentColumn) {
+                    $selectCols[] = 'razorpay_payment_id';
+                }
                 $stmt = $pdo->prepare('SELECT ' . implode(', ', $selectCols) . ' FROM service_requests WHERE razorpay_order_id = ? LIMIT 1');
                 $stmt->execute([$razorpayOrderId]);
                 $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+                $existingPaymentStatus = strtolower(trim((string)($row['payment_status'] ?? '')));
+                $existingBookingStatus = strtolower(trim((string)($row['booking_status'] ?? '')));
+                $storedCapturedPaymentId = trim((string)($row['razorpay_payment_id'] ?? ''));
+
+                if (
+                    $row
+                    && (
+                        ($hasPaymentStatus && $existingPaymentStatus === 'paid')
+                        || ($hasBookingStatus && $existingBookingStatus === 'confirmed')
+                    )
+                ) {
+                    error_log(
+                        'Razorpay webhook payment.failed ignored for order_id '
+                        . $razorpayOrderId
+                        . ' because booking is already paid/confirmed.'
+                    );
+                    break;
+                }
+
+                if (
+                    $row
+                    && $storedCapturedPaymentId !== ''
+                    && $failedPaymentId !== ''
+                    && strcasecmp($storedCapturedPaymentId, $failedPaymentId) !== 0
+                ) {
+                    error_log(
+                        'Razorpay webhook payment.failed ignored for order_id '
+                        . $razorpayOrderId
+                        . ' because failed payment_id '
+                        . $failedPaymentId
+                        . ' belongs to a different attempt than captured payment_id '
+                        . $storedCapturedPaymentId
+                    );
+                    break;
+                }
+
+                $capturedPaymentId = vs_rzp_resolve_captured_payment_id_from_order($razorpayOrderId);
+                if (
+                    $capturedPaymentId !== ''
+                    && ($failedPaymentId === '' || strcasecmp($capturedPaymentId, $failedPaymentId) !== 0)
+                ) {
+                    error_log(
+                        'Razorpay webhook payment.failed ignored for order_id '
+                        . $razorpayOrderId
+                        . ' because order already has captured payment_id '
+                        . $capturedPaymentId
+                    );
+                    break;
+                }
+
                 if ($row) {
                     $set = [];
                     $params = [];

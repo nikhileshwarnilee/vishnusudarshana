@@ -71,10 +71,91 @@ function vs_reconcile_ensure_logs_table(PDO $pdo): void
     $created = true;
 }
 
+function vs_reconcile_log_retention_days(): int
+{
+    $days = (int)vs_reconcile_env('RAZORPAY_LOG_RETENTION_DAYS', '45');
+    if ($days < 7) {
+        return 7;
+    }
+    if ($days > 365) {
+        return 365;
+    }
+
+    return $days;
+}
+
+function vs_reconcile_cleanup_old_logs(PDO $pdo): void
+{
+    static $cleaned = false;
+    if ($cleaned) {
+        return;
+    }
+
+    $cleaned = true;
+
+    try {
+        vs_reconcile_ensure_logs_table($pdo);
+        $cutoff = date('Y-m-d H:i:s', time() - (vs_reconcile_log_retention_days() * 86400));
+        $stmt = $pdo->prepare('DELETE FROM razorpay_webhook_logs WHERE created_at < ?');
+        $stmt->execute([$cutoff]);
+    } catch (Throwable $e) {
+        vs_reconcile_log_line('Webhook log cleanup failed: ' . $e->getMessage());
+    }
+}
+
+function vs_reconcile_recent_duplicate_log_exists(PDO $pdo, string $eventType, string $orderId, string $paymentId, string $payload): bool
+{
+    if (strpos($eventType, 'reconcile.') !== 0) {
+        return false;
+    }
+
+    $stmt = $pdo->prepare("
+        SELECT id
+        FROM razorpay_webhook_logs
+        WHERE event_type = ?
+          AND COALESCE(razorpay_order_id, '') = ?
+          AND COALESCE(razorpay_payment_id, '') = ?
+          AND payload = ?
+          AND created_at >= DATE_SUB(NOW(), INTERVAL 1 DAY)
+        LIMIT 1
+    ");
+    $stmt->execute([$eventType, $orderId, $paymentId, $payload]);
+
+    return (bool)$stmt->fetchColumn();
+}
+
+function vs_reconcile_has_terminal_marker(PDO $pdo, string $orderId): bool
+{
+    if ($orderId === '') {
+        return false;
+    }
+
+    $stmt = $pdo->prepare("
+        SELECT id
+        FROM razorpay_webhook_logs
+        WHERE razorpay_order_id = ?
+          AND event_type LIKE 'reconcile.terminal.%'
+        ORDER BY id DESC
+        LIMIT 1
+    ");
+    $stmt->execute([$orderId]);
+
+    return (bool)$stmt->fetchColumn();
+}
+
+function vs_reconcile_is_invalid_order_error(string $message): bool
+{
+    return stripos($message, 'The id provided does not exist') !== false;
+}
+
 function vs_reconcile_log_event(PDO $pdo, string $eventType, string $orderId, string $paymentId, string $payload): void
 {
     try {
         vs_reconcile_ensure_logs_table($pdo);
+        vs_reconcile_cleanup_old_logs($pdo);
+        if (vs_reconcile_recent_duplicate_log_exists($pdo, $eventType, $orderId, $paymentId, $payload)) {
+            return;
+        }
         $stmt = $pdo->prepare("
             INSERT INTO razorpay_webhook_logs
                 (event_type, razorpay_order_id, razorpay_payment_id, payload)
@@ -411,6 +492,8 @@ $stats = [
     'inserted' => 0,
     'already_exists' => 0,
     'failed' => 0,
+    'terminal_invalid' => 0,
+    'terminal_skipped' => 0,
     'errors' => 0,
 ];
 
@@ -418,6 +501,12 @@ foreach ($pendingRows as $row) {
     $stats['checked']++;
     $orderId = trim((string)($row['razorpay_order_id'] ?? ''));
     if ($orderId === '') {
+        continue;
+    }
+
+    if (vs_reconcile_has_terminal_marker($pdo, $orderId)) {
+        $stats['terminal_skipped']++;
+        vs_reconcile_log_line('Skipping terminal pending row for order_id=' . $orderId);
         continue;
     }
 
@@ -480,6 +569,20 @@ foreach ($pendingRows as $row) {
             vs_reconcile_log_line('Marked pending as failed for order_id=' . $orderId);
         }
     } catch (Throwable $e) {
+        if (vs_reconcile_is_invalid_order_error($e->getMessage())) {
+            $stats['terminal_invalid']++;
+            vs_reconcile_update_pending($pdo, $orderId, '', 'terminal_invalid_order');
+            vs_reconcile_log_event(
+                $pdo,
+                'reconcile.terminal.invalid_order',
+                $orderId,
+                '',
+                json_encode(['error' => $e->getMessage(), 'terminal' => true], JSON_UNESCAPED_SLASHES)
+            );
+            vs_reconcile_log_line('Marked terminal invalid order_id=' . $orderId);
+            continue;
+        }
+
         $stats['errors']++;
         vs_reconcile_log_line('Error for order_id=' . $orderId . ': ' . $e->getMessage());
         vs_reconcile_log_event(
@@ -498,5 +601,7 @@ vs_reconcile_log_line(
     . ' inserted=' . $stats['inserted']
     . ' already_exists=' . $stats['already_exists']
     . ' failed=' . $stats['failed']
+    . ' terminal_invalid=' . $stats['terminal_invalid']
+    . ' terminal_skipped=' . $stats['terminal_skipped']
     . ' errors=' . $stats['errors']
 );
