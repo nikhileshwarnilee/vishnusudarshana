@@ -153,7 +153,7 @@ html, body { font-family: 'Marcellus', serif !important; }
 .event-card { background: #fff; border: 1px solid #ecd3d3; border-radius: 18px; box-shadow: 0 10px 24px rgba(128, 0, 0, 0.1); overflow: hidden; transition: transform .25s ease, box-shadow .25s ease; }
 .event-card:hover { transform: translateY(-4px); box-shadow: 0 18px 34px rgba(128, 0, 0, 0.16); }
 .event-card-link { color: inherit; text-decoration: none; display: block; height: 100%; }
-.event-image-wrap { background: #f9efef; height: 180px; overflow: hidden; }
+.event-image-wrap { background: #f9efef; height: 240px; overflow: hidden; }
 .event-image { width: 100%; height: 100%; object-fit: cover; display: block; }
 .event-image-placeholder { display:flex; align-items:center; justify-content:center; color:#800000; font-weight:700; }
 .event-content { padding: 12px; }
@@ -177,8 +177,8 @@ html, body { font-family: 'Marcellus', serif !important; }
 .countdown-unit { font-size: 0.86rem; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 700; padding-bottom: 4px; }
 .countdown-note { font-size: 0.84rem; line-height: 1.4; color: rgba(255, 248, 238, 0.95); }
 .registration-countdown.is-closed { background: linear-gradient(135deg, #5b6474 0%, #2c394d 100%); box-shadow: 0 14px 28px rgba(35, 48, 71, 0.18); }
-@media (min-width: 768px) and (max-width: 1100px) { .events-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } .event-image-wrap { height: 150px; } .event-content { padding: 11px; } .event-content h2 { font-size: 1.05rem; } }
-@media (max-width: 767px) { .events-grid { grid-template-columns: 1fr; } .registration-countdown { border-radius: 16px; } .countdown-value { font-size: 1.95rem; } }
+@media (min-width: 768px) and (max-width: 1100px) { .events-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } .event-image-wrap { height: 200px; } .event-content { padding: 11px; } .event-content h2 { font-size: 1.05rem; } }
+@media (max-width: 767px) { .events-grid { grid-template-columns: 1fr; } .event-image-wrap { height: 220px; } .registration-countdown { border-radius: 16px; } .countdown-value { font-size: 1.95rem; } }
 </style>
 
 <script src="<?php echo htmlspecialchars($countdownScriptSrc); ?>"></script>
