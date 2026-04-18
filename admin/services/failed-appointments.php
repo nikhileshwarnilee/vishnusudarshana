@@ -8,6 +8,74 @@ if (session_status() === PHP_SESSION_NONE) {
 
 require_once __DIR__ . '/../../config/db.php';
 
+if (!function_exists('vs_failed_appointments_service_request_columns')) {
+    function vs_failed_appointments_service_request_columns(PDO $pdo): array
+    {
+        static $columns = null;
+        if ($columns !== null) {
+            return $columns;
+        }
+
+        $columns = [];
+        try {
+            $stmt = $pdo->query('SHOW COLUMNS FROM service_requests');
+            while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                $columns[strtolower((string)($row['Field'] ?? ''))] = true;
+            }
+        } catch (Throwable $e) {
+            error_log('Unable to inspect service_requests columns on failed appointments page: ' . $e->getMessage());
+        }
+
+        return $columns;
+    }
+}
+
+if (!function_exists('vs_failed_appointments_restore_failed_row')) {
+    function vs_failed_appointments_restore_failed_row(PDO $pdo, int $appointmentId): bool
+    {
+        if ($appointmentId <= 0) {
+            return false;
+        }
+
+        $columns = vs_failed_appointments_service_request_columns($pdo);
+        $set = [
+            "payment_status = 'Paid'",
+            "service_status = 'Received'",
+            'updated_at = NOW()',
+        ];
+        if (isset($columns['booking_status'])) {
+            $set[] = "booking_status = 'confirmed'";
+        }
+
+        $sql = "
+            UPDATE service_requests
+            SET " . implode(', ', $set) . "
+            WHERE id = ?
+              AND category_slug = 'appointment'
+              AND LOWER(TRIM(COALESCE(payment_status, ''))) = 'failed'
+        ";
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([$appointmentId]);
+        if ($stmt->rowCount() <= 0) {
+            return false;
+        }
+
+        try {
+            $trackingStmt = $pdo->prepare('SELECT tracking_id FROM service_requests WHERE id = ? LIMIT 1');
+            $trackingStmt->execute([$appointmentId]);
+            $trackingId = (string)($trackingStmt->fetchColumn() ?: '');
+            if ($trackingId !== '') {
+                $updateTrackingStmt = $pdo->prepare('UPDATE tracking SET service_status = ? WHERE tracking_id = ?');
+                $updateTrackingStmt->execute(['Received', $trackingId]);
+            }
+        } catch (Throwable $e) {
+            error_log('Unable to sync tracking while restoring failed appointment id=' . $appointmentId . ': ' . $e->getMessage());
+        }
+
+        return true;
+    }
+}
+
 $hasWebhookLogsTable = false;
 try {
     $tableCheck = $pdo->query("SHOW TABLES LIKE 'razorpay_webhook_logs'");
@@ -21,6 +89,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_id'])) {
     $stmt = $pdo->prepare("DELETE FROM pending_payments WHERE id = ? LIMIT 1");
     $stmt->execute([$deleteId]);
     header('Location: failed-appointments.php?deleted=1');
+    exit;
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['restore_failed_id'])) {
+    $restoreId = (int)$_POST['restore_failed_id'];
+    $restored = vs_failed_appointments_restore_failed_row($pdo, $restoreId);
+    header('Location: failed-appointments.php?restored=' . ($restored ? '1' : '0'));
     exit;
 }
 
@@ -259,7 +334,8 @@ h1 {
     margin-top: 2px;
 }
 .view-btn,
-.delete-btn {
+.delete-btn,
+.restore-btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -285,6 +361,14 @@ h1 {
 .delete-btn:hover {
     background: #bb2d3b;
 }
+.restore-btn {
+    background: #fff3cd;
+    color: #7a4a00;
+    border: 1px solid #efcf86;
+}
+.restore-btn:hover {
+    background: #ffe49a;
+}
 .source-badge {
     display: inline-block;
     padding: 4px 10px;
@@ -308,6 +392,20 @@ h1 {
     <p class="page-subtitle">
         This queue shows both unresolved online appointment payments and appointment booking rows already created in <code>service_requests</code> but later marked as failed.
     </p>
+    <?php if (isset($_GET['deleted']) && $_GET['deleted'] === '1'): ?>
+        <div style="margin:0 0 16px;padding:12px 14px;border-radius:10px;background:#e8f8ec;border:1px solid #b9e0c1;color:#1f6f2c;font-weight:600;">
+            Unresolved appointment payment row deleted.
+        </div>
+    <?php endif; ?>
+    <?php if (isset($_GET['restored']) && $_GET['restored'] === '1'): ?>
+        <div style="margin:0 0 16px;padding:12px 14px;border-radius:10px;background:#e8f8ec;border:1px solid #b9e0c1;color:#1f6f2c;font-weight:600;">
+            Failed appointment moved back into Pending Appointments.
+        </div>
+    <?php elseif (isset($_GET['restored']) && $_GET['restored'] === '0'): ?>
+        <div style="margin:0 0 16px;padding:12px 14px;border-radius:10px;background:#fff1f1;border:1px solid #e9b7b7;color:#9f2525;font-weight:600;">
+            Unable to move that failed appointment back to pending. It may already have been updated.
+        </div>
+    <?php endif; ?>
 
     <div class="summary-cards">
         <div class="summary-card">
@@ -416,7 +514,13 @@ h1 {
                                     <button type="submit" class="delete-btn">Delete</button>
                                 </form>
                             <?php elseif (!empty($row['view_id'])): ?>
-                                <a href="view.php?id=<?= (int)$row['view_id'] ?>" class="view-btn">View</a>
+                                <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                                    <a href="view.php?id=<?= (int)$row['view_id'] ?>" class="view-btn">View</a>
+                                    <form method="POST" style="display:inline;" onsubmit="return confirm('Move this failed appointment back into Pending Appointments? Use this only when payment actually succeeded and the failed state is incorrect.');">
+                                        <input type="hidden" name="restore_failed_id" value="<?= (int)$row['view_id'] ?>">
+                                        <button type="submit" class="restore-btn">Move To Pending</button>
+                                    </form>
+                                </div>
                             <?php else: ?>
                                 <span style="color:#888;">-</span>
                             <?php endif; ?>

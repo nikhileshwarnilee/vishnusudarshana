@@ -42,6 +42,80 @@ if (!function_exists('vs_appointments_format_time_label')) {
     }
 }
 
+if (!function_exists('vs_appointments_service_request_columns')) {
+    function vs_appointments_service_request_columns(PDO $pdo): array
+    {
+        static $columns = null;
+        if ($columns !== null) {
+            return $columns;
+        }
+
+        $columns = [];
+        try {
+            $stmt = $pdo->query('SHOW COLUMNS FROM service_requests');
+            while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                $columns[strtolower((string)($row['Field'] ?? ''))] = true;
+            }
+        } catch (Throwable $e) {
+            error_log('Unable to inspect service_requests columns on appointments page: ' . $e->getMessage());
+        }
+
+        return $columns;
+    }
+}
+
+if (!function_exists('vs_appointments_restore_failed_appointment')) {
+    function vs_appointments_restore_failed_appointment(PDO $pdo, int $appointmentId): bool
+    {
+        if ($appointmentId <= 0) {
+            return false;
+        }
+
+        $columns = vs_appointments_service_request_columns($pdo);
+        $set = [
+            "payment_status = 'Paid'",
+            "service_status = 'Received'",
+            'updated_at = NOW()',
+        ];
+        if (isset($columns['booking_status'])) {
+            $set[] = "booking_status = 'confirmed'";
+        }
+
+        $sql = "
+            UPDATE service_requests
+            SET " . implode(', ', $set) . "
+            WHERE id = ?
+              AND category_slug = 'appointment'
+              AND LOWER(TRIM(COALESCE(payment_status, ''))) = 'failed'
+        ";
+
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([$appointmentId]);
+        if ($stmt->rowCount() <= 0) {
+            return false;
+        }
+
+        try {
+            $trackingStmt = $pdo->prepare("
+                SELECT tracking_id
+                FROM service_requests
+                WHERE id = ?
+                LIMIT 1
+            ");
+            $trackingStmt->execute([$appointmentId]);
+            $trackingId = (string)($trackingStmt->fetchColumn() ?: '');
+            if ($trackingId !== '') {
+                $updateTrackingStmt = $pdo->prepare('UPDATE tracking SET service_status = ? WHERE tracking_id = ?');
+                $updateTrackingStmt->execute(['Received', $trackingId]);
+            }
+        } catch (Throwable $e) {
+            error_log('Unable to sync tracking while restoring failed appointment id=' . $appointmentId . ': ' . $e->getMessage());
+        }
+
+        return true;
+    }
+}
+
 $appointmentDefaultTimeFromKey = 'appointment_default_time_from';
 $appointmentDefaultTimeToKey = 'appointment_default_time_to';
 $appointmentSameDayCutoffKey = 'appointment_same_day_booking_cutoff_time';
@@ -226,6 +300,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             header('Location: appointments.php?success=completed');
             exit;
         }
+    } elseif ($postAction === 'restore_failed_appointment') {
+        $failedAppointmentId = (int)($_POST['failed_appointment_id'] ?? 0);
+        $restored = vs_appointments_restore_failed_appointment($pdo, $failedAppointmentId);
+        header('Location: appointments.php?failed_action=' . ($restored ? 'restored' : 'not_restored'));
+        exit;
     }
 }
 
@@ -233,6 +312,7 @@ $appointmentDefaultTimeFromLabel = vs_appointments_format_time_label($appointmen
 $appointmentDefaultTimeToLabel = vs_appointments_format_time_label($appointmentDefaultTimeTo);
 $appointmentSameDayCutoffLabel = vs_appointments_format_time_label($appointmentSameDayCutoffTime);
 $reopenScheduleSettingsModal = $appointmentSettingsErrorMessage !== '';
+$failedAction = trim((string)($_GET['failed_action'] ?? ''));
 
 /* ============================================================
     DASHBOARD STATISTICS (Optional)
@@ -628,6 +708,35 @@ h1 {
 .view-btn:hover {
     background: #a00000;
 }
+.preview-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+.mini-action-form {
+    display: inline;
+    margin: 0;
+}
+.mini-action-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 34px;
+    padding: 0 12px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.88em;
+}
+.mini-action-btn.restore {
+    background: #fff3cd;
+    color: #7a4a00;
+    border: 1px solid #efcf86;
+}
+.mini-action-btn.restore:hover {
+    background: #ffe49a;
+}
 .badge-overdue {
     background: #ff4444;
     color: #fff;
@@ -850,6 +959,15 @@ h1 {
         Default appointment schedule settings saved. New accept popups will open with <?= htmlspecialchars($appointmentDefaultTimeFromLabel) ?> to <?= htmlspecialchars($appointmentDefaultTimeToLabel) ?>, and same-day public booking will stay open until <?= htmlspecialchars($appointmentSameDayCutoffLabel) ?> IST.
     </div>
 <?php endif; ?>
+<?php if ($failedAction === 'restored'): ?>
+    <div class="notice-banner notice-success">
+        Failed appointment moved back into the pending appointments queue.
+    </div>
+<?php elseif ($failedAction === 'not_restored'): ?>
+    <div class="notice-banner notice-error">
+        Unable to move that failed appointment back to pending. It may already have been updated.
+    </div>
+<?php endif; ?>
 <?php if ($appointmentSettingsErrorMessage !== ''): ?>
     <div class="notice-banner notice-error">
         <?= htmlspecialchars($appointmentSettingsErrorMessage) ?>
@@ -931,6 +1049,7 @@ document.getElementById('refreshRollbackBtn').onclick = function() {
                 <thead>
                     <tr>
                         <th>View</th>
+                        <th>Actions</th>
                         <th>Tracking ID</th>
                         <th>Customer Name</th>
                         <th>Mobile</th>
@@ -963,6 +1082,15 @@ document.getElementById('refreshRollbackBtn').onclick = function() {
                         <tr>
                             <td>
                                 <a href="view.php?id=<?= (int)$failedAppointment['id'] ?>" class="view-btn">View</a>
+                            </td>
+                            <td>
+                                <div class="preview-actions">
+                                    <form method="POST" class="mini-action-form" onsubmit="return confirm('Move this failed appointment back into Pending Appointments? Use this only when payment actually succeeded and the failed state is incorrect.');">
+                                        <input type="hidden" name="action" value="restore_failed_appointment">
+                                        <input type="hidden" name="failed_appointment_id" value="<?= (int)$failedAppointment['id'] ?>">
+                                        <button type="submit" class="mini-action-btn restore">Move To Pending</button>
+                                    </form>
+                                </div>
                             </td>
                             <td><?= htmlspecialchars((string)($failedAppointment['tracking_id'] ?? '')) ?></td>
                             <td><?= htmlspecialchars((string)($failedAppointment['customer_name'] ?? '')) ?></td>
