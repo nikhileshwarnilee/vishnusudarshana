@@ -20,6 +20,84 @@ ORDER BY
     e.event_date ASC,
     e.id DESC";
 $events = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC);
+$openEvents = [];
+$closedEvents = [];
+
+foreach ($events as $event) {
+    $event['is_registration_open'] = vs_event_is_registration_open($event);
+    $event['registration_window_label'] = vs_event_format_registration_window($event);
+    $event['registration_deadline_label'] = vs_event_format_registration_deadline($event);
+    $event['registration_deadline_iso'] = vs_event_get_registration_deadline_iso($event);
+
+    if (!empty($event['is_registration_open'])) {
+        $openEvents[] = $event;
+    } else {
+        $closedEvents[] = $event;
+    }
+}
+
+$renderEventCards = static function (array $eventItems): void {
+    foreach ($eventItems as $event) {
+        $isOpen = !empty($event['is_registration_open']);
+        $registrationWindowLabel = (string)($event['registration_window_label'] ?? '');
+        $registrationDeadlineLabel = (string)($event['registration_deadline_label'] ?? '');
+        $registrationDeadlineIso = (string)($event['registration_deadline_iso'] ?? '');
+        $desc = trim(strip_tags((string)($event['short_description'] ?? '')));
+        if (strlen($desc) > 160) {
+            $desc = substr($desc, 0, 157) . '...';
+        }
+        ?>
+        <article class="event-card">
+            <a href="event-detail.php?slug=<?php echo urlencode((string)$event['slug']); ?>" class="event-card-link">
+                <div class="event-image-wrap">
+                    <?php if (!empty($event['image'])): ?>
+                        <img src="<?php echo htmlspecialchars((string)$event['image']); ?>" alt="<?php echo htmlspecialchars((string)$event['title']); ?>" class="event-image">
+                    <?php else: ?>
+                        <div class="event-image event-image-placeholder">Event</div>
+                    <?php endif; ?>
+                </div>
+                <div class="event-content">
+                    <h2><?php echo htmlspecialchars((string)$event['title']); ?></h2>
+                    <div class="event-meta">
+                        <span><?php echo htmlspecialchars((string)$event['location']); ?></span>
+                    </div>
+                    <p><?php echo htmlspecialchars($desc); ?></p>
+                    <div
+                        class="registration-countdown compact<?php echo $isOpen ? '' : ' is-closed'; ?>"
+                        <?php if ($isOpen && $registrationDeadlineIso !== ''): ?>
+                            data-registration-countdown
+                            data-deadline="<?php echo htmlspecialchars($registrationDeadlineIso); ?>"
+                            data-live-note="<?php echo htmlspecialchars('Register before ' . $registrationDeadlineLabel); ?>"
+                        <?php else: ?>
+                            data-registration-countdown
+                            data-force-closed="1"
+                        <?php endif; ?>
+                        data-closed-note="<?php echo htmlspecialchars($registrationWindowLabel !== '' ? ('Closed on ' . $registrationDeadlineLabel) : 'Registration is currently closed for this event.'); ?>"
+                    >
+                        <span class="countdown-copy">Time Left To Register</span>
+                        <span class="countdown-display">
+                            <span class="countdown-value" data-countdown-value><?php echo $isOpen ? '...' : 'Closed'; ?></span>
+                            <span class="countdown-unit" data-countdown-unit><?php echo $isOpen ? 'Loading' : 'Registration Ended'; ?></span>
+                        </span>
+                        <span class="countdown-note" data-countdown-note>
+                            <?php echo htmlspecialchars($isOpen && $registrationDeadlineLabel !== '' ? ('Register before ' . $registrationDeadlineLabel) : ($registrationDeadlineLabel !== '' ? ('Closed on ' . $registrationDeadlineLabel) : 'Registration is currently closed for this event.')); ?>
+                        </span>
+                    </div>
+                    <div class="event-footer">
+                        <span class="event-price">
+                            Packages available
+                        </span>
+                        <span class="event-status <?php echo $isOpen ? 'open' : 'closed'; ?>">
+                            <?php echo $isOpen ? 'Registration Open' : 'Registration Closed'; ?>
+                        </span>
+                    </div>
+                </div>
+            </a>
+        </article>
+        <?php
+    }
+};
+
 $countdownScriptFile = __DIR__ . '/assets/js/event-registration-countdown.js';
 $countdownScriptSrc = 'assets/js/event-registration-countdown.js' . (is_file($countdownScriptFile) ? ('?v=' . filemtime($countdownScriptFile)) : '');
 ?>
@@ -28,73 +106,35 @@ $countdownScriptSrc = 'assets/js/event-registration-countdown.js' . (is_file($co
         <h1 class="events-title">Spiritual Events</h1>
         <p class="events-subtitle">Explore upcoming poojas, yatras, pilgrimages, workshops and spiritual programs.</p>
 
-        <div class="events-grid">
-            <?php if (empty($events)): ?>
-                <div class="event-empty">No active events available right now. Please check again soon.</div>
-            <?php else: ?>
-                <?php foreach ($events as $event): ?>
-                    <?php
-                    $isOpen = vs_event_is_registration_open($event);
-                    $registrationWindowLabel = vs_event_format_registration_window($event);
-                    $registrationDeadlineLabel = vs_event_format_registration_deadline($event);
-                    $registrationDeadlineIso = vs_event_get_registration_deadline_iso($event);
-                    ?>
-                    <article class="event-card">
-                        <a href="event-detail.php?slug=<?php echo urlencode((string)$event['slug']); ?>" class="event-card-link">
-                            <div class="event-image-wrap">
-                                <?php if (!empty($event['image'])): ?>
-                                    <img src="<?php echo htmlspecialchars((string)$event['image']); ?>" alt="<?php echo htmlspecialchars((string)$event['title']); ?>" class="event-image">
-                                <?php else: ?>
-                                    <div class="event-image event-image-placeholder">Event</div>
-                                <?php endif; ?>
-                            </div>
-                            <div class="event-content">
-                                <h2><?php echo htmlspecialchars((string)$event['title']); ?></h2>
-                                <div class="event-meta">
-                                    <span><?php echo htmlspecialchars((string)$event['location']); ?></span>
-                                </div>
-                                <?php
-                                $desc = trim(strip_tags((string)($event['short_description'] ?? '')));
-                                if (strlen($desc) > 160) {
-                                    $desc = substr($desc, 0, 157) . '...';
-                                }
-                                ?>
-                                <p><?php echo htmlspecialchars($desc); ?></p>
-                                <div
-                                    class="registration-countdown compact<?php echo $isOpen ? '' : ' is-closed'; ?>"
-                                    <?php if ($isOpen && $registrationDeadlineIso !== ''): ?>
-                                        data-registration-countdown
-                                        data-deadline="<?php echo htmlspecialchars($registrationDeadlineIso); ?>"
-                                        data-live-note="<?php echo htmlspecialchars('Register before ' . $registrationDeadlineLabel); ?>"
-                                    <?php else: ?>
-                                        data-registration-countdown
-                                        data-force-closed="1"
-                                    <?php endif; ?>
-                                    data-closed-note="<?php echo htmlspecialchars($registrationWindowLabel !== '' ? ('Closed on ' . $registrationDeadlineLabel) : 'Registration is currently closed for this event.'); ?>"
-                                >
-                                    <span class="countdown-copy">Time Left To Register</span>
-                                    <span class="countdown-display">
-                                        <span class="countdown-value" data-countdown-value><?php echo $isOpen ? '...' : 'Closed'; ?></span>
-                                        <span class="countdown-unit" data-countdown-unit><?php echo $isOpen ? 'Loading' : 'Registration Ended'; ?></span>
-                                    </span>
-                                    <span class="countdown-note" data-countdown-note>
-                                        <?php echo htmlspecialchars($isOpen && $registrationDeadlineLabel !== '' ? ('Register before ' . $registrationDeadlineLabel) : ($registrationDeadlineLabel !== '' ? ('Closed on ' . $registrationDeadlineLabel) : 'Registration is currently closed for this event.')); ?>
-                                    </span>
-                                </div>
-                                <div class="event-footer">
-                                    <span class="event-price">
-                                        Packages available
-                                    </span>
-                                    <span class="event-status <?php echo $isOpen ? 'open' : 'closed'; ?>">
-                                        <?php echo $isOpen ? 'Registration Open' : 'Registration Closed'; ?>
-                                    </span>
-                                </div>
-                            </div>
-                        </a>
-                    </article>
-                <?php endforeach; ?>
+        <?php if (empty($events)): ?>
+            <div class="event-empty">No active events available right now. Please check again soon.</div>
+        <?php else: ?>
+            <section class="events-section">
+                <div class="events-section-head">
+                    <h2 class="events-section-title">Open Events</h2>
+                    <p class="events-section-copy">Registrations that are currently available.</p>
+                </div>
+                <?php if (empty($openEvents)): ?>
+                    <div class="event-empty">No events are open for registration right now.</div>
+                <?php else: ?>
+                    <div class="events-grid">
+                        <?php $renderEventCards($openEvents); ?>
+                    </div>
+                <?php endif; ?>
+            </section>
+
+            <?php if (!empty($closedEvents)): ?>
+                <section class="events-section events-section-closed">
+                    <div class="events-section-head">
+                        <h2 class="events-section-title">Closed Events</h2>
+                        <p class="events-section-copy">These events are listed separately because registration has already closed.</p>
+                    </div>
+                    <div class="events-grid">
+                        <?php $renderEventCards($closedEvents); ?>
+                    </div>
+                </section>
             <?php endif; ?>
-        </div>
+        <?php endif; ?>
     </section>
 </main>
 
@@ -105,7 +145,11 @@ html, body { font-family: 'Marcellus', serif !important; }
 .events-wrap { max-width: 1120px; margin: 0 auto; padding: 0 14px; }
 .events-title { text-align: center; color: #800000; margin: 0 0 8px; font-size: 2rem; }
 .events-subtitle { text-align: center; color: #5b4b4b; margin: 0 0 18px; }
-.events-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+.events-section + .events-section { margin-top: 32px; }
+.events-section-head { margin-bottom: 14px; }
+.events-section-title { margin: 0 0 4px; color: #800000; font-size: 1.4rem; }
+.events-section-copy { margin: 0; color: #6b5d5d; }
+.events-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
 .event-card { background: #fff; border: 1px solid #ecd3d3; border-radius: 18px; box-shadow: 0 10px 24px rgba(128, 0, 0, 0.1); overflow: hidden; transition: transform .25s ease, box-shadow .25s ease; }
 .event-card:hover { transform: translateY(-4px); box-shadow: 0 18px 34px rgba(128, 0, 0, 0.16); }
 .event-card-link { color: inherit; text-decoration: none; display: block; height: 100%; }
@@ -133,7 +177,8 @@ html, body { font-family: 'Marcellus', serif !important; }
 .countdown-unit { font-size: 0.86rem; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 700; padding-bottom: 4px; }
 .countdown-note { font-size: 0.84rem; line-height: 1.4; color: rgba(255, 248, 238, 0.95); }
 .registration-countdown.is-closed { background: linear-gradient(135deg, #5b6474 0%, #2c394d 100%); box-shadow: 0 14px 28px rgba(35, 48, 71, 0.18); }
-@media (max-width: 680px) { .registration-countdown { border-radius: 16px; } .countdown-value { font-size: 1.95rem; } }
+@media (min-width: 768px) and (max-width: 1100px) { .events-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } .event-image-wrap { height: 150px; } .event-content { padding: 11px; } .event-content h2 { font-size: 1.05rem; } }
+@media (max-width: 767px) { .events-grid { grid-template-columns: 1fr; } .registration-countdown { border-radius: 16px; } .countdown-value { font-size: 1.95rem; } }
 </style>
 
 <script src="<?php echo htmlspecialchars($countdownScriptSrc); ?>"></script>
