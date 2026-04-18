@@ -206,7 +206,8 @@ $submenuNotificationSourceMap = [
         ],
         'Failed Appointments' => [
             ['table' => 'pending_payments', 'column' => 'created_at', 'where' => "category = 'appointment'"],
-            ['table' => 'pending_payments', 'column' => 'updated_at', 'where' => "category = 'appointment'"],
+            ['table' => 'service_requests', 'column' => 'created_at', 'where' => "category_slug = 'appointment' AND LOWER(TRIM(COALESCE(payment_status, ''))) = 'failed'"],
+            ['table' => 'service_requests', 'column' => 'updated_at', 'where' => "category_slug = 'appointment' AND LOWER(TRIM(COALESCE(payment_status, ''))) = 'failed'"],
         ],
     ],
     'Services' => [

@@ -292,15 +292,38 @@ $stmt = $pdo->prepare("
 $stmt->execute();
 $completedAppointments = (int)$stmt->fetchColumn();
 
-// Failed Appointments (from pending_payments, same logic as failed-appointments.php)
-$stmt = $pdo->prepare("SELECT id, customer_details, form_data FROM pending_payments WHERE category = 'appointment'");
+// Failed appointments = unresolved pending payment rows + appointment rows explicitly marked failed.
+$stmt = $pdo->prepare("
+        SELECT COUNT(*)
+        FROM pending_payments p
+        LEFT JOIN service_requests s ON s.razorpay_order_id = p.razorpay_order_id
+        WHERE p.category = 'appointment'
+          AND s.id IS NULL
+");
 $stmt->execute();
-$failedRows = $stmt->fetchAll(PDO::FETCH_ASSOC);
-$failedAppointmentsCount = 0;
-foreach ($failedRows as $row) {
-    // Optionally parse JSON fields if you want to filter further in the future
-    $failedAppointmentsCount++;
-}
+$failedPendingAppointmentsCount = (int)$stmt->fetchColumn();
+
+$stmt = $pdo->prepare("
+        SELECT COUNT(*)
+        FROM service_requests
+        WHERE category_slug = 'appointment'
+          AND LOWER(TRIM(COALESCE(payment_status, ''))) = 'failed'
+");
+$stmt->execute();
+$failedServiceAppointmentsCount = (int)$stmt->fetchColumn();
+
+$failedAppointmentsCount = $failedPendingAppointmentsCount + $failedServiceAppointmentsCount;
+
+$stmt = $pdo->prepare("
+        SELECT id, tracking_id, customer_name, mobile, email, payment_status, service_status, form_data, created_at
+        FROM service_requests
+        WHERE category_slug = 'appointment'
+          AND LOWER(TRIM(COALESCE(payment_status, ''))) = 'failed'
+        ORDER BY created_at DESC, id DESC
+        LIMIT 5
+");
+$stmt->execute();
+$recentFailedAppointmentRows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 /* ============================================================
     FETCH UNACCEPTED APPOINTMENT DATES (DATE(created_at))
@@ -538,6 +561,73 @@ h1 {
 }
 .status-received { background: #e5f0ff; color: #0056b3; }
 .payment-paid { background: #e5ffe5; color: #1a8917; }
+.payment-failed { background: #ffeaea; color: #c00; }
+.status-cancelled { background: #ffeaea; color: #c00; }
+.status-default { background: #f2f2f2; color: #666; }
+.summary-card-link {
+    padding: 0;
+    overflow: hidden;
+}
+.summary-card-anchor {
+    display: block;
+    padding: 14px 18px;
+    color: inherit;
+    text-decoration: none;
+}
+.summary-card-alert {
+    background: #fff2f2;
+    border: 1px solid #f0c7c7;
+}
+.summary-card-hint {
+    margin-top: 6px;
+    color: #8f5555;
+    font-size: 0.84em;
+    line-height: 1.4;
+}
+.failed-preview {
+    background: #fff;
+    border: 1px solid #f0d7d7;
+    border-radius: 14px;
+    box-shadow: 0 2px 12px #e0bebe22;
+    margin: 22px 0 28px;
+    padding: 18px;
+}
+.failed-preview-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-bottom: 14px;
+}
+.failed-preview-title {
+    margin: 0;
+    color: #800000;
+    font-size: 1.15em;
+}
+.failed-preview-subtitle {
+    margin: 6px 0 0;
+    color: #6b4a4a;
+    line-height: 1.5;
+}
+.failed-preview-empty {
+    margin: 0;
+    color: #6b4a4a;
+    line-height: 1.6;
+}
+.view-btn {
+    background: #800000;
+    color: #fff;
+    padding: 8px 14px;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 0.92em;
+    transition: background 0.2s ease;
+}
+.view-btn:hover {
+    background: #a00000;
+}
 .badge-overdue {
     background: #ff4444;
     color: #fff;
@@ -810,11 +900,84 @@ document.getElementById('refreshRollbackBtn').onclick = function() {
         <div class="summary-count"><?= $totalAppointments ?></div>
         <div class="summary-label">Total Appointments</div>
     </div>
-    <div class="summary-card">
-        <div class="summary-count"><?= $failedAppointmentsCount ?></div>
-        <div class="summary-label">Failed</div>
+    <div class="summary-card summary-card-link<?= $failedAppointmentsCount > 0 ? ' summary-card-alert' : '' ?>">
+        <a href="failed-appointments.php" class="summary-card-anchor">
+            <div class="summary-count"><?= $failedAppointmentsCount ?></div>
+            <div class="summary-label">Failed</div>
+            <div class="summary-card-hint">
+                <?= $failedServiceAppointmentsCount ?> failed booking row<?= $failedServiceAppointmentsCount === 1 ? '' : 's' ?>, <?= $failedPendingAppointmentsCount ?> unresolved payment row<?= $failedPendingAppointmentsCount === 1 ? '' : 's' ?>
+            </div>
+        </a>
     </div>
 </div>
+
+<?php if ($failedAppointmentsCount > 0): ?>
+    <section class="failed-preview">
+        <div class="failed-preview-header">
+            <div>
+                <h2 class="failed-preview-title">Failed Appointment Visibility</h2>
+                <p class="failed-preview-subtitle">
+                    This queue now tracks both unresolved online payment rows and appointment bookings already created in <code>service_requests</code> but marked failed later.
+                </p>
+            </div>
+            <a href="failed-appointments.php" class="view-btn">Open Failed Queue</a>
+        </div>
+        <?php if (empty($recentFailedAppointmentRows)): ?>
+            <p class="failed-preview-empty">
+                No appointment booking rows are currently marked failed. The failed queue still includes <?= $failedPendingAppointmentsCount ?> unresolved online payment row<?= $failedPendingAppointmentsCount === 1 ? '' : 's' ?>.
+            </p>
+        <?php else: ?>
+            <table class="service-table">
+                <thead>
+                    <tr>
+                        <th>View</th>
+                        <th>Tracking ID</th>
+                        <th>Customer Name</th>
+                        <th>Mobile</th>
+                        <th>Preferred Date</th>
+                        <th>Payment Status</th>
+                        <th>Service Status</th>
+                        <th>Created Date</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($recentFailedAppointmentRows as $failedAppointment): ?>
+                        <?php
+                            $failedFormData = json_decode($failedAppointment['form_data'] ?? '', true) ?? [];
+                            $preferredDateRaw = (string)($failedFormData['preferred_date'] ?? '');
+                            if ($preferredDateRaw !== '') {
+                                $preferredDateObj = DateTime::createFromFormat('Y-m-d', $preferredDateRaw);
+                                $preferredDateDisplay = $preferredDateObj ? $preferredDateObj->format('d-M-Y') : $preferredDateRaw;
+                            } else {
+                                $preferredDateDisplay = '--';
+                            }
+                            $createdAtDisplay = '';
+                            if (!empty($failedAppointment['created_at'])) {
+                                $createdAtObject = new DateTime((string)$failedAppointment['created_at']);
+                                $createdAtDisplay = $createdAtObject->format('d-M-Y h:i A');
+                            }
+                            $serviceStatusRaw = trim((string)($failedAppointment['service_status'] ?? ''));
+                            $serviceStatusClass = $serviceStatusRaw !== '' ? 'status-' . strtolower(str_replace(' ', '-', $serviceStatusRaw)) : 'status-default';
+                            $serviceStatusText = $serviceStatusRaw !== '' ? $serviceStatusRaw : '-';
+                        ?>
+                        <tr>
+                            <td>
+                                <a href="view.php?id=<?= (int)$failedAppointment['id'] ?>" class="view-btn">View</a>
+                            </td>
+                            <td><?= htmlspecialchars((string)($failedAppointment['tracking_id'] ?? '')) ?></td>
+                            <td><?= htmlspecialchars((string)($failedAppointment['customer_name'] ?? '')) ?></td>
+                            <td><?= htmlspecialchars(vs_format_mobile_from_form_data((string)($failedAppointment['mobile'] ?? ''), $failedFormData)) ?></td>
+                            <td><?= htmlspecialchars($preferredDateDisplay) ?></td>
+                            <td><span class="status-badge payment-failed">Failed</span></td>
+                            <td><span class="status-badge <?= htmlspecialchars($serviceStatusClass) ?>"><?= htmlspecialchars($serviceStatusText) ?></span></td>
+                            <td><?= htmlspecialchars($createdAtDisplay) ?></td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        <?php endif; ?>
+    </section>
+<?php endif; ?>
 
 <?php if (empty($pendingDates)): ?>
     <div class="no-data" style="font-size:1.2em;color:#800000;font-weight:600;">

@@ -1,9 +1,11 @@
 <?php
 require_once (is_file(__DIR__ . '/includes/permissions.php') ? __DIR__ . '/includes/permissions.php' : dirname(__DIR__) . '/includes/permissions.php');
 admin_enforce_mapped_permission('auto');
+
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
+
 require_once __DIR__ . '/../../config/db.php';
 
 $hasWebhookLogsTable = false;
@@ -14,7 +16,6 @@ try {
     $hasWebhookLogsTable = false;
 }
 
-// Handle delete action
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_id'])) {
     $deleteId = (int)$_POST['delete_id'];
     $stmt = $pdo->prepare("DELETE FROM pending_payments WHERE id = ? LIMIT 1");
@@ -23,9 +24,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_id'])) {
     exit;
 }
 
-
-// Show only unresolved redirect-miss rows. Recovered rows are excluded.
-$stmt = $pdo->prepare("
+$pendingStmt = $pdo->prepare("
     SELECT p.*
     FROM pending_payments p
     LEFT JOIN service_requests s ON s.razorpay_order_id = p.razorpay_order_id
@@ -33,13 +32,23 @@ $stmt = $pdo->prepare("
       AND s.id IS NULL
     ORDER BY p.created_at DESC
 ");
-$stmt->execute();
-$failedAppointments = $stmt->fetchAll(PDO::FETCH_ASSOC);
+$pendingStmt->execute();
+$pendingRows = $pendingStmt->fetchAll(PDO::FETCH_ASSOC);
+
+$failedStmt = $pdo->prepare("
+    SELECT id, tracking_id, customer_name, mobile, email, category_slug, payment_status, booking_status, service_status, form_data, selected_products, created_at, razorpay_order_id
+    FROM service_requests
+    WHERE category_slug = 'appointment'
+      AND LOWER(TRIM(COALESCE(payment_status, ''))) = 'failed'
+    ORDER BY created_at DESC, id DESC
+");
+$failedStmt->execute();
+$failedAppointmentRows = $failedStmt->fetchAll(PDO::FETCH_ASSOC);
 
 $latestWebhookEventsByOrder = [];
-if ($hasWebhookLogsTable && !empty($failedAppointments)) {
+if ($hasWebhookLogsTable && !empty($pendingRows)) {
     $orderIds = [];
-    foreach ($failedAppointments as $row) {
+    foreach ($pendingRows as $row) {
         $orderId = trim((string)($row['razorpay_order_id'] ?? ''));
         if ($orderId !== '') {
             $orderIds[$orderId] = true;
@@ -69,12 +78,93 @@ if ($hasWebhookLogsTable && !empty($failedAppointments)) {
         }
     }
 }
+
+$records = [];
+$pendingCount = 0;
+$failedCount = 0;
+
+foreach ($pendingRows as $row) {
+    $customerDetails = json_decode($row['customer_details'] ?? '', true) ?? [];
+    $formData = json_decode($row['form_data'] ?? '', true) ?? [];
+    if (empty($formData)) {
+        $formData = json_decode($row['appointment_form'] ?? '', true) ?? [];
+    }
+
+    $orderId = trim((string)($row['razorpay_order_id'] ?? ''));
+    $paymentBadgeClass = 'payment-pending';
+    $paymentBadgeText = 'Pending Confirmation';
+    if ($orderId !== '' && isset($latestWebhookEventsByOrder[$orderId]) && $latestWebhookEventsByOrder[$orderId] === 'payment.failed') {
+        $paymentBadgeClass = 'payment-failed';
+        $paymentBadgeText = 'Failed';
+        $failedCount++;
+    } else {
+        $pendingCount++;
+    }
+
+    $records[] = [
+        'source' => 'pending',
+        'source_label' => 'Pending Payment Row',
+        'id' => (int)($row['id'] ?? 0),
+        'view_id' => null,
+        'tracking_id' => (string)($row['payment_id'] ?? ''),
+        'customer_name' => (string)($customerDetails['full_name'] ?? ($formData['full_name'] ?? '')),
+        'mobile' => (string)($customerDetails['mobile'] ?? ($formData['mobile'] ?? '')),
+        'mobile_context' => !empty($customerDetails) ? $customerDetails : $formData,
+        'preferred_date' => (string)($customerDetails['preferred_date'] ?? ($formData['preferred_date'] ?? '')),
+        'created_at' => (string)($row['created_at'] ?? ''),
+        'selected_products' => (string)($row['selected_products'] ?? ''),
+        'notes' => (string)($customerDetails['notes'] ?? ($formData['notes'] ?? ($formData['message'] ?? ($formData['remark'] ?? '')))),
+        'payment_badge_class' => $paymentBadgeClass,
+        'payment_badge_text' => $paymentBadgeText,
+        'service_badge_class' => 'status-default',
+        'service_badge_text' => 'Unaccepted',
+        'action_kind' => 'delete',
+    ];
+}
+
+foreach ($failedAppointmentRows as $row) {
+    $formData = json_decode($row['form_data'] ?? '', true) ?? [];
+    $serviceStatusRaw = trim((string)($row['service_status'] ?? ''));
+    $serviceBadgeClass = $serviceStatusRaw !== '' ? 'status-' . strtolower(str_replace(' ', '-', $serviceStatusRaw)) : 'status-default';
+    $serviceBadgeText = $serviceStatusRaw !== '' ? $serviceStatusRaw : '-';
+    $failedCount++;
+
+    $records[] = [
+        'source' => 'service_request_failed',
+        'source_label' => 'Failed Booking Row',
+        'id' => (int)($row['id'] ?? 0),
+        'view_id' => (int)($row['id'] ?? 0),
+        'tracking_id' => (string)($row['tracking_id'] ?? ''),
+        'customer_name' => (string)($row['customer_name'] ?? ''),
+        'mobile' => (string)($row['mobile'] ?? ''),
+        'mobile_context' => $formData,
+        'preferred_date' => (string)($formData['preferred_date'] ?? ''),
+        'created_at' => (string)($row['created_at'] ?? ''),
+        'selected_products' => (string)($row['selected_products'] ?? ''),
+        'notes' => (string)($formData['notes'] ?? ($formData['message'] ?? ($formData['remark'] ?? ''))),
+        'payment_badge_class' => 'payment-failed',
+        'payment_badge_text' => 'Failed',
+        'service_badge_class' => $serviceBadgeClass,
+        'service_badge_text' => $serviceBadgeText,
+        'action_kind' => 'view',
+    ];
+}
+
+usort($records, static function (array $a, array $b): int {
+    $at = strtotime((string)($a['created_at'] ?? ''));
+    $bt = strtotime((string)($b['created_at'] ?? ''));
+    if ($at === $bt) {
+        return ((int)($b['id'] ?? 0)) <=> ((int)($a['id'] ?? 0));
+    }
+
+    return $bt <=> $at;
+});
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Appointment Management</title>
+<title>Pending/Failed Appointments</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
@@ -90,23 +180,12 @@ body {
 }
 h1 {
     color: #800000;
-    margin-bottom: 18px;
+    margin-bottom: 10px;
 }
-/* Summary cards now in responsive-cards.css */
-.filter-bar {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 12px;
-    margin-bottom: 18px;
-    align-items: center;
-}
-.filter-bar label {
-    font-weight: 600;
-}
-.filter-bar input[type="date"] {
-    padding: 6px 12px;
-    border-radius: 6px;
-    font-size: 1em;
+.page-subtitle {
+    color: #6b4a4a;
+    margin: 0 0 18px;
+    line-height: 1.5;
 }
 .service-table {
     width: 100%;
@@ -136,15 +215,6 @@ h1 {
 .service-table tbody tr:hover {
     background: #f3f7fa;
 }
-.service-table th:nth-child(1), .service-table td:nth-child(1) { width: 5%; }
-.service-table th:nth-child(2), .service-table td:nth-child(2) { width: 10%; }
-.service-table th:nth-child(3), .service-table td:nth-child(3) { width: 12%; }
-.service-table th:nth-child(4), .service-table td:nth-child(4) { width: 14%; }
-.service-table th:nth-child(5), .service-table td:nth-child(5) { width: 11%; }
-.service-table th:nth-child(6), .service-table td:nth-child(6) { width: 13%; }
-.service-table th:nth-child(7), .service-table td:nth-child(7) { width: 12%; }
-.service-table th:nth-child(8), .service-table td:nth-child(8) { width: 11%; }
-.service-table th:nth-child(9), .service-table td:nth-child(9) { width: 12%; }
 .status-badge {
     padding: 4px 12px;
     border-radius: 8px;
@@ -154,338 +224,215 @@ h1 {
     min-width: 80px;
     text-align: center;
 }
-.status-received { background: #e5f0ff; color: #0056b3; }
-.payment-paid { background: #e5ffe5; color: #1a8917; }
 .payment-pending { background: #fff8e5; color: #8a5b00; }
 .payment-failed { background: #ffeaea; color: #c00; }
-.badge-overdue {
-    background: #ff4444;
-    color: #fff;
-    padding: 3px 8px;
-    border-radius: 4px;
-    font-size: 0.85em;
-    font-weight: 600;
-    margin-left: 6px;
-}
+.status-received { background: #e5f0ff; color: #0056b3; }
+.status-in-progress { background: #fffbe5; color: #b36b00; }
+.status-completed { background: #e5ffe5; color: #1a8917; }
+.status-cancelled { background: #ffeaea; color: #c00; }
+.status-default { background: #f2f2f2; color: #666; }
 .no-data {
     text-align: center;
     color: #777;
     padding: 24px;
 }
-/* Action Bar */
-.action-bar {
-    display: none;
-    background: #fff3cd;
-    border: 2px solid #ffc107;
-    border-radius: 8px;
-    padding: 12px 16px;
-    margin-bottom: 16px;
-    align-items: center;
-    gap: 12px;
-}
-.action-bar.show {
+.summary-cards {
     display: flex;
+    gap: 16px;
+    margin-bottom: 18px;
+    flex-wrap: wrap;
 }
-.action-bar-label {
-    font-weight: 600;
-    color: #856404;
-    margin-right: auto;
+.summary-card {
+    background: #fffbe7;
+    border-radius: 10px;
+    padding: 14px 18px;
+    box-shadow: 0 2px 8px #e0bebe22;
+    min-width: 180px;
 }
-.action-btn {
-    padding: 8px 16px;
-    border-radius: 6px;
-    border: none;
-    cursor: pointer;
-    font-weight: 600;
-    font-size: 0.95em;
+.summary-count {
+    font-size: 1.8em;
+    font-weight: 700;
+    color: #800000;
 }
-.btn-accept {
-    background: #28a745;
-    color: #fff;
+.summary-label {
+    color: #444;
+    margin-top: 2px;
 }
-.btn-reschedule {
-    background: #ffc107;
-    color: #333;
-}
-.btn-accept:hover {
-    background: #218838;
-}
-.btn-reschedule:hover {
-    background: #e0a800;
-}
-/* Modal Styles */
-.modal {
-    display: none;
-    position: fixed;
-    z-index: 1000;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0,0,0,0.5);
-}
-.modal.show {
-    display: flex;
+.view-btn,
+.delete-btn {
+    display: inline-flex;
     align-items: center;
     justify-content: center;
-}
-.modal-content {
-    background: #fff;
-    border-radius: 12px;
-    padding: 24px;
-    max-width: 500px;
-    width: 90%;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-}
-.modal-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 20px;
-}
-.modal-header h2 {
-    color: #800000;
-    margin: 0;
-}
-.modal-close {
-    background: none;
-    border: none;
-    font-size: 1.5em;
-    cursor: pointer;
-    color: #999;
-}
-.form-group {
-    margin-bottom: 16px;
-}
-.form-group label {
-    display: block;
+    padding: 8px 14px;
+    border-radius: 8px;
+    text-decoration: none;
     font-weight: 600;
-    margin-bottom: 6px;
-    color: #333;
-}
-.form-group input,
-.form-group textarea {
-    width: 100%;
-    padding: 8px 12px;
-    border: 1px solid #ddd;
-    border-radius: 6px;
-    font-size: 1em;
-}
-.form-group textarea {
-    resize: vertical;
-    min-height: 80px;
-}
-.modal-footer {
-    display: flex;
-    gap: 10px;
-    justify-content: flex-end;
-    margin-top: 20px;
-}
-.btn-cancel {
-    padding: 8px 16px;
-    background: #6c757d;
-    color: #fff;
+    font-size: 0.9em;
     border: none;
-    border-radius: 6px;
     cursor: pointer;
-    font-weight: 600;
 }
-.btn-submit {
-    padding: 8px 16px;
+.view-btn {
     background: #800000;
     color: #fff;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
+}
+.view-btn:hover {
+    background: #a00000;
+}
+.delete-btn {
+    background: #dc3545;
+    color: #fff;
+}
+.delete-btn:hover {
+    background: #bb2d3b;
+}
+.source-badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: #f3e8e8;
+    color: #7a2d2d;
     font-weight: 600;
-}
-.btn-cancel:hover {
-    background: #5a6268;
-}
-.btn-submit:hover {
-    background: #600000;
-}
-/* PHASE 4 - Dropdown Styling */
-#appointmentDateSelect {
-    padding: 8px 12px;
-    border-radius: 6px;
-    border: 1px solid #ddd;
-    font-size: 1em;
-    background: #fff;
-    color: #333;
-    cursor: pointer;
-    min-width: 250px;
-}
-#appointmentDateSelect:focus {
-    outline: none;
-    border-color: #800000;
-    box-shadow: 0 0 4px #800000;
-}
-#appointmentDateSelect option[data-date] {
-    padding: 8px;
-}
-/* Mobile styles now in responsive-cards.css */
-#appointmentDateSelect { 
-    width: 100%;
+    font-size: 0.85em;
 }
 </style>
 </head>
 
 <body>
 <div style="max-width:600px;margin:18px auto 0 auto;text-align:center;">
-    <input type="text" id="globalSearch" placeholder="Search appointments..." style="width:100%;padding:10px 14px;font-size:1.1em;border-radius:8px;border:1px solid #ccc;">
+    <input type="text" id="globalSearch" placeholder="Search pending/failed appointments..." style="width:100%;padding:10px 14px;font-size:1.1em;border-radius:8px;border:1px solid #ccc;">
 </div>
 <?php include __DIR__ . '/../includes/top-menu.php'; ?>
 
 <div class="admin-container">
+    <h1>Pending/Failed Appointments</h1>
+    <p class="page-subtitle">
+        This queue shows both unresolved online appointment payments and appointment booking rows already created in <code>service_requests</code> but later marked as failed.
+    </p>
 
-<div class="summary-cards">
-    <div class="summary-card">
-        <div class="summary-count"><?= count($failedAppointments) ?></div>
-        <div class="summary-label">Pending / Failed</div>
-    </div>
-</div>
-
-<?php if (empty($failedAppointments)): ?>
-    <div class="no-data" style="font-size:1.2em;color:#800000;font-weight:600;">
-        No pending confirmation appointments found.
-    </div>
-<?php else: ?>
-    <table class="service-table">
-        <thead>
-            <tr>
-                <th>Customer Name</th>
-                <th>Mobile</th>
-                <th>Preferred Date</th>
-                <th>Created Date</th>
-                <th>Products</th>
-                <th>ID</th>
-                <th>Tracking ID</th>
-                <th>Payment Status</th>
-                <th>Service Status</th>
-                <th>Notes</th>
-                <th>Delete</th>
-            </tr>
-        </thead>
-        <tbody>
-            <?php foreach ($failedAppointments as $a): ?>
-                <?php
-                // Parse JSON fields
-                $formData = json_decode($a['form_data'] ?? '', true) ?? [];
-                $customerDetails = json_decode($a['customer_details'] ?? '', true) ?? [];
-                $selectedProducts = json_decode($a['selected_products'] ?? '', true) ?? [];
-                $trackingId = $a['payment_id'] ?? '';
-                $products = '-';
-                if (is_array($selectedProducts) && count($selectedProducts)) {
-                    $productDetails = [];
-                    foreach ($selectedProducts as $prod) {
-                        $qty = isset($prod['qty']) ? (int)$prod['qty'] : 1;
-                        $name = isset($prod['name']) ? htmlspecialchars($prod['name']) : '';
-                        $price = isset($prod['price']) ? $prod['price'] : '';
-                        if ($name !== '') {
-                            $label = $name . ' x' . $qty;
-                            if ($price !== '') {
-                                $label .= ' (&#8377;' . number_format((float)$price, 2) . ')';
-                            }
-                            $productDetails[] = $label;
-                        }
-                    }
-                    if ($productDetails) {
-                        $products = implode(', ', $productDetails);
-                    }
-                }
-                $customerName = $customerDetails['full_name'] ?? ($formData['full_name'] ?? '');
-                $mobile = $customerDetails['mobile'] ?? ($formData['mobile'] ?? '');
-                $mobileDisplay = vs_format_mobile_from_form_data($mobile, !empty($customerDetails) ? $customerDetails : $formData);
-                $preferredDate = $customerDetails['preferred_date'] ?? ($formData['preferred_date'] ?? '');
-                if ($preferredDate) {
-                    $preferredDateObj = DateTime::createFromFormat('Y-m-d', $preferredDate);
-                    $preferredDisplay = $preferredDateObj ? $preferredDateObj->format('d-M-Y') : $preferredDate;
-                } else {
-                    $preferredDisplay = '--';
-                }
-                $createdDisplay = '';
-                if (!empty($a['created_at'])) {
-                    $co = new DateTime($a['created_at']);
-                    $createdDisplay = $co->format('d-M-Y h:i A');
-                }
-                $notes = $customerDetails['notes'] ?? ($formData['notes'] ?? '');
-                $orderId = trim((string)($a['razorpay_order_id'] ?? ''));
-                $paymentBadgeClass = 'payment-pending';
-                $paymentBadgeText = 'Pending Confirmation';
-                if ($orderId !== '' && isset($latestWebhookEventsByOrder[$orderId]) && $latestWebhookEventsByOrder[$orderId] === 'payment.failed') {
-                    $paymentBadgeClass = 'payment-failed';
-                    $paymentBadgeText = 'Failed';
-                }
-                ?>
-                <tr>
-                    <td><?= htmlspecialchars($customerName) ?></td>
-                    <td><?= htmlspecialchars($mobileDisplay) ?></td>
-                    <td style="font-weight:600;color:#800000;">
-                        <?= htmlspecialchars($preferredDisplay) ?>
-                    </td>
-                    <td><?= htmlspecialchars($createdDisplay) ?></td>
-                    <td><?= $products ?></td>
-                    <td><?= (int)$a['id'] ?></td>
-                    <td><?= htmlspecialchars($trackingId) ?></td>
-                    <td><span class="status-badge <?= htmlspecialchars($paymentBadgeClass) ?>"><?= htmlspecialchars($paymentBadgeText) ?></span></td>
-                    <td><span class="status-badge status-received">Unaccepted</span></td>
-                    <td><?= htmlspecialchars($notes) ?></td>
-                    <td>
-                        <form method="POST" onsubmit="return confirm('Are you sure you want to delete this appointment entry?');" style="display:inline;">
-                            <input type="hidden" name="delete_id" value="<?= (int)$a['id'] ?>">
-                            <button type="submit" class="action-btn btn-accept" style="background:#dc3545; color:#fff; border:none; padding:6px 14px; border-radius:6px; font-weight:600;">Delete</button>
-                        </form>
-                    </td>
-                </tr>
-            <?php endforeach; ?>
-        </tbody>
-    </table>
-<?php endif; ?>
-
-</div>
-
-<!-- PHASE 3 - ACCEPT APPOINTMENT MODAL -->
-<div class="modal" id="acceptModal">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h2>Accept Appointment</h2>
-            <button class="modal-close" onclick="closeAcceptModal()">&times;</button>
+    <div class="summary-cards">
+        <div class="summary-card">
+            <div class="summary-count"><?= count($records) ?></div>
+            <div class="summary-label">Pending/Failed Appointments</div>
         </div>
-        <form method="POST" onsubmit="return validateAcceptForm()">
-            <input type="hidden" name="action" value="accept">
-            <input type="hidden" name="appointment_ids[]" id="acceptAppointmentIds">
-            
-            <div class="form-group">
-                <label for="assignedDate">Assigned Date *</label>
-                <input type="date" id="assignedDate" name="assigned_date" required min="<?= date('Y-m-d') ?>">
-            </div>
-            
-            <div class="form-group">
-                <label for="timeFrom">Time From *</label>
-                <input type="time" id="timeFrom" name="time_from" required>
-            </div>
-            
-            <div class="form-group">
-                <label for="timeTo">Time To *</label>
-                <input type="time" id="timeTo" name="time_to" required>
-            </div>
-            
-            <div class="modal-footer">
-                <button type="button" class="btn-cancel" onclick="closeAcceptModal()">Cancel</button>
-                <button type="submit" class="btn-submit">Accept Appointment</button>
-            </div>
-        </form>
+        <div class="summary-card">
+            <div class="summary-count"><?= $pendingCount ?></div>
+            <div class="summary-label">Pending Confirmation</div>
+        </div>
+        <div class="summary-card">
+            <div class="summary-count"><?= $failedCount ?></div>
+            <div class="summary-label">Failed</div>
+        </div>
     </div>
-</div>
 
-<!-- Reschedule removed in simplified flow -->
+    <?php if (empty($records)): ?>
+        <div class="no-data" style="font-size:1.2em;color:#800000;font-weight:600;">
+            No pending or failed appointments found.
+        </div>
+    <?php else: ?>
+        <table class="service-table">
+            <thead>
+                <tr>
+                    <th>Customer Name</th>
+                    <th>Mobile</th>
+                    <th>Preferred Date</th>
+                    <th>Created Date</th>
+                    <th>Products</th>
+                    <th>ID</th>
+                    <th>Tracking ID</th>
+                    <th>Payment Status</th>
+                    <th>Service Status</th>
+                    <th>Source</th>
+                    <th>Notes</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ($records as $row): ?>
+                    <?php
+                        $selectedProducts = json_decode($row['selected_products'] ?? '', true) ?? [];
+                        $products = '-';
+                        if (is_array($selectedProducts) && count($selectedProducts)) {
+                            $productDetails = [];
+                            foreach ($selectedProducts as $prod) {
+                                if (!is_array($prod)) {
+                                    continue;
+                                }
+                                $qty = isset($prod['qty']) ? (int)$prod['qty'] : 1;
+                                $name = '';
+                                if (!empty($prod['name'])) {
+                                    $name = (string)$prod['name'];
+                                } elseif (!empty($prod['product_name'])) {
+                                    $name = (string)$prod['product_name'];
+                                } elseif (!empty($prod['id'])) {
+                                    static $productNameCache = [];
+                                    $pid = (int)$prod['id'];
+                                    if (!isset($productNameCache[$pid])) {
+                                        $pstmt = $pdo->prepare('SELECT product_name FROM products WHERE id = ? LIMIT 1');
+                                        $pstmt->execute([$pid]);
+                                        $prodName = $pstmt->fetchColumn();
+                                        $productNameCache[$pid] = $prodName ?: ('Product#' . $pid);
+                                    }
+                                    $name = (string)$productNameCache[$pid];
+                                }
+                                if ($name !== '') {
+                                    $productDetails[] = htmlspecialchars($name) . ' x' . max(1, $qty);
+                                }
+                            }
+                            if ($productDetails) {
+                                $products = implode(', ', $productDetails);
+                            }
+                        }
+
+                        $preferredDateRaw = trim((string)($row['preferred_date'] ?? ''));
+                        if ($preferredDateRaw !== '') {
+                            $preferredDateObj = DateTime::createFromFormat('Y-m-d', $preferredDateRaw);
+                            $preferredDisplay = $preferredDateObj ? $preferredDateObj->format('d-M-Y') : $preferredDateRaw;
+                        } else {
+                            $preferredDisplay = '--';
+                        }
+
+                        $createdDisplay = '';
+                        if (!empty($row['created_at'])) {
+                            $createdAtObj = new DateTime((string)$row['created_at']);
+                            $createdDisplay = $createdAtObj->format('d-M-Y h:i A');
+                        }
+                    ?>
+                    <tr>
+                        <td><?= htmlspecialchars((string)$row['customer_name']) ?></td>
+                        <td><?= htmlspecialchars(vs_format_mobile_from_form_data((string)($row['mobile'] ?? ''), $row['mobile_context'] ?? null)) ?></td>
+                        <td style="font-weight:600;color:#800000;"><?= htmlspecialchars($preferredDisplay) ?></td>
+                        <td><?= htmlspecialchars($createdDisplay) ?></td>
+                        <td><?= $products ?></td>
+                        <td><?= (int)$row['id'] ?></td>
+                        <td><?= htmlspecialchars((string)$row['tracking_id']) ?></td>
+                        <td><span class="status-badge <?= htmlspecialchars((string)$row['payment_badge_class']) ?>"><?= htmlspecialchars((string)$row['payment_badge_text']) ?></span></td>
+                        <td><span class="status-badge <?= htmlspecialchars((string)$row['service_badge_class']) ?>"><?= htmlspecialchars((string)$row['service_badge_text']) ?></span></td>
+                        <td><span class="source-badge"><?= htmlspecialchars((string)$row['source_label']) ?></span></td>
+                        <td><?= htmlspecialchars((string)($row['notes'] ?? '')) ?></td>
+                        <td>
+                            <?php if (($row['action_kind'] ?? '') === 'delete'): ?>
+                                <form method="POST" onsubmit="return confirm('Are you sure you want to delete this unresolved appointment payment row?');" style="display:inline;">
+                                    <input type="hidden" name="delete_id" value="<?= (int)$row['id'] ?>">
+                                    <button type="submit" class="delete-btn">Delete</button>
+                                </form>
+                            <?php elseif (!empty($row['view_id'])): ?>
+                                <a href="view.php?id=<?= (int)$row['view_id'] ?>" class="view-btn">View</a>
+                            <?php else: ?>
+                                <span style="color:#888;">-</span>
+                            <?php endif; ?>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+    <?php endif; ?>
+</div>
 
 <script>
-// Global search filter for all tables
 document.addEventListener('DOMContentLoaded', function() {
     const searchInput = document.getElementById('globalSearch');
     if (!searchInput) return;
+
     searchInput.addEventListener('input', function() {
         const val = this.value.trim().toLowerCase();
         document.querySelectorAll('.service-table tbody tr').forEach(row => {
@@ -494,97 +441,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 });
-// Track selected appointments per date
-let selectedAppointmentsByDate = {};
-
-function updateActionBar(date) {
-    const checkboxes = document.querySelectorAll('.rowCheckbox[data-date="' + date + '"]:checked');
-    selectedAppointmentsByDate[date] = Array.from(checkboxes).map(cb => ({
-        id: cb.value,
-        date: cb.getAttribute('data-date')
-    }));
-    const count = selectedAppointmentsByDate[date].length;
-    document.getElementById('selectedCount-' + date).textContent = count;
-    document.getElementById('actionBar-' + date).classList.toggle('show', count > 0);
-}
-
-function openAcceptModal(date) {
-    if (!selectedAppointmentsByDate[date] || selectedAppointmentsByDate[date].length === 0) return;
-    // Set appointment IDs
-    const ids = selectedAppointmentsByDate[date].map(a => a.id);
-    document.getElementById('acceptAppointmentIds').value = ids.join(',');
-    // Set assigned date to preferred date
-    document.getElementById('assignedDate').value = date;
-    // Set default time from 09:00 and to 21:00
-    document.getElementById('timeFrom').value = '09:00';
-    document.getElementById('timeTo').value = '21:00';
-    document.getElementById('acceptModal').classList.add('show');
-}
-
-function closeAcceptModal() {
-    document.getElementById('acceptModal').classList.remove('show');
-}
-
-function validateAcceptForm() {
-    const timeFrom = document.getElementById('timeFrom').value;
-    const timeTo = document.getElementById('timeTo').value;
-    if (timeFrom >= timeTo) {
-        alert('Time From must be before Time To');
-        return false;
-    }
-    // Find which date's action bar is open
-    let selectedDate = null;
-    let count = 0;
-    for (const date in selectedAppointmentsByDate) {
-        if (selectedAppointmentsByDate[date] && selectedAppointmentsByDate[date].length > 0) {
-            selectedDate = date;
-            count = selectedAppointmentsByDate[date].length;
-            break;
-        }
-    }
-    if (!selectedDate) return false;
-    // Use the actual checked checkboxes count for confirmation
-    const checked = document.querySelectorAll('.rowCheckbox[data-date="' + selectedDate + '"]:checked').length;
-    if (!confirm(`Accept ${checked} appointment(s)?`)) {
-        return false;
-    }
-    // Convert single hidden input to multiple
-    const form = event.target;
-    form.querySelector('#acceptAppointmentIds').remove();
-    selectedAppointmentsByDate[selectedDate].forEach(a => {
-        const input = document.createElement('input');
-        input.type = 'hidden';
-        input.name = 'appointment_ids[]';
-        input.value = a.id;
-        form.appendChild(input);
-    });
-    return true;
-}
-
-// Select/Deselect all checkboxes per table
-setTimeout(function() {
-    document.querySelectorAll('.selectAll').forEach(selectAll => {
-        const date = selectAll.getAttribute('data-date');
-        selectAll.addEventListener('change', function () {
-            document.querySelectorAll('.rowCheckbox[data-date="' + date + '"]').forEach(cb => {
-                cb.checked = selectAll.checked;
-            });
-            updateActionBar(date);
-        });
-    });
-    // Listen to individual checkbox changes per table
-    document.querySelectorAll('.rowCheckbox').forEach(checkbox => {
-        const date = checkbox.getAttribute('data-date');
-        checkbox.addEventListener('change', function() {
-            updateActionBar(date);
-        });
-    });
-}, 100);
 </script>
 
 </body>
 </html>
-
-
-
-
