@@ -22,15 +22,39 @@ $totalCompleted = (int)$stmt->fetchColumn();
 
 // --- FETCH ALL COMPLETED APPOINTMENTS ---
 $appointments = [];
+$perPage = 10;
+$page = isset($_GET['page']) && is_numeric($_GET['page']) && (int)$_GET['page'] > 0 ? (int)$_GET['page'] : 1;
+$offset = ($page - 1) * $perPage;
+
+$countSql = "
+    SELECT COUNT(*)
+    FROM service_requests
+    WHERE category_slug = 'appointment'
+      AND payment_status IN ('Paid', 'Free')
+      AND service_status = 'Completed'
+";
+$countStmt = $pdo->prepare($countSql);
+$countStmt->execute();
+$totalRecords = (int)$countStmt->fetchColumn();
+$totalPages = max(1, (int)ceil($totalRecords / $perPage));
+if ($page > $totalPages) {
+    $page = $totalPages;
+    $offset = ($page - 1) * $perPage;
+}
+
 $sql = "
     SELECT id, tracking_id, customer_name, mobile, email, payment_status, service_status, form_data, selected_products, created_at, updated_at
     FROM service_requests
     WHERE category_slug = 'appointment' AND payment_status IN ('Paid', 'Free') AND service_status = 'Completed'
     ORDER BY created_at DESC
+    LIMIT $perPage OFFSET $offset
 ";
 $stmt = $pdo->prepare($sql);
 $stmt->execute();
 $appointments = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+$paginationParams = $_GET;
+unset($paginationParams['page']);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -65,6 +89,36 @@ h1 { color: #800000; margin-bottom: 18px; }
 .status-badge { padding: 4px 12px; border-radius: 8px; font-weight: 600; font-size: 0.9em; display: inline-block; min-width: 80px; text-align: center; }
 .status-completed { background: #e5ffe5; color: #1a8917; }
 .payment-paid { background: #e5ffe5; color: #1a8917; }
+.pagination {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    margin: 22px 0 0;
+    flex-wrap: wrap;
+}
+.pagination a,
+.pagination span {
+    padding: 7px 14px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+    background: #fff;
+    cursor: pointer;
+    font-weight: 600;
+    text-decoration: none;
+    display: inline-block;
+    color: #333;
+    font-size: 1em;
+    transition: background 0.2s, color 0.2s;
+}
+.pagination .page-link.current {
+    background: #800000;
+    color: #fff;
+    border-color: #800000;
+}
+.pagination .page-link.disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
 </style>
 </head>
 <body>
@@ -187,6 +241,42 @@ h1 { color: #800000; margin-bottom: 18px; }
             <?php endforeach; ?>
             </tbody>
         </table>
+        <div class="pagination">
+            <?php
+            $baseQuery = $paginationParams;
+            if ($page > 1) {
+                $prevQuery = $baseQuery;
+                $prevQuery['page'] = $page - 1;
+                echo '<a href="?' . htmlspecialchars(http_build_query($prevQuery)) . '" class="page-link">&laquo; Previous</a>';
+            } else {
+                echo '<span class="page-link disabled">&laquo; Previous</span>';
+            }
+
+            $startPage = max(1, $page - 2);
+            $endPage = min($totalPages, $startPage + 4);
+            if ($endPage - $startPage < 4) {
+                $startPage = max(1, $endPage - 4);
+            }
+
+            for ($i = $startPage; $i <= $endPage; $i++) {
+                if ($i === $page) {
+                    echo '<span class="page-link current">' . $i . '</span>';
+                } else {
+                    $pageQuery = $baseQuery;
+                    $pageQuery['page'] = $i;
+                    echo '<a href="?' . htmlspecialchars(http_build_query($pageQuery)) . '" class="page-link">' . $i . '</a>';
+                }
+            }
+
+            if ($page < $totalPages) {
+                $nextQuery = $baseQuery;
+                $nextQuery['page'] = $page + 1;
+                echo '<a href="?' . htmlspecialchars(http_build_query($nextQuery)) . '" class="page-link">Next &raquo;</a>';
+            } else {
+                echo '<span class="page-link disabled">Next &raquo;</span>';
+            }
+            ?>
+        </div>
     <?php endif; ?>
 </div>
 </body>
