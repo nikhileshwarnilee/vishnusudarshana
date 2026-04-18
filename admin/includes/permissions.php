@@ -77,7 +77,7 @@ if (!function_exists('vs_admin_permission_map')) {
             'services/accepted-appointments.php' => ['pairs' => [['Appointments', 'Accepted Appointments']]],
             'services/completed-appointments.php' => ['pairs' => [['Appointments', 'Completed Appointments']]],
             'services/failed-appointments.php' => ['pairs' => [['Appointments', 'Failed Appointments']]],
-            'services/booking-slots.php' => ['pairs' => [['Appointments', 'Booking Slots']]],
+            'services/booking-slots.php' => ['pairs' => [['Appointments', 'Block Slots']]],
 
             // Services
             'services/service-request-list.php' => ['pairs' => [['Services', 'Service Request List']]],
@@ -177,8 +177,8 @@ if (!function_exists('vs_admin_permission_map')) {
             'schedule/send-schedule.php' => ['pairs' => [['Schedule', 'Send Schedule']]],
             'schedule/ajax_schedule.php' => ['pairs' => [['Schedule', 'Manage Schedule']]],
 
-            // CRM
-            'crm/customerdatabase.php' => ['pairs' => [['CRM', 'Customer Database']]],
+            // Customer Database now lives under Reception; keep CRM fallback for older permission rows.
+            'crm/customerdatabase.php' => ['pairs' => [['Reception', 'Customer Database'], ['CRM', 'Customer Database']]],
 
             // Site Management
             'website/blogs-management.php' => ['pairs' => [['Site Mgt', 'Blogs Management']]],

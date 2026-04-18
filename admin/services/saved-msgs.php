@@ -104,7 +104,7 @@ try {
 <body>
 <?php include __DIR__ . '/../includes/top-menu.php'; ?>
 <div class="container">
-    <a href="booking-slots.php" style="display:inline-block;margin-bottom:18px;padding:8px 22px;background:#007bff;color:#fff;border-radius:8px;font-weight:600;text-decoration:none;">&larr; Back to Booking Slots</a>
+    <a href="booking-slots.php" style="display:inline-block;margin-bottom:18px;padding:8px 22px;background:#007bff;color:#fff;border-radius:8px;font-weight:600;text-decoration:none;">&larr; Back to Block Slots</a>
     <h1>Saved Messages</h1>
     <?php if (isset($_GET['saved'])): ?>
         <div style="color:green;font-weight:600;margin-bottom:16px;">Message saved.</div>

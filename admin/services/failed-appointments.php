@@ -76,6 +76,198 @@ if (!function_exists('vs_failed_appointments_restore_failed_row')) {
     }
 }
 
+if (!function_exists('vs_failed_appointments_humanize_token')) {
+    function vs_failed_appointments_humanize_token(string $value): string
+    {
+        $value = trim($value);
+        if ($value === '') {
+            return '';
+        }
+
+        $value = str_replace(['_', '-', '.'], ' ', strtolower($value));
+
+        return ucwords($value);
+    }
+}
+
+if (!function_exists('vs_failed_appointments_fetch_latest_webhook_logs')) {
+    function vs_failed_appointments_fetch_latest_webhook_logs(PDO $pdo, array $orderIds, array $eventTypes = []): array
+    {
+        $cleanOrderIds = [];
+        foreach ($orderIds as $orderId) {
+            $orderId = trim((string)$orderId);
+            if ($orderId !== '') {
+                $cleanOrderIds[$orderId] = true;
+            }
+        }
+        $cleanOrderIds = array_keys($cleanOrderIds);
+
+        if (empty($cleanOrderIds)) {
+            return [];
+        }
+
+        $params = $cleanOrderIds;
+        $orderPlaceholders = implode(',', array_fill(0, count($cleanOrderIds), '?'));
+        $eventSql = '';
+
+        $cleanEventTypes = [];
+        foreach ($eventTypes as $eventType) {
+            $eventType = strtolower(trim((string)$eventType));
+            if ($eventType !== '') {
+                $cleanEventTypes[$eventType] = true;
+            }
+        }
+        $cleanEventTypes = array_keys($cleanEventTypes);
+
+        if (!empty($cleanEventTypes)) {
+            $eventPlaceholders = implode(',', array_fill(0, count($cleanEventTypes), '?'));
+            $eventSql = " AND LOWER(event_type) IN ($eventPlaceholders)";
+            $params = array_merge($params, $cleanEventTypes);
+        }
+
+        $sql = "
+            SELECT l.razorpay_order_id, l.event_type, l.razorpay_payment_id, l.payload, l.created_at
+            FROM razorpay_webhook_logs l
+            INNER JOIN (
+                SELECT razorpay_order_id, MAX(id) AS max_id
+                FROM razorpay_webhook_logs
+                WHERE razorpay_order_id IN ($orderPlaceholders)$eventSql
+                GROUP BY razorpay_order_id
+            ) latest ON latest.max_id = l.id
+        ";
+
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
+
+        $rows = [];
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            $orderId = trim((string)($row['razorpay_order_id'] ?? ''));
+            if ($orderId !== '') {
+                $rows[$orderId] = $row;
+            }
+        }
+
+        return $rows;
+    }
+}
+
+if (!function_exists('vs_failed_appointments_build_failure_detail')) {
+    function vs_failed_appointments_build_failure_detail(?array $failedLog, ?array $latestLog, string $rowSource): array
+    {
+        $detail = [
+            'title' => '',
+            'meta' => '',
+        ];
+
+        if ($failedLog) {
+            $payload = json_decode((string)($failedLog['payload'] ?? ''), true);
+            $paymentEntity = [];
+            if (is_array($payload)) {
+                $paymentEntity = $payload['payload']['payment']['entity'] ?? [];
+                if (!is_array($paymentEntity)) {
+                    $paymentEntity = [];
+                }
+            }
+
+            $errorDescription = trim((string)($paymentEntity['error_description'] ?? ''));
+            $errorReason = trim((string)($paymentEntity['error_reason'] ?? ''));
+            $errorSource = trim((string)($paymentEntity['error_source'] ?? ''));
+            $errorStep = trim((string)($paymentEntity['error_step'] ?? ''));
+            $errorCode = trim((string)($paymentEntity['error_code'] ?? ''));
+            $paymentMethod = trim((string)($paymentEntity['method'] ?? ''));
+            $paymentId = trim((string)($failedLog['razorpay_payment_id'] ?? ($paymentEntity['id'] ?? '')));
+
+            if ($errorDescription !== '') {
+                $detail['title'] = $errorDescription;
+            } elseif ($errorReason !== '') {
+                $detail['title'] = vs_failed_appointments_humanize_token($errorReason);
+            } elseif ($errorCode !== '') {
+                $detail['title'] = 'Razorpay marked this payment attempt as failed (' . $errorCode . ').';
+            } else {
+                $detail['title'] = 'Razorpay marked this payment attempt as failed.';
+            }
+
+            $meta = [];
+            if ($errorReason !== '') {
+                $meta[] = 'Reason: ' . vs_failed_appointments_humanize_token($errorReason);
+            }
+            if ($errorSource !== '') {
+                $meta[] = 'Source: ' . vs_failed_appointments_humanize_token($errorSource);
+            }
+            if ($errorStep !== '') {
+                $meta[] = 'Step: ' . vs_failed_appointments_humanize_token($errorStep);
+            }
+            if ($errorCode !== '') {
+                $meta[] = 'Code: ' . $errorCode;
+            }
+            if ($paymentMethod !== '') {
+                $methodLabel = strtolower($paymentMethod) === 'upi'
+                    ? 'UPI'
+                    : vs_failed_appointments_humanize_token($paymentMethod);
+                $meta[] = 'Method: ' . $methodLabel;
+            }
+            if ($paymentId !== '') {
+                $meta[] = 'Payment: ' . $paymentId;
+            }
+            if (!empty($failedLog['created_at'])) {
+                try {
+                    $failedAt = new DateTime((string)$failedLog['created_at']);
+                    $meta[] = 'Webhook: ' . $failedAt->format('d-M-Y h:i A');
+                } catch (Throwable $e) {
+                    $meta[] = 'Webhook: ' . (string)$failedLog['created_at'];
+                }
+            }
+            $latestEvent = strtolower(trim((string)($latestLog['event_type'] ?? '')));
+            if ($latestEvent !== '' && $latestEvent !== 'payment.failed') {
+                $latestEventMeta = 'Latest webhook: ' . vs_failed_appointments_humanize_token($latestEvent);
+                if (!empty($latestLog['created_at'])) {
+                    try {
+                        $latestAt = new DateTime((string)$latestLog['created_at']);
+                        $latestEventMeta .= ' at ' . $latestAt->format('d-M-Y h:i A');
+                    } catch (Throwable $e) {
+                        $latestEventMeta .= ' at ' . (string)$latestLog['created_at'];
+                    }
+                }
+                $meta[] = $latestEventMeta;
+            }
+            $detail['meta'] = implode(' | ', $meta);
+
+            return $detail;
+        }
+
+        $latestEvent = strtolower(trim((string)($latestLog['event_type'] ?? '')));
+        $latestEventLabel = $latestEvent !== '' ? vs_failed_appointments_humanize_token($latestEvent) : '';
+        $latestMeta = [];
+        if ($latestEventLabel !== '') {
+            $latestMeta[] = 'Latest webhook: ' . $latestEventLabel;
+        }
+        if (!empty($latestLog['created_at'])) {
+            try {
+                $latestAt = new DateTime((string)$latestLog['created_at']);
+                $latestMeta[] = 'At: ' . $latestAt->format('d-M-Y h:i A');
+            } catch (Throwable $e) {
+                $latestMeta[] = 'At: ' . (string)$latestLog['created_at'];
+            }
+        }
+
+        if ($rowSource === 'service_request_failed') {
+            $detail['title'] = $latestEventLabel !== ''
+                ? 'Booking row is marked failed, but no Razorpay failure payload was found.'
+                : 'Marked failed in booking data, but no Razorpay webhook details were stored.';
+            $detail['meta'] = implode(' | ', $latestMeta);
+
+            return $detail;
+        }
+
+        $detail['title'] = $latestEventLabel !== ''
+            ? 'No Razorpay failure payload received for this row.'
+            : 'Waiting for Razorpay webhook details.';
+        $detail['meta'] = implode(' | ', $latestMeta);
+
+        return $detail;
+    }
+}
+
 $hasWebhookLogsTable = false;
 try {
     $tableCheck = $pdo->query("SHOW TABLES LIKE 'razorpay_webhook_logs'");
@@ -120,37 +312,27 @@ $failedStmt = $pdo->prepare("
 $failedStmt->execute();
 $failedAppointmentRows = $failedStmt->fetchAll(PDO::FETCH_ASSOC);
 
-$latestWebhookEventsByOrder = [];
-if ($hasWebhookLogsTable && !empty($pendingRows)) {
-    $orderIds = [];
+$latestWebhookLogsByOrder = [];
+$latestFailedWebhookLogsByOrder = [];
+if ($hasWebhookLogsTable) {
+    $allOrderIds = [];
     foreach ($pendingRows as $row) {
         $orderId = trim((string)($row['razorpay_order_id'] ?? ''));
         if ($orderId !== '') {
-            $orderIds[$orderId] = true;
+            $allOrderIds[$orderId] = true;
+        }
+    }
+    foreach ($failedAppointmentRows as $row) {
+        $orderId = trim((string)($row['razorpay_order_id'] ?? ''));
+        if ($orderId !== '') {
+            $allOrderIds[$orderId] = true;
         }
     }
 
-    if (!empty($orderIds)) {
-        $orderIds = array_keys($orderIds);
-        $placeholders = implode(',', array_fill(0, count($orderIds), '?'));
-        $sql = "
-            SELECT l.razorpay_order_id, l.event_type
-            FROM razorpay_webhook_logs l
-            INNER JOIN (
-                SELECT razorpay_order_id, MAX(id) AS max_id
-                FROM razorpay_webhook_logs
-                WHERE razorpay_order_id IN ($placeholders)
-                GROUP BY razorpay_order_id
-            ) x ON x.max_id = l.id
-        ";
-        $evStmt = $pdo->prepare($sql);
-        $evStmt->execute($orderIds);
-        while ($ev = $evStmt->fetch(PDO::FETCH_ASSOC)) {
-            $oid = trim((string)($ev['razorpay_order_id'] ?? ''));
-            if ($oid !== '') {
-                $latestWebhookEventsByOrder[$oid] = strtolower(trim((string)($ev['event_type'] ?? '')));
-            }
-        }
+    if (!empty($allOrderIds)) {
+        $allOrderIds = array_keys($allOrderIds);
+        $latestWebhookLogsByOrder = vs_failed_appointments_fetch_latest_webhook_logs($pdo, $allOrderIds);
+        $latestFailedWebhookLogsByOrder = vs_failed_appointments_fetch_latest_webhook_logs($pdo, $allOrderIds, ['payment.failed']);
     }
 }
 
@@ -168,13 +350,27 @@ foreach ($pendingRows as $row) {
     $orderId = trim((string)($row['razorpay_order_id'] ?? ''));
     $paymentBadgeClass = 'payment-pending';
     $paymentBadgeText = 'Pending Confirmation';
-    if ($orderId !== '' && isset($latestWebhookEventsByOrder[$orderId]) && $latestWebhookEventsByOrder[$orderId] === 'payment.failed') {
+    $latestWebhookLog = $orderId !== '' && isset($latestWebhookLogsByOrder[$orderId])
+        ? $latestWebhookLogsByOrder[$orderId]
+        : null;
+    $failedWebhookLog = $orderId !== '' && isset($latestFailedWebhookLogsByOrder[$orderId])
+        ? $latestFailedWebhookLogsByOrder[$orderId]
+        : null;
+    $latestEventType = strtolower(trim((string)($latestWebhookLog['event_type'] ?? '')));
+
+    if ($latestEventType === 'payment.failed') {
         $paymentBadgeClass = 'payment-failed';
         $paymentBadgeText = 'Failed';
         $failedCount++;
     } else {
         $pendingCount++;
     }
+
+    $failureDetail = vs_failed_appointments_build_failure_detail(
+        $latestEventType === 'payment.failed' ? $failedWebhookLog : null,
+        $latestWebhookLog,
+        'pending'
+    );
 
     $records[] = [
         'source' => 'pending',
@@ -193,6 +389,8 @@ foreach ($pendingRows as $row) {
         'payment_badge_text' => $paymentBadgeText,
         'service_badge_class' => 'status-default',
         'service_badge_text' => 'Unaccepted',
+        'failure_title' => (string)($failureDetail['title'] ?? ''),
+        'failure_meta' => (string)($failureDetail['meta'] ?? ''),
         'action_kind' => 'delete',
     ];
 }
@@ -203,6 +401,14 @@ foreach ($failedAppointmentRows as $row) {
     $serviceBadgeClass = $serviceStatusRaw !== '' ? 'status-' . strtolower(str_replace(' ', '-', $serviceStatusRaw)) : 'status-default';
     $serviceBadgeText = $serviceStatusRaw !== '' ? $serviceStatusRaw : '-';
     $failedCount++;
+    $orderId = trim((string)($row['razorpay_order_id'] ?? ''));
+    $latestWebhookLog = $orderId !== '' && isset($latestWebhookLogsByOrder[$orderId])
+        ? $latestWebhookLogsByOrder[$orderId]
+        : null;
+    $failedWebhookLog = $orderId !== '' && isset($latestFailedWebhookLogsByOrder[$orderId])
+        ? $latestFailedWebhookLogsByOrder[$orderId]
+        : null;
+    $failureDetail = vs_failed_appointments_build_failure_detail($failedWebhookLog, $latestWebhookLog, 'service_request_failed');
 
     $records[] = [
         'source' => 'service_request_failed',
@@ -221,6 +427,8 @@ foreach ($failedAppointmentRows as $row) {
         'payment_badge_text' => 'Failed',
         'service_badge_class' => $serviceBadgeClass,
         'service_badge_text' => $serviceBadgeText,
+        'failure_title' => (string)($failureDetail['title'] ?? ''),
+        'failure_meta' => (string)($failureDetail['meta'] ?? ''),
         'action_kind' => 'view',
     ];
 }
@@ -378,6 +586,23 @@ h1 {
     font-weight: 600;
     font-size: 0.85em;
 }
+.failure-reason-cell {
+    min-width: 260px;
+    max-width: 360px;
+}
+.failure-reason-title {
+    font-weight: 600;
+    color: #5f1b1b;
+    line-height: 1.45;
+    white-space: normal;
+}
+.failure-reason-meta {
+    margin-top: 6px;
+    font-size: 0.86em;
+    color: #666;
+    line-height: 1.5;
+    white-space: normal;
+}
 </style>
 </head>
 
@@ -440,6 +665,7 @@ h1 {
                     <th>Payment Status</th>
                     <th>Service Status</th>
                     <th>Source</th>
+                    <th>Failure Reason</th>
                     <th>Notes</th>
                     <th>Action</th>
                 </tr>
@@ -506,6 +732,16 @@ h1 {
                         <td><span class="status-badge <?= htmlspecialchars((string)$row['payment_badge_class']) ?>"><?= htmlspecialchars((string)$row['payment_badge_text']) ?></span></td>
                         <td><span class="status-badge <?= htmlspecialchars((string)$row['service_badge_class']) ?>"><?= htmlspecialchars((string)$row['service_badge_text']) ?></span></td>
                         <td><span class="source-badge"><?= htmlspecialchars((string)$row['source_label']) ?></span></td>
+                        <td class="failure-reason-cell">
+                            <?php if (!empty($row['failure_title'])): ?>
+                                <div class="failure-reason-title"><?= htmlspecialchars((string)$row['failure_title']) ?></div>
+                                <?php if (!empty($row['failure_meta'])): ?>
+                                    <div class="failure-reason-meta"><?= htmlspecialchars((string)$row['failure_meta']) ?></div>
+                                <?php endif; ?>
+                            <?php else: ?>
+                                <span style="color:#888;">-</span>
+                            <?php endif; ?>
+                        </td>
                         <td><?= htmlspecialchars((string)($row['notes'] ?? '')) ?></td>
                         <td>
                             <?php if (($row['action_kind'] ?? '') === 'delete'): ?>

@@ -316,7 +316,9 @@ if (!function_exists('vs_dashboard_build')) {
         $canEventsPendingPayments = vs_dashboard_can_view($permissions, 'Events', 'Pending Payments');
         $canEventsWaitlist = vs_dashboard_can_view($permissions, 'Events', 'Waitlist');
         $canEventsCheckin = vs_dashboard_can_view($permissions, 'Events', 'Check-In');
-        $canCrmDb = vs_dashboard_can_view($permissions, 'CRM', 'Customer Database');
+        $canCrmDb =
+            vs_dashboard_can_view($permissions, 'Reception', 'Customer Database')
+            || vs_dashboard_can_view($permissions, 'CRM', 'Customer Database');
         $canCifHome = vs_dashboard_can_view($permissions, 'CIF', 'CIF Home');
         $canCifClients = vs_dashboard_can_view($permissions, 'CIF', 'Clients');
         $canSchedule = vs_dashboard_can_view($permissions, 'Schedule', 'Manage Schedule');

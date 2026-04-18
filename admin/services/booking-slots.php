@@ -4,14 +4,14 @@ admin_enforce_mapped_permission('auto');
 /**
  * admin/services/booking-slots.php
  *
- * Booking Slots Management
+ * Block Slots Management
  * Data source: service_requests table (for reference)
  */
 
 require_once __DIR__ . '/../../config/db.php';
 include __DIR__ . '/../includes/top-menu.php';
 
-$pageTitle = 'Booking Slots | Vishnusudarshana';
+$pageTitle = 'Block Slots | Vishnusudarshana';
 
 ?>
 <!DOCTYPE html>
@@ -37,7 +37,7 @@ h1 { color: #800000; margin-bottom: 18px; }
 </head>
 <body>
 <div class="admin-container">
-    <h1>Booking Slots</h1>
+    <h1>Block Slots</h1>
     <a href="saved-msgs.php" style="background:#007bff;color:#fff;padding:8px 22px;border:none;border-radius:8px;font-weight:600;margin-bottom:18px;float:right;display:inline-block;text-decoration:none;">Saved Msgs</a>
     <?php
     // Fetch saved messages from letterpad_titles where source='msgs'

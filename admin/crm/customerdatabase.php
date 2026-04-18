@@ -3,30 +3,88 @@ require_once (is_file(__DIR__ . '/includes/permissions.php') ? __DIR__ . '/inclu
 admin_enforce_mapped_permission('auto');
 // admin/customers/crm/index.php
 
+if (!function_exists('vs_crm_table_exists')) {
+    function vs_crm_table_exists(PDO $pdo, string $tableName): bool
+    {
+        static $cache = [];
+        $tableName = trim($tableName);
+        if ($tableName === '') {
+            return false;
+        }
+
+        if (array_key_exists($tableName, $cache)) {
+            return $cache[$tableName];
+        }
+
+        try {
+            $stmt = $pdo->prepare('SHOW TABLES LIKE ?');
+            $stmt->execute([$tableName]);
+            $cache[$tableName] = (bool)$stmt->fetchColumn();
+        } catch (Throwable $e) {
+            $cache[$tableName] = false;
+        }
+
+        return $cache[$tableName];
+    }
+}
+
+if (!function_exists('vs_crm_customer_source_labels')) {
+    function vs_crm_customer_source_labels(PDO $pdo): array
+    {
+        $sources = [
+            '`cif_clients`',
+            '`customers`',
+            '`service_requests`',
+            '`event_registrations` + `event_registration_data`',
+        ];
+
+        if (vs_crm_table_exists($pdo, 'token_bookings')) {
+            $sources[] = '`token_bookings`';
+        }
+
+        if (vs_crm_table_exists($pdo, 'visitor_tickets')) {
+            $sources[] = '`visitor_tickets`';
+        }
+
+        if (vs_crm_table_exists($pdo, 'vastu_visits')) {
+            $sources[] = '`vastu_visits` + `vastu_visit_areas`';
+        }
+
+        return $sources;
+    }
+}
+
 if (!function_exists('vs_crm_customer_union_sql')) {
-    function vs_crm_customer_union_sql(): string
+    function vs_crm_customer_union_sql(PDO $pdo): string
     {
         $collation = 'utf8mb4_unicode_ci';
+        $selects = [];
 
-        return "
+        $selects[] = "
             SELECT
                 CONVERT(COALESCE(name, '') USING utf8mb4) COLLATE {$collation} AS name,
                 CONVERT(COALESCE(mobile, '') USING utf8mb4) COLLATE {$collation} AS mobile,
                 CONVERT(COALESCE(address, '') USING utf8mb4) COLLATE {$collation} AS address_city
             FROM cif_clients
-            UNION ALL
+        ";
+
+        $selects[] = "
             SELECT
                 CONVERT(COALESCE(name, '') USING utf8mb4) COLLATE {$collation} AS name,
                 CONVERT(COALESCE(mobile, '') USING utf8mb4) COLLATE {$collation} AS mobile,
                 CONVERT(COALESCE(address, '') USING utf8mb4) COLLATE {$collation} AS address_city
             FROM customers
-            UNION ALL
+        ";
+
+        $selects[] = "
             SELECT
                 CONVERT(COALESCE(customer_name, '') USING utf8mb4) COLLATE {$collation} AS name,
                 CONVERT(COALESCE(mobile, '') USING utf8mb4) COLLATE {$collation} AS mobile,
                 CONVERT(COALESCE(city, '') USING utf8mb4) COLLATE {$collation} AS address_city
             FROM service_requests
-            UNION ALL
+        ";
+
+        $selects[] = "
             SELECT
                 CONVERT(COALESCE(r.name, '') USING utf8mb4) COLLATE {$collation} AS name,
                 CONVERT(COALESCE(r.phone, '') USING utf8mb4) COLLATE {$collation} AS mobile,
@@ -49,6 +107,64 @@ if (!function_exists('vs_crm_customer_union_sql')) {
             ) AS event_meta ON event_meta.registration_id = r.id
             WHERE COALESCE(TRIM(r.phone), '') <> ''
         ";
+
+        if (vs_crm_table_exists($pdo, 'token_bookings')) {
+            $selects[] = "
+                SELECT
+                    CONVERT(COALESCE(tb.name, '') USING utf8mb4) COLLATE {$collation} AS name,
+                    CONVERT(COALESCE(tb.mobile, '') USING utf8mb4) COLLATE {$collation} AS mobile,
+                    CONVERT(COALESCE(tb.location, '') USING utf8mb4) COLLATE {$collation} AS address_city
+                FROM token_bookings tb
+                WHERE COALESCE(TRIM(tb.mobile), '') <> ''
+            ";
+        }
+
+        if (vs_crm_table_exists($pdo, 'visitor_tickets')) {
+            $selects[] = "
+                SELECT
+                    CONVERT(COALESCE(vt.visitor_name, '') USING utf8mb4) COLLATE {$collation} AS name,
+                    CONVERT(COALESCE(vt.contact_number, '') USING utf8mb4) COLLATE {$collation} AS mobile,
+                    CONVERT(COALESCE(vt.address, '') USING utf8mb4) COLLATE {$collation} AS address_city
+                FROM visitor_tickets vt
+                WHERE COALESCE(TRIM(vt.contact_number), '') <> ''
+            ";
+        }
+
+        if (vs_crm_table_exists($pdo, 'vastu_visits')) {
+            $vastuAreaJoin = vs_crm_table_exists($pdo, 'vastu_visit_areas')
+                ? 'LEFT JOIN vastu_visit_areas va ON va.id = vv.area_id'
+                : '';
+            $vastuAreaField = vs_crm_table_exists($pdo, 'vastu_visit_areas')
+                ? "NULLIF(TRIM(COALESCE(va.area_name, '')), '')"
+                : 'NULL';
+
+            $selects[] = "
+                SELECT
+                    CONVERT(COALESCE(vv.customer_name, '') USING utf8mb4) COLLATE {$collation} AS name,
+                    CONVERT(COALESCE(vv.contact_number, '') USING utf8mb4) COLLATE {$collation} AS mobile,
+                    CONVERT(
+                        COALESCE(
+                            NULLIF(
+                                TRIM(
+                                    CONCAT_WS(
+                                        ', ',
+                                        NULLIF(TRIM(COALESCE(vv.address_line1, '')), ''),
+                                        NULLIF(TRIM(COALESCE(vv.landmark, '')), ''),
+                                        {$vastuAreaField}
+                                    )
+                                ),
+                                ''
+                            ),
+                            ''
+                        ) USING utf8mb4
+                    ) COLLATE {$collation} AS address_city
+                FROM vastu_visits vv
+                {$vastuAreaJoin}
+                WHERE COALESCE(TRIM(vv.contact_number), '') <> ''
+            ";
+        }
+
+        return implode("\nUNION ALL\n", $selects);
     }
 }
 
@@ -103,7 +219,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax']) && $_POST['aj
         // Get all customers from unified query
         $sql = "
             SELECT name, mobile
-            FROM (" . vs_crm_customer_union_sql() . ") AS all_customers
+            FROM (" . vs_crm_customer_union_sql($pdo) . ") AS all_customers
             WHERE COALESCE(TRIM(mobile), '') <> ''
         ";
         $stmt = $pdo->query($sql);
@@ -161,7 +277,8 @@ if ($search !== '') {
     $params['q'] = "%$search%";
 }
 
-$customerUnionSql = vs_crm_customer_union_sql();
+$customerUnionSql = vs_crm_customer_union_sql($pdo);
+$customerSourceLabels = vs_crm_customer_source_labels($pdo);
 
 // Build unified query using UNION ALL
 $sql = $customerUnionSql;
@@ -215,6 +332,16 @@ $customers = $stmt->fetchAll();
         .summary-card { flex: 1 1 180px; background: #fffbe7; border-radius: 14px; padding: 16px; text-align: center; box-shadow: 0 2px 8px #e0bebe22; }
         .summary-count { font-size: 2.2em; font-weight: 700; color: #800000; }
         .summary-label { font-size: 1em; color: #444; }
+        .source-note {
+            margin: -8px 0 18px;
+            padding: 12px 14px;
+            background: #fff;
+            border: 1px solid #efdada;
+            border-radius: 10px;
+            color: #6b4a4a;
+            line-height: 1.6;
+            box-shadow: 0 2px 10px #e0bebe14;
+        }
     </style>
 </head>
 <body>
@@ -226,6 +353,9 @@ $customers = $stmt->fetchAll();
             <div class="summary-count"><?= $total_customers ?></div>
             <div class="summary-label">Total Customers</div>
         </div>
+    </div>
+    <div class="source-note">
+        <strong>Currently loaded from:</strong> <?= htmlspecialchars(implode(', ', $customerSourceLabels)) ?>
     </div>
     <form class="filter-bar" method="get" action="">
         <input type="text" name="search" value="<?= htmlspecialchars($search) ?>" placeholder="Search customers...">

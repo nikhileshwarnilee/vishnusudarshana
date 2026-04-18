@@ -57,6 +57,7 @@ $menu = [
             'Closed Visitors Log' => $baseUrl . '/admin/reception/closed-visitors-log.php',
             'Vastu Visits' => $baseUrl . '/admin/reception/vastu-visits.php',
             'Closed Vastu Visits' => $baseUrl . '/admin/reception/closed-vastu-visits.php',
+            'Customer Database' => $baseUrl . '/admin/crm/customerdatabase.php',
         ]
     ],
 
@@ -66,7 +67,7 @@ $menu = [
             'Pending Appointments'   => $baseUrl . '/admin/services/appointments.php',
             'Accepted Appointments'  => $baseUrl . '/admin/services/accepted-appointments.php',
             'Completed Appointments' => $baseUrl . '/admin/services/completed-appointments.php',
-            'Booking Slots'          => $baseUrl . '/admin/services/booking-slots.php',
+               'Block Slots'            => $baseUrl . '/admin/services/booking-slots.php',
                'Failed Appointments'    => $baseUrl . '/admin/services/failed-appointments.php',
         ]
     ],
@@ -133,13 +134,6 @@ $menu = [
         ]
     ],
 
-    'CRM' => [
-        'icon' => '<svg width="20" height="20" fill="none" viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5s-3 1.34-3 3 1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z" fill="#495057"/></svg>',
-        'submenu' => [
-            'Customer Database' => $baseUrl . '/admin/crm/customerdatabase.php',
-        ]
-    ],
-
     'Site Mgt' => [
         'icon' => '<svg width="20" height="20" fill="none" viewBox="0 0 24 24"><path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm-5 14H4v-4h11v4zm0-5H4V9h11v4zm5 5h-4V9h4v9z" fill="#495057"/></svg>',
         'submenu' => [
@@ -199,7 +193,7 @@ $submenuNotificationSourceMap = [
             ['table' => 'service_requests', 'column' => 'created_at', 'where' => "category_slug = 'appointment' AND payment_status IN ('Paid', 'Free') AND service_status = 'Accepted'"],
             ['table' => 'service_requests', 'column' => 'updated_at', 'where' => "category_slug = 'appointment' AND payment_status IN ('Paid', 'Free') AND service_status = 'Accepted'"],
         ],
-        'Booking Slots' => [
+        'Block Slots' => [
             ['table' => 'blocked_appointment_slots', 'column' => 'created_at'],
             ['table' => 'blocked_appointment_slots', 'column' => 'updated_at'],
             ['table' => 'letterpad_titles', 'column' => 'created_at', 'where' => "source = 'msgs'"],
@@ -400,6 +394,9 @@ if (isset($_SESSION['user_id']) && !vs_admin_is_super_admin()) {
     ];
     foreach ($perms->fetchAll(PDO::FETCH_ASSOC) as $p) {
         $allowed[$p['menu']][$p['submenu']] = true;
+        if ((string)$p['menu'] === 'CRM' && (string)$p['submenu'] === 'Customer Database') {
+            $allowed['Reception']['Customer Database'] = true;
+        }
     }
     // Filter $menu
     foreach ($menu as $menuLabel => &$menuItem) {

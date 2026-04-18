@@ -7,6 +7,120 @@ if (session_status() === PHP_SESSION_NONE) {
         session_start();
     }
 }
+require_once __DIR__ . '/../../config/db.php';
+
+if (!function_exists('vs_service_requests_restore_failed_row')) {
+    function vs_service_requests_restore_failed_row(PDO $pdo, int $serviceRequestId): bool
+    {
+        if ($serviceRequestId <= 0) {
+            return false;
+        }
+
+        $stmt = $pdo->prepare("
+            UPDATE service_requests
+            SET payment_status = 'Paid',
+                service_status = 'Received',
+                updated_at = NOW()
+            WHERE id = ?
+              AND category_slug != 'appointment'
+              AND LOWER(TRIM(COALESCE(payment_status, ''))) = 'failed'
+        ");
+        $stmt->execute([$serviceRequestId]);
+        if ($stmt->rowCount() <= 0) {
+            return false;
+        }
+
+        try {
+            $trackingStmt = $pdo->prepare('SELECT tracking_id FROM service_requests WHERE id = ? LIMIT 1');
+            $trackingStmt->execute([$serviceRequestId]);
+            $trackingId = (string)($trackingStmt->fetchColumn() ?: '');
+            if ($trackingId !== '') {
+                $updateTrackingStmt = $pdo->prepare('UPDATE tracking SET service_status = ? WHERE tracking_id = ?');
+                $updateTrackingStmt->execute(['Received', $trackingId]);
+            }
+        } catch (Throwable $e) {
+            error_log('Unable to sync tracking while restoring failed service request id=' . $serviceRequestId . ': ' . $e->getMessage());
+        }
+
+        return true;
+    }
+}
+
+if (!function_exists('vs_service_requests_category_label')) {
+    function vs_service_requests_category_label(string $categorySlug): string
+    {
+        $categorySlug = trim($categorySlug);
+        if ($categorySlug === '') {
+            return '-';
+        }
+
+        $categoryMap = [
+            'birth-child' => 'Birth & Child Services',
+            'marriage-matching' => 'Marriage & Matching',
+            'astrology-consultation' => 'Astrology Consultation',
+            'muhurat-event' => 'Muhurat & Event Guidance',
+            'pooja-vastu-enquiry' => 'Pooja, Ritual & Vastu Enquiry',
+        ];
+
+        return $categoryMap[$categorySlug] ?? ucwords(str_replace('-', ' ', $categorySlug));
+    }
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && (string)($_POST['action'] ?? '') === 'restore_failed_service_request') {
+    $failedServiceRequestId = (int)($_POST['failed_service_request_id'] ?? 0);
+    $restored = vs_service_requests_restore_failed_row($pdo, $failedServiceRequestId);
+    header('Location: service-request-list.php?failed_action=' . ($restored ? 'restored' : 'not_restored'));
+    exit;
+}
+
+$todayCount = (int)$pdo->query(
+    "SELECT COUNT(*) FROM service_requests WHERE DATE(created_at) = CURDATE() AND category_slug != 'appointment'"
+)->fetchColumn();
+$receivedCount = (int)$pdo->query(
+    "SELECT COUNT(*) FROM service_requests WHERE service_status = 'Received' AND category_slug != 'appointment'"
+)->fetchColumn();
+$inProgressCount = (int)$pdo->query(
+    "SELECT COUNT(*) FROM service_requests WHERE service_status = 'In Progress' AND category_slug != 'appointment'"
+)->fetchColumn();
+$completedCount = (int)$pdo->query(
+    "SELECT COUNT(*) FROM service_requests WHERE service_status = 'Completed' AND category_slug != 'appointment'"
+)->fetchColumn();
+$onlineCount = (int)$pdo->query("SELECT COUNT(*) FROM service_requests WHERE tracking_id LIKE 'VDSK%' AND category_slug != 'appointment'")->fetchColumn();
+$offlineCount = (int)$pdo->query("SELECT COUNT(*) FROM service_requests WHERE tracking_id LIKE 'SR%' AND category_slug != 'appointment'")->fetchColumn();
+
+$failedPendingStmt = $pdo->prepare("
+    SELECT COUNT(*)
+    FROM pending_payments p
+    LEFT JOIN service_requests s ON s.razorpay_order_id = p.razorpay_order_id
+    WHERE p.category != 'appointment'
+      AND s.id IS NULL
+");
+$failedPendingStmt->execute();
+$failedPendingServiceRequestsCount = (int)$failedPendingStmt->fetchColumn();
+
+$failedServiceRowsStmt = $pdo->prepare("
+    SELECT COUNT(*)
+    FROM service_requests
+    WHERE category_slug != 'appointment'
+      AND LOWER(TRIM(COALESCE(payment_status, ''))) = 'failed'
+");
+$failedServiceRowsStmt->execute();
+$failedServiceRequestRowsCount = (int)$failedServiceRowsStmt->fetchColumn();
+
+$failedServiceRequestsCount = $failedPendingServiceRequestsCount + $failedServiceRequestRowsCount;
+
+$recentFailedStmt = $pdo->prepare("
+    SELECT id, tracking_id, customer_name, mobile, category_slug, payment_status, service_status, form_data, selected_products, created_at
+    FROM service_requests
+    WHERE category_slug != 'appointment'
+      AND LOWER(TRIM(COALESCE(payment_status, ''))) = 'failed'
+    ORDER BY created_at DESC, id DESC
+    LIMIT 5
+");
+$recentFailedStmt->execute();
+$recentFailedServiceRows = $recentFailedStmt->fetchAll(PDO::FETCH_ASSOC);
+
+$failedAction = trim((string)($_GET['failed_action'] ?? ''));
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -128,6 +242,57 @@ if (session_status() === PHP_SESSION_NONE) {
         color: #444;
         letter-spacing: 0.2px;
     }
+    .summary-card-link {
+        padding: 0;
+        overflow: hidden;
+    }
+    .summary-card-anchor {
+        display: block;
+        padding: 18px 14px 14px;
+        color: inherit;
+        text-decoration: none;
+    }
+    .summary-card-alert {
+        background: #fff2f2;
+        border: 1px solid #f0c7c7;
+    }
+    .summary-card-hint {
+        margin-top: 6px;
+        color: #8f5555;
+        font-size: 0.84em;
+        line-height: 1.4;
+    }
+    .failed-preview {
+        background: #fff;
+        border: 1px solid #f0d7d7;
+        border-radius: 14px;
+        box-shadow: 0 2px 12px #e0bebe22;
+        margin: 22px 0 28px;
+        padding: 18px;
+    }
+    .failed-preview-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 16px;
+        flex-wrap: wrap;
+        margin-bottom: 14px;
+    }
+    .failed-preview-title {
+        margin: 0;
+        color: #800000;
+        font-size: 1.15em;
+    }
+    .failed-preview-subtitle {
+        margin: 6px 0 0;
+        color: #6b4a4a;
+        line-height: 1.5;
+    }
+    .failed-preview-empty {
+        margin: 0;
+        color: #6b4a4a;
+        line-height: 1.6;
+    }
     .service-table {
         width: 100%;
         border-collapse: collapse;
@@ -191,6 +356,35 @@ if (session_status() === PHP_SESSION_NONE) {
     }
     .view-btn:hover {
         background: #a00000;
+    }
+    .preview-actions {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+    .mini-action-form {
+        display: inline;
+        margin: 0;
+    }
+    .mini-action-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 34px;
+        padding: 0 12px;
+        border-radius: 8px;
+        border: none;
+        cursor: pointer;
+        font-weight: 600;
+        font-size: 0.88em;
+    }
+    .mini-action-btn.restore {
+        background: #fff3cd;
+        color: #7a4a00;
+        border: 1px solid #efcf86;
+    }
+    .mini-action-btn.restore:hover {
+        background: #ffe49a;
     }
     .no-data {
         text-align: center;
@@ -272,27 +466,18 @@ if (session_status() === PHP_SESSION_NONE) {
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 </head>
 <body>
-<?php
-require_once __DIR__ . '/../../config/db.php';
-// Dynamic summary counts (same as index.php)
-$todayCount = $pdo->query(
-    "SELECT COUNT(*) FROM service_requests WHERE DATE(created_at) = CURDATE() AND category_slug != 'appointment'"
-)->fetchColumn();
-$receivedCount = $pdo->query(
-    "SELECT COUNT(*) FROM service_requests WHERE service_status = 'Received' AND category_slug != 'appointment'"
-)->fetchColumn();
-$inProgressCount = $pdo->query(
-    "SELECT COUNT(*) FROM service_requests WHERE service_status = 'In Progress' AND category_slug != 'appointment'"
-)->fetchColumn();
-$completedCount = $pdo->query(
-    "SELECT COUNT(*) FROM service_requests WHERE service_status = 'Completed' AND category_slug != 'appointment'"
-)->fetchColumn();
-$onlineCount = $pdo->query("SELECT COUNT(*) FROM service_requests WHERE tracking_id LIKE 'VDSK%' AND category_slug != 'appointment'")->fetchColumn();
-$offlineCount = $pdo->query("SELECT COUNT(*) FROM service_requests WHERE tracking_id LIKE 'SR%' AND category_slug != 'appointment'")->fetchColumn();
-include __DIR__ . '/../includes/top-menu.php';
-?>
+<?php include __DIR__ . '/../includes/top-menu.php'; ?>
 <div class="admin-container">
     <h1>Service Request List</h1>
+    <?php if ($failedAction === 'restored'): ?>
+        <div style="margin:0 0 16px;padding:12px 14px;border-radius:10px;background:#e8f8ec;border:1px solid #b9e0c1;color:#1f6f2c;font-weight:600;">
+            Failed service request moved back into Pending Service Requests.
+        </div>
+    <?php elseif ($failedAction === 'not_restored'): ?>
+        <div style="margin:0 0 16px;padding:12px 14px;border-radius:10px;background:#fff1f1;border:1px solid #e9b7b7;color:#9f2525;font-weight:600;">
+            Unable to move that failed service request back to pending. It may already have been updated.
+        </div>
+    <?php endif; ?>
     <form class="filter-bar" method="get" style="margin-bottom:22px;">
         <label>Request Type</label>
         <select name="request_type" id="requestTypeSelect">
@@ -356,7 +541,87 @@ include __DIR__ . '/../includes/top-menu.php';
             <div class="summary-count"><?= $completedCount ?></div>
             <div class="summary-label">Completed</div>
         </div>
+        <div class="summary-card summary-card-link<?= $failedServiceRequestsCount > 0 ? ' summary-card-alert' : '' ?>">
+            <a href="failed-service-requests.php" class="summary-card-anchor">
+                <div class="summary-count"><?= $failedServiceRequestsCount ?></div>
+                <div class="summary-label">Failed</div>
+                <div class="summary-card-hint">
+                    <?= $failedServiceRequestRowsCount ?> failed service row<?= $failedServiceRequestRowsCount === 1 ? '' : 's' ?>, <?= $failedPendingServiceRequestsCount ?> unresolved payment row<?= $failedPendingServiceRequestsCount === 1 ? '' : 's' ?>
+                </div>
+            </a>
+        </div>
     </div>
+    <?php if ($failedServiceRequestsCount > 0): ?>
+        <section class="failed-preview">
+            <div class="failed-preview-header">
+                <div>
+                    <h2 class="failed-preview-title">Failed Service Request Visibility</h2>
+                    <p class="failed-preview-subtitle">
+                        This queue tracks both unresolved online non-appointment payment rows and service requests already created in <code>service_requests</code> but marked failed later.
+                    </p>
+                </div>
+                <a href="failed-service-requests.php" class="view-btn">Open Failed Queue</a>
+            </div>
+            <?php if (empty($recentFailedServiceRows)): ?>
+                <p class="failed-preview-empty">
+                    No non-appointment service rows are currently marked failed. The failed queue still includes <?= $failedPendingServiceRequestsCount ?> unresolved online payment row<?= $failedPendingServiceRequestsCount === 1 ? '' : 's' ?>.
+                </p>
+            <?php else: ?>
+                <table class="service-table">
+                    <thead>
+                        <tr>
+                            <th>View</th>
+                            <th>Actions</th>
+                            <th>Tracking ID</th>
+                            <th>Customer Name</th>
+                            <th>Mobile</th>
+                            <th>Category</th>
+                            <th>Payment Status</th>
+                            <th>Service Status</th>
+                            <th>Created Date</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($recentFailedServiceRows as $failedServiceRow): ?>
+                            <?php
+                                $failedFormData = json_decode($failedServiceRow['form_data'] ?? '', true) ?? [];
+                                $categoryDisplay = vs_service_requests_category_label((string)($failedServiceRow['category_slug'] ?? ''));
+                                $createdAtDisplay = '';
+                                if (!empty($failedServiceRow['created_at'])) {
+                                    $createdAtObject = new DateTime((string)$failedServiceRow['created_at']);
+                                    $createdAtDisplay = $createdAtObject->format('d-M-Y h:i A');
+                                }
+                                $serviceStatusRaw = trim((string)($failedServiceRow['service_status'] ?? ''));
+                                $serviceStatusClass = $serviceStatusRaw !== '' ? 'status-' . strtolower(str_replace(' ', '-', $serviceStatusRaw)) : 'status-default';
+                                $serviceStatusText = $serviceStatusRaw !== '' ? $serviceStatusRaw : '-';
+                            ?>
+                            <tr>
+                                <td>
+                                    <a href="view.php?id=<?= (int)$failedServiceRow['id'] ?>" class="view-btn">View</a>
+                                </td>
+                                <td>
+                                    <div class="preview-actions">
+                                        <form method="POST" class="mini-action-form" onsubmit="return confirm('Move this failed service request back into Pending Service Requests? Use this only when payment actually succeeded and the failed state is incorrect.');">
+                                            <input type="hidden" name="action" value="restore_failed_service_request">
+                                            <input type="hidden" name="failed_service_request_id" value="<?= (int)$failedServiceRow['id'] ?>">
+                                            <button type="submit" class="mini-action-btn restore">Move To Pending</button>
+                                        </form>
+                                    </div>
+                                </td>
+                                <td><?= htmlspecialchars((string)($failedServiceRow['tracking_id'] ?? '')) ?></td>
+                                <td><?= htmlspecialchars((string)($failedServiceRow['customer_name'] ?? '')) ?></td>
+                                <td><?= htmlspecialchars(vs_format_mobile_from_form_data((string)($failedServiceRow['mobile'] ?? ''), $failedFormData)) ?></td>
+                                <td><?= htmlspecialchars($categoryDisplay) ?></td>
+                                <td><span class="status-badge payment-failed">Failed</span></td>
+                                <td><span class="status-badge <?= htmlspecialchars($serviceStatusClass) ?>"><?= htmlspecialchars($serviceStatusText) ?></span></td>
+                                <td><?= htmlspecialchars($createdAtDisplay) ?></td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            <?php endif; ?>
+        </section>
+    <?php endif; ?>
     <?php
     // Pagination logic
     $perPage = 10;
