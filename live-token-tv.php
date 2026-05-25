@@ -57,9 +57,9 @@ body {
 
 .tv-logo {
 	display: block;
-	width: clamp(86px, 9vw, 140px);
+	width: clamp(150px, 15vw, 230px);
 	height: auto;
-	margin: 0 auto 16px;
+	margin: 0 auto 24px;
 }
 
 .live-token-title {
@@ -201,7 +201,7 @@ body {
 
 .calendar-card {
 	max-width: 1020px;
-	transform: scale(1.1);
+	transform: scale(1.5);
 	transform-origin: center;
 }
 
