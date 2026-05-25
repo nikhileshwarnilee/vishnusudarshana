@@ -19,12 +19,15 @@ $receiptLocationLabel = $locationLabel;
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#6d0014">
     <title>&#x92A;&#x94D;&#x930;&#x924;&#x94D;&#x92F;&#x915;&#x94D;&#x937; &#x915;&#x93E;&#x930;&#x94D;&#x92F;&#x93E;&#x932;&#x92F; &#x92D;&#x947;&#x91F;&#x940;&#x938;&#x93E;&#x920;&#x940; &#x91F;&#x94B;&#x915;&#x928; &#x92A;&#x94D;&#x930;&#x923;&#x93E;&#x932;&#x940;</title>
+    <link rel="manifest" href="manifest-tablet-token.json?v=<?= (int) @filemtime(__DIR__ . '/manifest-tablet-token.json'); ?>">
+    <link rel="apple-touch-icon" href="assets/images/logo/logo-iconpwa192.png">
     <link rel="stylesheet" href="css/tablet-token.css?v=20260307v">
 </head>
 <body>
     <main class="tablet-app" data-location="<?= htmlspecialchars($location, ENT_QUOTES, 'UTF-8'); ?>">
+        <button id="kioskFullscreenButton" class="kiosk-fullscreen-toggle" type="button" aria-label="Toggle fullscreen" title="Toggle fullscreen">&#x26F6;</button>
         <section class="kiosk-panel info-panel" aria-label="&#x92E;&#x93E;&#x939;&#x93F;&#x924;&#x940; &#x935;&#x93F;&#x92D;&#x93E;&#x917;">
-            <img class="brand-logo" src="assets/images/logo/logomain.png" alt="Vishnusudarshana Logo">
+            <img id="brandLogo" class="brand-logo" src="assets/images/logo/logomain.png" alt="Vishnusudarshana Logo" title="Toggle fullscreen">
 
             <h1 class="info-title">&#x92A;&#x94D;&#x930;&#x924;&#x94D;&#x92F;&#x915;&#x94D;&#x937; &#x915;&#x93E;&#x930;&#x94D;&#x92F;&#x93E;&#x932;&#x92F; &#x92D;&#x947;&#x91F;&#x940;&#x938;&#x93E;&#x920;&#x940; &#x91F;&#x94B;&#x915;&#x928; &#x92A;&#x94D;&#x930;&#x923;&#x93E;&#x932;&#x940;</h1>
 
@@ -173,6 +176,19 @@ $receiptLocationLabel = $locationLabel;
             </div>
         </section>
     </main>
+
+    <div id="pwaInstallPrompt" class="pwa-install-prompt hidden" role="dialog" aria-live="polite" aria-label="Install app">
+        <div class="pwa-install-card">
+            <div>
+                <p class="pwa-install-title">Install Tablet App</p>
+                <p id="pwaInstallText" class="pwa-install-text">Install this page on the tablet for full-screen kiosk use.</p>
+            </div>
+            <div class="pwa-install-actions">
+                <button id="pwaInstallButton" class="pwa-install-btn" type="button">Install</button>
+                <button id="pwaInstallLaterButton" class="pwa-install-later" type="button">Later</button>
+            </div>
+        </div>
+    </div>
 
     <script charset="UTF-8" src="js/announcement-helper.js?v=<?= (int) @filemtime(__DIR__ . '/js/announcement-helper.js'); ?>"></script>
     <script charset="UTF-8" src="js/tablet-token.js?v=<?= (int) @filemtime(__DIR__ . '/js/tablet-token.js'); ?>"></script>

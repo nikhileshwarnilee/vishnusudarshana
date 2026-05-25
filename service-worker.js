@@ -8,8 +8,8 @@ function appPath(path) {
 
 const CACHE_VERSION = 'vishnusudarshana-pwa-v4';
 const PRECACHE_ASSETS = [
-  appPath('/assets/images/logo/icon-iconpwa192.png'),
-  appPath('/assets/images/logo/icon-iconpwa512.png')
+  appPath('/assets/images/logo/logo-iconpwa192.png'),
+  appPath('/assets/images/logo/logo-iconpwa512.png')
 ];
 
 self.addEventListener('install', (event) => {

@@ -1,0 +1,22 @@
+{
+  "name": "Vishnusudarshana Token Kiosk",
+  "short_name": "Token Kiosk",
+  "start_url": "/tablet-token.php",
+  "scope": "/",
+  "display": "fullscreen",
+  "background_color": "#fff8e9",
+  "theme_color": "#6d0014",
+  "description": "Tablet token kiosk for Vishnusudarshana",
+  "icons": [
+    {
+      "src": "/assets/images/logo/logo-iconpwa192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/assets/images/logo/logo-iconpwa512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

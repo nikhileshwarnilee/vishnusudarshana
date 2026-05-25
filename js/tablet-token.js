@@ -52,6 +52,12 @@
     var remainingTokensCard = document.getElementById('remainingTokensCard');
     var remainingTokensCount = document.getElementById('remainingTokensCount');
     var remainingTokensMeta = document.getElementById('remainingTokensMeta');
+    var brandLogo = document.getElementById('brandLogo');
+    var fullscreenButton = document.getElementById('kioskFullscreenButton');
+    var pwaInstallPrompt = document.getElementById('pwaInstallPrompt');
+    var pwaInstallButton = document.getElementById('pwaInstallButton');
+    var pwaInstallLaterButton = document.getElementById('pwaInstallLaterButton');
+    var pwaInstallText = document.getElementById('pwaInstallText');
 
     if (!entrySection || !keypad || !phoneDisplay || !getTokenButton || !printerStage || !printingTicket) {
         return;
@@ -69,6 +75,7 @@
     var availabilityRefreshInFlight = false;
     var announcementLanguage = 'marathi';
     var settingsRefreshIntervalId = null;
+    var deferredPwaInstallPrompt = null;
 
     var audioContext = null;
     var printerFallbackIntervalId = null;
@@ -573,6 +580,127 @@
         var notesHeight = receipt.notes.length * 63;
         var footerHeight = receipt.footerBookingTime ? 29 : 0;
         return Math.max(884, baseHeight + estimatedHeight + rowsHeight + notesHeight + footerHeight);
+    }
+
+    function isPwaInstalled() {
+        return window.matchMedia('(display-mode: standalone)').matches ||
+            window.matchMedia('(display-mode: fullscreen)').matches ||
+            window.navigator.standalone === true;
+    }
+
+    function setPwaPromptVisible(isVisible) {
+        if (!pwaInstallPrompt) {
+            return;
+        }
+        pwaInstallPrompt.classList.toggle('hidden', !isVisible || isPwaInstalled());
+    }
+
+    function showPwaInstallPrompt() {
+        if (isPwaInstalled()) {
+            setPwaPromptVisible(false);
+            return;
+        }
+        if (pwaInstallText && !deferredPwaInstallPrompt) {
+            pwaInstallText.textContent = 'Use browser menu > Install app / Add to Home Screen for full-screen kiosk use.';
+        }
+        setPwaPromptVisible(true);
+    }
+
+    function setupPwaInstallPrompt() {
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('service-worker.js').catch(function () {
+                // Ignore registration errors; install prompt fallback still helps.
+            });
+        }
+
+        window.addEventListener('beforeinstallprompt', function (event) {
+            event.preventDefault();
+            deferredPwaInstallPrompt = event;
+            if (pwaInstallText) {
+                pwaInstallText.textContent = 'Install this page on the tablet for full-screen kiosk use.';
+            }
+            showPwaInstallPrompt();
+        });
+
+        window.addEventListener('appinstalled', function () {
+            deferredPwaInstallPrompt = null;
+            setPwaPromptVisible(false);
+        });
+
+        if (pwaInstallButton) {
+            pwaInstallButton.addEventListener('click', async function () {
+                if (deferredPwaInstallPrompt) {
+                    deferredPwaInstallPrompt.prompt();
+                    try {
+                        await deferredPwaInstallPrompt.userChoice;
+                    } catch (error) {
+                        // Ignore prompt outcome errors.
+                    }
+                    deferredPwaInstallPrompt = null;
+                    if (isPwaInstalled()) {
+                        setPwaPromptVisible(false);
+                    } else {
+                        showPwaInstallPrompt();
+                    }
+                    return;
+                }
+                showPwaInstallPrompt();
+            });
+        }
+
+        if (pwaInstallLaterButton) {
+            pwaInstallLaterButton.addEventListener('click', function () {
+                setPwaPromptVisible(false);
+            });
+        }
+
+        window.setTimeout(showPwaInstallPrompt, 900);
+    }
+
+    function isFullscreenActive() {
+        return !!(document.fullscreenElement || document.webkitFullscreenElement);
+    }
+
+    function updateFullscreenButton() {
+        if (!fullscreenButton) {
+            return;
+        }
+        var active = isFullscreenActive();
+        fullscreenButton.textContent = active ? '\u2715' : '\u26F6';
+        fullscreenButton.title = active ? 'Exit fullscreen' : 'Toggle fullscreen';
+        fullscreenButton.setAttribute('aria-label', fullscreenButton.title);
+    }
+
+    function toggleFullscreen() {
+        var target = document.documentElement;
+        try {
+            if (isFullscreenActive()) {
+                var exit = document.exitFullscreen || document.webkitExitFullscreen;
+                if (exit) {
+                    exit.call(document);
+                }
+            } else {
+                var request = target.requestFullscreen || target.webkitRequestFullscreen;
+                if (request) {
+                    request.call(target);
+                }
+            }
+        } catch (error) {
+            // Fullscreen may be blocked by the browser.
+        }
+        window.setTimeout(updateFullscreenButton, 250);
+    }
+
+    function setupFullscreenToggle() {
+        if (brandLogo) {
+            brandLogo.addEventListener('click', toggleFullscreen);
+        }
+        if (fullscreenButton) {
+            fullscreenButton.addEventListener('click', toggleFullscreen);
+        }
+        document.addEventListener('fullscreenchange', updateFullscreenButton);
+        document.addEventListener('webkitfullscreenchange', updateFullscreenButton);
+        updateFullscreenButton();
     }
 
     function loadImageForRawBt(src) {
@@ -1825,6 +1953,8 @@
     resetPrintedTicketContent();
     updatePhoneDisplay();
     updateGetTokenButton();
+    setupFullscreenToggle();
+    setupPwaInstallPrompt();
     loadAnnouncementLanguage();
     startSettingsRefreshLoop();
     restoreCooldown();
