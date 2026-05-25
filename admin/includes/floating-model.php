@@ -300,6 +300,8 @@ $vsTokenWidgetCanDelete = $vsFloatingUserId > 0
     let dragState = null;
     let currentTokens = [];
     let currentTokenIndex = 0;
+    const minimizedRightPx = 32;
+    const minimizedBottomPx = 104;
 
     function readState() {
         try {
@@ -337,6 +339,30 @@ $vsTokenWidgetCanDelete = $vsFloatingUserId > 0
             widget.classList.add('collapsed');
             toggle.textContent = '+';
             toggle.title = 'Expand';
+            snapCollapsedToCorner();
+        }
+    }
+
+    function snapCollapsedToCorner() {
+        widget.style.left = 'auto';
+        widget.style.top = 'auto';
+        widget.style.right = minimizedRightPx + 'px';
+        widget.style.bottom = minimizedBottomPx + 'px';
+    }
+
+    function restoreExpandedPosition() {
+        const state = readState();
+        if (typeof state.left === 'number' && typeof state.top === 'number') {
+            const pos = clampPosition(state.left, state.top);
+            widget.style.left = pos.left + 'px';
+            widget.style.top = pos.top + 'px';
+            widget.style.right = 'auto';
+            widget.style.bottom = 'auto';
+        } else {
+            widget.style.left = 'auto';
+            widget.style.top = 'auto';
+            widget.style.right = '28px';
+            widget.style.bottom = '112px';
         }
     }
 
@@ -552,6 +578,11 @@ $vsTokenWidgetCanDelete = $vsFloatingUserId > 0
         widget.classList.toggle('collapsed', collapsed);
         toggle.textContent = collapsed ? '+' : '-';
         toggle.title = collapsed ? 'Expand' : 'Minimize';
+        if (collapsed) {
+            snapCollapsedToCorner();
+        } else {
+            restoreExpandedPosition();
+        }
         saveState({ collapsed: collapsed });
     });
 
@@ -592,6 +623,10 @@ $vsTokenWidgetCanDelete = $vsFloatingUserId > 0
     });
 
     window.addEventListener('resize', function () {
+        if (widget.classList.contains('collapsed')) {
+            snapCollapsedToCorner();
+            return;
+        }
         const rect = widget.getBoundingClientRect();
         const pos = clampPosition(rect.left, rect.top);
         widget.style.left = pos.left + 'px';
