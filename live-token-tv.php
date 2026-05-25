@@ -41,7 +41,7 @@ body {
 
 .live-token-wrap {
 	background: radial-gradient(1200px 600px at 10% 10%, #fffdf1 0%, #fff3c9 45%, #f7e6b8 100%);
-	padding: 24px 12px 36px;
+	padding: 36px 18px 54px;
 	min-height: 100vh;
 	display: flex;
 	align-items: center;
@@ -50,7 +50,7 @@ body {
 }
 
 .live-token-shell {
-	max-width: 1200px;
+	max-width: 1800px;
 	width: 100%;
 	margin: 0 auto;
 }
@@ -64,38 +64,39 @@ body {
 
 .live-token-title {
 	font-family: 'Marcellus', serif;
-	font-size: 2.1rem;
+	font-size: 3.15rem;
 	color: var(--maroon);
 	text-align: center;
-	margin: 0 0 10px;
+	margin: 0 0 15px;
 }
 
 .live-token-subtitle {
 	font-family: 'Marcellus', sans-serif;
 	text-align: center;
 	color: #6b0000;
-	margin: 0 0 28px;
+	margin: 0 0 42px;
+	font-size: 1.5rem;
 }
 
 .cards-row {
 	display: grid;
-	grid-template-columns: minmax(260px, 360px);
-	gap: 22px;
+	grid-template-columns: minmax(390px, 540px);
+	gap: 33px;
 	justify-content: center;
 }
 
 .cards-row.two-cards {
-	grid-template-columns: repeat(2, minmax(260px, 360px));
+	grid-template-columns: repeat(2, minmax(390px, 540px));
 }
 
 .calendar-card {
 	background: #fffef6;
-	border-radius: 18px;
+	border-radius: 27px;
 	box-shadow: var(--shadow);
 	overflow: hidden;
 	position: relative;
 	border: 1px solid var(--gold);
-	max-width: 360px;
+	max-width: 540px;
 	width: 100%;
 	justify-self: center;
 }
@@ -106,12 +107,12 @@ body {
 	top: 0;
 	left: 0;
 	right: 0;
-	height: 8px;
+	height: 12px;
 	background: linear-gradient(90deg, var(--maroon), var(--gold-deep));
 }
 
 .calendar-top {
-	padding: 18px 18px 8px;
+	padding: 27px 27px 12px;
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
@@ -119,23 +120,23 @@ body {
 
 .calendar-city {
 	font-family: 'Marcellus', serif;
-	font-size: 1.2rem;
+	font-size: 1.8rem;
 	color: var(--maroon);
 }
 
 .calendar-date {
 	font-family: 'Marcellus', sans-serif;
-	font-size: 0.85rem;
+	font-size: 1.275rem;
 	color: #7a4d4d;
 }
 
 .flip-window {
-	padding: 0 18px 14px;
+	padding: 0 27px 21px;
 }
 
 .flip-stack {
 	position: relative;
-	height: 68px;
+	height: 102px;
 	perspective: 800px;
 }
 
@@ -156,13 +157,13 @@ body {
 	backface-visibility: hidden;
 	display: grid;
 	place-items: center;
-	border-radius: 12px;
+	border-radius: 18px;
 	background: var(--cream);
 	border: 1px solid var(--gold);
 	font-family: 'Marcellus', serif;
 	font-weight: 700;
 	color: var(--maroon);
-	font-size: 1.5rem;
+	font-size: 2.25rem;
 	letter-spacing: 1px;
 }
 
@@ -171,38 +172,36 @@ body {
 }
 
 .token-meta {
-	padding: 6px 18px 18px;
+	padding: 9px 27px 27px;
 	display: grid;
 	grid-template-columns: repeat(3, 1fr);
-	gap: 10px;
+	gap: 15px;
 	font-family: 'Marcellus', serif;
 }
 
 .meta-box {
 	background: #fff7e0;
 	border: 1px solid var(--gold);
-	border-radius: 10px;
-	padding: 10px;
+	border-radius: 15px;
+	padding: 15px;
 	text-align: center;
 }
 
 .meta-label {
-	font-size: 0.75rem;
+	font-size: 1.125rem;
 	color: #7a4d4d;
 	text-transform: uppercase;
 	letter-spacing: 0.6px;
 }
 
 .meta-value {
-	font-size: 1.1rem;
+	font-size: 1.65rem;
 	color: var(--maroon-dark);
 	font-weight: 700;
 }
 
 .calendar-card {
-	max-width: 1020px;
-	transform: scale(1.5);
-	transform-origin: center;
+	max-width: 540px;
 }
 
 .calendar-card[data-hidden="true"] {
