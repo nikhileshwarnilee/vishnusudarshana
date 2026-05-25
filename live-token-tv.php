@@ -57,9 +57,9 @@ body {
 
 .tv-logo {
 	display: block;
-	width: clamp(150px, 15vw, 230px);
+	width: clamp(220px, 24vw, 340px);
 	height: auto;
-	margin: 0 auto 24px;
+	margin: 0 auto 30px;
 }
 
 .live-token-title {
