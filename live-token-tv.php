@@ -309,7 +309,6 @@ const LIVE_TOKEN_REFRESH_MS = 1000;
 const VISIBILITY_REFRESH_MS = 10000;
 const SETTINGS_REFRESH_MS = 30000;
 const CALL_ANNOUNCEMENT_REPEAT_MS = 9000;
-const CALL_BELL_URL = 'assets/sounds/beep.mp3';
 const urlParams = new URLSearchParams(window.location.search);
 const fullscreenCity = urlParams.get('fullscreen') || urlParams.get('city');
 let announcementLanguage = 'marathi';
@@ -457,22 +456,43 @@ function playCallBell() {
 	}
 	return new Promise(resolve => {
 		try {
-			const audio = new Audio(CALL_BELL_URL);
-			audio.preload = 'auto';
-			audio.currentTime = 0;
-			let settled = false;
-			const finish = () => {
-				if (settled) return;
-				settled = true;
+			const AudioContext = window.AudioContext || window.webkitAudioContext;
+			if (!AudioContext) {
 				resolve();
-			};
-			audio.onended = finish;
-			audio.onerror = finish;
-			const playPromise = audio.play();
-			if (playPromise && typeof playPromise.catch === 'function') {
-				playPromise.catch(finish);
+				return;
 			}
-			window.setTimeout(finish, 1200);
+
+			const audioContext = new AudioContext();
+			const now = audioContext.currentTime;
+			const masterGain = audioContext.createGain();
+			masterGain.gain.setValueAtTime(0.0001, now);
+			masterGain.gain.exponentialRampToValueAtTime(0.55, now + 0.018);
+			masterGain.gain.exponentialRampToValueAtTime(0.0001, now + 2.4);
+			masterGain.connect(audioContext.destination);
+
+			[
+				{ frequency: 660, gain: 0.42 },
+				{ frequency: 990, gain: 0.24 },
+				{ frequency: 1320, gain: 0.16 },
+				{ frequency: 1980, gain: 0.08 }
+			].forEach(partial => {
+				const osc = audioContext.createOscillator();
+				const gain = audioContext.createGain();
+				osc.type = 'sine';
+				osc.frequency.setValueAtTime(partial.frequency, now);
+				osc.frequency.exponentialRampToValueAtTime(partial.frequency * 0.985, now + 2.2);
+				gain.gain.setValueAtTime(partial.gain, now);
+				gain.gain.exponentialRampToValueAtTime(0.0001, now + 2.35);
+				osc.connect(gain);
+				gain.connect(masterGain);
+				osc.start(now);
+				osc.stop(now + 2.45);
+			});
+
+			window.setTimeout(() => {
+				audioContext.close().catch(() => {});
+				resolve();
+			}, 2500);
 		} catch (err) {
 			resolve();
 		}
