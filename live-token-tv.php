@@ -309,6 +309,7 @@ const LIVE_TOKEN_REFRESH_MS = 1000;
 const VISIBILITY_REFRESH_MS = 10000;
 const SETTINGS_REFRESH_MS = 30000;
 const CALL_ANNOUNCEMENT_REPEAT_MS = 9000;
+const CALL_BELL_URL = 'assets/sounds/beep.mp3';
 const urlParams = new URLSearchParams(window.location.search);
 const fullscreenCity = urlParams.get('fullscreen') || urlParams.get('city');
 let announcementLanguage = 'marathi';
@@ -446,27 +447,45 @@ function primeAnnouncementState(city, currentTokenRaw) {
 }
 
 function enqueueLiveTokenAnnouncement(token, nextTokenRaw) {
+	// TV page should stay silent for present/completed token changes.
+	return;
+}
+
+function playCallBell() {
 	if (!announcementEnabled) {
-		return;
+		return Promise.resolve();
 	}
-	if (!window.TokenAnnouncement || typeof window.TokenAnnouncement.announceLiveTokenStatus !== 'function') {
-		return;
-	}
-	announcementQueue = announcementQueue
-		.catch(() => {})
-		.then(() => window.TokenAnnouncement.announceLiveTokenStatus(token, nextTokenRaw, announcementLanguage, { skipBeep: true }));
+	return new Promise(resolve => {
+		try {
+			const audio = new Audio(CALL_BELL_URL);
+			audio.preload = 'auto';
+			audio.currentTime = 0;
+			let settled = false;
+			const finish = () => {
+				if (settled) return;
+				settled = true;
+				resolve();
+			};
+			audio.onended = finish;
+			audio.onerror = finish;
+			const playPromise = audio.play();
+			if (playPromise && typeof playPromise.catch === 'function') {
+				playPromise.catch(finish);
+			}
+			window.setTimeout(finish, 1200);
+		} catch (err) {
+			resolve();
+		}
+	});
 }
 
 function enqueueTokenCallAnnouncement(token) {
 	if (!announcementEnabled) {
 		return;
 	}
-	if (!window.TokenAnnouncement || typeof window.TokenAnnouncement.announceTokenCall !== 'function') {
-		return;
-	}
 	announcementQueue = announcementQueue
 		.catch(() => {})
-		.then(() => window.TokenAnnouncement.announceTokenCall(token, announcementLanguage, { skipBeep: true }));
+		.then(() => playCallBell());
 }
 
 function maybeAnnounceCurrentToken(city, currentTokenRaw, nextTokenRaw) {
