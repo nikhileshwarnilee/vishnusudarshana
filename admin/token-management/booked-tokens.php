@@ -611,9 +611,15 @@ $bookings = array_values(array_filter($bookings, function($b) use ($today) {
                         throw new Error(data.message || failureMessage);
                     }
                     if (refreshAfter === false) {
+                        if (typeof window.VSRefreshTokenWidget === 'function') {
+                            window.VSRefreshTokenWidget();
+                        }
                         return data;
                     }
                     return refreshBookedTokens(refreshCity).then(function() {
+                        if (typeof window.VSRefreshTokenWidget === 'function') {
+                            window.VSRefreshTokenWidget();
+                        }
                         return data;
                     });
                 })

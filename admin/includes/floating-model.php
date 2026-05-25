@@ -36,8 +36,41 @@ $vsTokenWidgetCanDelete = $vsFloatingUserId > 0
         font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         overflow: hidden;
     }
+    .vs-token-widget.is-hidden {
+        display: none;
+    }
+    .vs-token-widget.collapsed {
+        width: 58px;
+        height: 58px;
+        max-width: 58px;
+        max-height: 58px;
+        border-radius: 50%;
+        border-color: #800000;
+        background: #800000;
+        box-shadow: 0 8px 22px rgba(128, 0, 0, 0.28);
+    }
     .vs-token-widget.collapsed .vs-token-widget-body {
         display: none;
+    }
+    .vs-token-widget.collapsed .vs-token-widget-header {
+        width: 58px;
+        height: 58px;
+        padding: 0;
+        justify-content: center;
+        border-radius: 50%;
+        cursor: pointer;
+    }
+    .vs-token-widget.collapsed .vs-token-widget-title,
+    .vs-token-widget.collapsed .vs-token-widget-count {
+        display: none;
+    }
+    .vs-token-widget.collapsed .vs-token-widget-toggle {
+        width: 58px;
+        height: 58px;
+        border: none;
+        border-radius: 50%;
+        background: transparent;
+        font-size: 26px;
     }
     .vs-token-widget-header {
         display: flex;
@@ -192,6 +225,10 @@ $vsTokenWidgetCanDelete = $vsFloatingUserId > 0
             bottom: 92px;
             width: calc(100vw - 24px);
         }
+        .vs-token-widget.collapsed {
+            width: 58px;
+            height: 58px;
+        }
         .vs-token-widget-item {
             grid-template-columns: 1fr;
         }
@@ -290,6 +327,7 @@ $vsTokenWidgetCanDelete = $vsFloatingUserId > 0
     }
 
     function renderTokens(tokens) {
+        widget.classList.remove('is-hidden');
         count.textContent = tokens.length;
         if (!tokens.length) {
             list.innerHTML = '<div class="vs-token-widget-state">No active tokens for today.</div>';
@@ -360,9 +398,10 @@ $vsTokenWidgetCanDelete = $vsFloatingUserId > 0
 
     function loadTokens(showLoading) {
         if (showLoading) {
+            widget.classList.remove('is-hidden');
             setLoading();
         }
-        fetch(config.endpoints.list, {
+        return fetch(config.endpoints.list, {
             headers: { 'Accept': 'application/json' },
             credentials: 'same-origin'
         })
@@ -371,9 +410,18 @@ $vsTokenWidgetCanDelete = $vsFloatingUserId > 0
                 if (!data.success) {
                     throw new Error(data.message || 'Unable to load tokens.');
                 }
-                renderTokens(Array.isArray(data.tokens) ? data.tokens : []);
+                const todayCount = parseInt(data.today_count || 0, 10) || 0;
+                const tokens = Array.isArray(data.tokens) ? data.tokens : [];
+                if (todayCount <= 0) {
+                    widget.classList.add('is-hidden');
+                    count.textContent = '0';
+                    list.innerHTML = '';
+                    return;
+                }
+                renderTokens(tokens);
             })
             .catch(function () {
+                widget.classList.remove('is-hidden');
                 count.textContent = '!';
                 list.innerHTML = '<div class="vs-token-widget-state">Unable to load today tokens.</div>';
             });
@@ -393,10 +441,11 @@ $vsTokenWidgetCanDelete = $vsFloatingUserId > 0
                 if (!data.success) {
                     throw new Error(data.message || 'Unable to ' + actionName + ' token.');
                 }
-                loadTokens(false);
+                return loadTokens(false);
             })
             .catch(function (err) {
                 alert(err.message || 'Token action failed.');
+                return loadTokens(false);
             })
             .finally(function () {
                 setButtonsBusy(false);
@@ -417,7 +466,7 @@ $vsTokenWidgetCanDelete = $vsFloatingUserId > 0
     });
 
     handle.addEventListener('pointerdown', function (event) {
-        if (event.target === toggle) return;
+        if (widget.classList.contains('collapsed') || event.target === toggle) return;
         const rect = widget.getBoundingClientRect();
         dragState = {
             pointerId: event.pointerId,
@@ -459,6 +508,9 @@ $vsTokenWidgetCanDelete = $vsFloatingUserId > 0
     });
 
     applySavedState();
+    window.VSRefreshTokenWidget = function () {
+        return loadTokens(false);
+    };
     loadTokens(true);
     setInterval(function () {
         loadTokens(false);

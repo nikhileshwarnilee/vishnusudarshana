@@ -185,8 +185,12 @@ body {
 }
 
 .calendar-card.state-called {
-	animation: tokenPulse 1.1s ease-in-out infinite;
+	animation: tokenPulse 2.8s ease-in-out infinite;
 	border-color: #d3a12c;
+}
+
+.calendar-card.state-called .flip-card {
+	animation: calledTokenSlowFlip 6s ease-in-out infinite;
 }
 
 .calendar-card.state-called .flip-face,
@@ -197,6 +201,12 @@ body {
 
 .calendar-card.state-present {
 	border-color: #84c6a5;
+}
+
+.calendar-card.state-present .flip-card,
+.calendar-card.state-idle .flip-card {
+	animation: none;
+	transform: none;
 }
 
 .calendar-card.state-present .flip-face,
@@ -212,6 +222,18 @@ body {
 	}
 	50% {
 		box-shadow: var(--shadow), 0 0 0 14px rgba(211, 161, 44, 0);
+	}
+}
+
+@keyframes calledTokenSlowFlip {
+	0%, 64% {
+		transform: rotateX(0deg);
+	}
+	78%, 88% {
+		transform: rotateX(-180deg);
+	}
+	100% {
+		transform: rotateX(-360deg);
 	}
 }
 
@@ -286,6 +308,7 @@ const settingsUrl = 'api/get-settings.php';
 const LIVE_TOKEN_REFRESH_MS = 1000;
 const VISIBILITY_REFRESH_MS = 10000;
 const SETTINGS_REFRESH_MS = 30000;
+const CALL_ANNOUNCEMENT_REPEAT_MS = 9000;
 const urlParams = new URLSearchParams(window.location.search);
 const fullscreenCity = urlParams.get('fullscreen') || urlParams.get('city');
 let announcementLanguage = 'marathi';
@@ -299,6 +322,7 @@ let settingsFetchInFlight = false;
 let announcementQueue = Promise.resolve();
 const announcedTokenByCity = {};
 const initializedTokenByCity = {};
+const activeCalledTokenByCity = {};
 
 function normalizeAnnouncementLanguage(value) {
 	const v = String(value || '').trim().toLowerCase();
@@ -433,6 +457,18 @@ function enqueueLiveTokenAnnouncement(token, nextTokenRaw) {
 		.then(() => window.TokenAnnouncement.announceLiveTokenStatus(token, nextTokenRaw, announcementLanguage));
 }
 
+function enqueueTokenCallAnnouncement(token) {
+	if (!announcementEnabled) {
+		return;
+	}
+	if (!window.TokenAnnouncement || typeof window.TokenAnnouncement.announceTokenCall !== 'function') {
+		return;
+	}
+	announcementQueue = announcementQueue
+		.catch(() => {})
+		.then(() => window.TokenAnnouncement.announceTokenCall(token, announcementLanguage));
+}
+
 function maybeAnnounceCurrentToken(city, currentTokenRaw, nextTokenRaw) {
 	const normalizedCity = String(city || '').trim().toLowerCase();
 	if (!Object.prototype.hasOwnProperty.call(initializedTokenByCity, normalizedCity)) {
@@ -511,9 +547,50 @@ function maybeAnnounceSnapshotChanges(citiesData) {
 	});
 }
 
+function calledTokenKey(data, token) {
+	const bookingId = parseInt(data.display_booking_id || 0, 10) || 0;
+	const updatedAt = String(data.display_updated_at || '').trim();
+	return [bookingId, token, updatedAt].join(':');
+}
+
+function maybeAnnounceCalledToken(city, data) {
+	const normalizedCity = String(city || '').trim().toLowerCase();
+	if (!normalizedCity) {
+		return;
+	}
+
+	if (!data || data.display_state !== 'called') {
+		delete activeCalledTokenByCity[normalizedCity];
+		return;
+	}
+
+	const token = parseTokenValue(data.display_token);
+	if (!Number.isFinite(token) || token <= 0) {
+		delete activeCalledTokenByCity[normalizedCity];
+		return;
+	}
+
+	const now = Date.now();
+	const key = calledTokenKey(data, token);
+	const previous = activeCalledTokenByCity[normalizedCity] || {};
+	const isNewCall = previous.key !== key;
+	const shouldRepeat = !previous.lastAnnouncedAt || (now - previous.lastAnnouncedAt) >= CALL_ANNOUNCEMENT_REPEAT_MS;
+
+	if (isNewCall || shouldRepeat) {
+		activeCalledTokenByCity[normalizedCity] = {
+			key: key,
+			lastAnnouncedAt: now
+		};
+		enqueueTokenCallAnnouncement(token);
+	}
+}
+
 function renderSnapshot(citiesData, dateStr) {
 	cards.forEach(card => {
-		renderCard(card, cityDataFor(card, citiesData), dateStr);
+		const city = card.getAttribute('data-city');
+		const cityData = cityDataFor(card, citiesData);
+		renderCard(card, cityData, dateStr);
+		maybeAnnounceCalledToken(city, cityData);
 	});
 }
 
@@ -535,10 +612,17 @@ function formatDateLabel(dateStr) {
 	return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
-function updateFlip(card, value) {
+function updateFlip(card, value, displayState) {
 	const flip = card.querySelector('[data-flip]');
 	const front = card.querySelector('[data-front]');
 	const back = card.querySelector('[data-back]');
+
+	if (displayState === 'called' || displayState === 'present' || displayState === 'idle') {
+		front.textContent = value;
+		back.textContent = value;
+		flip.classList.remove('is-flipped');
+		return;
+	}
 
 	if (front.textContent.trim() === value) return;
 
@@ -560,7 +644,7 @@ function renderCard(card, data, dateStr) {
 	card.classList.remove('state-called', 'state-present', 'state-idle');
 	card.classList.add('state-' + displayState);
 	card.querySelector('[data-message]').textContent = message;
-	updateFlip(card, displayToken);
+	updateFlip(card, displayToken, displayState);
 }
 
 async function fetchLiveTokens() {

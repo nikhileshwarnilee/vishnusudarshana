@@ -66,6 +66,8 @@ function fetch_city_snapshot(PDO $pdo, $date, $city)
     $nextToken = '--';
     $displayToken = '--';
     $displayState = 'idle';
+    $displayBookingId = null;
+    $displayUpdatedAt = null;
     $displayMessage = 'टोकन स्थिती लवकरच उपलब्ध होईल';
 
     $completedCount = count($completed);
@@ -108,10 +110,17 @@ function fetch_city_snapshot(PDO $pdo, $date, $city)
     if ($called && isset($called['token_no'])) {
         $displayToken = $called['token_no'];
         $displayState = 'called';
+        $displayBookingId = (int) ($called['id'] ?? 0);
+        $displayUpdatedAt = (string) ($called['updated_at'] ?? '');
         $displayMessage = 'टोकन क्रमांक ' . to_devanagari_number($displayToken) . ' उपस्थित राहावे';
     } elseif ($currentToken !== '--') {
         $displayToken = $currentToken;
         $displayState = 'present';
+        $latestCompleted = $completed[$completedCount - 1] ?? null;
+        if ($latestCompleted) {
+            $displayBookingId = (int) ($latestCompleted['id'] ?? 0);
+            $displayUpdatedAt = (string) ($latestCompleted['updated_at'] ?? '');
+        }
         $displayMessage = 'सध्या टोकन क्रमांक ' . to_devanagari_number($displayToken) . ' चालू आहे';
     }
 
@@ -122,6 +131,8 @@ function fetch_city_snapshot(PDO $pdo, $date, $city)
         'display_token' => $displayToken,
         'display_state' => $displayState,
         'display_message' => $displayMessage,
+        'display_booking_id' => $displayBookingId,
+        'display_updated_at' => $displayUpdatedAt,
     ];
 }
 

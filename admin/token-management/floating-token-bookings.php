@@ -7,6 +7,14 @@ header('Content-Type: application/json; charset=UTF-8');
 
 try {
     $today = date('Y-m-d');
+    $countStmt = $pdo->prepare(
+        "SELECT COUNT(*)
+         FROM token_bookings
+         WHERE token_date = ?"
+    );
+    $countStmt->execute([$today]);
+    $todayCount = (int) $countStmt->fetchColumn();
+
     $stmt = $pdo->prepare(
         "SELECT id, token_no, name, location, status
          FROM token_bookings
@@ -24,6 +32,7 @@ try {
     echo json_encode([
         'success' => true,
         'date' => $today,
+        'today_count' => $todayCount,
         'tokens' => $stmt->fetchAll(PDO::FETCH_ASSOC),
     ]);
 } catch (Throwable $e) {
@@ -33,4 +42,3 @@ try {
         'tokens' => [],
     ]);
 }
-
