@@ -49,6 +49,22 @@ function getSameDayOnlineBookingCutoffTime(PDO $pdo): string
     }
 }
 
+function isOnlineTokenBookingEnabled(PDO $pdo): bool
+{
+    try {
+        $stmt = $pdo->prepare('SELECT setting_value FROM system_settings WHERE setting_key = ? LIMIT 1');
+        $stmt->execute(['online_token_booking_enabled']);
+        $value = $stmt->fetchColumn();
+        if ($value === false || $value === null || trim((string) $value) === '') {
+            return true;
+        }
+
+        return in_array(strtolower(trim((string) $value)), ['1', 'true', 'yes', 'on', 'enabled'], true);
+    } catch (Throwable $e) {
+        return true;
+    }
+}
+
 function isSameDayOnlineBookingClosed(string $selectedDate, string $cutoffTime): bool
 {
     $selectedDate = trim($selectedDate);
@@ -125,6 +141,22 @@ try {
     $sameDayCutoffDisplay = formatCutoffTimeDisplay($sameDayCutoffTime);
     $todayIso = $now->format('Y-m-d');
     $sameDayClosedToday = isSameDayOnlineBookingClosed($todayIso, $sameDayCutoffTime);
+    $onlineTokenBookingEnabled = isOnlineTokenBookingEnabled($pdo);
+
+    if (!$onlineTokenBookingEnabled) {
+        echo json_encode([
+            'success' => true,
+            'year' => (int) $year,
+            'month' => (int) $month,
+            'today' => $todayIso,
+            'online_token_booking_enabled' => false,
+            'same_day_online_closed_today' => $sameDayClosedToday,
+            'same_day_online_cutoff_time' => $sameDayCutoffTime,
+            'same_day_online_cutoff_display' => $sameDayCutoffDisplay,
+            'days' => []
+        ]);
+        exit;
+    }
 
     $normalizedDateExpr = 'COALESCE(
         STR_TO_DATE(token_date, "%Y-%m-%d"),
@@ -193,6 +225,7 @@ try {
         'year' => (int) $year,
         'month' => (int) $month,
         'today' => $todayIso,
+        'online_token_booking_enabled' => true,
         'same_day_online_closed_today' => $sameDayClosedToday,
         'same_day_online_cutoff_time' => $sameDayCutoffTime,
         'same_day_online_cutoff_display' => $sameDayCutoffDisplay,

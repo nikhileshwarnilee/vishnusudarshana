@@ -49,6 +49,22 @@ function getSameDayOnlineBookingCutoffTime(PDO $pdo): string
     }
 }
 
+function isOnlineTokenBookingEnabled(PDO $pdo): bool
+{
+    try {
+        $stmt = $pdo->prepare('SELECT setting_value FROM system_settings WHERE setting_key = ? LIMIT 1');
+        $stmt->execute(['online_token_booking_enabled']);
+        $value = $stmt->fetchColumn();
+        if ($value === false || $value === null || trim((string) $value) === '') {
+            return true;
+        }
+
+        return in_array(strtolower(trim((string) $value)), ['1', 'true', 'yes', 'on', 'enabled'], true);
+    } catch (Throwable $e) {
+        return true;
+    }
+}
+
 function isSameDayOnlineBookingClosed(string $selectedDate, string $cutoffTime): bool
 {
     $selectedDate = trim($selectedDate);
@@ -103,6 +119,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $mobile = normalizeMobileNumber((string)($_POST['mobile'] ?? ''));
     $token_date = trim($_POST['token_date'] ?? '');
     $service_time = trim($_POST['service_time'] ?? '');
+
+    if (!isOnlineTokenBookingEnabled($pdo)) {
+        echo json_encode([
+            'success' => false,
+            'online_token_booking_enabled' => false,
+            'error' => 'No tokens available for this date/location.'
+        ]);
+        exit;
+    }
 
     if (!preg_match('/^\d{10}$/', $mobile)) {
         echo json_encode(['success' => false, 'error' => 'Please enter a valid 10 digit mobile number.']);

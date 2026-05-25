@@ -41,6 +41,12 @@ function normalizeLiveTokenAnnouncementEnabled($value): int
     return in_array($normalized, ['1', 'true', 'yes', 'on', 'enabled'], true) ? 1 : 0;
 }
 
+function normalizeOnlineTokenBookingEnabled($value): int
+{
+    $normalized = strtolower(trim((string) $value));
+    return in_array($normalized, ['1', 'true', 'yes', 'on', 'enabled'], true) ? 1 : 0;
+}
+
 function normalizeSameDayOnlineBookingCutoffTime($value): string
 {
     $raw = trim((string) $value);
@@ -102,6 +108,7 @@ try {
     $languageRaw = getSettingValue($pdo, 'announcement_language');
     $tabletWhatsAppRaw = getSettingValue($pdo, 'tablet_token_whatsapp_enabled');
     $liveTokenAnnouncementRaw = getSettingValue($pdo, 'live_token_announcement_enabled');
+    $onlineTokenBookingRaw = getSettingValue($pdo, 'online_token_booking_enabled');
     $sameDayCutoffRaw = getSettingValue($pdo, 'same_day_online_booking_cutoff_time');
     $tokenBookingCommonNoteRaw = getSettingValue($pdo, 'token_booking_common_note');
     $tokenBookingCommonNoteEnabledRaw = getSettingValue($pdo, 'token_booking_common_note_enabled');
@@ -109,6 +116,7 @@ try {
     $language = normalizeAnnouncementLanguage($languageRaw);
     $tabletWhatsAppEnabled = normalizeTabletWhatsAppEnabled($tabletWhatsAppRaw ?? '1');
     $liveTokenAnnouncementEnabled = normalizeLiveTokenAnnouncementEnabled($liveTokenAnnouncementRaw ?? '1');
+    $onlineTokenBookingEnabled = normalizeOnlineTokenBookingEnabled($onlineTokenBookingRaw ?? '1');
     $sameDayCutoffTime = normalizeSameDayOnlineBookingCutoffTime($sameDayCutoffRaw);
     $tokenBookingCommonNote = normalizeTokenBookingCommonNoteText($tokenBookingCommonNoteRaw);
     $tokenBookingCommonNoteEnabled = normalizeTokenBookingCommonNoteEnabled($tokenBookingCommonNoteEnabledRaw ?? '1');
@@ -122,6 +130,9 @@ try {
     }
     if ($liveTokenAnnouncementRaw === null) {
         upsertSetting($pdo, 'live_token_announcement_enabled', (string) $liveTokenAnnouncementEnabled);
+    }
+    if ($onlineTokenBookingRaw === null) {
+        upsertSetting($pdo, 'online_token_booking_enabled', (string) $onlineTokenBookingEnabled);
     }
     if ($sameDayCutoffRaw === null) {
         upsertSetting($pdo, 'same_day_online_booking_cutoff_time', $sameDayCutoffTime);
@@ -138,6 +149,7 @@ try {
         'announcement_language' => $language,
         'tablet_token_whatsapp_enabled' => $tabletWhatsAppEnabled === 1,
         'live_token_announcement_enabled' => $liveTokenAnnouncementEnabled === 1,
+        'online_token_booking_enabled' => $onlineTokenBookingEnabled === 1,
         'same_day_online_booking_cutoff_time' => $sameDayCutoffTime,
         'token_booking_common_note' => $tokenBookingCommonNote,
         'token_booking_common_note_enabled' => $tokenBookingCommonNoteEnabled === 1,
@@ -148,6 +160,7 @@ try {
         'announcement_language' => 'marathi',
         'tablet_token_whatsapp_enabled' => true,
         'live_token_announcement_enabled' => true,
+        'online_token_booking_enabled' => true,
         'same_day_online_booking_cutoff_time' => '09:00',
         'token_booking_common_note' => '',
         'token_booking_common_note_enabled' => true,

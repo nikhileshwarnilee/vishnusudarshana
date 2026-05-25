@@ -49,6 +49,22 @@ function getSameDayOnlineBookingCutoffTime(PDO $pdo): string
     }
 }
 
+function isOnlineTokenBookingEnabled(PDO $pdo): bool
+{
+    try {
+        $stmt = $pdo->prepare('SELECT setting_value FROM system_settings WHERE setting_key = ? LIMIT 1');
+        $stmt->execute(['online_token_booking_enabled']);
+        $value = $stmt->fetchColumn();
+        if ($value === false || $value === null || trim((string) $value) === '') {
+            return true;
+        }
+
+        return in_array(strtolower(trim((string) $value)), ['1', 'true', 'yes', 'on', 'enabled'], true);
+    } catch (Throwable $e) {
+        return true;
+    }
+}
+
 function isSameDayOnlineBookingClosed(string $selectedDate, string $cutoffTime): bool
 {
     $selectedDate = trim($selectedDate);
@@ -91,11 +107,25 @@ try {
     $sameDayCutoffTime = getSameDayOnlineBookingCutoffTime($pdo);
     $sameDayClosed = isSameDayOnlineBookingClosed($date, $sameDayCutoffTime);
     $sameDayCutoffDisplay = formatCutoffTimeDisplay($sameDayCutoffTime);
+    $onlineTokenBookingEnabled = isOnlineTokenBookingEnabled($pdo);
 
     if ($date === '' || $location === '') {
         echo json_encode([
             'success' => false,
             'message' => 'Missing date or location.',
+            'online_token_booking_enabled' => $onlineTokenBookingEnabled,
+            'same_day_online_closed' => $sameDayClosed,
+            'same_day_online_cutoff_time' => $sameDayCutoffTime,
+            'same_day_online_cutoff_display' => $sameDayCutoffDisplay
+        ]);
+        exit;
+    }
+
+    if (!$onlineTokenBookingEnabled) {
+        echo json_encode([
+            'success' => false,
+            'message' => 'No tokens available for this date/location.',
+            'online_token_booking_enabled' => false,
             'same_day_online_closed' => $sameDayClosed,
             'same_day_online_cutoff_time' => $sameDayCutoffTime,
             'same_day_online_cutoff_display' => $sameDayCutoffDisplay
@@ -121,6 +151,7 @@ try {
         echo json_encode([
             'success' => true,
             'data' => $row,
+            'online_token_booking_enabled' => true,
             'same_day_online_closed' => $sameDayClosed,
             'same_day_online_cutoff_time' => $sameDayCutoffTime,
             'same_day_online_cutoff_display' => $sameDayCutoffDisplay
@@ -131,6 +162,7 @@ try {
     echo json_encode([
         'success' => false,
         'message' => 'No tokens available for this date/location.',
+        'online_token_booking_enabled' => true,
         'same_day_online_closed' => $sameDayClosed,
         'same_day_online_cutoff_time' => $sameDayCutoffTime,
         'same_day_online_cutoff_display' => $sameDayCutoffDisplay
@@ -139,6 +171,7 @@ try {
     echo json_encode([
         'success' => false,
         'message' => 'Server error fetching availability.',
+        'online_token_booking_enabled' => true,
         'same_day_online_closed' => false,
         'same_day_online_cutoff_time' => '09:00',
         'same_day_online_cutoff_display' => '9:00 AM'

@@ -132,6 +132,24 @@ include '../includes/top-menu.php';
             <span id="tabletWhatsAppSaveMsg" class="language-msg"></span>
         </div>
     </section>
+    <section class="settings-card" aria-label="Online Token Booking Settings">
+        <h2 class="settings-title">Online Token Booking</h2>
+        <p class="settings-desc">Controls public booking on <code>book-token.php</code>. When OFF, visitors see no tokens available.</p>
+        <div class="language-options">
+            <label class="language-option">
+                <input type="radio" name="onlineTokenBookingEnabled" value="1" checked>
+                ON
+            </label>
+            <label class="language-option">
+                <input type="radio" name="onlineTokenBookingEnabled" value="0">
+                OFF
+            </label>
+        </div>
+        <div class="language-actions">
+            <button type="button" id="saveOnlineTokenBookingBtn" class="language-save-btn">Save Online Booking Setting</button>
+            <span id="onlineTokenBookingSaveMsg" class="language-msg"></span>
+        </div>
+    </section>
     <section class="settings-card" aria-label="Same-Day Online Booking Cutoff">
         <h2 class="settings-title">Same-Day Online Booking Stop Time</h2>
         <p class="settings-desc">Public website same-day booking will stop after this time (India time: Asia/Kolkata).</p>
@@ -213,6 +231,19 @@ include '../includes/top-menu.php';
         }
     }
 
+    function getSelectedOnlineTokenBookingEnabled() {
+        const selected = document.querySelector('input[name="onlineTokenBookingEnabled"]:checked');
+        return selected ? selected.value : '1';
+    }
+
+    function setSelectedOnlineTokenBookingEnabled(enabled) {
+        const safeValue = String(enabled) === '0' ? '0' : '1';
+        const radio = document.querySelector('input[name="onlineTokenBookingEnabled"][value="' + safeValue + '"]');
+        if (radio) {
+            radio.checked = true;
+        }
+    }
+
     function setLanguageMessage(message, isError) {
         const msg = document.getElementById('languageSaveMsg');
         if (!msg) return;
@@ -229,6 +260,13 @@ include '../includes/top-menu.php';
 
     function setTabletWhatsAppMessage(message, isError) {
         const msg = document.getElementById('tabletWhatsAppSaveMsg');
+        if (!msg) return;
+        msg.textContent = message || '';
+        msg.style.color = isError ? '#a0001b' : '#176b1a';
+    }
+
+    function setOnlineTokenBookingMessage(message, isError) {
+        const msg = document.getElementById('onlineTokenBookingSaveMsg');
         if (!msg) return;
         msg.textContent = message || '';
         msg.style.color = isError ? '#a0001b' : '#176b1a';
@@ -304,6 +342,7 @@ include '../includes/top-menu.php';
                     setSelectedAnnouncementLanguage(data.announcement_language || 'marathi');
                     setSelectedLiveTokenAnnouncementEnabled(data.live_token_announcement_enabled ? '1' : '0');
                     setSelectedTabletTokenWhatsappEnabled(data.tablet_token_whatsapp_enabled ? '1' : '0');
+                    setSelectedOnlineTokenBookingEnabled(data.online_token_booking_enabled ? '1' : '0');
                     setSameDayCutoffTimeValue(data.same_day_online_booking_cutoff_time || '09:00');
                     setTokenBookingCommonNoteTextValue(data.token_booking_common_note || '');
                     setTokenBookingCommonNoteEnabledValue(data.token_booking_common_note_enabled ? '1' : '0');
@@ -311,6 +350,7 @@ include '../includes/top-menu.php';
                     setSelectedAnnouncementLanguage('marathi');
                     setSelectedLiveTokenAnnouncementEnabled('1');
                     setSelectedTabletTokenWhatsappEnabled('1');
+                    setSelectedOnlineTokenBookingEnabled('1');
                     setSameDayCutoffTimeValue('09:00');
                     setTokenBookingCommonNoteTextValue('');
                     setTokenBookingCommonNoteEnabledValue('1');
@@ -320,6 +360,7 @@ include '../includes/top-menu.php';
                 setSelectedAnnouncementLanguage('marathi');
                 setSelectedLiveTokenAnnouncementEnabled('1');
                 setSelectedTabletTokenWhatsappEnabled('1');
+                setSelectedOnlineTokenBookingEnabled('1');
                 setSameDayCutoffTimeValue('09:00');
                 setTokenBookingCommonNoteTextValue('');
                 setTokenBookingCommonNoteEnabledValue('1');
@@ -403,6 +444,33 @@ include '../includes/top-menu.php';
         })
         .catch(() => {
             setTabletWhatsAppMessage('Error while saving tablet WhatsApp setting.', true);
+        });
+    }
+
+    function saveOnlineTokenBookingSetting() {
+        const enabledValue = getSelectedOnlineTokenBookingEnabled();
+        const body = new URLSearchParams();
+        body.set('online_token_booking_enabled', enabledValue);
+
+        setOnlineTokenBookingMessage('Saving...', false);
+        fetch('../../api/save-settings.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
+            },
+            body: body.toString()
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data && data.success) {
+                setSelectedOnlineTokenBookingEnabled(data.online_token_booking_enabled ? '1' : '0');
+                setOnlineTokenBookingMessage('Online token booking setting saved.', false);
+            } else {
+                setOnlineTokenBookingMessage('Failed to save online token booking setting.', true);
+            }
+        })
+        .catch(() => {
+            setOnlineTokenBookingMessage('Error while saving online token booking setting.', true);
         });
     }
 
@@ -686,6 +754,10 @@ include '../includes/top-menu.php';
         const saveTabletWhatsAppBtn = document.getElementById('saveTabletWhatsAppBtn');
         if (saveTabletWhatsAppBtn) {
             saveTabletWhatsAppBtn.addEventListener('click', saveTabletTokenWhatsAppSetting);
+        }
+        const saveOnlineTokenBookingBtn = document.getElementById('saveOnlineTokenBookingBtn');
+        if (saveOnlineTokenBookingBtn) {
+            saveOnlineTokenBookingBtn.addEventListener('click', saveOnlineTokenBookingSetting);
         }
         const saveSameDayCutoffBtn = document.getElementById('saveSameDayCutoffBtn');
         if (saveSameDayCutoffBtn) {
