@@ -12,10 +12,12 @@
     var AVAILABILITY_REFRESH_HIDDEN_MS = 20000;
     var RAWBT_IMAGE_SCHEME_PREFIX = 'rawbt:data:image/jpeg;base64,';
     var RAWBT_TEXT_SCHEME_PREFIX = 'rawbt:';
-    var RAWBT_RECEIPT_IMAGE_WIDTH_PX = 384;
-    var RAWBT_RECEIPT_IMAGE_PADDING_PX = 18;
+    var RAWBT_RECEIPT_IMAGE_WIDTH_PX = 576;
+    var RAWBT_RECEIPT_IMAGE_PADDING_PX = 24;
+    var RAWBT_RECEIPT_CUT_FEED_PX = 48;
     var THERMAL_PRINT_IFRAME_ID = 'tablet-thermal-print-frame';
-    var THERMAL_RECEIPT_WIDTH_MM = 58;
+    var THERMAL_RECEIPT_WIDTH_MM = 80;
+    var THERMAL_RECEIPT_CUT_FEED_MM = 6;
 
     var LOCATION_LABELS_MR = {
         solapur: '\u0938\u094b\u0932\u093e\u092a\u0942\u0930'
@@ -562,15 +564,15 @@
     }
 
     function getRawBtCanvasHeight(receipt) {
-        var baseHeight = 470;
-        var estimatedHeight = 42;
+        var baseHeight = 610;
+        var estimatedHeight = 55;
         var rowsHeight = receipt.rows.reduce(function (sum, row) {
             var layout = String((row && row.layout) || 'inline').toLowerCase();
-            return sum + (layout === 'stacked' ? 78 : 28);
+            return sum + (layout === 'stacked' ? 102 : 37);
         }, 0);
-        var notesHeight = receipt.notes.length * 48;
-        var footerHeight = receipt.footerBookingTime ? 22 : 0;
-        return Math.max(680, baseHeight + estimatedHeight + rowsHeight + notesHeight + footerHeight);
+        var notesHeight = receipt.notes.length * 63;
+        var footerHeight = receipt.footerBookingTime ? 29 : 0;
+        return Math.max(884, baseHeight + estimatedHeight + rowsHeight + notesHeight + footerHeight);
     }
 
     function loadImageForRawBt(src) {
@@ -630,8 +632,8 @@
                 if (!labelLines.length) {
                     labelLines = [''];
                 }
-                var labelLineHeight = 17;
-                ctx.font = '700 17px "Noto Sans Devanagari", sans-serif';
+                var labelLineHeight = 22;
+                ctx.font = '700 22px "Noto Sans Devanagari", sans-serif';
                 ctx.fillStyle = '#000000';
                 ctx.textAlign = 'left';
                 labelLines.forEach(function (lineText, idx) {
@@ -639,10 +641,10 @@
                 });
                 ctx.textAlign = 'right';
                 ctx.font = safeValue.length > 18
-                    ? '500 13px "Noto Sans Devanagari", sans-serif'
-                    : '500 17px "Noto Sans Devanagari", sans-serif';
+                    ? '500 17px "Noto Sans Devanagari", sans-serif'
+                    : '500 22px "Noto Sans Devanagari", sans-serif';
                 ctx.fillText(safeValue, width - padding, y + ((labelLines.length - 1) * labelLineHeight));
-                y += Math.max(24, (labelLines.length * labelLineHeight) + 6);
+                y += Math.max(31, (labelLines.length * labelLineHeight) + 8);
             }
 
             function drawStackedLabelValue(label, value) {
@@ -652,17 +654,17 @@
                 }
                 ctx.textAlign = 'left';
                 ctx.fillStyle = '#000000';
-                ctx.font = '700 17px "Noto Sans Devanagari", sans-serif';
+                ctx.font = '700 22px "Noto Sans Devanagari", sans-serif';
                 labelLines.forEach(function (lineText) {
-                    ctx.fillText(lineText, padding, y + 16);
-                    y += 16;
+                    ctx.fillText(lineText, padding, y + 21);
+                    y += 21;
                 });
 
                 ctx.font = String(value || '').length > 22
-                    ? '600 14px "Noto Sans Devanagari", sans-serif'
-                    : '600 16px "Noto Sans Devanagari", sans-serif';
-                ctx.fillText(String(value || '-'), padding, y + 16);
-                y += 22;
+                    ? '600 18px "Noto Sans Devanagari", sans-serif'
+                    : '600 21px "Noto Sans Devanagari", sans-serif';
+                ctx.fillText(String(value || '-'), padding, y + 21);
+                y += 29;
             }
 
             function drawWrappedCenterText(text, font, lineHeight) {
@@ -700,7 +702,26 @@
             }
 
             function finalize() {
-                var dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+                var outputCanvas = canvas;
+                var finalHeight = Math.min(canvas.height, Math.ceil(y + RAWBT_RECEIPT_CUT_FEED_PX));
+
+                if (finalHeight > 0 && finalHeight < canvas.height) {
+                    outputCanvas = document.createElement('canvas');
+                    outputCanvas.width = width;
+                    outputCanvas.height = finalHeight;
+
+                    var outputCtx = outputCanvas.getContext('2d');
+                    if (!outputCtx) {
+                        reject(new Error('RawBT output canvas context is unavailable'));
+                        return;
+                    }
+
+                    outputCtx.fillStyle = '#ffffff';
+                    outputCtx.fillRect(0, 0, outputCanvas.width, outputCanvas.height);
+                    outputCtx.drawImage(canvas, 0, 0, width, finalHeight, 0, 0, width, finalHeight);
+                }
+
+                var dataUrl = outputCanvas.toDataURL('image/jpeg', 0.9);
                 var base64Index = dataUrl.indexOf('base64,');
                 if (base64Index === -1) {
                     reject(new Error('Unexpected data URL format for RawBT receipt'));
@@ -723,34 +744,34 @@
                 } else {
                     ctx.fillStyle = '#000000';
                     ctx.textAlign = 'center';
-                    ctx.font = '700 24px monospace';
-                    ctx.fillText(receipt.brand, width / 2, y + 24);
-                    y += 44;
+                    ctx.font = '700 31px monospace';
+                    ctx.fillText(receipt.brand, width / 2, y + 31);
+                    y += 57;
                 }
 
                 ctx.textAlign = 'center';
                 ctx.fillStyle = '#000000';
-                ctx.font = '700 19px "Noto Sans Devanagari", sans-serif';
-                ctx.fillText(receipt.title, width / 2, y + 18);
-                y += 28;
+                ctx.font = '700 25px "Noto Sans Devanagari", sans-serif';
+                ctx.fillText(receipt.title, width / 2, y + 23);
+                y += 36;
 
                 drawSeparator();
 
-                ctx.font = '700 18px "Noto Sans Devanagari", sans-serif';
-                ctx.fillText(receipt.tokenLabel, width / 2, y + 17);
-                y += 22;
+                ctx.font = '700 23px "Noto Sans Devanagari", sans-serif';
+                ctx.fillText(receipt.tokenLabel, width / 2, y + 22);
+                y += 29;
 
-                ctx.font = '700 58px monospace';
-                ctx.fillText(receipt.tokenText, width / 2, y + 56);
-                y += 68;
+                ctx.font = '700 75px monospace';
+                ctx.fillText(receipt.tokenText, width / 2, y + 73);
+                y += 88;
 
-                ctx.font = '700 16px "Noto Sans Devanagari", sans-serif';
-                ctx.fillText(receipt.estimatedServiceLabel, width / 2, y + 15);
-                y += 20;
+                ctx.font = '700 21px "Noto Sans Devanagari", sans-serif';
+                ctx.fillText(receipt.estimatedServiceLabel, width / 2, y + 20);
+                y += 26;
 
-                ctx.font = '600 16px "Noto Sans Devanagari", sans-serif';
-                ctx.fillText(receipt.estimatedServiceValue, width / 2, y + 16);
-                y += 22;
+                ctx.font = '600 21px "Noto Sans Devanagari", sans-serif';
+                ctx.fillText(receipt.estimatedServiceValue, width / 2, y + 21);
+                y += 29;
 
                 drawSeparator();
 
@@ -767,17 +788,17 @@
 
                 ctx.textAlign = 'center';
                 receipt.notes.forEach(function (note) {
-                    drawWrappedCenterText(note, '500 15px "Noto Sans Devanagari", sans-serif', 20);
-                    y += 2;
+                    drawWrappedCenterText(note, '500 20px "Noto Sans Devanagari", sans-serif', 26);
+                    y += 3;
                 });
 
                 if (receipt.footerBookingTime) {
                     drawSeparator();
                     ctx.textAlign = 'left';
                     ctx.fillStyle = '#000000';
-                    ctx.font = '500 12px "Noto Sans Devanagari", sans-serif';
-                    ctx.fillText(receipt.footerBookingTime, padding, y + 12);
-                    y += 16;
+                    ctx.font = '500 16px "Noto Sans Devanagari", sans-serif';
+                    ctx.fillText(receipt.footerBookingTime, padding, y + 16);
+                    y += 21;
                 }
 
                 finalize();
@@ -867,15 +888,15 @@
             '<style>' +
             '@page{size:' + THERMAL_RECEIPT_WIDTH_MM + 'mm auto;margin:0;}' +
             'html,body{margin:0;padding:0;width:' + THERMAL_RECEIPT_WIDTH_MM + 'mm;background:#fff;color:#000;}' +
-            'body{font-family:"Noto Sans Devanagari",sans-serif;font-size:11px;line-height:1.22;padding:2.5mm 2.2mm;box-sizing:border-box;}' +
+            'body{font-family:"Noto Sans Devanagari",sans-serif;font-size:14.3px;line-height:1.22;padding:2.5mm 3mm ' + THERMAL_RECEIPT_CUT_FEED_MM + 'mm;box-sizing:border-box;}' +
             '.center{text-align:center;}' +
             '.logo{display:block;width:100%;height:auto;margin:0 auto 1mm auto;}' +
-            '.brand{font-weight:700;font-size:11.5px;letter-spacing:0.15px;}' +
-            '.title{font-weight:700;margin-top:1mm;font-size:11.5px;}' +
+            '.brand{font-weight:700;font-size:15px;letter-spacing:0.15px;}' +
+            '.title{font-weight:700;margin-top:1mm;font-size:15px;}' +
             '.line{width:72%;margin:1mm auto;border-top:1px dashed #8a8a8a;}' +
-            '.token{font-size:24px;font-weight:700;line-height:1.02;margin:0.4mm 0 1mm 0;}' +
-            '.estimate-label{font-size:11px;font-weight:700;line-height:1.1;margin-top:0.2mm;}' +
-            '.estimate-value{font-size:12px;font-weight:700;line-height:1.12;margin-top:0.2mm;}' +
+            '.token{font-size:31.2px;font-weight:700;line-height:1.02;margin:0.4mm 0 1mm 0;}' +
+            '.estimate-label{font-size:14.3px;font-weight:700;line-height:1.1;margin-top:0.2mm;}' +
+            '.estimate-value{font-size:15.6px;font-weight:700;line-height:1.12;margin-top:0.2mm;}' +
             '.row{margin-top:0.4mm;}' +
             '.row-inline{display:flex;justify-content:space-between;align-items:flex-start;gap:3px;}' +
             '.row-inline .label{font-weight:700;white-space:normal;max-width:56%;}' +
@@ -886,8 +907,8 @@
             '.row-stacked{display:block;}' +
             '.row-stacked .label{display:block;font-weight:700;line-height:1.12;white-space:normal;}' +
             '.row-stacked .value{display:block;margin-top:0.4mm;font-weight:700;white-space:nowrap;}' +
-            '.note{margin-top:1.1mm;font-size:10px;line-height:1.18;}' +
-            '.footer-time{margin-top:1mm;font-size:9px;color:#444;line-height:1.2;}' +
+            '.note{margin-top:1.1mm;font-size:13px;line-height:1.18;}' +
+            '.footer-time{margin-top:1mm;font-size:11.7px;color:#444;line-height:1.2;}' +
             '</style></head><body>' +
             '<img class="logo" src="' + escapeHtml(logoUrl) + '" alt="Vishnusudarshana Logo">' +
             '<div class="center brand">' + escapeHtml(receipt.brand) + '</div>' +
