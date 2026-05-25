@@ -132,40 +132,59 @@ $vsTokenWidgetCanDelete = $vsFloatingUserId > 0
         text-align: center;
     }
     .vs-token-widget-item {
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) auto;
-        gap: 8px;
-        align-items: center;
-        padding: 9px 8px;
-        border-bottom: 1px solid #f1dddd;
-    }
-    .vs-token-widget-item:last-child {
-        border-bottom: none;
+        padding: 12px 10px;
     }
     .vs-token-widget-token {
         color: #800000;
-        font-size: 13px;
+        font-size: 18px;
         font-weight: 800;
+        text-align: center;
     }
     .vs-token-widget-name {
-        margin-top: 2px;
+        margin-top: 6px;
         color: #252525;
-        font-size: 13px;
-        font-weight: 650;
+        font-size: 15px;
+        font-weight: 700;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
+        text-align: center;
     }
     .vs-token-widget-meta {
-        margin-top: 2px;
+        margin-top: 4px;
         color: #777;
-        font-size: 11px;
+        font-size: 12px;
         text-transform: capitalize;
+        text-align: center;
+    }
+    .vs-token-widget-nav {
+        display: grid;
+        grid-template-columns: 36px minmax(0, 1fr) 36px;
+        gap: 8px;
+        align-items: center;
+    }
+    .vs-token-widget-nav-btn {
+        width: 36px;
+        height: 36px;
+        border: 1px solid #d9bcbc;
+        border-radius: 50%;
+        background: #fffafa;
+        color: #800000;
+        font-size: 22px;
+        font-weight: 800;
+        line-height: 1;
+        cursor: pointer;
+    }
+    .vs-token-widget-nav-btn:disabled {
+        opacity: 0.35;
+        cursor: not-allowed;
     }
     .vs-token-widget-actions {
         display: flex;
         gap: 5px;
         align-items: center;
+        justify-content: center;
+        margin-top: 12px;
     }
     .vs-token-widget-actions button {
         min-width: 42px;
@@ -232,11 +251,8 @@ $vsTokenWidgetCanDelete = $vsFloatingUserId > 0
             width: 58px;
             height: 58px;
         }
-        .vs-token-widget-item {
-            grid-template-columns: 1fr;
-        }
         .vs-token-widget-actions {
-            justify-content: flex-start;
+            justify-content: center;
         }
     }
 </style>
@@ -282,6 +298,8 @@ $vsTokenWidgetCanDelete = $vsFloatingUserId > 0
     const refresh = document.getElementById('vsTokenWidgetRefresh');
     const storageKey = 'vsTokenWidgetState';
     let dragState = null;
+    let currentTokens = [];
+    let currentTokenIndex = 0;
 
     function readState() {
         try {
@@ -334,66 +352,107 @@ $vsTokenWidgetCanDelete = $vsFloatingUserId > 0
         return String(value || '').trim().toLowerCase();
     }
 
-    function renderTokens(tokens) {
+    function boundedIndex(index, length) {
+        if (length <= 0) {
+            return 0;
+        }
+        return Math.min(Math.max(0, index), length - 1);
+    }
+
+    function renderTokens(tokens, preferredTokenId) {
         widget.classList.remove('is-hidden');
+        currentTokens = tokens;
         count.textContent = tokens.length;
         if (!tokens.length) {
             list.innerHTML = '<div class="vs-token-widget-state">No active tokens for today.</div>';
             return;
         }
 
-        const fragment = document.createDocumentFragment();
-        tokens.forEach(function (token) {
-            const item = document.createElement('div');
-            item.className = 'vs-token-widget-item';
+        if (preferredTokenId) {
+            const foundIndex = tokens.findIndex(function (token) {
+                return String(token.id) === String(preferredTokenId);
+            });
+            currentTokenIndex = foundIndex >= 0 ? foundIndex : boundedIndex(currentTokenIndex, tokens.length);
+        } else {
+            currentTokenIndex = boundedIndex(currentTokenIndex, tokens.length);
+        }
+        renderCurrentToken();
+    }
 
-            const details = document.createElement('div');
-            const tokenNo = document.createElement('div');
-            tokenNo.className = 'vs-token-widget-token';
-            tokenNo.textContent = 'Token ' + escapeText(token.token_no || '-');
-            const name = document.createElement('div');
-            name.className = 'vs-token-widget-name';
-            name.textContent = escapeText(token.name || 'No name');
-            const meta = document.createElement('div');
-            meta.className = 'vs-token-widget-meta';
-            const status = normalizeStatus(token.status);
-            meta.textContent = escapeText(token.location || '') + (status === 'called' ? ' - Called' : '');
-            details.appendChild(tokenNo);
-            details.appendChild(name);
-            details.appendChild(meta);
+    function renderCurrentToken() {
+        const token = currentTokens[currentTokenIndex];
+        if (!token) {
+            list.innerHTML = '<div class="vs-token-widget-state">No active tokens for today.</div>';
+            return;
+        }
 
-            const actions = document.createElement('div');
-            actions.className = 'vs-token-widget-actions';
+        const item = document.createElement('div');
+        item.className = 'vs-token-widget-item';
 
-            if (config.canEdit) {
-                if (status === 'called') {
-                    actions.appendChild(makeActionButton('Present', 'vs-token-present-btn', function () {
-                        runAction(config.endpoints.present, token.id, 'present');
-                    }));
-                } else {
-                    actions.appendChild(makeActionButton('Call', 'vs-token-call-btn', function () {
-                        runAction(config.endpoints.call, token.id, 'call');
-                    }));
-                }
-                actions.appendChild(makeActionButton('Skip', 'vs-token-skip-btn', function () {
-                    runAction(config.endpoints.skip, token.id, 'skip');
-                }));
-            }
-            if (config.canDelete) {
-                actions.appendChild(makeActionButton('Delete', 'vs-token-delete-btn', function () {
-                    if (confirm('Delete token ' + escapeText(token.token_no || '') + '?')) {
-                        runAction(config.endpoints.delete, token.id, 'delete');
-                    }
-                }));
-            }
+        const nav = document.createElement('div');
+        nav.className = 'vs-token-widget-nav';
 
-            item.appendChild(details);
-            item.appendChild(actions);
-            fragment.appendChild(item);
+        const prevButton = makeNavButton('‹', 'Previous token', function () {
+            currentTokenIndex = boundedIndex(currentTokenIndex - 1, currentTokens.length);
+            renderCurrentToken();
         });
+        prevButton.disabled = currentTokenIndex <= 0;
+
+        const details = document.createElement('div');
+        const tokenNo = document.createElement('div');
+        tokenNo.className = 'vs-token-widget-token';
+        tokenNo.textContent = 'Token ' + escapeText(token.token_no || '-');
+        const name = document.createElement('div');
+        name.className = 'vs-token-widget-name';
+        name.textContent = escapeText(token.name || 'No name');
+        const meta = document.createElement('div');
+        meta.className = 'vs-token-widget-meta';
+        const status = normalizeStatus(token.status);
+        meta.textContent = escapeText(token.location || '') + ' · ' + (currentTokenIndex + 1) + '/' + currentTokens.length + (status === 'called' ? ' · Called' : '');
+        details.appendChild(tokenNo);
+        details.appendChild(name);
+        details.appendChild(meta);
+
+        const nextButton = makeNavButton('›', 'Next token', function () {
+            currentTokenIndex = boundedIndex(currentTokenIndex + 1, currentTokens.length);
+            renderCurrentToken();
+        });
+        nextButton.disabled = currentTokenIndex >= currentTokens.length - 1;
+
+        nav.appendChild(prevButton);
+        nav.appendChild(details);
+        nav.appendChild(nextButton);
+
+        const actions = document.createElement('div');
+        actions.className = 'vs-token-widget-actions';
+
+        if (config.canEdit) {
+            if (status === 'called') {
+                actions.appendChild(makeActionButton('Present', 'vs-token-present-btn', function () {
+                    runAction(config.endpoints.present, token.id, 'present');
+                }));
+            } else {
+                actions.appendChild(makeActionButton('Call', 'vs-token-call-btn', function () {
+                    runAction(config.endpoints.call, token.id, 'call');
+                }));
+            }
+            actions.appendChild(makeActionButton('Skip', 'vs-token-skip-btn', function () {
+                runAction(config.endpoints.skip, token.id, 'skip');
+            }));
+        }
+        if (config.canDelete) {
+            actions.appendChild(makeActionButton('Delete', 'vs-token-delete-btn', function () {
+                if (confirm('Delete token ' + escapeText(token.token_no || '') + '?')) {
+                    runAction(config.endpoints.delete, token.id, 'delete');
+                }
+            }));
+        }
+
+        item.appendChild(nav);
+        item.appendChild(actions);
 
         list.innerHTML = '';
-        list.appendChild(fragment);
+        list.appendChild(item);
     }
 
     function makeActionButton(label, className, handler) {
@@ -401,6 +460,17 @@ $vsTokenWidgetCanDelete = $vsFloatingUserId > 0
         button.type = 'button';
         button.className = className;
         button.textContent = label;
+        button.addEventListener('click', handler);
+        return button;
+    }
+
+    function makeNavButton(label, title, handler) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'vs-token-widget-nav-btn';
+        button.textContent = label;
+        button.title = title;
+        button.setAttribute('aria-label', title);
         button.addEventListener('click', handler);
         return button;
     }
@@ -456,7 +526,12 @@ $vsTokenWidgetCanDelete = $vsFloatingUserId > 0
                 if (!data.success) {
                     throw new Error(data.message || 'Unable to ' + actionName + ' token.');
                 }
+                const actedTokenId = id;
                 return loadTokens(false).then(function () {
+                    currentTokenIndex = boundedIndex(currentTokenIndex, currentTokens.length);
+                    if (currentTokens.length) {
+                        renderTokens(currentTokens, actedTokenId);
+                    }
                     if (typeof window.VSRefreshBookedTokensPage === 'function') {
                         return window.VSRefreshBookedTokensPage();
                     }
