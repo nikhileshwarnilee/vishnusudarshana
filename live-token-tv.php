@@ -3,740 +3,662 @@ header('Content-Type: text/html; charset=UTF-8');
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
 header('Expires: 0');
-
-$city = isset($_GET['city']) ? strtolower(trim((string) $_GET['city'])) : '';
-$allowedCities = ['solapur', 'hyderabad'];
-if ($city !== '' && !in_array($city, $allowedCities, true)) {
-    $city = '';
-}
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="theme-color" content="#61000f">
-    <title>Live Token TV Display</title>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Marcellus:wght@500;700&family=Mulish:wght@500;700;800&display=swap');
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta name="theme-color" content="#800000">
+	<title>Live Token Status</title>
+	<style>
+@import url('https://fonts.googleapis.com/css2?family=Marcellus:wght@500;700&family=Mulish:wght@400;600;700&display=swap');
 
-        :root {
-            --bg: #fff5d5;
-            --panel: #fffdf3;
-            --ink: #3f1717;
-            --muted: #805a4d;
-            --gold: #e7c35a;
-            --gold-soft: #fff0b8;
-            --maroon: #78000d;
-            --maroon-dark: #4c0008;
-            --green: #116149;
-            --shadow: 0 24px 70px rgba(92, 0, 0, 0.18);
-        }
+:root {
+	--ink: #4a2a2a;
+	--cream: #fff7d6;
+	--gold: #f2d98c;
+	--gold-deep: #d3a12c;
+	--maroon: #800000;
+	--maroon-dark: #5b0000;
+	--shadow: 0 14px 30px rgba(128,0,0,0.12);
+}
 
-        * {
-            box-sizing: border-box;
-        }
+* {
+	box-sizing: border-box;
+}
 
-        html,
-        body {
-            width: 100%;
-            height: 100%;
-            margin: 0;
-            overflow: hidden;
-            background:
-                radial-gradient(circle at 12% 12%, rgba(255, 255, 255, 0.95) 0 12%, transparent 34%),
-                linear-gradient(135deg, #fff7da 0%, #f6dda4 47%, #fff1bd 100%);
-            color: var(--ink);
-            font-family: Mulish, Arial, sans-serif;
-        }
+html,
+body {
+	margin: 0;
+	min-height: 100%;
+}
 
-        .tv-display {
-            min-height: 100vh;
-            width: 100vw;
-            display: flex;
-            flex-direction: column;
-            gap: clamp(18px, 2.4vh, 32px);
-            padding: clamp(22px, 3vw, 54px);
-        }
+body {
+	overflow: hidden;
+	background: radial-gradient(1200px 600px at 10% 10%, #fffdf1 0%, #fff3c9 45%, #f7e6b8 100%);
+}
 
-        .tv-topbar {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 24px;
-            min-height: 72px;
-        }
+.live-token-wrap {
+	background: radial-gradient(1200px 600px at 10% 10%, #fffdf1 0%, #fff3c9 45%, #f7e6b8 100%);
+	padding: 24px 12px 36px;
+	min-height: 100vh;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-family: 'Mulish', sans-serif;
+}
 
-        .brand-block {
-            display: flex;
-            align-items: center;
-            gap: 18px;
-            min-width: 0;
-        }
+.live-token-shell {
+	max-width: 1200px;
+	width: 100%;
+	margin: 0 auto;
+}
 
-        .brand-logo {
-            width: clamp(58px, 6vw, 98px);
-            height: clamp(58px, 6vw, 98px);
-            object-fit: contain;
-            flex: 0 0 auto;
-        }
+.tv-logo {
+	display: block;
+	width: clamp(86px, 9vw, 140px);
+	height: auto;
+	margin: 0 auto 16px;
+}
 
-        .brand-title {
-            margin: 0;
-            font-family: Marcellus, Georgia, serif;
-            font-size: clamp(1.7rem, 3vw, 4rem);
-            line-height: 1;
-            color: var(--maroon);
-            white-space: nowrap;
-        }
+.live-token-title {
+	font-family: 'Marcellus', serif;
+	font-size: 2.1rem;
+	color: var(--maroon);
+	text-align: center;
+	margin: 0 0 10px;
+}
 
-        .brand-subtitle {
-            margin: 8px 0 0;
-            color: var(--muted);
-            font-size: clamp(0.95rem, 1.25vw, 1.45rem);
-            font-weight: 700;
-        }
+.live-token-subtitle {
+	font-family: 'Marcellus', sans-serif;
+	text-align: center;
+	color: #6b0000;
+	margin: 0 0 28px;
+}
 
-        .clock {
-            color: var(--maroon-dark);
-            font-family: Marcellus, Georgia, serif;
-            font-size: clamp(1.2rem, 2vw, 2.8rem);
-            text-align: right;
-            white-space: nowrap;
-        }
+.cards-row {
+	display: grid;
+	grid-template-columns: minmax(260px, 360px);
+	gap: 22px;
+	justify-content: center;
+}
 
-        .cards-row {
-            flex: 1;
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(min(520px, 100%), 1fr));
-            gap: clamp(24px, 3vw, 52px);
-            align-items: stretch;
-            min-height: 0;
-        }
+.cards-row.two-cards {
+	grid-template-columns: repeat(2, minmax(260px, 360px));
+}
 
-        .cards-row.single-card {
-            grid-template-columns: minmax(min(760px, 100%), 1180px);
-            justify-content: center;
-        }
+.calendar-card {
+	background: #fffef6;
+	border-radius: 18px;
+	box-shadow: var(--shadow);
+	overflow: hidden;
+	position: relative;
+	border: 1px solid var(--gold);
+	max-width: 360px;
+	width: 100%;
+	justify-self: center;
+}
 
-        .token-card {
-            display: flex;
-            flex-direction: column;
-            min-height: 0;
-            background: var(--panel);
-            border: 3px solid rgba(120, 0, 13, 0.16);
-            border-radius: 8px;
-            box-shadow: var(--shadow);
-            overflow: hidden;
-        }
+.calendar-card::before {
+	content: '';
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	height: 8px;
+	background: linear-gradient(90deg, var(--maroon), var(--gold-deep));
+}
 
-        .token-card[hidden] {
-            display: none;
-        }
+.calendar-top {
+	padding: 18px 18px 8px;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+}
 
-        .card-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 20px;
-            padding: clamp(20px, 2vw, 34px);
-            background: linear-gradient(90deg, var(--maroon), #9d1b12);
-            color: #fff9de;
-        }
+.calendar-city {
+	font-family: 'Marcellus', serif;
+	font-size: 1.2rem;
+	color: var(--maroon);
+}
 
-        .city-name {
-            font-family: Marcellus, Georgia, serif;
-            font-size: clamp(2rem, 3.2vw, 5rem);
-            line-height: 0.95;
-        }
+.calendar-date {
+	font-family: 'Marcellus', sans-serif;
+	font-size: 0.85rem;
+	color: #7a4d4d;
+}
 
-        .date-label {
-            font-size: clamp(1rem, 1.3vw, 1.8rem);
-            font-weight: 800;
-            text-align: right;
-            white-space: nowrap;
-        }
+.flip-window {
+	padding: 0 18px 14px;
+}
 
-        .current-zone {
-            flex: 1;
-            display: grid;
-            place-items: center;
-            padding: clamp(28px, 4vw, 80px);
-            background:
-                linear-gradient(180deg, rgba(255, 250, 229, 0.96), rgba(255, 239, 185, 0.96)),
-                var(--gold-soft);
-        }
+.flip-stack {
+	position: relative;
+	height: 68px;
+	perspective: 800px;
+}
 
-        .current-label {
-            margin: 0 0 clamp(16px, 2vh, 32px);
-            text-align: center;
-            color: var(--muted);
-            font-size: clamp(1.1rem, 1.8vw, 2.8rem);
-            font-weight: 800;
-            letter-spacing: 0;
-            text-transform: uppercase;
-        }
+.flip-card {
+	position: absolute;
+	inset: 0;
+	transform-style: preserve-3d;
+	transition: transform 0.6s ease;
+}
 
-        .flip-stack {
-            position: relative;
-            width: min(100%, 720px);
-            aspect-ratio: 2.35 / 1;
-            perspective: 1200px;
-        }
+.flip-card.is-flipped {
+	transform: rotateX(-180deg);
+}
 
-        .flip-card {
-            position: absolute;
-            inset: 0;
-            transform-style: preserve-3d;
-            transition: transform 0.6s ease;
-        }
+.flip-face {
+	position: absolute;
+	inset: 0;
+	backface-visibility: hidden;
+	display: grid;
+	place-items: center;
+	border-radius: 12px;
+	background: var(--cream);
+	border: 1px solid var(--gold);
+	font-family: 'Marcellus', serif;
+	font-weight: 700;
+	color: var(--maroon);
+	font-size: 1.5rem;
+	letter-spacing: 1px;
+}
 
-        .flip-card.is-flipped {
-            transform: rotateX(-180deg);
-        }
+.flip-face.back {
+	transform: rotateX(180deg);
+}
 
-        .flip-face {
-            position: absolute;
-            inset: 0;
-            display: grid;
-            place-items: center;
-            backface-visibility: hidden;
-            border: 5px solid var(--gold);
-            border-radius: 8px;
-            background: #fffdf4;
-            color: var(--maroon);
-            font-family: Marcellus, Georgia, serif;
-            font-size: clamp(6rem, 13vw, 18rem);
-            font-weight: 700;
-            line-height: 1;
-            box-shadow: inset 0 -16px 0 rgba(120, 0, 13, 0.07);
-        }
+.token-meta {
+	padding: 6px 18px 18px;
+	display: grid;
+	grid-template-columns: repeat(3, 1fr);
+	gap: 10px;
+	font-family: 'Marcellus', serif;
+}
 
-        .flip-face.back {
-            transform: rotateX(180deg);
-        }
+.meta-box {
+	background: #fff7e0;
+	border: 1px solid var(--gold);
+	border-radius: 10px;
+	padding: 10px;
+	text-align: center;
+}
 
-        .meta-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: clamp(12px, 1.4vw, 24px);
-            padding: clamp(18px, 2vw, 32px);
-            background: #fffaf0;
-            border-top: 2px solid rgba(231, 195, 90, 0.58);
-        }
+.meta-label {
+	font-size: 0.75rem;
+	color: #7a4d4d;
+	text-transform: uppercase;
+	letter-spacing: 0.6px;
+}
 
-        .meta-box {
-            min-width: 0;
-            padding: clamp(14px, 1.7vw, 28px);
-            border: 2px solid rgba(231, 195, 90, 0.82);
-            border-radius: 8px;
-            background: #fff7df;
-            text-align: center;
-        }
+.meta-value {
+	font-size: 1.1rem;
+	color: var(--maroon-dark);
+	font-weight: 700;
+}
 
-        .meta-label {
-            margin-bottom: 10px;
-            color: var(--muted);
-            font-size: clamp(0.85rem, 1vw, 1.35rem);
-            font-weight: 800;
-            text-transform: uppercase;
-        }
+.calendar-card {
+	max-width: 1020px;
+	transform: scale(1.1);
+	transform-origin: center;
+}
 
-        .meta-value {
-            color: var(--maroon-dark);
-            font-family: Marcellus, Georgia, serif;
-            font-size: clamp(2.4rem, 4vw, 6.2rem);
-            font-weight: 700;
-            line-height: 1;
-        }
+.calendar-card[data-hidden="true"] {
+	display: none;
+}
 
-        .next .meta-value {
-            color: var(--green);
-        }
-
-        .empty-state {
-            display: none;
-            flex: 1;
-            place-items: center;
-            padding: 40px;
-            text-align: center;
-            color: var(--maroon);
-            font-family: Marcellus, Georgia, serif;
-            font-size: clamp(2rem, 4vw, 5.5rem);
-        }
-
-        .empty-state.visible {
-            display: grid;
-        }
-
-        @media (max-width: 900px) {
-            html,
-            body {
-                overflow: auto;
-            }
-
-            .tv-display {
-                min-height: 100vh;
-            }
-
-            .tv-topbar {
-                align-items: flex-start;
-            }
-
-            .brand-title {
-                white-space: normal;
-            }
-
-            .meta-grid {
-                grid-template-columns: 1fr;
-            }
-        }
-    </style>
+@media (max-width: 980px) {
+	body {
+		overflow: auto;
+	}
+	.cards-row {
+		grid-template-columns: 1fr;
+	}
+	.token-meta {
+		grid-template-columns: 1fr;
+	}
+}
+	</style>
 </head>
 <body>
-    <main class="tv-display" data-city="<?= htmlspecialchars($city, ENT_QUOTES, 'UTF-8'); ?>">
-        <header class="tv-topbar" aria-label="Display status">
-            <div class="brand-block">
-                <img class="brand-logo" src="assets/images/logo/logomain.png" alt="Vishnusudarshana">
-                <div>
-                    <h1 class="brand-title">Live Token Status</h1>
-                    <p class="brand-subtitle">Updates automatically</p>
-                </div>
-            </div>
-            <div class="clock" data-clock>--:--</div>
-        </header>
+	<main class="live-token-wrap">
+		<div class="live-token-shell">
+			<img class="tv-logo" src="assets/images/logo/logomain.png" alt="Vishnusudarshana">
+			<h1 class="live-token-title">Live Token Status</h1>
+			<p class="live-token-subtitle">Live status updates, checked every second</p>
 
-        <section class="cards-row" aria-label="Live token cards">
-            <article class="token-card" data-city-card="solapur">
-                <div class="card-header">
-                    <div class="city-name">Solapur</div>
-                    <div class="date-label" data-date>--</div>
-                </div>
-                <div class="current-zone">
-                    <div>
-                        <p class="current-label">Current Token</p>
-                        <div class="flip-stack">
-                            <div class="flip-card" data-flip>
-                                <div class="flip-face front" data-front>--</div>
-                                <div class="flip-face back" data-back>--</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="meta-grid">
-                    <div class="meta-box">
-                        <div class="meta-label">Previous</div>
-                        <div class="meta-value" data-previous>--</div>
-                    </div>
-                    <div class="meta-box">
-                        <div class="meta-label">Current</div>
-                        <div class="meta-value" data-current>--</div>
-                    </div>
-                    <div class="meta-box next">
-                        <div class="meta-label">Next</div>
-                        <div class="meta-value" data-next>--</div>
-                    </div>
-                </div>
-            </article>
+			<div class="cards-row">
+				<section class="calendar-card" data-city="solapur">
+					<div class="calendar-top">
+						<div class="calendar-city">Solapur</div>
+						<div class="calendar-date" data-date>--</div>
+					</div>
+					<div class="flip-window">
+						<div class="flip-stack">
+							<div class="flip-card" data-flip>
+								<div class="flip-face front" data-front>--</div>
+								<div class="flip-face back" data-back>--</div>
+							</div>
+						</div>
+					</div>
+					<div class="token-meta">
+						<div class="meta-box">
+							<div class="meta-label">Previous Token | मागील टोकन | మునుపటి టోకెన్</div>
+							<div class="meta-value" data-last>--</div>
+						</div>
+						<div class="meta-box">
+							<div class="meta-label">Current Token | चालू टोकन | ప్రస్తుత టోకెన్</div>
+							<div class="meta-value" data-current>--</div>
+						</div>
+						<div class="meta-box">
+							<div class="meta-label">Next Token | पुढील टोकन | తదుపరి టోకెన్</div>
+							<div class="meta-value" data-next>--</div>
+						</div>
+					</div>
+				</section>
 
-            <article class="token-card" data-city-card="hyderabad">
-                <div class="card-header">
-                    <div class="city-name">Hyderabad</div>
-                    <div class="date-label" data-date>--</div>
-                </div>
-                <div class="current-zone">
-                    <div>
-                        <p class="current-label">Current Token</p>
-                        <div class="flip-stack">
-                            <div class="flip-card" data-flip>
-                                <div class="flip-face front" data-front>--</div>
-                                <div class="flip-face back" data-back>--</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="meta-grid">
-                    <div class="meta-box">
-                        <div class="meta-label">Previous</div>
-                        <div class="meta-value" data-previous>--</div>
-                    </div>
-                    <div class="meta-box">
-                        <div class="meta-label">Current</div>
-                        <div class="meta-value" data-current>--</div>
-                    </div>
-                    <div class="meta-box next">
-                        <div class="meta-label">Next</div>
-                        <div class="meta-value" data-next>--</div>
-                    </div>
-                </div>
-            </article>
-        </section>
+				<section class="calendar-card" data-city="hyderabad">
+					<div class="calendar-top">
+						<div class="calendar-city">Hyderabad</div>
+						<div class="calendar-date" data-date>--</div>
+					</div>
+					<div class="flip-window">
+						<div class="flip-stack">
+							<div class="flip-card" data-flip>
+								<div class="flip-face front" data-front>--</div>
+								<div class="flip-face back" data-back>--</div>
+							</div>
+						</div>
+					</div>
+					<div class="token-meta">
+						<div class="meta-box">
+							<div class="meta-label">Previous Token | मागील टोकन | మునుపటి టోకెన్</div>
+							<div class="meta-value" data-last>--</div>
+						</div>
+						<div class="meta-box">
+							<div class="meta-label">Current Token | चालू टोकन | ప్రస్తుత టోకెన్</div>
+							<div class="meta-value" data-current>--</div>
+						</div>
+						<div class="meta-box">
+							<div class="meta-label">Next Token | पुढील टोकन | తదుపరి టోకెన్</div>
+							<div class="meta-value" data-next>--</div>
+						</div>
+					</div>
+				</section>
+			</div>
+		</div>
+	</main>
 
-        <section class="empty-state" data-empty>No live token is active right now</section>
-    </main>
+	<script src="js/announcement-helper.js?v=<?= (int) @filemtime(__DIR__ . '/js/announcement-helper.js'); ?>"></script>
+	<script>
+const cards = document.querySelectorAll('.calendar-card');
+const cardsRow = document.querySelector('.cards-row');
+const apiUrl = 'api/live-tokens-previous.php';
+const visibilityUrl = 'api/live-token-visibility.php';
+const settingsUrl = 'api/get-settings.php';
+const LIVE_TOKEN_REFRESH_MS = 1000;
+const VISIBILITY_REFRESH_MS = 10000;
+const SETTINGS_REFRESH_MS = 30000;
+const urlParams = new URLSearchParams(window.location.search);
+const fullscreenCity = urlParams.get('fullscreen') || urlParams.get('city');
+let announcementLanguage = 'marathi';
+let announcementEnabled = true;
+let announcementCursor = null;
+let lastProcessedAnnouncementCursor = null;
+let hasLoadedInitialSnapshot = false;
+let liveTokensFetchInFlight = false;
+let visibilityFetchInFlight = false;
+let settingsFetchInFlight = false;
+let announcementQueue = Promise.resolve();
+const announcedTokenByCity = {};
+const initializedTokenByCity = {};
 
-    <script src="js/announcement-helper.js?v=<?= (int) @filemtime(__DIR__ . '/js/announcement-helper.js'); ?>"></script>
-    <script>
-        const display = document.querySelector('.tv-display');
-        const selectedCity = display.dataset.city || '';
-        const cards = Array.from(document.querySelectorAll('[data-city-card]'));
-        const cardsRow = document.querySelector('.cards-row');
-        const emptyState = document.querySelector('[data-empty]');
-        const clock = document.querySelector('[data-clock]');
-        const apiUrl = 'api/live-tokens-previous.php';
-        const visibilityUrl = 'api/live-token-visibility.php';
-        const settingsUrl = 'api/get-settings.php';
-        const LIVE_TOKEN_REFRESH_MS = 1000;
-        const VISIBILITY_REFRESH_MS = 10000;
-        const SETTINGS_REFRESH_MS = 30000;
+function normalizeAnnouncementLanguage(value) {
+	const v = String(value || '').trim().toLowerCase();
+	return v === 'english' ? 'english' : 'marathi';
+}
 
-        let announcementLanguage = 'marathi';
-        let announcementEnabled = true;
-        let announcementCursor = null;
-        let lastProcessedAnnouncementCursor = null;
-        let hasLoadedInitialSnapshot = false;
-        let liveTokensFetchInFlight = false;
-        let visibilityFetchInFlight = false;
-        let settingsFetchInFlight = false;
-        let announcementQueue = Promise.resolve();
-        const announcedTokenByCity = {};
-        const initializedTokenByCity = {};
+function normalizeAnnouncementEnabled(value) {
+	if (typeof value === 'boolean') {
+		return value;
+	}
+	const v = String(value || '').trim().toLowerCase();
+	return ['1', 'true', 'yes', 'on', 'enabled'].includes(v);
+}
 
-        function normalizeAnnouncementLanguage(value) {
-            return String(value || '').trim().toLowerCase() === 'english' ? 'english' : 'marathi';
-        }
+function parseTokenValue(value) {
+	const parsed = Number(value);
+	if (Number.isFinite(parsed)) {
+		return Math.trunc(parsed);
+	}
+	const cleaned = String(value || '').replace(/\D+/g, '');
+	return cleaned ? parseInt(cleaned, 10) : NaN;
+}
 
-        function normalizeAnnouncementEnabled(value) {
-            if (typeof value === 'boolean') {
-                return value;
-            }
-            return ['1', 'true', 'yes', 'on', 'enabled'].includes(String(value || '').trim().toLowerCase());
-        }
+function normalizeAnnouncementCursor(cursor) {
+	if (!cursor || typeof cursor !== 'object') {
+		return null;
+	}
+	const updatedAt = String(cursor.updated_at || '').trim();
+	if (!updatedAt) {
+		return null;
+	}
+	return {
+		updated_at: updatedAt,
+		booking_id: Math.max(0, parseInt(cursor.booking_id || cursor.id || 0, 10) || 0)
+	};
+}
 
-        function parseTokenValue(value) {
-            const parsed = Number(value);
-            if (Number.isFinite(parsed)) {
-                return Math.trunc(parsed);
-            }
-            const cleaned = String(value || '').replace(/\D+/g, '');
-            return cleaned ? parseInt(cleaned, 10) : NaN;
-        }
+function compareAnnouncementCursors(left, right) {
+	if (!left && !right) {
+		return 0;
+	}
+	if (!left) {
+		return -1;
+	}
+	if (!right) {
+		return 1;
+	}
+	if (left.updated_at < right.updated_at) {
+		return -1;
+	}
+	if (left.updated_at > right.updated_at) {
+		return 1;
+	}
+	if (left.booking_id < right.booking_id) {
+		return -1;
+	}
+	if (left.booking_id > right.booking_id) {
+		return 1;
+	}
+	return 0;
+}
 
-        function normalizeAnnouncementCursor(cursor) {
-            if (!cursor || typeof cursor !== 'object') {
-                return null;
-            }
-            const updatedAt = String(cursor.updated_at || '').trim();
-            if (!updatedAt) {
-                return null;
-            }
-            return {
-                updated_at: updatedAt,
-                booking_id: Math.max(0, parseInt(cursor.booking_id || cursor.id || 0, 10) || 0)
-            };
-        }
+function setAnnouncementCursor(cursor) {
+	const normalized = normalizeAnnouncementCursor(cursor);
+	if (!normalized) {
+		return;
+	}
+	if (compareAnnouncementCursors(normalized, announcementCursor) > 0) {
+		announcementCursor = normalized;
+	}
+}
 
-        function compareAnnouncementCursors(left, right) {
-            if (!left && !right) {
-                return 0;
-            }
-            if (!left) {
-                return -1;
-            }
-            if (!right) {
-                return 1;
-            }
-            if (left.updated_at < right.updated_at) {
-                return -1;
-            }
-            if (left.updated_at > right.updated_at) {
-                return 1;
-            }
-            return left.booking_id - right.booking_id;
-        }
+function setProcessedAnnouncementCursor(cursor) {
+	const normalized = normalizeAnnouncementCursor(cursor);
+	if (!normalized) {
+		return;
+	}
+	if (compareAnnouncementCursors(normalized, lastProcessedAnnouncementCursor) > 0) {
+		lastProcessedAnnouncementCursor = normalized;
+	}
+}
 
-        function setAnnouncementCursor(cursor) {
-            const normalized = normalizeAnnouncementCursor(cursor);
-            if (normalized && compareAnnouncementCursors(normalized, announcementCursor) > 0) {
-                announcementCursor = normalized;
-            }
-        }
+async function loadAnnouncementSettings() {
+	if (settingsFetchInFlight) {
+		return;
+	}
+	settingsFetchInFlight = true;
+	try {
+		const res = await fetch(settingsUrl, { cache: 'no-store' });
+		const data = await res.json();
+		if (data && data.success) {
+			announcementLanguage = normalizeAnnouncementLanguage(data.announcement_language);
+			const enabledRaw = Object.prototype.hasOwnProperty.call(data, 'live_token_announcement_enabled')
+				? data.live_token_announcement_enabled
+				: '1';
+			announcementEnabled = normalizeAnnouncementEnabled(enabledRaw);
+		}
+	} catch (err) {
+		announcementLanguage = 'marathi';
+		announcementEnabled = true;
+	} finally {
+		settingsFetchInFlight = false;
+	}
+}
 
-        function setProcessedAnnouncementCursor(cursor) {
-            const normalized = normalizeAnnouncementCursor(cursor);
-            if (normalized && compareAnnouncementCursors(normalized, lastProcessedAnnouncementCursor) > 0) {
-                lastProcessedAnnouncementCursor = normalized;
-            }
-        }
+function buildLiveTokenRequestUrl() {
+	const params = new URLSearchParams();
+	if (announcementCursor && announcementCursor.updated_at) {
+		params.set('announcement_since', announcementCursor.updated_at);
+		params.set('announcement_after_id', String(announcementCursor.booking_id || 0));
+	}
+	const queryString = params.toString();
+	return queryString ? `${apiUrl}?${queryString}` : apiUrl;
+}
 
-        function formatDateLabel(dateStr) {
-            const d = new Date(`${dateStr}T00:00:00`);
-            if (Number.isNaN(d.getTime())) {
-                return dateStr || '--';
-            }
-            return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
-        }
+function primeAnnouncementState(city, currentTokenRaw) {
+	const normalizedCity = String(city || '').trim().toLowerCase();
+	const token = parseTokenValue(currentTokenRaw);
+	initializedTokenByCity[normalizedCity] = true;
+	announcedTokenByCity[normalizedCity] = Number.isFinite(token) && token > 0 ? token : null;
+}
 
-        function updateClock() {
-            const now = new Date();
-            clock.textContent = now.toLocaleTimeString('en-IN', {
-                hour: '2-digit',
-                minute: '2-digit',
-                second: '2-digit',
-                hour12: true
-            });
-        }
+function enqueueLiveTokenAnnouncement(token, nextTokenRaw) {
+	if (!announcementEnabled) {
+		return;
+	}
+	if (!window.TokenAnnouncement || typeof window.TokenAnnouncement.announceLiveTokenStatus !== 'function') {
+		return;
+	}
+	announcementQueue = announcementQueue
+		.catch(() => {})
+		.then(() => window.TokenAnnouncement.announceLiveTokenStatus(token, nextTokenRaw, announcementLanguage));
+}
 
-        function buildLiveTokenRequestUrl() {
-            const params = new URLSearchParams();
-            if (announcementCursor && announcementCursor.updated_at) {
-                params.set('announcement_since', announcementCursor.updated_at);
-                params.set('announcement_after_id', String(announcementCursor.booking_id || 0));
-            }
-            const queryString = params.toString();
-            return queryString ? `${apiUrl}?${queryString}` : apiUrl;
-        }
+function maybeAnnounceCurrentToken(city, currentTokenRaw, nextTokenRaw) {
+	const normalizedCity = String(city || '').trim().toLowerCase();
+	if (!Object.prototype.hasOwnProperty.call(initializedTokenByCity, normalizedCity)) {
+		primeAnnouncementState(normalizedCity, currentTokenRaw);
+		return;
+	}
 
-        async function loadAnnouncementSettings() {
-            if (settingsFetchInFlight) {
-                return;
-            }
-            settingsFetchInFlight = true;
-            try {
-                const res = await fetch(settingsUrl, { cache: 'no-store' });
-                const data = await res.json();
-                if (data && data.success) {
-                    announcementLanguage = normalizeAnnouncementLanguage(data.announcement_language);
-                    const enabledRaw = Object.prototype.hasOwnProperty.call(data, 'live_token_announcement_enabled')
-                        ? data.live_token_announcement_enabled
-                        : '1';
-                    announcementEnabled = normalizeAnnouncementEnabled(enabledRaw);
-                }
-            } catch (err) {
-                announcementLanguage = 'marathi';
-                announcementEnabled = true;
-            } finally {
-                settingsFetchInFlight = false;
-            }
-        }
+	const token = parseTokenValue(currentTokenRaw);
+	if (!Number.isFinite(token) || token <= 0) {
+		return;
+	}
 
-        function enqueueLiveTokenAnnouncement(token, nextTokenRaw) {
-            if (!announcementEnabled || !window.TokenAnnouncement || typeof window.TokenAnnouncement.announceLiveTokenStatus !== 'function') {
-                return;
-            }
-            announcementQueue = announcementQueue
-                .catch(() => {})
-                .then(() => window.TokenAnnouncement.announceLiveTokenStatus(token, nextTokenRaw, announcementLanguage));
-        }
+	if (announcedTokenByCity[normalizedCity] === token) {
+		return;
+	}
 
-        function primeAnnouncementState(city, currentTokenRaw) {
-            const normalizedCity = String(city || '').trim().toLowerCase();
-            const token = parseTokenValue(currentTokenRaw);
-            initializedTokenByCity[normalizedCity] = true;
-            announcedTokenByCity[normalizedCity] = Number.isFinite(token) && token > 0 ? token : null;
-        }
+	initializedTokenByCity[normalizedCity] = true;
+	announcedTokenByCity[normalizedCity] = token;
+	enqueueLiveTokenAnnouncement(token, nextTokenRaw);
+}
 
-        function maybeAnnounceCurrentToken(city, currentTokenRaw, nextTokenRaw) {
-            const normalizedCity = String(city || '').trim().toLowerCase();
-            if (selectedCity && normalizedCity !== selectedCity) {
-                return;
-            }
-            if (!Object.prototype.hasOwnProperty.call(initializedTokenByCity, normalizedCity)) {
-                primeAnnouncementState(normalizedCity, currentTokenRaw);
-                return;
-            }
+function processAnnouncementEvents(events) {
+	if (!Array.isArray(events) || events.length === 0) {
+		return false;
+	}
 
-            const token = parseTokenValue(currentTokenRaw);
-            if (!Number.isFinite(token) || token <= 0 || announcedTokenByCity[normalizedCity] === token) {
-                return;
-            }
+	events.forEach(event => {
+		const eventCursor = normalizeAnnouncementCursor(event);
+		if (eventCursor && compareAnnouncementCursors(eventCursor, lastProcessedAnnouncementCursor) <= 0) {
+			return;
+		}
 
-            announcedTokenByCity[normalizedCity] = token;
-            enqueueLiveTokenAnnouncement(token, nextTokenRaw);
-        }
+		const normalizedCity = String((event && event.city) || '').trim().toLowerCase();
+		if (!normalizedCity) {
+			if (eventCursor) {
+				setProcessedAnnouncementCursor(eventCursor);
+			}
+			return;
+		}
 
-        function processAnnouncementEvents(events) {
-            if (!Array.isArray(events) || events.length === 0) {
-                return false;
-            }
+		const token = parseTokenValue(event.token_no);
+		if (Number.isFinite(token) && token > 0) {
+			initializedTokenByCity[normalizedCity] = true;
+			if (announcedTokenByCity[normalizedCity] !== token) {
+				announcedTokenByCity[normalizedCity] = token;
+				enqueueLiveTokenAnnouncement(token, null);
+			}
+		}
 
-            events.forEach(event => {
-                const eventCursor = normalizeAnnouncementCursor(event);
-                if (eventCursor && compareAnnouncementCursors(eventCursor, lastProcessedAnnouncementCursor) <= 0) {
-                    return;
-                }
+		if (eventCursor) {
+			setProcessedAnnouncementCursor(eventCursor);
+		}
+	});
 
-                const normalizedCity = String((event && event.city) || '').trim().toLowerCase();
-                if (selectedCity && normalizedCity !== selectedCity) {
-                    if (eventCursor) {
-                        setProcessedAnnouncementCursor(eventCursor);
-                    }
-                    return;
-                }
+	return true;
+}
 
-                const token = parseTokenValue(event.token_no);
-                if (Number.isFinite(token) && token > 0) {
-                    initializedTokenByCity[normalizedCity] = true;
-                    if (announcedTokenByCity[normalizedCity] !== token) {
-                        announcedTokenByCity[normalizedCity] = token;
-                        enqueueLiveTokenAnnouncement(token, null);
-                    }
-                }
+function cityDataFor(card, citiesData) {
+	const city = card.getAttribute('data-city');
+	return (citiesData && citiesData[city]) ? citiesData[city] : {};
+}
 
-                if (eventCursor) {
-                    setProcessedAnnouncementCursor(eventCursor);
-                }
-            });
+function primeAnnouncementStatesFromSnapshot(citiesData) {
+	cards.forEach(card => {
+		const city = card.getAttribute('data-city');
+		const cityData = cityDataFor(card, citiesData);
+		primeAnnouncementState(city, cityData.current_token);
+	});
+}
 
-            return true;
-        }
+function maybeAnnounceSnapshotChanges(citiesData) {
+	cards.forEach(card => {
+		const city = card.getAttribute('data-city');
+		const cityData = cityDataFor(card, citiesData);
+		maybeAnnounceCurrentToken(city, cityData.current_token, cityData.next_token);
+	});
+}
 
-        function updateFlip(card, value) {
-            const normalizedValue = String(value || '--');
-            const flip = card.querySelector('[data-flip]');
-            const front = card.querySelector('[data-front]');
-            const back = card.querySelector('[data-back]');
+function renderSnapshot(citiesData, dateStr) {
+	cards.forEach(card => {
+		renderCard(card, cityDataFor(card, citiesData), dateStr);
+	});
+}
 
-            if (front.textContent.trim() === normalizedValue) {
-                return;
-            }
+function applyAnnouncementCursorState(responseCursor, receivedEvents) {
+	if (!hasLoadedInitialSnapshot) {
+		if (responseCursor) {
+			setProcessedAnnouncementCursor(responseCursor);
+		}
+		return;
+	}
+	if (receivedEvents || responseCursor) {
+		setProcessedAnnouncementCursor(responseCursor);
+	}
+}
 
-            back.textContent = normalizedValue;
-            flip.classList.add('is-flipped');
-            window.setTimeout(() => {
-                front.textContent = normalizedValue;
-                flip.classList.remove('is-flipped');
-            }, 620);
-        }
+function formatDateLabel(dateStr) {
+	const d = new Date(dateStr + 'T00:00:00');
+	if (isNaN(d)) return dateStr;
+	return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+}
 
-        function renderCard(card, data, dateStr) {
-            const current = data.current_token || '--';
-            card.querySelector('[data-date]').textContent = formatDateLabel(dateStr);
-            card.querySelector('[data-previous]').textContent = data.previous_token || '-';
-            card.querySelector('[data-current]').textContent = current;
-            card.querySelector('[data-next]').textContent = data.next_token || '--';
-            updateFlip(card, current);
-        }
+function updateFlip(card, value) {
+	const flip = card.querySelector('[data-flip]');
+	const front = card.querySelector('[data-front]');
+	const back = card.querySelector('[data-back]');
 
-        function cityDataFor(card, citiesData) {
-            const city = card.dataset.cityCard;
-            return citiesData && citiesData[city] ? citiesData[city] : {};
-        }
+	if (front.textContent.trim() === value) return;
 
-        function renderSnapshot(citiesData, dateStr) {
-            cards.forEach(card => renderCard(card, cityDataFor(card, citiesData), dateStr));
-        }
+	back.textContent = value;
+	flip.classList.add('is-flipped');
 
-        function primeAnnouncementStatesFromSnapshot(citiesData) {
-            cards.forEach(card => {
-                const city = card.dataset.cityCard;
-                primeAnnouncementState(city, cityDataFor(card, citiesData).current_token);
-            });
-        }
+	setTimeout(() => {
+		front.textContent = value;
+		flip.classList.remove('is-flipped');
+	}, 620);
+}
 
-        function maybeAnnounceSnapshotChanges(citiesData) {
-            cards.forEach(card => {
-                const city = card.dataset.cityCard;
-                const cityData = cityDataFor(card, citiesData);
-                maybeAnnounceCurrentToken(city, cityData.current_token, cityData.next_token);
-            });
-        }
+function renderCard(card, data, dateStr) {
+	card.querySelector('[data-date]').textContent = formatDateLabel(dateStr);
+	card.querySelector('[data-last]').textContent = data.previous_token || '-';
+	card.querySelector('[data-current]').textContent = data.current_token || '--';
+	card.querySelector('[data-next]').textContent = data.next_token || '--';
+	updateFlip(card, data.current_token || '--');
+}
 
-        function applyAnnouncementCursorState(responseCursor, receivedEvents) {
-            if (!hasLoadedInitialSnapshot) {
-                if (responseCursor) {
-                    setProcessedAnnouncementCursor(responseCursor);
-                }
-                return;
-            }
-            if (receivedEvents || responseCursor) {
-                setProcessedAnnouncementCursor(responseCursor);
-            }
-        }
+async function fetchLiveTokens() {
+	if (liveTokensFetchInFlight) {
+		return;
+	}
+	liveTokensFetchInFlight = true;
+	try {
+		const res = await fetch(buildLiveTokenRequestUrl(), { cache: 'no-store' });
+		const data = await res.json();
+		if (!data || !data.success) return;
 
-        async function fetchLiveTokens() {
-            if (liveTokensFetchInFlight) {
-                return;
-            }
-            liveTokensFetchInFlight = true;
-            try {
-                const res = await fetch(buildLiveTokenRequestUrl(), { cache: 'no-store' });
-                const data = await res.json();
-                if (!data || !data.success) {
-                    return;
-                }
+		const citiesData = data.cities || {};
+		const responseCursor = normalizeAnnouncementCursor(data.announcement && data.announcement.cursor);
+		const receivedEvents = processAnnouncementEvents(data.announcement && data.announcement.events);
 
-                const citiesData = data.cities || {};
-                const responseCursor = normalizeAnnouncementCursor(data.announcement && data.announcement.cursor);
-                const receivedEvents = processAnnouncementEvents(data.announcement && data.announcement.events);
+		renderSnapshot(citiesData, data.date);
 
-                renderSnapshot(citiesData, data.date);
+		if (!hasLoadedInitialSnapshot) {
+			primeAnnouncementStatesFromSnapshot(citiesData);
+			hasLoadedInitialSnapshot = true;
+		} else if (!receivedEvents) {
+			maybeAnnounceSnapshotChanges(citiesData);
+		}
 
-                if (!hasLoadedInitialSnapshot) {
-                    primeAnnouncementStatesFromSnapshot(citiesData);
-                    hasLoadedInitialSnapshot = true;
-                } else if (!receivedEvents) {
-                    maybeAnnounceSnapshotChanges(citiesData);
-                }
+		applyAnnouncementCursorState(responseCursor, receivedEvents);
+		setAnnouncementCursor(responseCursor);
+	} catch (err) {
+		// Silent fail for live refresh
+	} finally {
+		liveTokensFetchInFlight = false;
+	}
+}
 
-                applyAnnouncementCursorState(responseCursor, receivedEvents);
-                setAnnouncementCursor(responseCursor);
-            } catch (err) {
-                // Keep the TV display stable if a refresh fails.
-            } finally {
-                liveTokensFetchInFlight = false;
-            }
-        }
+async function updateVisibility() {
+	if (visibilityFetchInFlight) {
+		return;
+	}
+	visibilityFetchInFlight = true;
+	try {
+		const res = await fetch(visibilityUrl, { cache: 'no-store' });
+		const data = await res.json();
+		if (!data.success) return;
+		const visible = data.visible || [];
+		cards.forEach(card => {
+			const city = card.getAttribute('data-city');
+			if (fullscreenCity) {
+				card.style.display = city === fullscreenCity ? '' : 'none';
+				return;
+			}
+			if (visible.includes(city)) {
+				card.style.display = '';
+			} else {
+				card.style.display = 'none';
+			}
+		});
+		if (cardsRow) {
+			cardsRow.classList.toggle('two-cards', !fullscreenCity && visible.length === 2);
+		}
+	} catch (err) {
+		// Silent fail for visibility refresh
+	} finally {
+		visibilityFetchInFlight = false;
+	}
+}
 
-        async function updateVisibility() {
-            if (visibilityFetchInFlight) {
-                return;
-            }
-            visibilityFetchInFlight = true;
-            try {
-                const res = await fetch(visibilityUrl, { cache: 'no-store' });
-                const data = await res.json();
-                if (!data || !data.success) {
-                    return;
-                }
+loadAnnouncementSettings();
+updateVisibility();
+fetchLiveTokens();
+setInterval(loadAnnouncementSettings, SETTINGS_REFRESH_MS);
+setInterval(updateVisibility, VISIBILITY_REFRESH_MS);
+setInterval(fetchLiveTokens, LIVE_TOKEN_REFRESH_MS);
 
-                const visible = data.visible || [];
-                let visibleCount = 0;
-                cards.forEach(card => {
-                    const city = card.dataset.cityCard;
-                    const shouldShow = selectedCity ? city === selectedCity : visible.includes(city);
-                    card.hidden = !shouldShow;
-                    if (shouldShow) {
-                        visibleCount += 1;
-                    }
-                });
+document.addEventListener('visibilitychange', () => {
+	if (!document.hidden) {
+		loadAnnouncementSettings();
+		updateVisibility();
+		fetchLiveTokens();
+	}
+});
 
-                cardsRow.classList.toggle('single-card', visibleCount === 1);
-                emptyState.classList.toggle('visible', visibleCount === 0);
-            } catch (err) {
-                // Keep the previous visibility state.
-            } finally {
-                visibilityFetchInFlight = false;
-            }
-        }
-
-        updateClock();
-        loadAnnouncementSettings();
-        updateVisibility();
-        fetchLiveTokens();
-        window.setInterval(updateClock, 1000);
-        window.setInterval(loadAnnouncementSettings, SETTINGS_REFRESH_MS);
-        window.setInterval(updateVisibility, VISIBILITY_REFRESH_MS);
-        window.setInterval(fetchLiveTokens, LIVE_TOKEN_REFRESH_MS);
-
-        document.addEventListener('visibilitychange', () => {
-            if (!document.hidden) {
-                updateClock();
-                loadAnnouncementSettings();
-                updateVisibility();
-                fetchLiveTokens();
-            }
-        });
-    </script>
+cards.forEach(card => {
+	card.addEventListener('click', () => {
+		const city = card.getAttribute('data-city');
+		window.location.href = `live-token-tv.php?fullscreen=${encodeURIComponent(city)}`;
+	});
+});
+	</script>
 </body>
 </html>
