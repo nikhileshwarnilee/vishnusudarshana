@@ -60,6 +60,7 @@ if (!function_exists('vs_admin_permission_map')) {
             'token-management/manage-booking.php' => ['pairs' => [['Reception', 'Booked Tokens']]],
             'token-management/revert-booking.php' => ['pairs' => [['Reception', 'Booked Tokens']], 'action' => 'edit'],
             'token-management/skip-booking.php' => ['pairs' => [['Reception', 'Booked Tokens']], 'action' => 'edit'],
+            'token-management/delete-old-bookings.php' => ['pairs' => [['Reception', 'Booked Tokens']], 'action' => 'delete'],
             'token-management/send-token-start-reminder.php' => ['pairs' => [['Reception', 'Booked Tokens']], 'action' => 'edit'],
 
             'reception/visitors-log.php' => ['pairs' => [['Reception', 'Visitors Log']]],

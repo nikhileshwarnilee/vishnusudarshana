@@ -100,8 +100,19 @@ $bookings = array_values(array_filter($bookings, function($b) use ($today) {
             font-weight: 600;
             font-size: 0.95em;
         }
+        button.action-link {
+            border: none;
+            cursor: pointer;
+            font-family: inherit;
+        }
         .action-link:hover {
             background: #600000;
+        }
+        .action-link.danger-action {
+            background: #c00;
+        }
+        .action-link.danger-action:hover {
+            background: #990000;
         }
         .filter-bar label {
             font-size: 1em;
@@ -242,6 +253,7 @@ $bookings = array_values(array_filter($bookings, function($b) use ($today) {
             <h2>All Booked Token Details</h2>
             <div class="header-actions">
                 <a class="action-link" href="completed-tokens.php">Completed Tokens</a>
+                <button type="button" class="action-link danger-action" id="deletePreviousBookingsBtn">Delete Previous Records</button>
                 <div class="filter-bar">
                     <label for="cityFilter">Filter by City:</label>
                     <select id="cityFilter">
@@ -564,6 +576,34 @@ $bookings = array_values(array_filter($bookings, function($b) use ($today) {
         </script>
     <script>
     // Delete booking functionality
+    var deletePreviousBookingsBtn = document.getElementById('deletePreviousBookingsBtn');
+    if (deletePreviousBookingsBtn) {
+        deletePreviousBookingsBtn.addEventListener('click', function() {
+            if (!confirm('Delete all booked tokens from previous days? Today\'s tokens will remain. This cannot be undone.')) return;
+
+            deletePreviousBookingsBtn.disabled = true;
+            deletePreviousBookingsBtn.textContent = 'Deleting...';
+
+            fetch('delete-old-bookings.php', { method: 'POST' })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        alert((data.deleted_count || 0) + ' previous booked token record(s) deleted.');
+                        location.reload();
+                    } else {
+                        alert(data.message || 'Failed to delete previous booked tokens.');
+                        deletePreviousBookingsBtn.disabled = false;
+                        deletePreviousBookingsBtn.textContent = 'Delete Previous Records';
+                    }
+                })
+                .catch(() => {
+                    alert('Error deleting previous booked tokens.');
+                    deletePreviousBookingsBtn.disabled = false;
+                    deletePreviousBookingsBtn.textContent = 'Delete Previous Records';
+                });
+        });
+    }
+
     document.querySelectorAll('.delete-btn').forEach(function(btn) {
         btn.addEventListener('click', function() {
             var bookingId = this.getAttribute('data-booking-id');
