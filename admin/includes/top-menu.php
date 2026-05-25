@@ -1212,6 +1212,10 @@ document.addEventListener('DOMContentLoaded', function () {
     if (!canEditOnRoute || !canDeleteOnRoute) {
         const nodes = document.querySelectorAll('a, button, input[type="submit"], input[type="button"]');
         nodes.forEach(function (el) {
+            if (el.closest('[data-vs-route-permission-scope="independent"]')) {
+                return;
+            }
+
             const meta = [
                 el.textContent || '',
                 el.value || '',

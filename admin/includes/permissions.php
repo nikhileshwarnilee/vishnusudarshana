@@ -46,6 +46,7 @@ if (!function_exists('vs_admin_permission_map')) {
             // Reception
             'token-management/booked-tokens.php' => ['pairs' => [['Reception', 'Booked Tokens']]],
             'token-management/completed-tokens.php' => ['pairs' => [['Reception', 'Booked Tokens']]],
+            'token-management/floating-token-bookings.php' => ['pairs' => [['Reception', 'Booked Tokens']], 'action' => 'view'],
             'token-management/book-token-offline.php' => ['pairs' => [['Reception', 'Book Token']]],
             'token-management/book-token-availability.php' => ['pairs' => [['Reception', 'Book Token']], 'action' => 'view'],
             'token-management/save-book-token.php' => ['pairs' => [['Reception', 'Book Token']], 'action' => 'edit'],

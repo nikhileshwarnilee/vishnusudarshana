@@ -274,6 +274,7 @@ $bookings = array_values(array_filter($bookings, function($b) use ($today) {
         </div>
     </div>
 
+    <div class="admin-container" id="bookedTokenGroups">
     <?php
     // Group bookings by date
     $grouped = [];
@@ -498,243 +499,216 @@ $bookings = array_values(array_filter($bookings, function($b) use ($today) {
     <?php endforeach; endforeach; ?>
     </div>
     <script>
-    // City filter logic with persistent selection
-    function filterByCity(city) {
-        document.querySelectorAll('.booking-table-group').forEach(function(group) {
-            if (!city || group.getAttribute('data-city') === city) {
-                group.style.display = '';
-            } else {
-                group.style.display = 'none';
+    (function() {
+        var cityStorageKey = 'bookedTokensCityFilter';
+        var cityFilterDropdown = document.getElementById('cityFilter');
+        var tokenGroups = document.getElementById('bookedTokenGroups');
+        var isRefreshing = false;
+
+        function hasCityOption(city) {
+            if (!cityFilterDropdown) return false;
+            return Array.prototype.some.call(cityFilterDropdown.options, function(option) {
+                return option.value === city;
+            });
+        }
+
+        function resolveCity(preferredCity) {
+            if (preferredCity && hasCityOption(preferredCity)) {
+                return preferredCity;
             }
-        });
-    }
-    
-    // Persistence: save selected city to localStorage and restore on page load
-    var cityFilterDropdown = document.getElementById('cityFilter');
-    
-    // Check if a city was saved in localStorage
-    var savedCity = localStorage.getItem('bookedTokensCityFilter');
-    if (savedCity) {
-        cityFilterDropdown.value = savedCity;
-        filterByCity(savedCity);
-    } else {
-        // Default to Solapur
-        filterByCity('solapur');
-    }
-    
-    // Save to localStorage when changed
-    cityFilterDropdown.addEventListener('change', function() {
-        localStorage.setItem('bookedTokensCityFilter', this.value);
-        filterByCity(this.value);
-    });
-    </script>
-        <script>
-        // Unskip booking functionality
-        document.querySelectorAll('.unskip-btn').forEach(function(btn) {
-            btn.addEventListener('click', function() {
-                var bookingId = this.getAttribute('data-booking-id');
-                if (!bookingId) return;
-                fetch('skip-booking.php', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: 'id=' + encodeURIComponent(bookingId) + '&unskip=1'
-                })
-                .then(res => res.json())
-                .then(data => {
-                    if (data.success) {
-                        location.reload();
-                    } else {
-                        alert('Failed to unskip booking.');
-                    }
-                })
-                .catch(() => alert('Failed to unskip booking.'));
-            });
-        });
-        </script>
-        <script>
-        // Skip booking functionality
-        document.querySelectorAll('.skip-btn').forEach(function(btn) {
-            btn.addEventListener('click', function() {
-                var bookingId = this.getAttribute('data-booking-id');
-                if (!bookingId) return;
-                fetch('skip-booking.php', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: 'id=' + encodeURIComponent(bookingId)
-                })
-                .then(res => res.json())
-                .then(data => {
-                    if (data.success) {
-                        location.reload();
-                    } else {
-                        alert('Failed to skip booking.');
-                    }
-                })
-                .catch(() => alert('Failed to skip booking.'));
-            });
-        });
-        </script>
-    <script>
-    // Delete booking functionality
-    var deletePreviousBookingsBtn = document.getElementById('deletePreviousBookingsBtn');
-    if (deletePreviousBookingsBtn) {
-        deletePreviousBookingsBtn.addEventListener('click', function() {
-            if (!confirm('Delete all booked tokens from previous days? Today\'s tokens will remain. This cannot be undone.')) return;
+            var savedCity = localStorage.getItem(cityStorageKey) || '';
+            if (savedCity && hasCityOption(savedCity)) {
+                return savedCity;
+            }
+            return hasCityOption('solapur') ? 'solapur' : '';
+        }
 
-            deletePreviousBookingsBtn.disabled = true;
-            deletePreviousBookingsBtn.textContent = 'Deleting...';
+        function filterByCity(city) {
+            document.querySelectorAll('#bookedTokenGroups .booking-table-group').forEach(function(group) {
+                group.style.display = (!city || group.getAttribute('data-city') === city) ? '' : 'none';
+            });
+        }
 
-            fetch('delete-old-bookings.php', { method: 'POST' })
-                .then(res => res.json())
-                .then(data => {
-                    if (data.success) {
-                        alert((data.deleted_count || 0) + ' previous booked token record(s) deleted.');
-                        location.reload();
-                    } else {
-                        alert(data.message || 'Failed to delete previous booked tokens.');
-                        deletePreviousBookingsBtn.disabled = false;
-                        deletePreviousBookingsBtn.textContent = 'Delete Previous Records';
+        function applyCityFilter(preferredCity) {
+            if (!cityFilterDropdown) return;
+            var city = resolveCity(preferredCity);
+            cityFilterDropdown.value = city;
+            localStorage.setItem(cityStorageKey, city);
+            filterByCity(city);
+        }
+
+        function refreshBookedTokens(preferredCity) {
+            if (isRefreshing || !tokenGroups) {
+                return Promise.resolve();
+            }
+            isRefreshing = true;
+            var city = preferredCity;
+            if (city === undefined && cityFilterDropdown) {
+                city = cityFilterDropdown.value;
+            }
+            var scrollY = window.scrollY;
+
+            return fetch(window.location.href, {
+                headers: {
+                    'Accept': 'text/html',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                credentials: 'same-origin'
+            })
+                .then(function(res) { return res.text(); })
+                .then(function(html) {
+                    var parsed = new DOMParser().parseFromString(html, 'text/html');
+                    var freshGroups = parsed.getElementById('bookedTokenGroups');
+                    var freshCityFilter = parsed.getElementById('cityFilter');
+
+                    if (!freshGroups) {
+                        throw new Error('Unable to refresh token list.');
                     }
+
+                    tokenGroups.innerHTML = freshGroups.innerHTML;
+                    if (cityFilterDropdown && freshCityFilter) {
+                        cityFilterDropdown.innerHTML = freshCityFilter.innerHTML;
+                    }
+                    applyCityFilter(city);
+                    window.scrollTo({ top: scrollY, left: 0, behavior: 'auto' });
                 })
-                .catch(() => {
-                    alert('Error deleting previous booked tokens.');
-                    deletePreviousBookingsBtn.disabled = false;
-                    deletePreviousBookingsBtn.textContent = 'Delete Previous Records';
+                .finally(function() {
+                    isRefreshing = false;
                 });
-        });
-    }
+        }
 
-    document.querySelectorAll('.delete-btn').forEach(function(btn) {
-        btn.addEventListener('click', function() {
-            var bookingId = this.getAttribute('data-booking-id');
-            if (!bookingId) return;
-            if (!confirm('Are you sure you want to delete this booking?')) return;
-            fetch('delete-booking.php', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: 'id=' + encodeURIComponent(bookingId)
-            })
-            .then(res => res.json())
-            .then(data => {
-                if (data.success) {
-                    location.reload();
-                } else {
-                    alert('Failed to delete booking.');
+        function setButtonBusy(button, busy, busyText) {
+            if (!button) return;
+            if (busy) {
+                button.dataset.originalText = button.textContent;
+                button.disabled = true;
+                if (busyText) {
+                    button.textContent = busyText;
                 }
-            })
-            .catch(() => alert('Failed to delete booking.'));
-        });
-    });
-
-    // Call booking functionality
-    document.querySelectorAll('.call-btn').forEach(function(btn) {
-        btn.addEventListener('click', function() {
-            var bookingId = this.getAttribute('data-booking-id');
-            if (!bookingId) return;
-            fetch('call-booking.php', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: 'id=' + encodeURIComponent(bookingId)
-            })
-            .then(res => res.json())
-            .then(data => {
-                if (data.success) {
-                    location.reload();
-                } else {
-                    alert(data.message || 'Failed to call booking.');
+            } else {
+                button.disabled = false;
+                if (button.dataset.originalText) {
+                    button.textContent = button.dataset.originalText;
+                    delete button.dataset.originalText;
                 }
-            })
-            .catch(() => alert('Failed to call booking.'));
-        });
-    });
+            }
+        }
 
-    // Present booking functionality
-    document.querySelectorAll('.present-btn').forEach(function(btn) {
-        btn.addEventListener('click', function() {
-            var bookingId = this.getAttribute('data-booking-id');
-            if (!bookingId) return;
-            fetch('complete-booking.php', {
+        function postAction(url, body, button, busyText, failureMessage, refreshCity, refreshAfter) {
+            setButtonBusy(button, true, busyText);
+            return fetch(url, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: 'id=' + encodeURIComponent(bookingId)
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'Accept': 'application/json'
+                },
+                credentials: 'same-origin',
+                body: body
             })
-            .then(res => res.json())
-            .then(data => {
-                if (data.success) {
-                    location.reload();
-                } else {
-                    alert('Failed to mark booking as present.');
-                }
-            })
-            .catch(() => alert('Failed to mark booking as present.'));
-        });
-    });
+                .then(function(res) { return res.json(); })
+                .then(function(data) {
+                    if (!data.success) {
+                        throw new Error(data.message || failureMessage);
+                    }
+                    if (refreshAfter === false) {
+                        return data;
+                    }
+                    return refreshBookedTokens(refreshCity).then(function() {
+                        return data;
+                    });
+                })
+                .catch(function(err) {
+                    alert(err.message || failureMessage);
+                    setButtonBusy(button, false);
+                });
+        }
 
-    // Revert booking functionality
-    document.querySelectorAll('.revert-btn').forEach(function(btn) {
-        btn.addEventListener('click', function() {
-            var bookingId = this.getAttribute('data-booking-id');
-            if (!bookingId) return;
-            fetch('revert-booking.php', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: 'id=' + encodeURIComponent(bookingId)
-            })
-            .then(res => res.json())
-            .then(data => {
-                if (data.success) {
-                    location.reload();
-                } else {
-                    alert('Failed to revert booking status.');
-                }
-            })
-            .catch(() => alert('Failed to revert booking status.'));
-        });
-    });
+        applyCityFilter();
 
-    // Reminder button functionality - sends reminder to tokens 1-5
-    document.querySelectorAll('.start-btn').forEach(function(btn) {
-        btn.addEventListener('click', function() {
-            if (this.disabled) {
-                alert('All tokens 1-5 are completed.');
+        if (cityFilterDropdown) {
+            cityFilterDropdown.addEventListener('change', function() {
+                localStorage.setItem(cityStorageKey, this.value);
+                filterByCity(this.value);
+            });
+        }
+
+        document.addEventListener('click', function(event) {
+            var button = event.target.closest('button');
+            if (!button) return;
+
+            if (button.id === 'deletePreviousBookingsBtn') {
+                if (!confirm('Delete all booked tokens from previous days? Today\'s tokens will remain. This cannot be undone.')) return;
+                postAction('delete-old-bookings.php', '', button, 'Deleting...', 'Failed to delete previous booked tokens.')
+                    .then(function(data) {
+                        if (data && data.success) {
+                            alert((data.deleted_count || 0) + ' previous booked token record(s) deleted.');
+                        }
+                    });
                 return;
             }
-            
-            var date = this.getAttribute('data-date');
-            var city = this.getAttribute('data-city');
-            var button = this;
-            
-            if (!date || !city) return;
-            
-            if (!confirm('Send revised time reminders to tokens 1-5?')) return;
-            
-            button.disabled = true;
-            button.textContent = 'Sending...';
-            
-            fetch('send-token-start-reminder.php', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: 'date=' + encodeURIComponent(date) + '&location=' + encodeURIComponent(city)
-            })
-            .then(res => res.json())
-            .then(data => {
-                if (data.success) {
-                    alert('Reminders sent to ' + data.sent_count + ' token(s)');
-                    button.style.display = 'none';
-                } else {
-                    alert('Failed: ' + (data.message || 'Unknown error'));
-                    button.disabled = false;
-                    button.textContent = 'Send Reminder';
+
+            var bookingId = button.getAttribute('data-booking-id');
+            if (!bookingId) return;
+
+            if (button.classList.contains('delete-btn')) {
+                if (!confirm('Are you sure you want to delete this booking?')) return;
+                postAction('delete-booking.php', 'id=' + encodeURIComponent(bookingId), button, 'Deleting...', 'Failed to delete booking.');
+                return;
+            }
+
+            if (button.classList.contains('call-btn')) {
+                postAction('call-booking.php', 'id=' + encodeURIComponent(bookingId), button, 'Calling...', 'Failed to call booking.');
+                return;
+            }
+
+            if (button.classList.contains('present-btn')) {
+                postAction('complete-booking.php', 'id=' + encodeURIComponent(bookingId), button, 'Saving...', 'Failed to mark booking as present.');
+                return;
+            }
+
+            if (button.classList.contains('revert-btn')) {
+                postAction('revert-booking.php', 'id=' + encodeURIComponent(bookingId), button, 'Reverting...', 'Failed to revert booking status.');
+                return;
+            }
+
+            if (button.classList.contains('skip-btn')) {
+                postAction('skip-booking.php', 'id=' + encodeURIComponent(bookingId), button, 'Skipping...', 'Failed to skip booking.');
+                return;
+            }
+
+            if (button.classList.contains('unskip-btn')) {
+                postAction('skip-booking.php', 'id=' + encodeURIComponent(bookingId) + '&unskip=1', button, 'Saving...', 'Failed to unskip booking.');
+                return;
+            }
+
+            if (button.classList.contains('start-btn')) {
+                if (button.disabled) {
+                    alert('All tokens 1-5 are completed.');
+                    return;
                 }
-            })
-            .catch(err => {
-                alert('Error sending reminders');
-                console.error(err);
-                button.disabled = false;
-                button.textContent = 'Send Reminder';
-            });
+
+                var date = button.getAttribute('data-date');
+                var city = button.getAttribute('data-city');
+                if (!date || !city) return;
+                if (!confirm('Send revised time reminders to tokens 1-5?')) return;
+
+                postAction(
+                    'send-token-start-reminder.php',
+                    'date=' + encodeURIComponent(date) + '&location=' + encodeURIComponent(city),
+                    button,
+                    'Sending...',
+                    'Error sending reminders',
+                    cityFilterDropdown ? cityFilterDropdown.value : '',
+                    false
+                ).then(function(data) {
+                    if (data && data.success) {
+                        alert('Reminders sent to ' + data.sent_count + ' token(s)');
+                        button.style.display = 'none';
+                    }
+                });
+            }
         });
-    });
+    })();
     </script>
 </body>
 </html>
