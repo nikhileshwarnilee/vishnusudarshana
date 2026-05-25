@@ -170,33 +170,49 @@ body {
 	transform: rotateX(180deg);
 }
 
-.token-meta {
-	padding: 6px 18px 18px;
-	display: grid;
-	grid-template-columns: repeat(3, 1fr);
-	gap: 10px;
-	font-family: 'Marcellus', serif;
-}
-
-.meta-box {
-	background: #fff7e0;
+.token-status-message {
+	margin: 0 18px 18px;
+	padding: 12px 14px;
 	border: 1px solid var(--gold);
-	border-radius: 10px;
-	padding: 10px;
-	text-align: center;
-}
-
-.meta-label {
-	font-size: 0.75rem;
-	color: #7a4d4d;
-	text-transform: uppercase;
-	letter-spacing: 0.6px;
-}
-
-.meta-value {
-	font-size: 1.1rem;
+	border-radius: 999px;
+	background: #fff7e0;
 	color: var(--maroon-dark);
+	font-family: 'Marcellus', serif;
+	font-size: 1.05rem;
 	font-weight: 700;
+	text-align: center;
+	line-height: 1.35;
+}
+
+.calendar-card.state-called {
+	animation: tokenPulse 1.1s ease-in-out infinite;
+	border-color: #d3a12c;
+}
+
+.calendar-card.state-called .flip-face,
+.calendar-card.state-called .token-status-message {
+	background: #fff0bd;
+	color: #7c4b00;
+}
+
+.calendar-card.state-present {
+	border-color: #84c6a5;
+}
+
+.calendar-card.state-present .flip-face,
+.calendar-card.state-present .token-status-message {
+	background: #e7f4f1;
+	border-color: #84c6a5;
+	color: #1d6b68;
+}
+
+@keyframes tokenPulse {
+	0%, 100% {
+		box-shadow: var(--shadow), 0 0 0 0 rgba(211, 161, 44, 0.45);
+	}
+	50% {
+		box-shadow: var(--shadow), 0 0 0 14px rgba(211, 161, 44, 0);
+	}
 }
 
 .calendar-card {
@@ -212,9 +228,6 @@ body {
 		overflow: auto;
 	}
 	.cards-row {
-		grid-template-columns: 1fr;
-	}
-	.token-meta {
 		grid-template-columns: 1fr;
 	}
 }
@@ -241,20 +254,7 @@ body {
 							</div>
 						</div>
 					</div>
-					<div class="token-meta">
-						<div class="meta-box">
-							<div class="meta-label">Previous Token | मागील टोकन | మునుపటి టోకెన్</div>
-							<div class="meta-value" data-last>--</div>
-						</div>
-						<div class="meta-box">
-							<div class="meta-label">Current Token | चालू टोकन | ప్రస్తుత టోకెన్</div>
-							<div class="meta-value" data-current>--</div>
-						</div>
-						<div class="meta-box">
-							<div class="meta-label">Next Token | पुढील टोकन | తదుపరి టోకెన్</div>
-							<div class="meta-value" data-next>--</div>
-						</div>
-					</div>
+					<div class="token-status-message" data-message>--</div>
 				</section>
 
 				<section class="calendar-card" data-city="hyderabad">
@@ -270,20 +270,7 @@ body {
 							</div>
 						</div>
 					</div>
-					<div class="token-meta">
-						<div class="meta-box">
-							<div class="meta-label">Previous Token | मागील टोकन | మునుపటి టోకెన్</div>
-							<div class="meta-value" data-last>--</div>
-						</div>
-						<div class="meta-box">
-							<div class="meta-label">Current Token | चालू टोकन | ప్రస్తుత టోకెన్</div>
-							<div class="meta-value" data-current>--</div>
-						</div>
-						<div class="meta-box">
-							<div class="meta-label">Next Token | पुढील टोकन | తదుపరి టోకెన్</div>
-							<div class="meta-value" data-next>--</div>
-						</div>
-					</div>
+					<div class="token-status-message" data-message>--</div>
 				</section>
 			</div>
 		</div>
@@ -566,10 +553,14 @@ function updateFlip(card, value) {
 
 function renderCard(card, data, dateStr) {
 	card.querySelector('[data-date]').textContent = formatDateLabel(dateStr);
-	card.querySelector('[data-last]').textContent = data.previous_token || '-';
-	card.querySelector('[data-current]').textContent = data.current_token || '--';
-	card.querySelector('[data-next]').textContent = data.next_token || '--';
-	updateFlip(card, data.current_token || '--');
+	const displayToken = data.display_token || data.current_token || '--';
+	const displayState = data.display_state || (displayToken === '--' ? 'idle' : 'present');
+	const message = data.display_message || (displayToken === '--' ? 'टोकन स्थिती लवकरच उपलब्ध होईल' : 'सध्या टोकन क्रमांक ' + displayToken + ' चालू आहे');
+
+	card.classList.remove('state-called', 'state-present', 'state-idle');
+	card.classList.add('state-' + displayState);
+	card.querySelector('[data-message]').textContent = message;
+	updateFlip(card, displayToken);
 }
 
 async function fetchLiveTokens() {

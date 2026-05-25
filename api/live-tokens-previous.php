@@ -31,6 +31,22 @@ function city_placeholder_sql(array $cities)
     return implode(', ', array_fill(0, count($cities), '?'));
 }
 
+function to_devanagari_number($value)
+{
+    return strtr((string) $value, [
+        '0' => '०',
+        '1' => '१',
+        '2' => '२',
+        '3' => '३',
+        '4' => '४',
+        '5' => '५',
+        '6' => '६',
+        '7' => '७',
+        '8' => '८',
+        '9' => '९',
+    ]);
+}
+
 function fetch_city_snapshot(PDO $pdo, $date, $city)
 {
     $completedStmt = $pdo->prepare(
@@ -48,6 +64,9 @@ function fetch_city_snapshot(PDO $pdo, $date, $city)
     $previousToken = '-';
     $currentToken = '--';
     $nextToken = '--';
+    $displayToken = '--';
+    $displayState = 'idle';
+    $displayMessage = 'टोकन स्थिती लवकरच उपलब्ध होईल';
 
     $completedCount = count($completed);
     if ($completedCount > 0) {
@@ -56,6 +75,19 @@ function fetch_city_snapshot(PDO $pdo, $date, $city)
             $previousToken = $completed[$completedCount - 2]['token_no'];
         }
     }
+
+    $calledStmt = $pdo->prepare(
+        "SELECT id, token_no, updated_at
+         FROM token_bookings
+         WHERE token_date = ?
+           AND LOWER(TRIM(location)) = LOWER(TRIM(?))
+           AND status = 'called'
+           AND updated_at IS NOT NULL
+         ORDER BY updated_at DESC, id DESC
+         LIMIT 1"
+    );
+    $calledStmt->execute([$date, $city]);
+    $called = $calledStmt->fetch(PDO::FETCH_ASSOC);
 
     $pendingStmt = $pdo->prepare(
         "SELECT token_no
@@ -73,10 +105,23 @@ function fetch_city_snapshot(PDO $pdo, $date, $city)
         $nextToken = $pending['token_no'];
     }
 
+    if ($called && isset($called['token_no'])) {
+        $displayToken = $called['token_no'];
+        $displayState = 'called';
+        $displayMessage = 'टोकन क्रमांक ' . to_devanagari_number($displayToken) . ' उपस्थित राहावे';
+    } elseif ($currentToken !== '--') {
+        $displayToken = $currentToken;
+        $displayState = 'present';
+        $displayMessage = 'सध्या टोकन क्रमांक ' . to_devanagari_number($displayToken) . ' चालू आहे';
+    }
+
     return [
         'previous_token' => $previousToken,
         'current_token' => $currentToken,
         'next_token' => $nextToken,
+        'display_token' => $displayToken,
+        'display_state' => $displayState,
+        'display_message' => $displayMessage,
     ];
 }
 

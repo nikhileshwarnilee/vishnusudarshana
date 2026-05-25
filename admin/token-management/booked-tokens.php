@@ -193,7 +193,7 @@ $bookings = array_values(array_filter($bookings, function($b) use ($today) {
             font-weight: 700;
             color: #800000;
         }
-        .complete-btn, .revert-btn, .delete-btn {
+        .call-btn, .present-btn, .complete-btn, .revert-btn, .delete-btn {
             font-size: 0.95em;
             padding: 6px 12px;
             border: none;
@@ -201,9 +201,23 @@ $bookings = array_values(array_filter($bookings, function($b) use ($today) {
             cursor: pointer;
             margin-right: 6px;
         }
-        .complete-btn { background: #1a8917; color: #fff; }
+        .call-btn { background: #d18b00; color: #fff; }
+        .present-btn, .complete-btn { background: #1a8917; color: #fff; }
         .revert-btn { background: #888; color: #fff; }
         .delete-btn { background: #c00; color: #fff; }
+        .called-row td {
+            background: #fff4cf !important;
+        }
+        .called-badge {
+            display: inline-block;
+            margin-left: 6px;
+            padding: 2px 7px;
+            border-radius: 999px;
+            background: #fff0bd;
+            color: #7c4b00;
+            font-size: 0.78em;
+            font-weight: 700;
+        }
         @media (max-width: 800px) {
             .bookedTokensTable { font-size: 0.88em; }
             .page-header { padding: 14px; }
@@ -326,14 +340,14 @@ $bookings = array_values(array_filter($bookings, function($b) use ($today) {
             <?php
                 // Check if tokens 1-5 are all completed
                 $allCompleted = true;
-                $checkStmt = $pdo->prepare("SELECT COUNT(*) as cnt FROM token_bookings WHERE token_no IN (1,2,3,4,5) AND token_date = ? AND LOWER(TRIM(location)) = LOWER(TRIM(?)) AND LOWER(TRIM(status)) != 'completed'");
+                $checkStmt = $pdo->prepare("SELECT COUNT(*) as cnt FROM token_bookings WHERE token_no IN (1,2,3,4,5) AND token_date = ? AND LOWER(TRIM(location)) = LOWER(TRIM(?)) AND (status IS NULL OR LOWER(TRIM(status)) != 'completed')");
                 $checkStmt->execute([$date, $city]);
                 $checkResult = $checkStmt->fetch(PDO::FETCH_ASSOC);
                 if ($checkResult && (int)$checkResult['cnt'] > 0) {
                     $allCompleted = false;
                 }
             ?>
-            <button class="start-btn" data-date="<?= htmlspecialchars($date) ?>" data-city="<?= htmlspecialchars($city) ?>" <?php if ($allCompleted): ?>disabled<?php endif; ?>><?php if ($allCompleted): ?>All Completed<?php else: ?>Start<?php endif; ?></button>
+            <button class="start-btn" data-date="<?= htmlspecialchars($date) ?>" data-city="<?= htmlspecialchars($city) ?>" <?php if ($allCompleted): ?>disabled<?php endif; ?>><?php if ($allCompleted): ?>All Completed<?php else: ?>Send Reminder<?php endif; ?></button>
             <?php endif; ?>
         </div>
         <div class="table-wrap">
@@ -354,8 +368,9 @@ $bookings = array_values(array_filter($bookings, function($b) use ($today) {
             </thead>
             <tbody>
                 <?php $rowIndex = 0; foreach ($cityBookings as $b): ?>
-                <tr>
-                    <td class="token-no"><?= htmlspecialchars($b['token_no']) ?></td>
+                <?php $bookingStatus = strtolower(trim((string)($b['status'] ?? ''))); ?>
+                <tr class="<?= $bookingStatus === 'called' ? 'called-row' : '' ?>">
+                    <td class="token-no"><?= htmlspecialchars($b['token_no']) ?><?php if ($bookingStatus === 'called'): ?><span class="called-badge">Called</span><?php endif; ?></td>
                     <td><?= htmlspecialchars($b['location']) ?></td>
                     <td>
                         <a href="../cif/index.php?prefill_name=<?= rawurlencode($b['name']) ?>" style="color:#0056b3;text-decoration:underline;">
@@ -448,12 +463,15 @@ $bookings = array_values(array_filter($bookings, function($b) use ($today) {
                         ?>
                     </td>
                     <td>
-                        <?php if (isset($b['status']) && $b['status'] === 'completed'): ?>
+                        <?php if ($bookingStatus === 'completed'): ?>
                             <button class="revert-btn" data-booking-id="<?= htmlspecialchars($b['id']) ?>" style="background:#888;color:#fff;padding:4px 10px;border:none;border-radius:4px;cursor:pointer;margin-right:6px;">Revert</button>
-                        <?php elseif (isset($b['status']) && $b['status'] === 'skip'): ?>
+                        <?php elseif ($bookingStatus === 'skip'): ?>
                             <button class="unskip-btn" data-booking-id="<?= htmlspecialchars($b['id']) ?>" style="background:#888;color:#fff;padding:4px 10px;border:none;border-radius:4px;cursor:pointer;margin-right:6px;">Unskip</button>
+                        <?php elseif ($bookingStatus === 'called'): ?>
+                            <button class="present-btn" data-booking-id="<?= htmlspecialchars($b['id']) ?>" style="background:#1a8917;color:#fff;padding:4px 10px;border:none;border-radius:4px;cursor:pointer;margin-right:6px;">Present</button>
+                            <button class="skip-btn" data-booking-id="<?= htmlspecialchars($b['id']) ?>" style="background:#ffc107;color:#333;padding:4px 10px;border:none;border-radius:4px;cursor:pointer;margin-right:6px;">Skip</button>
                         <?php else: ?>
-                            <button class="complete-btn" style="background:#1a8917;color:#fff;padding:4px 10px;border:none;border-radius:4px;cursor:pointer;margin-right:6px;">Start</button>
+                            <button class="call-btn" data-booking-id="<?= htmlspecialchars($b['id']) ?>" style="background:#d18b00;color:#fff;padding:4px 10px;border:none;border-radius:4px;cursor:pointer;margin-right:6px;">Call</button>
                             <button class="skip-btn" data-booking-id="<?= htmlspecialchars($b['id']) ?>" style="background:#ffc107;color:#333;padding:4px 10px;border:none;border-radius:4px;cursor:pointer;margin-right:6px;">Skip</button>
                         <?php endif; ?>
                         <button class="delete-btn" data-booking-id="<?= htmlspecialchars($b['id']) ?>" style="background:#c00;color:#fff;padding:4px 10px;border:none;border-radius:4px;cursor:pointer;">Delete</button>
@@ -568,10 +586,32 @@ $bookings = array_values(array_filter($bookings, function($b) use ($today) {
         });
     });
 
-    // Completed booking functionality
-    document.querySelectorAll('.complete-btn').forEach(function(btn) {
+    // Call booking functionality
+    document.querySelectorAll('.call-btn').forEach(function(btn) {
         btn.addEventListener('click', function() {
-            var bookingId = this.parentNode.querySelector('.delete-btn').getAttribute('data-booking-id');
+            var bookingId = this.getAttribute('data-booking-id');
+            if (!bookingId) return;
+            fetch('call-booking.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: 'id=' + encodeURIComponent(bookingId)
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert(data.message || 'Failed to call booking.');
+                }
+            })
+            .catch(() => alert('Failed to call booking.'));
+        });
+    });
+
+    // Present booking functionality
+    document.querySelectorAll('.present-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var bookingId = this.getAttribute('data-booking-id');
             if (!bookingId) return;
             fetch('complete-booking.php', {
                 method: 'POST',
@@ -583,10 +623,10 @@ $bookings = array_values(array_filter($bookings, function($b) use ($today) {
                 if (data.success) {
                     location.reload();
                 } else {
-                    alert('Failed to mark booking as completed.');
+                    alert('Failed to mark booking as present.');
                 }
             })
-            .catch(() => alert('Failed to mark booking as completed.'));
+            .catch(() => alert('Failed to mark booking as present.'));
         });
     });
 
@@ -612,7 +652,7 @@ $bookings = array_values(array_filter($bookings, function($b) use ($today) {
         });
     });
 
-    // Start button functionality - sends reminder to tokens 1-5
+    // Reminder button functionality - sends reminder to tokens 1-5
     document.querySelectorAll('.start-btn').forEach(function(btn) {
         btn.addEventListener('click', function() {
             if (this.disabled) {
@@ -644,14 +684,14 @@ $bookings = array_values(array_filter($bookings, function($b) use ($today) {
                 } else {
                     alert('Failed: ' + (data.message || 'Unknown error'));
                     button.disabled = false;
-                    button.textContent = 'Start';
+                    button.textContent = 'Send Reminder';
                 }
             })
             .catch(err => {
                 alert('Error sending reminders');
                 console.error(err);
                 button.disabled = false;
-                button.textContent = 'Start';
+                button.textContent = 'Send Reminder';
             });
         });
     });
