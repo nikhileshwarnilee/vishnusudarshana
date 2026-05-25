@@ -104,16 +104,18 @@ function formatCutoffTimeDisplay(string $cutoffTime): string
 try {
     $date = $_GET['date'] ?? '';
     $location = $_GET['location'] ?? '';
+    $allowOfflineTokenAvailability = isset($_GET['offline_token']) && (string) $_GET['offline_token'] === '1';
     $sameDayCutoffTime = getSameDayOnlineBookingCutoffTime($pdo);
     $sameDayClosed = isSameDayOnlineBookingClosed($date, $sameDayCutoffTime);
     $sameDayCutoffDisplay = formatCutoffTimeDisplay($sameDayCutoffTime);
-    $onlineTokenBookingEnabled = isOnlineTokenBookingEnabled($pdo);
+    $onlineTokenBookingEnabled = $allowOfflineTokenAvailability || isOnlineTokenBookingEnabled($pdo);
 
     if ($date === '' || $location === '') {
         echo json_encode([
             'success' => false,
             'message' => 'Missing date or location.',
             'online_token_booking_enabled' => $onlineTokenBookingEnabled,
+            'offline_token_availability' => $allowOfflineTokenAvailability,
             'same_day_online_closed' => $sameDayClosed,
             'same_day_online_cutoff_time' => $sameDayCutoffTime,
             'same_day_online_cutoff_display' => $sameDayCutoffDisplay
@@ -126,6 +128,7 @@ try {
             'success' => false,
             'message' => 'No tokens available for this date/location.',
             'online_token_booking_enabled' => false,
+            'offline_token_availability' => false,
             'same_day_online_closed' => $sameDayClosed,
             'same_day_online_cutoff_time' => $sameDayCutoffTime,
             'same_day_online_cutoff_display' => $sameDayCutoffDisplay
@@ -152,6 +155,7 @@ try {
             'success' => true,
             'data' => $row,
             'online_token_booking_enabled' => true,
+            'offline_token_availability' => $allowOfflineTokenAvailability,
             'same_day_online_closed' => $sameDayClosed,
             'same_day_online_cutoff_time' => $sameDayCutoffTime,
             'same_day_online_cutoff_display' => $sameDayCutoffDisplay
@@ -163,6 +167,7 @@ try {
         'success' => false,
         'message' => 'No tokens available for this date/location.',
         'online_token_booking_enabled' => true,
+        'offline_token_availability' => $allowOfflineTokenAvailability,
         'same_day_online_closed' => $sameDayClosed,
         'same_day_online_cutoff_time' => $sameDayCutoffTime,
         'same_day_online_cutoff_display' => $sameDayCutoffDisplay

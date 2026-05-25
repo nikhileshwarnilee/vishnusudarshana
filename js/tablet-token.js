@@ -341,7 +341,7 @@
 
     async function fetchTodayAvailability() {
         var date = getTodayDateIsoString();
-        var url = 'book-token-availability.php?date=' + encodeURIComponent(date) + '&location=' + encodeURIComponent(location);
+        var url = 'book-token-availability.php?offline_token=1&date=' + encodeURIComponent(date) + '&location=' + encodeURIComponent(location);
 
         try {
             var response = await fetch(url, { cache: 'no-store' });
