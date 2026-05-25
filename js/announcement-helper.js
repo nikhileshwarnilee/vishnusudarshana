@@ -157,6 +157,9 @@
                 if (opts.cancelQueue) {
                     synthesis.cancel();
                 }
+                if (typeof synthesis.resume === 'function') {
+                    synthesis.resume();
+                }
 
                 var utterance = new SpeechSynthesisUtterance(speechText);
                 utterance.lang = langCode;
@@ -168,6 +171,13 @@
                 var selected = selectPreferredVoice(voices, langCode);
                 if (selected) {
                     utterance.voice = selected;
+                } else if (typeof synthesis.onvoiceschanged !== 'undefined') {
+                    synthesis.onvoiceschanged = function () {
+                        var loadedVoice = selectPreferredVoice(synthesis.getVoices(), langCode);
+                        if (loadedVoice && !utterance.voice) {
+                            utterance.voice = loadedVoice;
+                        }
+                    };
                 }
 
                 var settled = false;
@@ -269,8 +279,10 @@
 
     async function announceToken(tokenNumber, language, options) {
         var opts = options || {};
-        await playBeep(opts.beepUrl);
-        await wait(BEEP_DELAY_MS);
+        if (!opts.skipBeep) {
+            await playBeep(opts.beepUrl);
+            await wait(BEEP_DELAY_MS);
+        }
         return speakText(generatedTokenMessage(tokenNumber, language), language, {
             cancelQueue: true
         });
@@ -285,8 +297,10 @@
 
     async function announceTokenCall(tokenNumber, language, options) {
         var opts = options || {};
-        await playBeep(opts.beepUrl);
-        await wait(BEEP_DELAY_MS);
+        if (!opts.skipBeep) {
+            await playBeep(opts.beepUrl);
+            await wait(BEEP_DELAY_MS);
+        }
         return speakText(callTokenMessage(tokenNumber, language), language, {
             cancelQueue: true
         });
@@ -298,8 +312,10 @@
             return Promise.resolve();
         }
         var opts = options || {};
-        await playBeep(opts.beepUrl);
-        await wait(BEEP_DELAY_MS);
+        if (!opts.skipBeep) {
+            await playBeep(opts.beepUrl);
+            await wait(BEEP_DELAY_MS);
+        }
         return speakText(message, language, {
             cancelQueue: true
         });

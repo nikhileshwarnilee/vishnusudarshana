@@ -454,7 +454,7 @@ function enqueueLiveTokenAnnouncement(token, nextTokenRaw) {
 	}
 	announcementQueue = announcementQueue
 		.catch(() => {})
-		.then(() => window.TokenAnnouncement.announceLiveTokenStatus(token, nextTokenRaw, announcementLanguage));
+		.then(() => window.TokenAnnouncement.announceLiveTokenStatus(token, nextTokenRaw, announcementLanguage, { skipBeep: true }));
 }
 
 function enqueueTokenCallAnnouncement(token) {
@@ -466,7 +466,7 @@ function enqueueTokenCallAnnouncement(token) {
 	}
 	announcementQueue = announcementQueue
 		.catch(() => {})
-		.then(() => window.TokenAnnouncement.announceTokenCall(token, announcementLanguage));
+		.then(() => window.TokenAnnouncement.announceTokenCall(token, announcementLanguage, { skipBeep: true }));
 }
 
 function maybeAnnounceCurrentToken(city, currentTokenRaw, nextTokenRaw) {

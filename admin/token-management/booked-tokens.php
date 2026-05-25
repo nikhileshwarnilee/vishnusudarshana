@@ -638,6 +638,10 @@ $bookings = array_values(array_filter($bookings, function($b) use ($today) {
             });
         }
 
+        window.VSRefreshBookedTokensPage = function() {
+            return refreshBookedTokens(cityFilterDropdown ? cityFilterDropdown.value : undefined);
+        };
+
         document.addEventListener('click', function(event) {
             var button = event.target.closest('button');
             if (!button) return;

@@ -185,6 +185,9 @@ $vsTokenWidgetCanDelete = $vsFloatingUserId > 0
     .vs-token-call-btn {
         background: #d18b00;
     }
+    .vs-token-present-btn {
+        background: #1a8917;
+    }
     .vs-token-skip-btn {
         background: #856404;
     }
@@ -265,6 +268,7 @@ $vsTokenWidgetCanDelete = $vsFloatingUserId > 0
             list: <?= json_encode($vsFloatingAdminUrl . '/token-management/floating-token-bookings.php') ?>,
             call: <?= json_encode($vsFloatingAdminUrl . '/token-management/call-booking.php') ?>,
             skip: <?= json_encode($vsFloatingAdminUrl . '/token-management/skip-booking.php') ?>,
+            present: <?= json_encode($vsFloatingAdminUrl . '/token-management/complete-booking.php') ?>,
             delete: <?= json_encode($vsFloatingAdminUrl . '/token-management/delete-booking.php') ?>
         },
         canEdit: <?= $vsTokenWidgetCanEdit ? 'true' : 'false' ?>,
@@ -326,6 +330,10 @@ $vsTokenWidgetCanDelete = $vsFloatingUserId > 0
         return String(value === null || value === undefined ? '' : value);
     }
 
+    function normalizeStatus(value) {
+        return String(value || '').trim().toLowerCase();
+    }
+
     function renderTokens(tokens) {
         widget.classList.remove('is-hidden');
         count.textContent = tokens.length;
@@ -348,7 +356,8 @@ $vsTokenWidgetCanDelete = $vsFloatingUserId > 0
             name.textContent = escapeText(token.name || 'No name');
             const meta = document.createElement('div');
             meta.className = 'vs-token-widget-meta';
-            meta.textContent = escapeText(token.location || '');
+            const status = normalizeStatus(token.status);
+            meta.textContent = escapeText(token.location || '') + (status === 'called' ? ' - Called' : '');
             details.appendChild(tokenNo);
             details.appendChild(name);
             details.appendChild(meta);
@@ -357,9 +366,15 @@ $vsTokenWidgetCanDelete = $vsFloatingUserId > 0
             actions.className = 'vs-token-widget-actions';
 
             if (config.canEdit) {
-                actions.appendChild(makeActionButton('Call', 'vs-token-call-btn', function () {
-                    runAction(config.endpoints.call, token.id, 'call');
-                }));
+                if (status === 'called') {
+                    actions.appendChild(makeActionButton('Present', 'vs-token-present-btn', function () {
+                        runAction(config.endpoints.present, token.id, 'present');
+                    }));
+                } else {
+                    actions.appendChild(makeActionButton('Call', 'vs-token-call-btn', function () {
+                        runAction(config.endpoints.call, token.id, 'call');
+                    }));
+                }
                 actions.appendChild(makeActionButton('Skip', 'vs-token-skip-btn', function () {
                     runAction(config.endpoints.skip, token.id, 'skip');
                 }));
@@ -441,7 +456,11 @@ $vsTokenWidgetCanDelete = $vsFloatingUserId > 0
                 if (!data.success) {
                     throw new Error(data.message || 'Unable to ' + actionName + ' token.');
                 }
-                return loadTokens(false);
+                return loadTokens(false).then(function () {
+                    if (typeof window.VSRefreshBookedTokensPage === 'function') {
+                        return window.VSRefreshBookedTokensPage();
+                    }
+                });
             })
             .catch(function (err) {
                 alert(err.message || 'Token action failed.');
