@@ -2,7 +2,7 @@
     'use strict';
 
     var MAX_PHONE_LENGTH = 10;
-    var COOLDOWN_SECONDS = 30;
+    var COOLDOWN_SECONDS = 5;
     var EMPTY_PHONE_MASK = '__________';
     var BUTTON_PRESS_MS = 150;
     var PRINT_ANIMATION_MS = 3400;
@@ -1666,6 +1666,12 @@
                 window.localStorage.removeItem(cooldownStorageKey);
                 clearStoredReceipt();
                 return;
+            }
+
+            var maxCooldownEnd = Date.now() + (COOLDOWN_SECONDS * 1000);
+            if (savedCooldown > maxCooldownEnd) {
+                savedCooldown = maxCooldownEnd;
+                window.localStorage.setItem(cooldownStorageKey, String(savedCooldown));
             }
 
             cooldownEndsAt = savedCooldown;

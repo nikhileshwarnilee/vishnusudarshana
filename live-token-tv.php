@@ -12,16 +12,17 @@ header('Expires: 0');
 	<meta name="theme-color" content="#800000">
 	<title>Live Token Status</title>
 	<style>
-@import url('https://fonts.googleapis.com/css2?family=Marcellus:wght@500;700&family=Mulish:wght@400;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@500;700;800;900&display=swap');
 
 :root {
-	--ink: #4a2a2a;
-	--cream: #fff7d6;
-	--gold: #f2d98c;
-	--gold-deep: #d3a12c;
-	--maroon: #800000;
-	--maroon-dark: #5b0000;
-	--shadow: 0 14px 30px rgba(128,0,0,0.12);
+	--present-bg: #e9fff8;
+	--present-ink: #003d37;
+	--present-accent: #00a884;
+	--called-bg: #fff1d5;
+	--called-ink: #4d0900;
+	--called-accent: #ff3b1f;
+	--idle-bg: #f5f1e8;
+	--idle-ink: #48433a;
 }
 
 * {
@@ -36,212 +37,210 @@ body {
 
 body {
 	overflow: hidden;
-	background: radial-gradient(1200px 600px at 10% 10%, #fffdf1 0%, #fff3c9 45%, #f7e6b8 100%);
+	background: #f5f1e8;
+	font-family: 'Inter', Arial, sans-serif;
 }
 
 .live-token-wrap {
-	background: radial-gradient(1200px 600px at 10% 10%, #fffdf1 0%, #fff3c9 45%, #f7e6b8 100%);
-	padding: 24px 12px 36px;
 	min-height: 100vh;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	font-family: 'Mulish', sans-serif;
+	width: 100vw;
+	background: #f5f1e8;
 }
 
 .live-token-shell {
-	max-width: 1200px;
-	width: 100%;
-	margin: 0 auto;
+	min-height: 100vh;
+	width: 100vw;
 }
 
-.tv-logo {
-	display: block;
-	width: min(360px, 72vw);
-	height: auto;
-	margin: 0 auto 20px;
-}
-
-.live-token-title {
-	font-family: 'Marcellus', serif;
-	font-size: 2.1rem;
-	color: var(--maroon);
-	text-align: center;
-	margin: 0 0 10px;
-}
-
-.live-token-subtitle {
-	font-family: 'Marcellus', sans-serif;
-	text-align: center;
-	color: #6b0000;
-	margin: 0 0 28px;
-}
-
-.cards-row {
+.token-grid {
 	display: grid;
-	grid-template-columns: minmax(260px, 360px);
-	gap: 22px;
-	justify-content: center;
+	grid-template-columns: 1fr;
+	min-height: 100vh;
+	width: 100vw;
 }
 
-.cards-row.two-cards {
-	grid-template-columns: repeat(2, minmax(260px, 360px));
+.token-grid.two-cards {
+	grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
-.calendar-card {
-	background: #fffef6;
-	border-radius: 18px;
-	box-shadow: var(--shadow);
-	overflow: hidden;
-	position: relative;
-	border: 1px solid var(--gold);
-	max-width: 360px;
+.token-panel {
+	min-height: 100vh;
 	width: 100%;
-	justify-self: center;
-}
-
-.calendar-card::before {
-	content: '';
-	position: absolute;
-	top: 0;
-	left: 0;
-	right: 0;
-	height: 8px;
-	background: linear-gradient(90deg, var(--maroon), var(--gold-deep));
-}
-
-.calendar-top {
-	padding: 18px 18px 8px;
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-}
-
-.calendar-city {
-	font-family: 'Marcellus', serif;
-	font-size: 1.2rem;
-	color: var(--maroon);
-}
-
-.calendar-date {
-	font-family: 'Marcellus', sans-serif;
-	font-size: 0.85rem;
-	color: #7a4d4d;
-}
-
-.flip-window {
-	padding: 0 18px 14px;
-}
-
-.flip-stack {
 	position: relative;
-	height: 68px;
-	perspective: 800px;
-}
-
-.flip-card {
-	position: absolute;
-	inset: 0;
-	transform-style: preserve-3d;
-	transition: transform 0.6s ease;
-}
-
-.flip-card.is-flipped {
-	transform: rotateX(-180deg);
-}
-
-.flip-face {
-	position: absolute;
-	inset: 0;
-	backface-visibility: hidden;
 	display: grid;
 	place-items: center;
-	border-radius: 12px;
-	background: var(--cream);
-	border: 1px solid var(--gold);
-	font-family: 'Marcellus', serif;
-	font-weight: 700;
-	color: var(--maroon);
-	font-size: 1.5rem;
-	letter-spacing: 1px;
+	padding: clamp(18px, 3vw, 46px);
+	overflow: hidden;
+	background: var(--idle-bg);
+	color: var(--idle-ink);
+	cursor: pointer;
 }
 
-.flip-face.back {
-	transform: rotateX(180deg);
+.token-grid.two-cards .token-panel:first-child {
+	border-right: clamp(6px, 0.8vw, 14px) solid rgba(0, 0, 0, 0.12);
 }
 
-.token-status-message {
-	margin: 0 18px 18px;
-	padding: 12px 14px;
-	border: 1px solid var(--gold);
-	border-radius: 999px;
-	background: #fff7e0;
-	color: var(--maroon-dark);
-	font-family: 'Marcellus', serif;
-	font-size: 1.05rem;
-	font-weight: 700;
+.token-panel::before {
+	content: '';
+	position: absolute;
+	inset: 0;
+	pointer-events: none;
+	background:
+		linear-gradient(180deg, rgba(255, 255, 255, 0.52), rgba(255, 255, 255, 0) 35%),
+		radial-gradient(circle at 50% 52%, rgba(255, 255, 255, 0.42), rgba(255, 255, 255, 0) 58%);
+}
+
+.token-panel-inner {
+	position: relative;
+	z-index: 1;
+	width: 100%;
+	height: 100%;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	flex-direction: column;
+	gap: clamp(10px, 2vh, 26px);
+}
+
+.token-city {
+	position: absolute;
+	top: clamp(16px, 3.5vh, 42px);
+	left: clamp(18px, 3vw, 54px);
+	right: clamp(18px, 3vw, 54px);
+	font-size: clamp(1rem, 2.4vh, 2rem);
+	font-weight: 900;
+	letter-spacing: 0;
+	text-transform: uppercase;
+	opacity: 0.7;
+}
+
+.token-number {
+	width: 100%;
+	display: grid;
+	place-items: center;
+	font-size: min(62vh, 42rem);
+	line-height: 0.82;
+	font-weight: 900;
+	letter-spacing: 0;
+	font-variant-numeric: tabular-nums;
 	text-align: center;
-	line-height: 1.35;
+	text-shadow: 0 1.1vh 0 rgba(255, 255, 255, 0.72);
+	transition: transform 0.35s ease, color 0.35s ease, text-shadow 0.35s ease;
 }
 
-.calendar-card.state-called {
-	animation: tokenPulse 2.8s ease-in-out infinite;
-	border-color: #d3a12c;
+.token-grid.two-cards .token-number {
+	font-size: min(46vh, 33rem);
 }
 
-.calendar-card.state-called .flip-card {
-	animation: calledTokenSlowFlip 6s ease-in-out infinite;
+.token-panel[data-digits="3"] .token-number {
+	font-size: min(54vh, 36rem);
 }
 
-.calendar-card.state-called .flip-face,
-.calendar-card.state-called .token-status-message {
-	background: #fff0bd;
-	color: #7c4b00;
+.token-panel[data-digits="4"] .token-number {
+	font-size: min(42vh, 28rem);
 }
 
-.calendar-card.state-present {
-	border-color: #84c6a5;
+.token-grid.two-cards .token-panel[data-digits="3"] .token-number {
+	font-size: min(36vh, 25rem);
 }
 
-.calendar-card.state-present .flip-card,
-.calendar-card.state-idle .flip-card {
-	animation: none;
-	transform: none;
+.token-grid.two-cards .token-panel[data-digits="4"] .token-number {
+	font-size: min(28vh, 19rem);
 }
 
-.calendar-card.state-present .flip-face,
-.calendar-card.state-present .token-status-message {
-	background: #e7f4f1;
-	border-color: #84c6a5;
-	color: #1d6b68;
+.token-digit.back {
+	display: none;
 }
 
-@keyframes tokenPulse {
+.token-state {
+	position: absolute;
+	left: clamp(18px, 3vw, 54px);
+	right: clamp(18px, 3vw, 54px);
+	bottom: clamp(18px, 4vh, 54px);
+	min-height: 1.2em;
+	font-size: clamp(1.25rem, 4.8vh, 4.8rem);
+	line-height: 1;
+	font-weight: 900;
+	text-align: center;
+	letter-spacing: 0;
+	text-transform: uppercase;
+	opacity: 0.88;
+}
+
+.token-panel.state-present {
+	background: linear-gradient(135deg, #effff9 0%, var(--present-bg) 48%, #d9fff3 100%);
+	color: var(--present-ink);
+}
+
+.token-panel.state-present::after {
+	content: '';
+	position: absolute;
+	inset: auto 0 0;
+	height: clamp(14px, 2vh, 30px);
+	background: var(--present-accent);
+}
+
+.token-panel.state-present .token-state::before {
+	content: 'PRESENT';
+}
+
+.token-panel.state-called {
+	background: linear-gradient(135deg, #fff8e8 0%, var(--called-bg) 50%, #ffd6c2 100%);
+	color: var(--called-ink);
+	animation: calledBackground 1.05s ease-in-out infinite;
+}
+
+.token-panel.state-called::after {
+	content: '';
+	position: absolute;
+	inset: 0;
+	border: clamp(14px, 2vw, 32px) solid var(--called-accent);
+	pointer-events: none;
+	animation: calledBorder 1.05s ease-in-out infinite;
+}
+
+.token-panel.state-called .token-number {
+	color: var(--called-ink);
+	text-shadow: 0 1vh 0 rgba(255, 255, 255, 0.75), 0 0 5vh rgba(255, 59, 31, 0.35);
+	animation: calledNumber 1.05s ease-in-out infinite;
+}
+
+.token-panel.state-called .token-state::before {
+	content: 'CALLED';
+}
+
+@keyframes calledNumber {
 	0%, 100% {
-		box-shadow: var(--shadow), 0 0 0 0 rgba(211, 161, 44, 0.45);
+		transform: scale(1);
 	}
 	50% {
-		box-shadow: var(--shadow), 0 0 0 14px rgba(211, 161, 44, 0);
+		transform: scale(1.055);
 	}
 }
 
-@keyframes calledTokenSlowFlip {
-	0%, 64% {
-		transform: rotateX(0deg);
+@keyframes calledBackground {
+	0%, 100% {
+		filter: saturate(1);
 	}
-	78%, 88% {
-		transform: rotateX(-180deg);
-	}
-	100% {
-		transform: rotateX(-360deg);
+	50% {
+		filter: saturate(1.25);
 	}
 }
 
-.calendar-card {
-	max-width: 360px;
+@keyframes calledBorder {
+	0%, 100% {
+		opacity: 0.95;
+	}
+	50% {
+		opacity: 0.25;
+	}
 }
 
-.calendar-card[data-hidden="true"] {
+.token-panel.state-idle .token-state::before {
+	content: 'WAIT';
+}
+
+.token-panel[data-hidden="true"] {
 	display: none;
 }
 
@@ -249,8 +248,19 @@ body {
 	body {
 		overflow: auto;
 	}
-	.cards-row {
+	.token-grid,
+	.token-grid.two-cards {
 		grid-template-columns: 1fr;
+	}
+	.token-grid.two-cards .token-panel:first-child {
+		border-right: 0;
+		border-bottom: clamp(6px, 1vh, 12px) solid rgba(0, 0, 0, 0.12);
+	}
+	.token-panel {
+		min-height: 50vh;
+	}
+	.token-number {
+		font-size: min(28vh, 18rem);
 	}
 }
 	</style>
@@ -258,41 +268,29 @@ body {
 <body>
 	<main class="live-token-wrap">
 		<div class="live-token-shell">
-			<img class="tv-logo" src="assets/images/logo/logomain.png" alt="Vishnusudarshana">
-			<h1 class="live-token-title">Live Token Status</h1>
-			<p class="live-token-subtitle">Live status updates, checked every second</p>
-
-			<div class="cards-row">
-				<section class="calendar-card" data-city="solapur">
-					<div class="calendar-top">
-						<div class="calendar-city">Solapur</div>
-						<div class="calendar-date" data-date>--</div>
-					</div>
-					<div class="flip-window">
-						<div class="flip-stack">
-							<div class="flip-card" data-flip>
-								<div class="flip-face front" data-front>--</div>
-								<div class="flip-face back" data-back>--</div>
-							</div>
+			<div class="token-grid">
+				<section class="token-panel" data-city="solapur">
+					<div class="token-panel-inner">
+						<div class="token-city">Solapur</div>
+						<div class="token-number" data-flip>
+							<span class="token-digit front" data-front>--</span>
+							<span class="token-digit back" data-back>--</span>
 						</div>
+						<div class="token-state" data-message></div>
+						<span hidden data-date>--</span>
 					</div>
-					<div class="token-status-message" data-message>--</div>
 				</section>
 
-				<section class="calendar-card" data-city="hyderabad">
-					<div class="calendar-top">
-						<div class="calendar-city">Hyderabad</div>
-						<div class="calendar-date" data-date>--</div>
-					</div>
-					<div class="flip-window">
-						<div class="flip-stack">
-							<div class="flip-card" data-flip>
-								<div class="flip-face front" data-front>--</div>
-								<div class="flip-face back" data-back>--</div>
-							</div>
+				<section class="token-panel" data-city="hyderabad">
+					<div class="token-panel-inner">
+						<div class="token-city">Hyderabad</div>
+						<div class="token-number" data-flip>
+							<span class="token-digit front" data-front>--</span>
+							<span class="token-digit back" data-back>--</span>
 						</div>
+						<div class="token-state" data-message></div>
+						<span hidden data-date>--</span>
 					</div>
-					<div class="token-status-message" data-message>--</div>
 				</section>
 			</div>
 		</div>
@@ -300,8 +298,8 @@ body {
 
 	<script src="js/announcement-helper.js?v=<?= (int) @filemtime(__DIR__ . '/js/announcement-helper.js'); ?>"></script>
 	<script>
-const cards = document.querySelectorAll('.calendar-card');
-const cardsRow = document.querySelector('.cards-row');
+const cards = document.querySelectorAll('.token-panel');
+const cardsRow = document.querySelector('.token-grid');
 const apiUrl = 'api/live-tokens-previous.php';
 const visibilityUrl = 'api/live-token-visibility.php';
 const settingsUrl = 'api/get-settings.php';
@@ -662,7 +660,9 @@ function renderCard(card, data, dateStr) {
 
 	card.classList.remove('state-called', 'state-present', 'state-idle');
 	card.classList.add('state-' + displayState);
-	card.querySelector('[data-message]').textContent = message;
+	card.dataset.digits = String(displayToken).replace(/\D/g, '').length || 2;
+	card.setAttribute('aria-label', `${card.getAttribute('data-city')} ${displayState} token ${displayToken}`);
+	card.querySelector('[data-message]').textContent = '';
 	updateFlip(card, displayToken, displayState);
 }
 

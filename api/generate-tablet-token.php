@@ -153,7 +153,7 @@ if (!preg_match('/^\d{10}$/', $phoneNumber)) {
     ], 422);
 }
 
-$cooldownSeconds = 30;
+$cooldownSeconds = 5;
 $lastIssuedAtMap = (isset($_SESSION['tablet_last_issued_at']) && is_array($_SESSION['tablet_last_issued_at']))
     ? $_SESSION['tablet_last_issued_at']
     : [];
@@ -164,7 +164,7 @@ if ($lastIssuedAt > 0 && $elapsed < $cooldownSeconds) {
         'success' => false,
         'cooldown' => true,
         'remaining_seconds' => $cooldownSeconds - $elapsed,
-        'message' => 'Please wait 30 seconds before generating next token.'
+        'message' => 'Please wait 5 seconds before generating next token.'
     ], 429);
 }
 

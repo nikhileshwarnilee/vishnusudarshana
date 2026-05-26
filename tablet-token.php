@@ -21,7 +21,7 @@ $receiptLocationLabel = $locationLabel;
     <title>&#x92A;&#x94D;&#x930;&#x924;&#x94D;&#x92F;&#x915;&#x94D;&#x937; &#x915;&#x93E;&#x930;&#x94D;&#x92F;&#x93E;&#x932;&#x92F; &#x92D;&#x947;&#x91F;&#x940;&#x938;&#x93E;&#x920;&#x940; &#x91F;&#x94B;&#x915;&#x928; &#x92A;&#x94D;&#x930;&#x923;&#x93E;&#x932;&#x940;</title>
     <link rel="manifest" href="manifest-tablet-token.json?v=<?= (int) @filemtime(__DIR__ . '/manifest-tablet-token.json'); ?>">
     <link rel="apple-touch-icon" href="assets/images/logo/logo-iconpwa192.png">
-    <link rel="stylesheet" href="css/tablet-token.css?v=20260307v">
+    <link rel="stylesheet" href="css/tablet-token.css?v=<?= (int) @filemtime(__DIR__ . '/css/tablet-token.css'); ?>">
 </head>
 <body>
     <main class="tablet-app" data-location="<?= htmlspecialchars($location, ENT_QUOTES, 'UTF-8'); ?>">
@@ -169,7 +169,7 @@ $receiptLocationLabel = $locationLabel;
 
                 <div id="cooldownBlock" class="cooldown-block hidden" aria-live="polite">
                     <p class="cooldown-text">&#x92A;&#x941;&#x922;&#x940;&#x932; &#x91F;&#x94B;&#x915;&#x928; &#x909;&#x92A;&#x932;&#x92C;&#x94D;&#x927; &#x939;&#x94B;&#x908;&#x932;</p>
-                    <p class="cooldown-timer"><span id="cooldownSeconds">&#x969;&#x966;</span> &#x938;&#x947;&#x915;&#x902;&#x926; &#x92C;&#x93E;&#x915;&#x940;</p>
+                    <p class="cooldown-timer"><span id="cooldownSeconds">&#x96B;</span> &#x938;&#x947;&#x915;&#x902;&#x926; &#x92C;&#x93E;&#x915;&#x940;</p>
                 </div>
 
                 <p id="statusMessage" class="status-message" aria-live="polite"></p>

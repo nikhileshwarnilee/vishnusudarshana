@@ -328,7 +328,7 @@ body {
 }
 
 .interaction-shell.print-active {
-    padding-bottom: clamp(110px, 14vh, 150px);
+    padding-bottom: clamp(10px, 1.2vh, 18px);
 }
 
 .interaction-title {
@@ -748,12 +748,10 @@ body {
 }
 
 .interaction-shell.print-active .cooldown-block {
-    position: absolute;
-    left: 50%;
-    bottom: clamp(4px, 0.8vh, 12px);
-    transform: translateX(-50%);
+    order: -1;
     margin-top: 0;
-    width: min(700px, calc(100% - 8px));
+    margin-bottom: clamp(16px, 2vh, 28px);
+    width: min(700px, 100%);
 }
 
 .cooldown-text {
