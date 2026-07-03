@@ -232,7 +232,7 @@ if ($effectiveUpiId === '' && $effectiveUpiQr === '') {
     $effectiveUpiId = (string)(getenv('EVENT_UPI_ID') ?: getenv('EVENT_MANUAL_UPI') ?: '');
 }
 
-$materializeDraft = static function (PDO $pdo, array $draft, bool $markAsPaidForFree = false) use ($loadRegistrationById): int {
+$materializeDraft = static function (PDO $pdo, array $draft, array $options = []) use ($loadRegistrationById): int {
     $existingRegId = (int)($draft['registration_id'] ?? 0);
     if ($existingRegId > 0) {
         $existingRow = $loadRegistrationById($pdo, $existingRegId);
@@ -241,9 +241,7 @@ $materializeDraft = static function (PDO $pdo, array $draft, bool $markAsPaidFor
         }
     }
 
-    $result = vs_event_create_registration($pdo, $draft, [
-        'mark_as_paid_for_free' => $markAsPaidForFree,
-    ]);
+    $result = vs_event_create_registration($pdo, $draft, $options);
     return (int)($result['registration_id'] ?? 0);
 };
 
@@ -316,6 +314,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $respondJson(['success' => false, 'message' => 'No payable amount remaining for this booking.']);
     }
 
+    try {
+        $targetRegistrationId = $registrationId;
+        if ($isDraftMode) {
+            if (!$draftData || !is_array($draftData)) {
+                $respondJson(['success' => false, 'message' => 'Registration session expired. Please register again.']);
+            }
+            $targetRegistrationId = $materializeDraft($pdo, $draftData);
+            $rememberDraftRegistration($draftToken, $targetRegistrationId);
+        }
+        if ($targetRegistrationId <= 0) {
+            $respondJson(['success' => false, 'message' => 'Unable to create registration right now.']);
+        }
+    } catch (Throwable $e) {
+        error_log('Event Razorpay registration creation failed: ' . $e->getMessage());
+        $message = ($e instanceof RuntimeException && trim((string)$e->getMessage()) !== '') ? (string)$e->getMessage() : 'Unable to create registration right now.';
+        $respondJson(['success' => false, 'message' => $message]);
+    }
+
     $keys = vs_event_load_razorpay_keys();
     if ($keys['key_id'] === '' || $keys['key_secret'] === '') {
         $respondJson(['success' => false, 'message' => 'Razorpay keys are not configured.']);
@@ -325,7 +341,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         require_once __DIR__ . '/vendor/autoload.php';
         $api = new Razorpay\Api\Api($keys['key_id'], $keys['key_secret']);
 
-        $receiptSeed = $isDraftMode ? ('draft_' . substr(sha1((string)$draftToken), 0, 10)) : ('reg_' . $registrationId);
+        $receiptSeed = 'reg_' . $targetRegistrationId;
         $orderData = [
             'receipt' => 'event_' . $receiptSeed . '_' . time(),
             'amount' => (int)round($dueNow * 100),
@@ -335,7 +351,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $order = $api->order->create($orderData);
         $orderId = (string)$order['id'];
 
-        if (!$isDraftMode && $registrationId > 0) {
+        if ($targetRegistrationId > 0) {
             $upsert = $pdo->prepare("INSERT INTO event_payments (registration_id, amount, payment_type, amount_paid, remaining_amount, payment_method, upi_id_used, upi_qr_used, transaction_id, screenshot, status)
                 VALUES (?, ?, ?, ?, ?, 'Razorpay', NULL, NULL, ?, '', 'Created')
                 ON DUPLICATE KEY UPDATE
@@ -350,7 +366,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                     screenshot = '',
                     status = 'Created'");
             $upsert->execute([
-                $registrationId,
+                $targetRegistrationId,
                 $dueNow,
                 $paymentType,
                 (float)$paymentContext['amount_paid'],
@@ -371,7 +387,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         ]);
     } catch (Throwable $e) {
         error_log('Event Razorpay order creation failed: ' . $e->getMessage());
-        $respondJson(['success' => false, 'message' => 'Unable to create Razorpay order.']);
+        $message = ($e instanceof RuntimeException && trim((string)$e->getMessage()) !== '') ? (string)$e->getMessage() : 'Unable to create Razorpay order.';
+        $respondJson(['success' => false, 'message' => $message]);
     }
 }
 
@@ -410,7 +427,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             if (!$draftData || !is_array($draftData)) {
                 throw new RuntimeException('Registration session expired. Please register again.');
             }
-            $targetRegistrationId = $materializeDraft($pdo, $draftData, false);
+            $targetRegistrationId = $materializeDraft($pdo, $draftData, [
+                'ignore_registration_window' => true,
+            ]);
             $rememberDraftRegistration($draftToken, $targetRegistrationId);
         }
         if ($targetRegistrationId <= 0) {
@@ -550,7 +569,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 if (!$draftData || !is_array($draftData)) {
                     throw new RuntimeException('Registration session expired. Please register again.');
                 }
-                $targetRegistrationId = $materializeDraft($pdo, $draftData, true);
+                $targetRegistrationId = $materializeDraft($pdo, $draftData, [
+                    'mark_as_paid_for_free' => true,
+                ]);
                 $rememberDraftRegistration($draftToken, $targetRegistrationId);
                 $clearDraft($draftToken);
             }
@@ -587,7 +608,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 if (!$draftData || !is_array($draftData)) {
                     throw new RuntimeException('Registration session expired. Please register again.');
                 }
-                $targetRegistrationId = $materializeDraft($pdo, $draftData, false);
+                $targetRegistrationId = $materializeDraft($pdo, $draftData);
                 $rememberDraftRegistration($draftToken, $targetRegistrationId);
             }
             if ($targetRegistrationId <= 0) {
@@ -651,7 +672,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 if (!$draftData || !is_array($draftData)) {
                     throw new RuntimeException('Registration session expired. Please register again.');
                 }
-                $targetRegistrationId = $materializeDraft($pdo, $draftData, false);
+                $targetRegistrationId = $materializeDraft($pdo, $draftData);
                 $rememberDraftRegistration($draftToken, $targetRegistrationId);
                 $registrationId = $targetRegistrationId;
                 $loadedRegistration = $loadRegistrationById($pdo, $targetRegistrationId);
@@ -755,7 +776,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 if (!$draftData || !is_array($draftData)) {
                     throw new RuntimeException('Registration session expired. Please register again.');
                 }
-                $targetRegistrationId = $materializeDraft($pdo, $draftData, false);
+                $targetRegistrationId = $materializeDraft($pdo, $draftData);
                 $rememberDraftRegistration($draftToken, $targetRegistrationId);
                 $registrationId = $targetRegistrationId;
                 $loadedRegistration = $loadRegistrationById($pdo, $targetRegistrationId);
@@ -1128,6 +1149,8 @@ $methodLabelMap = [
         return;
     }
 
+    let pendingVerificationPayload = null;
+
     function showVerifyOverlay(state, title, subtitle) {
         if (!verifyOverlay) {
             return;
@@ -1150,16 +1173,6 @@ $methodLabelMap = [
         verifyOverlay.dataset.state = '';
     }
 
-    if (verifyRetryBtn) {
-        verifyRetryBtn.addEventListener('click', function() {
-            hideVerifyOverlay();
-            if (msgEl) {
-                msgEl.textContent = 'Payment verification failed. Please try again.';
-            }
-            payBtn.disabled = false;
-        });
-    }
-
     function postForm(data) {
         const merged = Object.assign({}, flowData, data || {});
         const body = new URLSearchParams(merged);
@@ -1168,6 +1181,44 @@ $methodLabelMap = [
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: body.toString()
         }).then(function(r) { return r.json(); });
+    }
+
+    function verifyRazorpayPayment(payload) {
+        pendingVerificationPayload = Object.assign({}, payload);
+        showVerifyOverlay('verifying', 'Verifying payment...', 'Please wait while we confirm your payment.');
+        if (msgEl) msgEl.textContent = 'Verifying payment...';
+        payBtn.disabled = true;
+
+        return postForm(pendingVerificationPayload).then(function(verifyRes) {
+            if (verifyRes.success && verifyRes.redirect) {
+                pendingVerificationPayload = null;
+                showVerifyOverlay('success', 'Payment verified!', 'Redirecting to confirmation...');
+                window.setTimeout(function() {
+                    window.location.href = verifyRes.redirect;
+                }, 1200);
+                return;
+            }
+            throw new Error(verifyRes.message || 'Payment verification failed.');
+        }).catch(function(err) {
+            const message = err && err.message ? err.message : 'Please try again.';
+            showVerifyOverlay('error', 'Payment verification failed', message);
+            if (msgEl) msgEl.textContent = message;
+            payBtn.disabled = false;
+        });
+    }
+
+    if (verifyRetryBtn) {
+        verifyRetryBtn.addEventListener('click', function() {
+            if (pendingVerificationPayload) {
+                verifyRazorpayPayment(pendingVerificationPayload);
+                return;
+            }
+            hideVerifyOverlay();
+            if (msgEl) {
+                msgEl.textContent = 'Payment verification failed. Please try again.';
+            }
+            payBtn.disabled = false;
+        });
     }
 
     payBtn.addEventListener('click', function() {
@@ -1188,27 +1239,12 @@ $methodLabelMap = [
                     prefill: { name: res.name || '', email: res.email || '', contact: res.contact || '' },
                     theme: { color: '#8e2d1f' },
                     handler: function(response) {
-                        showVerifyOverlay('verifying', 'Verifying payment...', 'Please wait while we confirm your payment.');
-                        if (msgEl) msgEl.textContent = 'Verifying payment...';
-                        postForm({
+                        verifyRazorpayPayment({
                             action: 'verify_razorpay',
                             payment_choice: choice,
                             razorpay_order_id: response.razorpay_order_id,
                             razorpay_payment_id: response.razorpay_payment_id,
                             razorpay_signature: response.razorpay_signature
-                        }).then(function(verifyRes) {
-                            if (verifyRes.success && verifyRes.redirect) {
-                                showVerifyOverlay('success', 'Payment verified!', 'Redirecting to confirmation...');
-                                window.setTimeout(function() {
-                                    window.location.href = verifyRes.redirect;
-                                }, 1200);
-                            } else {
-                                throw new Error(verifyRes.message || 'Payment verification failed.');
-                            }
-                        }).catch(function(err) {
-                            showVerifyOverlay('error', 'Payment verification failed', 'Please try again.');
-                            if (msgEl) msgEl.textContent = err.message;
-                            payBtn.disabled = false;
                         });
                     }
                 };
