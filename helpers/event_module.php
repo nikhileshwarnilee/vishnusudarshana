@@ -2074,6 +2074,7 @@ if (!function_exists('vs_event_create_registration')) {
                     'registration_start' => (string)($lockedPackage['registration_start'] ?? ''),
                     'registration_end' => (string)($lockedPackage['registration_end'] ?? ''),
                     'registration_end_time' => (string)($lockedPackage['registration_end_time'] ?? ''),
+                    'status' => (string)($lockedPackage['event_status'] ?? ''),
                 ])
             ) {
                 throw new RuntimeException('Registration window is closed for this event.');
