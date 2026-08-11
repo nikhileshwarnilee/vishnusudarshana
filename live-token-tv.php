@@ -118,8 +118,8 @@ body {
 	width: 100%;
 	display: grid;
 	place-items: center;
-	font-size: min(62vh, 42rem);
-	line-height: 0.82;
+	font-size: min(72vh, 70vw, 48rem);
+	line-height: 0.78;
 	font-weight: 900;
 	letter-spacing: 0;
 	font-variant-numeric: tabular-nums;
@@ -129,23 +129,23 @@ body {
 }
 
 .token-grid.two-cards .token-number {
-	font-size: min(46vh, 33rem);
+	font-size: min(64vh, 40vw, 44rem);
 }
 
 .token-panel[data-digits="3"] .token-number {
-	font-size: min(54vh, 36rem);
+	font-size: min(64vh, 54vw, 40rem);
 }
 
 .token-panel[data-digits="4"] .token-number {
-	font-size: min(42vh, 28rem);
+	font-size: min(52vh, 40vw, 32rem);
 }
 
 .token-grid.two-cards .token-panel[data-digits="3"] .token-number {
-	font-size: min(36vh, 25rem);
+	font-size: min(52vh, 26vw, 32rem);
 }
 
 .token-grid.two-cards .token-panel[data-digits="4"] .token-number {
-	font-size: min(28vh, 19rem);
+	font-size: min(42vh, 20vw, 26rem);
 }
 
 .token-digit.back {
@@ -206,7 +206,7 @@ body {
 }
 
 .token-panel.state-called .token-state::before {
-	content: 'CALLED';
+	content: 'CALLING';
 }
 
 @keyframes calledNumber {
@@ -259,8 +259,17 @@ body {
 	.token-panel {
 		min-height: 50vh;
 	}
+	.token-grid.two-cards .token-number,
 	.token-number {
-		font-size: min(28vh, 18rem);
+		font-size: min(34vh, 72vw, 22rem);
+	}
+	.token-grid.two-cards .token-panel[data-digits="3"] .token-number,
+	.token-panel[data-digits="3"] .token-number {
+		font-size: min(30vh, 58vw, 19rem);
+	}
+	.token-grid.two-cards .token-panel[data-digits="4"] .token-number,
+	.token-panel[data-digits="4"] .token-number {
+		font-size: min(24vh, 44vw, 15rem);
 	}
 }
 	</style>
