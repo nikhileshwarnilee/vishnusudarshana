@@ -102,8 +102,29 @@ body {
 	gap: clamp(10px, 2vh, 26px);
 }
 
+.token-watermark {
+	position: absolute;
+	z-index: 0;
+	left: 50%;
+	top: 50%;
+	width: min(58vh, 42vw, 36rem);
+	max-width: 82%;
+	height: auto;
+	transform: translate(-50%, -50%);
+	opacity: 0.16;
+	mix-blend-mode: multiply;
+	pointer-events: none;
+	user-select: none;
+}
+
+.token-grid.two-cards .token-watermark {
+	width: min(58vh, 34vw, 34rem);
+	max-width: 76%;
+}
+
 .token-city {
 	position: absolute;
+	z-index: 1;
 	top: clamp(16px, 3.5vh, 42px);
 	left: clamp(18px, 3vw, 54px);
 	right: clamp(18px, 3vw, 54px);
@@ -115,11 +136,13 @@ body {
 }
 
 .token-number {
+	position: relative;
+	z-index: 1;
 	width: 100%;
 	display: grid;
 	place-items: center;
-	font-size: min(72vh, 70vw, 48rem);
-	line-height: 0.78;
+	font-size: min(82vh, 64vw, 54rem);
+	line-height: 0.74;
 	font-weight: 900;
 	letter-spacing: 0;
 	font-variant-numeric: tabular-nums;
@@ -129,23 +152,39 @@ body {
 }
 
 .token-grid.two-cards .token-number {
-	font-size: min(64vh, 40vw, 44rem);
+	font-size: min(76vh, 42vw, 52rem);
+}
+
+.token-panel[data-digits="1"] .token-number {
+	font-size: min(90vh, 78vw, 64rem);
+}
+
+.token-panel[data-digits="2"] .token-number {
+	font-size: min(82vh, 64vw, 54rem);
 }
 
 .token-panel[data-digits="3"] .token-number {
-	font-size: min(64vh, 54vw, 40rem);
+	font-size: min(76vh, 66vw, 50rem);
 }
 
 .token-panel[data-digits="4"] .token-number {
-	font-size: min(52vh, 40vw, 32rem);
+	font-size: min(62vh, 50vw, 40rem);
+}
+
+.token-grid.two-cards .token-panel[data-digits="1"] .token-number {
+	font-size: min(86vh, 48vw, 62rem);
+}
+
+.token-grid.two-cards .token-panel[data-digits="2"] .token-number {
+	font-size: min(78vh, 42vw, 54rem);
 }
 
 .token-grid.two-cards .token-panel[data-digits="3"] .token-number {
-	font-size: min(52vh, 26vw, 32rem);
+	font-size: min(66vh, 31vw, 42rem);
 }
 
 .token-grid.two-cards .token-panel[data-digits="4"] .token-number {
-	font-size: min(42vh, 20vw, 26rem);
+	font-size: min(54vh, 24vw, 34rem);
 }
 
 .token-digit.back {
@@ -154,6 +193,7 @@ body {
 
 .token-state {
 	position: absolute;
+	z-index: 1;
 	left: clamp(18px, 3vw, 54px);
 	right: clamp(18px, 3vw, 54px);
 	bottom: clamp(18px, 4vh, 54px);
@@ -259,17 +299,30 @@ body {
 	.token-panel {
 		min-height: 50vh;
 	}
+	.token-grid.two-cards .token-watermark,
+	.token-watermark {
+		width: min(32vh, 58vw, 22rem);
+		max-width: 64%;
+	}
 	.token-grid.two-cards .token-number,
 	.token-number {
-		font-size: min(34vh, 72vw, 22rem);
+		font-size: min(42vh, 84vw, 28rem);
+	}
+	.token-grid.two-cards .token-panel[data-digits="1"] .token-number,
+	.token-panel[data-digits="1"] .token-number {
+		font-size: min(44vh, 90vw, 30rem);
+	}
+	.token-grid.two-cards .token-panel[data-digits="2"] .token-number,
+	.token-panel[data-digits="2"] .token-number {
+		font-size: min(42vh, 84vw, 28rem);
 	}
 	.token-grid.two-cards .token-panel[data-digits="3"] .token-number,
 	.token-panel[data-digits="3"] .token-number {
-		font-size: min(30vh, 58vw, 19rem);
+		font-size: min(36vh, 68vw, 23rem);
 	}
 	.token-grid.two-cards .token-panel[data-digits="4"] .token-number,
 	.token-panel[data-digits="4"] .token-number {
-		font-size: min(24vh, 44vw, 15rem);
+		font-size: min(30vh, 52vw, 19rem);
 	}
 }
 	</style>
@@ -280,6 +333,7 @@ body {
 			<div class="token-grid">
 				<section class="token-panel" data-city="solapur">
 					<div class="token-panel-inner">
+						<img class="token-watermark" src="assets/images/logo/logo-icon.png?v=<?= (int) @filemtime(__DIR__ . '/assets/images/logo/logo-icon.png'); ?>" alt="" aria-hidden="true">
 						<div class="token-city">Solapur</div>
 						<div class="token-number" data-flip>
 							<span class="token-digit front" data-front>--</span>
@@ -292,6 +346,7 @@ body {
 
 				<section class="token-panel" data-city="hyderabad">
 					<div class="token-panel-inner">
+						<img class="token-watermark" src="assets/images/logo/logo-icon.png?v=<?= (int) @filemtime(__DIR__ . '/assets/images/logo/logo-icon.png'); ?>" alt="" aria-hidden="true">
 						<div class="token-city">Hyderabad</div>
 						<div class="token-number" data-flip>
 							<span class="token-digit front" data-front>--</span>
