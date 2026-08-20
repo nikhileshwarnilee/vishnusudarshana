@@ -105,8 +105,25 @@ $pageTitle = 'Review & Select Services | Vishnusudarshana';
 require_once 'header.php';
 require_once __DIR__ . '/config/db.php';
 require_once __DIR__ . '/helpers/product_variants.php';
+require_once __DIR__ . '/helpers/system_settings.php';
 
 vs_ensure_product_variant_schema($pdo);
+
+if (!function_exists('vs_service_review_is_valid_time')) {
+    function vs_service_review_is_valid_time(string $value): bool
+    {
+        return preg_match('/^(?:[01]\d|2[0-3]):[0-5]\d$/', $value) === 1;
+    }
+}
+
+if (!function_exists('vs_service_review_normalize_time_setting')) {
+    function vs_service_review_normalize_time_setting(?string $value, string $fallback): string
+    {
+        $value = trim((string) $value);
+
+        return vs_service_review_is_valid_time($value) ? $value : $fallback;
+    }
+}
 
 // Step 2: Read input
 $category = $_GET['category'] ?? '';
@@ -142,7 +159,24 @@ if ($category === 'appointment') {
     $todayIST = $nowUtc->format('Y-m-d');
     $maxDate = date('Y-m-d', strtotime('+30 days', strtotime($todayIST)));
     $date = $form_data['preferred_date'] ?? '';
-    if ($date < $todayIST || $date > $maxDate) {
+    $appointmentSameDayCutoffTime = '11:30';
+    try {
+        vs_settings_ensure_table($pdo);
+        $appointmentSameDayCutoffTime = vs_service_review_normalize_time_setting(
+            vs_settings_get_value($pdo, 'appointment_same_day_booking_cutoff_time'),
+            $appointmentSameDayCutoffTime
+        );
+    } catch (Throwable $e) {
+        error_log('Unable to load appointment same-day cutoff on review: ' . $e->getMessage());
+    }
+    $minDate = $todayIST;
+    [$cutoffHour, $cutoffMinute] = array_map('intval', explode(':', $appointmentSameDayCutoffTime));
+    $currentMinutes = ((int) $nowUtc->format('H') * 60) + (int) $nowUtc->format('i');
+    $cutoffMinutes = ($cutoffHour * 60) + $cutoffMinute;
+    if ($currentMinutes >= $cutoffMinutes) {
+        $minDate = date('Y-m-d', strtotime('+1 day', strtotime($todayIST)));
+    }
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) $date) || $date < $minDate || $date > $maxDate) {
         $errors[] = 'Invalid preferred date.';
     }
     // For appointment, bypass generic product selection validation

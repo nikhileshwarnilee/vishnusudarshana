@@ -4,14 +4,66 @@ admin_enforce_mapped_permission('auto');
 /**
  * admin/services/booking-slots.php
  *
- * Block Slots Management
+ * Appointment Settings
  * Data source: service_requests table (for reference)
  */
 
 require_once __DIR__ . '/../../config/db.php';
-include __DIR__ . '/../includes/top-menu.php';
+require_once __DIR__ . '/../../helpers/system_settings.php';
 
-$pageTitle = 'Block Slots | Vishnusudarshana';
+$pageTitle = 'Appointment Settings | Vishnusudarshana';
+$appointmentSameDayCutoffKey = 'appointment_same_day_booking_cutoff_time';
+$appointmentSameDayCutoffTime = '11:30';
+$settingsMessage = '';
+$settingsIsError = false;
+
+if (!function_exists('vs_booking_slots_is_valid_time')) {
+    function vs_booking_slots_is_valid_time(string $value): bool
+    {
+        return preg_match('/^(?:[01]\d|2[0-3]):[0-5]\d$/', $value) === 1;
+    }
+}
+
+if (!function_exists('vs_booking_slots_normalize_time_setting')) {
+    function vs_booking_slots_normalize_time_setting(?string $value, string $fallback): string
+    {
+        $value = trim((string) $value);
+
+        return vs_booking_slots_is_valid_time($value) ? $value : $fallback;
+    }
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'save_appointment_booking_settings') {
+    $submittedCutoffTime = trim((string) ($_POST['appointment_same_day_booking_cutoff_time'] ?? ''));
+
+    if (!vs_booking_slots_is_valid_time($submittedCutoffTime)) {
+        $settingsMessage = 'Please choose a valid same-day cutoff time.';
+        $settingsIsError = true;
+    } else {
+        try {
+            vs_settings_ensure_table($pdo);
+            vs_settings_upsert($pdo, $appointmentSameDayCutoffKey, $submittedCutoffTime);
+            $appointmentSameDayCutoffTime = $submittedCutoffTime;
+            $settingsMessage = 'Appointment booking settings saved.';
+        } catch (Throwable $e) {
+            error_log('Unable to save appointment same-day cutoff: ' . $e->getMessage());
+            $settingsMessage = 'Unable to save appointment booking settings right now.';
+            $settingsIsError = true;
+        }
+    }
+}
+
+try {
+    vs_settings_ensure_table($pdo);
+    $appointmentSameDayCutoffTime = vs_booking_slots_normalize_time_setting(
+        vs_settings_get_value($pdo, $appointmentSameDayCutoffKey),
+        $appointmentSameDayCutoffTime
+    );
+} catch (Throwable $e) {
+    error_log('Unable to load appointment same-day cutoff: ' . $e->getMessage());
+}
+
+include __DIR__ . '/../includes/top-menu.php';
 
 ?>
 <!DOCTYPE html>
@@ -24,6 +76,17 @@ $pageTitle = 'Block Slots | Vishnusudarshana';
 body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f7f7fa; margin: 0; }
 .admin-container { max-width: 1400px; margin: 0 auto; padding: 24px 12px; }
 h1 { color: #800000; margin-bottom: 18px; }
+.settings-card { background: #fffbe7; border: 1px solid #f0d27a; border-radius: 12px; padding: 18px 20px; max-width: 1100px; width: 100%; margin-bottom: 22px; box-shadow: 0 2px 8px #e0bebe22; box-sizing: border-box; }
+.settings-card h2 { color: #800000; font-size: 1.2em; margin: 0 0 10px; }
+.settings-desc { color: #5c3b00; margin: 0 0 14px; line-height: 1.45; }
+.settings-row { display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-end; }
+.settings-row label { font-weight: 600; color: #800000; display: block; }
+.settings-row input[type="time"] { display: block; margin-top: 6px; padding: 8px 10px; border: 1px solid #d9ba63; border-radius: 8px; font-size: 1em; min-width: 180px; }
+.settings-save-btn { background: #800000; color: #fff; padding: 9px 22px; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; }
+.settings-save-btn:hover { background: #650000; }
+.settings-message { margin: 0 0 16px; font-weight: 700; }
+.settings-message.success { color: green; }
+.settings-message.error { color: #b30000; }
 .summary-cards { display: flex; gap: 18px; margin-bottom: 24px; flex-wrap: wrap; }
 .summary-card { flex: 1 1 180px; background: #fffbe7; border-radius: 14px; padding: 16px; text-align: center; box-shadow: 0 2px 8px #e0bebe22; }
 .summary-count { font-size: 2.2em; font-weight: 700; color: #800000; }
@@ -37,8 +100,23 @@ h1 { color: #800000; margin-bottom: 18px; }
 </head>
 <body>
 <div class="admin-container">
-    <h1>Block Slots</h1>
+    <h1>Settings</h1>
     <a href="saved-msgs.php" style="background:#007bff;color:#fff;padding:8px 22px;border:none;border-radius:8px;font-weight:600;margin-bottom:18px;float:right;display:inline-block;text-decoration:none;">Saved Msgs</a>
+    <?php if ($settingsMessage !== ''): ?>
+        <div class="settings-message <?= $settingsIsError ? 'error' : 'success' ?>"><?= htmlspecialchars($settingsMessage) ?></div>
+    <?php endif; ?>
+    <form method="post" class="settings-card">
+        <input type="hidden" name="action" value="save_appointment_booking_settings">
+        <h2>Appointment Booking Settings</h2>
+        <p class="settings-desc">Same-day appointment booking is allowed until this time. After this cutoff, the public Preferred Date field starts from tomorrow. Timezone: India time (Asia/Kolkata).</p>
+        <div class="settings-row">
+            <label for="appointmentSameDayBookingCutoffTime">
+                Same-Day Booking Cutoff Time
+                <input type="time" id="appointmentSameDayBookingCutoffTime" name="appointment_same_day_booking_cutoff_time" value="<?= htmlspecialchars($appointmentSameDayCutoffTime) ?>" required>
+            </label>
+            <button type="submit" class="settings-save-btn">Save Settings</button>
+        </div>
+    </form>
     <?php
     // Fetch saved messages from letterpad_titles where source='msgs'
     $savedMsgs = $pdo->query("SELECT id, title FROM letterpad_titles WHERE source='msgs' ORDER BY created_at DESC")->fetchAll(PDO::FETCH_ASSOC);

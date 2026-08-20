@@ -79,7 +79,7 @@ if (!function_exists('vs_admin_permission_map')) {
             'services/accepted-appointments.php' => ['pairs' => [['Appointments', 'Accepted Appointments']]],
             'services/completed-appointments.php' => ['pairs' => [['Appointments', 'Completed Appointments']]],
             'services/failed-appointments.php' => ['pairs' => [['Appointments', 'Failed Appointments']]],
-            'services/booking-slots.php' => ['pairs' => [['Appointments', 'Block Slots']]],
+            'services/booking-slots.php' => ['pairs' => [['Appointments', 'Settings'], ['Appointments', 'Block Slots']]],
 
             // Services
             'services/service-request-list.php' => ['pairs' => [['Services', 'Service Request List']]],

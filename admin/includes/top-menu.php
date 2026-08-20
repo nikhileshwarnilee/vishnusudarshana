@@ -67,7 +67,7 @@ $menu = [
             'Pending Appointments'   => $baseUrl . '/admin/services/appointments.php',
             'Accepted Appointments'  => $baseUrl . '/admin/services/accepted-appointments.php',
             'Completed Appointments' => $baseUrl . '/admin/services/completed-appointments.php',
-               'Block Slots'            => $baseUrl . '/admin/services/booking-slots.php',
+               'Settings'               => $baseUrl . '/admin/services/booking-slots.php',
                'Failed Appointments'    => $baseUrl . '/admin/services/failed-appointments.php',
         ]
     ],
@@ -193,7 +193,7 @@ $submenuNotificationSourceMap = [
             ['table' => 'service_requests', 'column' => 'created_at', 'where' => "category_slug = 'appointment' AND payment_status IN ('Paid', 'Free') AND service_status = 'Accepted'"],
             ['table' => 'service_requests', 'column' => 'updated_at', 'where' => "category_slug = 'appointment' AND payment_status IN ('Paid', 'Free') AND service_status = 'Accepted'"],
         ],
-        'Block Slots' => [
+        'Settings' => [
             ['table' => 'blocked_appointment_slots', 'column' => 'created_at'],
             ['table' => 'blocked_appointment_slots', 'column' => 'updated_at'],
             ['table' => 'letterpad_titles', 'column' => 'created_at', 'where' => "source = 'msgs'"],
@@ -381,6 +381,12 @@ if (isset($_SESSION['user_id']) && !vs_admin_is_super_admin()) {
     $perms->execute([$user_id]);
     $allowed = [];
     $submenuPermissionAliases = [
+        'Appointments' => [
+            'Settings' => [
+                'aliases' => ['Block Slots'],
+                'action' => 'view',
+            ],
+        ],
         'Events' => [
             'New Registration' => [
                 'aliases' => ['Registrations'],
