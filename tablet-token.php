@@ -159,7 +159,7 @@ $receiptLocationLabel = $locationLabel;
                                         <strong id="receiptTimeValue">--</strong>
                                     </div>
 
-                                    <p class="ticket-note-line">&#x915;&#x943;&#x92A;&#x92F;&#x93E; live &#x938;&#x94D;&#x915;&#x94D;&#x930;&#x940;&#x928;&#x935;&#x930; &#x91A;&#x93E;&#x932;&#x942; &#x91F;&#x94B;&#x915;&#x928; &#x92A;&#x93E;&#x939;&#x924; &#x930;&#x939;&#x93E;.</p>
+                                    <p id="receiptNoteText" class="ticket-note-line">&#x915;&#x943;&#x92A;&#x92F;&#x93E; LIVE &#x938;&#x94D;&#x915;&#x94D;&#x930;&#x940;&#x928;&#x935;&#x930; &#x91A;&#x93E;&#x932;&#x942; &#x91F;&#x94B;&#x915;&#x928; &#x92A;&#x93E;&#x939;&#x924; &#x930;&#x939;&#x93E;.</p>
                                 </div>
                             </div>
                         </div>

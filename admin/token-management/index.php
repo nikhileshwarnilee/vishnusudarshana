@@ -182,6 +182,27 @@ include '../includes/top-menu.php';
             <span id="tokenBookingCommonNoteSaveMsg" class="language-msg"></span>
         </div>
     </section>
+    <section class="settings-card" aria-label="Tablet Token Receipt Print Settings">
+        <h2 class="settings-title">Tablet Receipt Print Text</h2>
+        <p class="settings-desc">This content prints at the bottom of the tablet token receipt.</p>
+        <label for="tabletTokenReceiptNoteText" class="form-label" style="margin-bottom:6px;">Receipt Content</label>
+        <textarea id="tabletTokenReceiptNoteText" class="form-input" rows="5" maxlength="3000" placeholder="Enter receipt print text..." style="resize:vertical;"></textarea>
+        <h3 class="settings-title" style="margin-top:14px;">Estimated Service Time On Receipt</h3>
+        <div class="language-options" style="margin-bottom:8px;">
+            <label class="language-option">
+                <input type="radio" name="receiptEstimatedServiceTimeEnabled" value="1" checked>
+                Show
+            </label>
+            <label class="language-option">
+                <input type="radio" name="receiptEstimatedServiceTimeEnabled" value="0">
+                Hide
+            </label>
+        </div>
+        <div class="language-actions" style="margin-top:10px;">
+            <button type="button" id="saveTabletTokenReceiptBtn" class="language-save-btn">Save Receipt Print Settings</button>
+            <span id="tabletTokenReceiptSaveMsg" class="language-msg"></span>
+        </div>
+    </section>
     <div style="max-width:900px;margin:18px auto 0 auto;display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
         <label for="cityTableFilter" style="font-weight:600;color:#6b0000;">Filter by City:</label>
         <select id="cityTableFilter" class="form-select" style="min-width:180px;">
@@ -334,6 +355,38 @@ include '../includes/top-menu.php';
         msg.style.color = isError ? '#a0001b' : '#176b1a';
     }
 
+    function getTabletTokenReceiptNoteTextValue() {
+        const input = document.getElementById('tabletTokenReceiptNoteText');
+        if (!input) return '';
+        return String(input.value || '').trim();
+    }
+
+    function setTabletTokenReceiptNoteTextValue(value) {
+        const input = document.getElementById('tabletTokenReceiptNoteText');
+        if (!input) return;
+        input.value = String(value || '');
+    }
+
+    function getReceiptEstimatedServiceTimeEnabledValue() {
+        const selected = document.querySelector('input[name="receiptEstimatedServiceTimeEnabled"]:checked');
+        return selected ? selected.value : '1';
+    }
+
+    function setReceiptEstimatedServiceTimeEnabledValue(enabled) {
+        const safeValue = String(enabled) === '0' ? '0' : '1';
+        const radio = document.querySelector('input[name="receiptEstimatedServiceTimeEnabled"][value="' + safeValue + '"]');
+        if (radio) {
+            radio.checked = true;
+        }
+    }
+
+    function setTabletTokenReceiptMessage(message, isError) {
+        const msg = document.getElementById('tabletTokenReceiptSaveMsg');
+        if (!msg) return;
+        msg.textContent = message || '';
+        msg.style.color = isError ? '#a0001b' : '#176b1a';
+    }
+
     function loadAnnouncementLanguage() {
         fetch('../../api/get-settings.php', { cache: 'no-store' })
             .then(res => res.json())
@@ -346,6 +399,8 @@ include '../includes/top-menu.php';
                     setSameDayCutoffTimeValue(data.same_day_online_booking_cutoff_time || '09:00');
                     setTokenBookingCommonNoteTextValue(data.token_booking_common_note || '');
                     setTokenBookingCommonNoteEnabledValue(data.token_booking_common_note_enabled ? '1' : '0');
+                    setTabletTokenReceiptNoteTextValue(data.tablet_token_receipt_note || '');
+                    setReceiptEstimatedServiceTimeEnabledValue(data.receipt_estimated_service_time_enabled ? '1' : '0');
                 } else {
                     setSelectedAnnouncementLanguage('marathi');
                     setSelectedLiveTokenAnnouncementEnabled('1');
@@ -354,6 +409,8 @@ include '../includes/top-menu.php';
                     setSameDayCutoffTimeValue('09:00');
                     setTokenBookingCommonNoteTextValue('');
                     setTokenBookingCommonNoteEnabledValue('1');
+                    setTabletTokenReceiptNoteTextValue('');
+                    setReceiptEstimatedServiceTimeEnabledValue('1');
                 }
             })
             .catch(() => {
@@ -364,6 +421,8 @@ include '../includes/top-menu.php';
                 setSameDayCutoffTimeValue('09:00');
                 setTokenBookingCommonNoteTextValue('');
                 setTokenBookingCommonNoteEnabledValue('1');
+                setTabletTokenReceiptNoteTextValue('');
+                setReceiptEstimatedServiceTimeEnabledValue('1');
             });
     }
 
@@ -528,6 +587,36 @@ include '../includes/top-menu.php';
         })
         .catch(() => {
             setTokenBookingCommonNoteMessage('Error while saving common note setting.', true);
+        });
+    }
+
+    function saveTabletTokenReceiptSetting() {
+        const noteText = getTabletTokenReceiptNoteTextValue();
+        const estimatedEnabledValue = getReceiptEstimatedServiceTimeEnabledValue();
+        const body = new URLSearchParams();
+        body.set('tablet_token_receipt_note', noteText);
+        body.set('receipt_estimated_service_time_enabled', estimatedEnabledValue);
+
+        setTabletTokenReceiptMessage('Saving...', false);
+        fetch('../../api/save-settings.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
+            },
+            body: body.toString()
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data && data.success) {
+                setTabletTokenReceiptNoteTextValue(data.tablet_token_receipt_note || noteText);
+                setReceiptEstimatedServiceTimeEnabledValue(data.receipt_estimated_service_time_enabled ? '1' : '0');
+                setTabletTokenReceiptMessage('Receipt print settings saved.', false);
+            } else {
+                setTabletTokenReceiptMessage('Failed to save receipt print settings.', true);
+            }
+        })
+        .catch(() => {
+            setTabletTokenReceiptMessage('Error while saving receipt print settings.', true);
         });
     }
 
@@ -766,6 +855,10 @@ include '../includes/top-menu.php';
         const saveTokenBookingCommonNoteBtn = document.getElementById('saveTokenBookingCommonNoteBtn');
         if (saveTokenBookingCommonNoteBtn) {
             saveTokenBookingCommonNoteBtn.addEventListener('click', saveTokenBookingCommonNoteSetting);
+        }
+        const saveTabletTokenReceiptBtn = document.getElementById('saveTabletTokenReceiptBtn');
+        if (saveTabletTokenReceiptBtn) {
+            saveTabletTokenReceiptBtn.addEventListener('click', saveTabletTokenReceiptSetting);
         }
         fetchTokens();
         const cityFilter = document.getElementById('cityTableFilter');

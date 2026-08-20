@@ -18,6 +18,11 @@
     var THERMAL_PRINT_IFRAME_ID = 'tablet-thermal-print-frame';
     var THERMAL_RECEIPT_WIDTH_MM = 80;
     var THERMAL_RECEIPT_CUT_FEED_MM = 6;
+    var DEFAULT_TABLET_TOKEN_RECEIPT_NOTE = [
+        '\u0915\u0943\u092a\u092f\u093e \u0939\u0940 \u092a\u093e\u0935\u0924\u0940 \u091c\u092a\u0942\u0928 \u0920\u0947\u0935\u093e.',
+        '\u0915\u0943\u092a\u092f\u093e LIVE \u0938\u094d\u0915\u094d\u0930\u0940\u0928\u0935\u0930 \u091a\u093e\u0932\u0942 \u091f\u094b\u0915\u0928 \u092a\u093e\u0939\u0924 \u0930\u0939\u093e.',
+        '\u0938\u0942\u091a\u0928\u093e - \u0905\u0902\u0926\u093e\u091c\u093f\u0924 \u0935\u0947\u0933\u0947\u092e\u0927\u094d\u092f\u0947 \u0905\u0930\u094d\u0927\u093e \u0924\u0947 \u090f\u0915 \u0924\u093e\u0938 \u092a\u0941\u0922\u0947-\u092e\u093e\u0917\u0947 \u0939\u094b\u090a \u0936\u0915\u0924\u094b. \u0924\u0930\u0940\u0939\u0940 WhatsApp \u0935\u0930 \u0905\u0902\u0926\u093e\u091c\u093f\u0924 \u0935\u0947\u0933 \u0915\u0933\u0935\u0932\u0940 \u091c\u093e\u0908\u0932.'
+    ].join('\n');
 
     var LOCATION_LABELS_MR = {
         solapur: '\u0938\u094b\u0932\u093e\u092a\u0942\u0930'
@@ -44,6 +49,7 @@
     var receiptLocationName = document.getElementById('receiptLocationName');
     var receiptDateValue = document.getElementById('receiptDateValue');
     var receiptTimeValue = document.getElementById('receiptTimeValue');
+    var receiptNoteText = document.getElementById('receiptNoteText');
     var cooldownBlock = document.getElementById('cooldownBlock');
     var cooldownSeconds = document.getElementById('cooldownSeconds');
     var printingStatus = document.getElementById('printingStatus');
@@ -74,6 +80,8 @@
     var availabilityRefreshIntervalId = null;
     var availabilityRefreshInFlight = false;
     var announcementLanguage = 'marathi';
+    var tabletReceiptNote = DEFAULT_TABLET_TOKEN_RECEIPT_NOTE;
+    var receiptEstimatedServiceTimeEnabled = true;
     var settingsRefreshIntervalId = null;
     var deferredPwaInstallPrompt = null;
 
@@ -370,7 +378,7 @@
         }
     }
 
-    async function loadAnnouncementLanguage() {
+    async function loadTabletSettings() {
         try {
             var response = await fetch('api/get-settings.php', { cache: 'no-store' });
             var data = await response.json();
@@ -379,8 +387,12 @@
             }
             var language = String(data.announcement_language || 'marathi').toLowerCase();
             announcementLanguage = language === 'english' ? 'english' : 'marathi';
+            tabletReceiptNote = typeof data.tablet_token_receipt_note === 'string'
+                ? data.tablet_token_receipt_note
+                : DEFAULT_TABLET_TOKEN_RECEIPT_NOTE;
+            receiptEstimatedServiceTimeEnabled = data.receipt_estimated_service_time_enabled !== false;
         } catch (error) {
-            // Keep default language when settings are unavailable.
+            // Keep default settings when the API is unavailable.
         }
     }
 
@@ -388,7 +400,7 @@
         if (settingsRefreshIntervalId) {
             window.clearInterval(settingsRefreshIntervalId);
         }
-        settingsRefreshIntervalId = window.setInterval(loadAnnouncementLanguage, 30000);
+        settingsRefreshIntervalId = window.setInterval(loadTabletSettings, 30000);
     }
 
     function applyTokensFullState() {
@@ -496,10 +508,34 @@
         return /android/i.test(String(window.navigator.userAgent || ''));
     }
 
+    function getReceiptNoteLines() {
+        var noteText = String(tabletReceiptNote || '').trim();
+        if (!noteText) {
+            return [];
+        }
+        return noteText.split(/\r?\n/)
+            .map(function (line) {
+                return line.trim();
+            })
+            .filter(function (line) {
+                return line !== '';
+            })
+            .slice(0, 40);
+    }
+
+    function getReceiptNotePreview() {
+        var lines = getReceiptNoteLines();
+        if (!lines.length) {
+            return '';
+        }
+        return lines.slice(0, 4).join('\n');
+    }
+
     function buildUnifiedReceiptModel(details) {
         var serviceTimeText = String(details.serviceTime || '').trim();
         var estimatedServiceTimeText = String(details.estimatedServiceSlot || '').trim();
         var bookingTimeText = toAsciiDigits(details.time || '');
+        var showEstimatedServiceTime = receiptEstimatedServiceTimeEnabled && estimatedServiceTimeText !== '';
         var rows = [
             { label: '\u092e\u094b\u092c\u093e\u0908\u0932', value: toAsciiDigits(details.phone), layout: 'inline' },
             { label: '\u0915\u0947\u0902\u0926\u094d\u0930', value: String(details.location || defaultLocationLabel || 'Solapur'), layout: 'inline' },
@@ -515,14 +551,11 @@
             title: '\u092a\u094d\u0930\u0924\u094d\u092f\u0915\u094d\u0937 \u0915\u093e\u0930\u094d\u092f\u093e\u0932\u092f \u092d\u0947\u091f \u091f\u094b\u0915\u0928 \u092a\u093e\u0935\u0924\u0940',
             tokenLabel: '\u0906\u092a\u0932\u0947 \u091f\u094b\u0915\u0928 \u0915\u094d\u0930\u092e\u093e\u0902\u0915',
             tokenText: toAsciiDigits(details.token),
+            showEstimatedServiceTime: showEstimatedServiceTime,
             estimatedServiceLabel: '\u0905\u0902\u0926\u093e\u091c\u093f\u0924 \u0938\u0947\u0935\u0947\u091a\u0940 \u0935\u0947\u0933',
-            estimatedServiceValue: estimatedServiceTimeText || '-',
+            estimatedServiceValue: estimatedServiceTimeText,
             rows: rows,
-            notes: [
-                '\u0915\u0943\u092a\u092f\u093e \u0939\u0940 \u092a\u093e\u0935\u0924\u0940 \u091c\u092a\u0942\u0928 \u0920\u0947\u0935\u093e.',
-                '\u0915\u0943\u092a\u092f\u093e LIVE \u0938\u094d\u0915\u094d\u0930\u0940\u0928\u0935\u0930 \u091a\u093e\u0932\u0942 \u091f\u094b\u0915\u0928 \u092a\u093e\u0939\u0924 \u0930\u0939\u093e.',
-                '\u0938\u0942\u091a\u0928\u093e - \u0905\u0902\u0926\u093e\u091c\u093f\u0924 \u0935\u0947\u0933\u0947\u092e\u0927\u094d\u092f\u0947 \u0905\u0930\u094d\u0927\u093e \u0924\u0947 \u090f\u0915 \u0924\u093e\u0938 \u092a\u0941\u0922\u0947-\u092e\u093e\u0917\u0947 \u0939\u094b\u090a \u0936\u0915\u0924\u094b. \u0924\u0930\u0940\u0939\u0940 WhatsApp \u0935\u0930 \u0905\u0902\u0926\u093e\u091c\u093f\u0924 \u0935\u0947\u0933 \u0915\u0933\u0935\u0932\u0940 \u091c\u093e\u0908\u0932.'
-            ],
+            notes: getReceiptNoteLines(),
             footerBookingTime: bookingTimeText ? ('\u092c\u0941\u0915\u093f\u0902\u0917 \u0935\u0947\u0933: ' + bookingTimeText) : ''
         };
     }
@@ -535,11 +568,14 @@
             receipt.title,
             textSeparator,
             receipt.tokenLabel,
-            receipt.tokenText,
-            receipt.estimatedServiceLabel,
-            receipt.estimatedServiceValue,
-            textSeparator
+            receipt.tokenText
         ];
+
+        if (receipt.showEstimatedServiceTime) {
+            lines.push(receipt.estimatedServiceLabel);
+            lines.push(receipt.estimatedServiceValue);
+        }
+        lines.push(textSeparator);
 
         receipt.rows.forEach(function (row) {
             var layout = String(row.layout || 'inline').toLowerCase();
@@ -572,12 +608,15 @@
 
     function getRawBtCanvasHeight(receipt) {
         var baseHeight = 610;
-        var estimatedHeight = 55;
+        var estimatedHeight = receipt.showEstimatedServiceTime ? 55 : 0;
         var rowsHeight = receipt.rows.reduce(function (sum, row) {
             var layout = String((row && row.layout) || 'inline').toLowerCase();
             return sum + (layout === 'stacked' ? 102 : 37);
         }, 0);
-        var notesHeight = receipt.notes.length * 63;
+        var notesHeight = receipt.notes.reduce(function (sum, note) {
+            var estimatedLines = Math.max(1, Math.ceil(String(note || '').length / 34));
+            return sum + (estimatedLines * 29) + 8;
+        }, 0);
         var footerHeight = receipt.footerBookingTime ? 29 : 0;
         return Math.max(884, baseHeight + estimatedHeight + rowsHeight + notesHeight + footerHeight);
     }
@@ -893,13 +932,15 @@
                 ctx.fillText(receipt.tokenText, width / 2, y + 73);
                 y += 88;
 
-                ctx.font = '700 21px "Noto Sans Devanagari", sans-serif';
-                ctx.fillText(receipt.estimatedServiceLabel, width / 2, y + 20);
-                y += 26;
+                if (receipt.showEstimatedServiceTime) {
+                    ctx.font = '700 21px "Noto Sans Devanagari", sans-serif';
+                    ctx.fillText(receipt.estimatedServiceLabel, width / 2, y + 20);
+                    y += 26;
 
-                ctx.font = '600 21px "Noto Sans Devanagari", sans-serif';
-                ctx.fillText(receipt.estimatedServiceValue, width / 2, y + 21);
-                y += 29;
+                    ctx.font = '600 21px "Noto Sans Devanagari", sans-serif';
+                    ctx.fillText(receipt.estimatedServiceValue, width / 2, y + 21);
+                    y += 29;
+                }
 
                 drawSeparator();
 
@@ -991,8 +1032,10 @@
     function buildThermalReceiptHtml(details) {
         var receipt = buildUnifiedReceiptModel(details);
         var logoUrl = resolveAssetUrl('assets/images/logo/logomain.png');
-        var estimatedHtml = '<div class="center estimate-label">' + escapeHtml(receipt.estimatedServiceLabel) + '</div>' +
-            '<div class="center estimate-value">' + escapeHtml(receipt.estimatedServiceValue) + '</div>';
+        var estimatedHtml = receipt.showEstimatedServiceTime
+            ? ('<div class="center estimate-label">' + escapeHtml(receipt.estimatedServiceLabel) + '</div>' +
+                '<div class="center estimate-value">' + escapeHtml(receipt.estimatedServiceValue) + '</div>')
+            : '';
         var rowsHtml = receipt.rows.map(function (row) {
             var labelHtml = escapeHtml(row.label).replace(/\n/g, '<br>');
             var layout = String((row && row.layout) || 'inline').toLowerCase();
@@ -1444,6 +1487,10 @@
         if (receiptTimeValue) {
             receiptTimeValue.textContent = '--';
         }
+        if (receiptNoteText) {
+            receiptNoteText.textContent = getReceiptNotePreview();
+            receiptNoteText.classList.toggle('hidden', getReceiptNotePreview() === '');
+        }
         if (printingStatus) {
             printingStatus.textContent = '\u0906\u092a\u0932\u0947 \u091f\u094b\u0915\u0928 \u091b\u093e\u092a\u0932\u0947 \u091c\u093e\u0924 \u0906\u0939\u0947...';
         }
@@ -1478,6 +1525,11 @@
         }
         if (receiptTimeValue) {
             receiptTimeValue.textContent = details.time;
+        }
+        if (receiptNoteText) {
+            var notePreview = getReceiptNotePreview();
+            receiptNoteText.textContent = notePreview;
+            receiptNoteText.classList.toggle('hidden', notePreview === '');
         }
         if (printingStatus) {
             printingStatus.textContent = '\u092a\u093e\u0935\u0924\u0940 \u0924\u092f\u093e\u0930 \u0906\u0939\u0947. \u0915\u0943\u092a\u092f\u093e \u091f\u094b\u0915\u0928 \u0915\u094d\u0930\u092e\u093e\u0902\u0915 \u0935 \u092a\u093e\u0935\u0924\u0940 \u091c\u092a\u0942\u0928 \u0920\u0947\u0935\u093e.';
@@ -1961,7 +2013,7 @@
     updateGetTokenButton();
     setupFullscreenToggle();
     setupPwaInstallPrompt();
-    loadAnnouncementLanguage();
+    loadTabletSettings();
     startSettingsRefreshLoop();
     restoreCooldown();
     fetchTodayAvailability().then(function (availability) {

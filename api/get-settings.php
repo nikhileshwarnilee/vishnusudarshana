@@ -84,6 +84,33 @@ function normalizeTokenBookingCommonNoteEnabled($value): int
     return in_array($normalized, ['1', 'true', 'yes', 'on', 'enabled'], true) ? 1 : 0;
 }
 
+function defaultTabletTokenReceiptNote(): string
+{
+    return implode("\n", [
+        'कृपया ही पावती जपून ठेवा.',
+        'कृपया LIVE स्क्रीनवर चालू टोकन पाहत रहा.',
+        'सूचना - अंदाजित वेळेमध्ये अर्धा ते एक तास पुढे-मागे होऊ शकतो. तरीही WhatsApp वर अंदाजित वेळ कळवली जाईल.'
+    ]);
+}
+
+function normalizeTabletTokenReceiptNoteText($value): string
+{
+    $text = trim((string) $value);
+    if ($text === '') {
+        return '';
+    }
+    if (function_exists('mb_substr')) {
+        return mb_substr($text, 0, 3000);
+    }
+    return substr($text, 0, 3000);
+}
+
+function normalizeReceiptEstimatedServiceTimeEnabled($value): int
+{
+    $normalized = strtolower(trim((string) $value));
+    return in_array($normalized, ['1', 'true', 'yes', 'on', 'enabled'], true) ? 1 : 0;
+}
+
 function getSettingValue(PDO $pdo, string $key): ?string
 {
     $stmt = $pdo->prepare('SELECT setting_value FROM system_settings WHERE setting_key = ? LIMIT 1');
@@ -112,6 +139,8 @@ try {
     $sameDayCutoffRaw = getSettingValue($pdo, 'same_day_online_booking_cutoff_time');
     $tokenBookingCommonNoteRaw = getSettingValue($pdo, 'token_booking_common_note');
     $tokenBookingCommonNoteEnabledRaw = getSettingValue($pdo, 'token_booking_common_note_enabled');
+    $tabletTokenReceiptNoteRaw = getSettingValue($pdo, 'tablet_token_receipt_note');
+    $receiptEstimatedServiceTimeEnabledRaw = getSettingValue($pdo, 'receipt_estimated_service_time_enabled');
 
     $language = normalizeAnnouncementLanguage($languageRaw);
     $tabletWhatsAppEnabled = normalizeTabletWhatsAppEnabled($tabletWhatsAppRaw ?? '1');
@@ -120,6 +149,8 @@ try {
     $sameDayCutoffTime = normalizeSameDayOnlineBookingCutoffTime($sameDayCutoffRaw);
     $tokenBookingCommonNote = normalizeTokenBookingCommonNoteText($tokenBookingCommonNoteRaw);
     $tokenBookingCommonNoteEnabled = normalizeTokenBookingCommonNoteEnabled($tokenBookingCommonNoteEnabledRaw ?? '1');
+    $tabletTokenReceiptNote = normalizeTabletTokenReceiptNoteText($tabletTokenReceiptNoteRaw ?? defaultTabletTokenReceiptNote());
+    $receiptEstimatedServiceTimeEnabled = normalizeReceiptEstimatedServiceTimeEnabled($receiptEstimatedServiceTimeEnabledRaw ?? '1');
 
     // Ensure persistent defaults exist.
     if ($languageRaw === null) {
@@ -143,6 +174,12 @@ try {
     if ($tokenBookingCommonNoteEnabledRaw === null) {
         upsertSetting($pdo, 'token_booking_common_note_enabled', (string) $tokenBookingCommonNoteEnabled);
     }
+    if ($tabletTokenReceiptNoteRaw === null) {
+        upsertSetting($pdo, 'tablet_token_receipt_note', $tabletTokenReceiptNote);
+    }
+    if ($receiptEstimatedServiceTimeEnabledRaw === null) {
+        upsertSetting($pdo, 'receipt_estimated_service_time_enabled', (string) $receiptEstimatedServiceTimeEnabled);
+    }
 
     respond([
         'success' => true,
@@ -153,6 +190,8 @@ try {
         'same_day_online_booking_cutoff_time' => $sameDayCutoffTime,
         'token_booking_common_note' => $tokenBookingCommonNote,
         'token_booking_common_note_enabled' => $tokenBookingCommonNoteEnabled === 1,
+        'tablet_token_receipt_note' => $tabletTokenReceiptNote,
+        'receipt_estimated_service_time_enabled' => $receiptEstimatedServiceTimeEnabled === 1,
     ]);
 } catch (Throwable $e) {
     respond([
@@ -164,6 +203,8 @@ try {
         'same_day_online_booking_cutoff_time' => '09:00',
         'token_booking_common_note' => '',
         'token_booking_common_note_enabled' => true,
+        'tablet_token_receipt_note' => defaultTabletTokenReceiptNote(),
+        'receipt_estimated_service_time_enabled' => true,
         'message' => 'Unable to load settings right now.'
     ], 500);
 }

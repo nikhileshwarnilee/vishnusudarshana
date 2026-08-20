@@ -726,6 +726,7 @@ body {
     color: #513916;
     font-size: clamp(0.8rem, 0.95vw, 0.9rem);
     font-weight: 700;
+    white-space: pre-line;
 }
 
 .printing-status {
