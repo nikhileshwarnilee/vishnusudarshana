@@ -252,6 +252,7 @@ require_once __DIR__ . '/../includes/top-menu.php';
         .area-search { margin-bottom:10px; }
         .area-options { display:flex; flex-wrap:wrap; gap:10px; }
         .area-option { display:flex; align-items:center; gap:10px; padding:12px 14px; border:1px solid #e0bebe; border-radius:10px; background:#fff8f8; cursor:pointer; font-weight:600; color:#5f2222; }
+        .area-option[hidden] { display:none !important; }
         .area-option input { width:auto; margin:0; accent-color:#800000; }
         .area-search-empty { margin:0; color:#777; font-size:0.9em; }
         .form-actions { display:flex; gap:10px; flex-wrap:wrap; margin-top:14px; }
