@@ -29,7 +29,16 @@ function vs_quick_collection_history(PDO $pdo, int $customerId): array
     $totalBill = (float)$summary['total_bill'];
     $totalPaid = (float)$summary['total_paid'];
 
-    $invoiceStmt = $pdo->prepare("\n+        SELECT i.id, i.invoice_date, i.total_amount, i.paid_amount, i.notes,\n+               GROUP_CONCAT(ii.product_name ORDER BY ii.id SEPARATOR ', ') AS services\n+        FROM invoices i\n+        LEFT JOIN invoice_items ii ON ii.invoice_id = i.id\n+        WHERE i.customer_id = ?\n+        GROUP BY i.id, i.invoice_date, i.total_amount, i.paid_amount, i.notes\n+        ORDER BY i.invoice_date DESC, i.id DESC\n+        LIMIT 30\n+    ");
+    $invoiceStmt = $pdo->prepare("
+        SELECT i.id, i.invoice_date, i.total_amount, i.paid_amount, i.notes,
+               GROUP_CONCAT(ii.product_name ORDER BY ii.id SEPARATOR ', ') AS services
+        FROM invoices i
+        LEFT JOIN invoice_items ii ON ii.invoice_id = i.id
+        WHERE i.customer_id = ?
+        GROUP BY i.id, i.invoice_date, i.total_amount, i.paid_amount, i.notes
+        ORDER BY i.invoice_date DESC, i.id DESC
+        LIMIT 30
+    ");
     $invoiceStmt->execute([$customerId]);
     $invoices = $invoiceStmt->fetchAll(PDO::FETCH_ASSOC);
 
@@ -58,7 +67,15 @@ if ($action !== '') {
                 vs_quick_collection_json(['customers' => []]);
             }
 
-            $stmt = $pdo->prepare("\n+                SELECT c.id, c.name, c.mobile, c.address,\n+                       COALESCE((SELECT SUM(i.total_amount) FROM invoices i WHERE i.customer_id = c.id), 0)\n+                       - COALESCE((SELECT SUM(p.paid_amount) FROM payments p WHERE p.customer_id = c.id), 0) AS remaining\n+                FROM customers c\n+                WHERE c.name LIKE ? OR c.mobile LIKE ? OR c.address LIKE ?\n+                ORDER BY c.name ASC, c.id DESC\n+                LIMIT 12\n+            ");
+            $stmt = $pdo->prepare("
+                SELECT c.id, c.name, c.mobile, c.address,
+                       COALESCE((SELECT SUM(i.total_amount) FROM invoices i WHERE i.customer_id = c.id), 0)
+                       - COALESCE((SELECT SUM(p.paid_amount) FROM payments p WHERE p.customer_id = c.id), 0) AS remaining
+                FROM customers c
+                WHERE c.name LIKE ? OR c.mobile LIKE ? OR c.address LIKE ?
+                ORDER BY c.name ASC, c.id DESC
+                LIMIT 12
+            ");
             $like = '%' . $query . '%';
             $stmt->execute([$like, $like, $like]);
             vs_quick_collection_json(['customers' => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
@@ -66,7 +83,22 @@ if ($action !== '') {
 
         if ($action === 'products') {
             $query = trim((string)($_GET['q'] ?? ''));
-            $stmt = $pdo->prepare("\n+                SELECT MIN(service_name) AS service_name\n+                FROM (\n+                    SELECT TRIM(product_name) AS service_name\n+                    FROM invoice_items\n+                    WHERE product_name IS NOT NULL AND TRIM(product_name) <> ''\n+                    UNION ALL\n+                    SELECT TRIM(title) AS service_name\n+                    FROM letterpad_titles\n+                    WHERE source = 'product' AND title IS NOT NULL AND TRIM(title) <> ''\n+                ) AS saved_services\n+                WHERE service_name LIKE ?\n+                GROUP BY LOWER(service_name)\n+                ORDER BY service_name ASC\n+                LIMIT 20\n+            ");
+            $stmt = $pdo->prepare("
+                SELECT MIN(service_name) AS service_name
+                FROM (
+                    SELECT TRIM(product_name) AS service_name
+                    FROM invoice_items
+                    WHERE product_name IS NOT NULL AND TRIM(product_name) <> ''
+                    UNION ALL
+                    SELECT TRIM(title) AS service_name
+                    FROM letterpad_titles
+                    WHERE source = 'product' AND title IS NOT NULL AND TRIM(title) <> ''
+                ) AS saved_services
+                WHERE service_name LIKE ?
+                GROUP BY LOWER(service_name)
+                ORDER BY service_name ASC
+                LIMIT 20
+            ");
             $stmt->execute(['%' . $query . '%']);
             vs_quick_collection_json(['services' => $stmt->fetchAll(PDO::FETCH_COLUMN)]);
         }
