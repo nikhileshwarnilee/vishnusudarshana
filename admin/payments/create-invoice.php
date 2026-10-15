@@ -151,6 +151,8 @@ document.addEventListener('DOMContentLoaded', function() {
 		#submitInvoiceBtn:hover {
 			background: linear-gradient(90deg, #a83232 60%, #800000 100%);
 		}
+		.quick-collection-link { display:inline-flex; align-items:center; justify-content:center; padding:10px 16px; border-radius:7px; color:#fff; background:#16803c; text-decoration:none; font-weight:700; }
+		.quick-collection-link:hover { background:#106a31; color:#fff; }
 		#productTotals {
 			margin-top: 18px;
 			font-weight: 700;
@@ -232,6 +234,7 @@ document.addEventListener('DOMContentLoaded', function() {
 	<div class="form-box" style="width:100%; max-width:1000px; margin-bottom:32px; box-shadow:0 2px 12px rgba(128,0,0,0.06);">
 		<div style="text-align:center; margin-bottom:18px; display:flex; flex-direction:column; align-items:center; gap:10px;">
 			   <h1 style="margin:0; font-size:1.7em; color:#800000; font-weight:700; letter-spacing:0.5px;">Create Invoice</h1>
+			   <a class="quick-collection-link" href="quick-collection.php">Open Quick Collection</a>
 		</div>
 		<form id="invoiceForm" method="post" autocomplete="off">
 			<div class="form-sections-row" style="display:flex; gap:32px; flex-wrap:wrap;">

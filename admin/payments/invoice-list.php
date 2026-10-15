@@ -74,6 +74,9 @@ $queryStr = http_build_query(array_diff_key($_GET, ['page' => '']));
 		body { margin: 0; background: #f7f7fa; font-family: 'Segoe UI', Arial, sans-serif; }
 		.invoice-list-container { background:#fff; border-radius:12px; box-shadow:0 2px 12px rgba(128,0,0,0.07); padding:32px 24px; max-width:1400px; margin:32px auto; }
 		h1 { color:#800000; margin-bottom:18px; font-size:1.5em; }
+		.page-head { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; }
+		.quick-collection-link { display:inline-flex; align-items:center; justify-content:center; padding:9px 14px; border-radius:6px; color:#fff; background:#16803c; text-decoration:none; font-weight:700; }
+		.quick-collection-link:hover { background:#106a31; color:#fff; }
 		.filter-bar { display:flex; gap:18px; flex-wrap:wrap; align-items:center; margin-bottom:22px; }
 		.filter-bar label { font-weight:600; color:#333; margin-right:6px; }
 		.filter-bar input, .filter-bar select { padding:8px 10px; border:1px solid #ccc; border-radius:4px; }
@@ -98,7 +101,7 @@ $queryStr = http_build_query(array_diff_key($_GET, ['page' => '']));
 <body>
 <?php require_once __DIR__ . '/../includes/top-menu.php'; ?>
 <div class="invoice-list-container">
-	<h1 style="margin-bottom:18px; color:#800000; font-size:1.5em;">Invoices</h1>
+	<div class="page-head"><h1 style="margin:0; color:#800000; font-size:1.5em;">Invoices</h1><a class="quick-collection-link" href="quick-collection.php">Quick Collection</a></div>
 	<form class="filter-bar" method="get" style="flex-wrap:wrap;">
 		<input type="text" name="search" placeholder="Search invoice, customer, product..." value="<?= htmlspecialchars($_GET['search'] ?? '') ?>" style="min-width:180px;">
 		<label for="from_date">From:</label>
@@ -121,11 +124,13 @@ $queryStr = http_build_query(array_diff_key($_GET, ['page' => '']));
 			<th>Customer</th>
 			<th>Total Qty</th>
 			<th>Total Amount</th>
+			<th>Paid</th>
+			<th>Balance</th>
 			<th>Note</th>
 			<th>Actions</th>
 		</tr>
 		<?php if (empty($invoices)): ?>
-			<tr><td colspan="7" style="text-align:center; color:#888;">No invoices found.</td></tr>
+			<tr><td colspan="9" style="text-align:center; color:#888;">No invoices found.</td></tr>
 		<?php else: foreach ($invoices as $inv): ?>
 			<tr>
 				<td><?= $inv['id'] ?></td>
@@ -133,6 +138,8 @@ $queryStr = http_build_query(array_diff_key($_GET, ['page' => '']));
 				<td><?= htmlspecialchars($inv['customer_name']) ?></td>
 				<td><?= $inv['total_qty'] ?></td>
 				<td>&#8377;<?= number_format($inv['total_amount'],2) ?></td>
+				<td>&#8377;<?= number_format((float)($inv['paid_amount'] ?? 0),2) ?></td>
+				<td style="color:<?= ((float)$inv['total_amount'] - (float)($inv['paid_amount'] ?? 0)) > 0 ? '#b30000' : '#228b22' ?>; font-weight:600;">&#8377;<?= number_format(max(0, (float)$inv['total_amount'] - (float)($inv['paid_amount'] ?? 0)),2) ?></td>
 				<td><?= htmlspecialchars($inv['notes']) ?></td>
 				<td>
 					<a href="view-invoice.php?id=<?= $inv['id'] ?>" class="action-btn view-btn">View</a>
