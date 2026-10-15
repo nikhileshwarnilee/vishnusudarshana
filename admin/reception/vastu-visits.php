@@ -249,11 +249,16 @@ require_once __DIR__ . '/../includes/top-menu.php';
         label { color:#800000; font-weight:700; font-size:0.95em; }
         input, select, textarea { width:100%; box-sizing:border-box; padding:10px 12px; border:1px solid #e0bebe; border-radius:8px; font-size:0.95em; background:#fff; }
         textarea { min-height:110px; resize:vertical; }
+        .area-search { margin-bottom:10px; }
         .area-options { display:flex; flex-wrap:wrap; gap:10px; }
         .area-option { display:flex; align-items:center; gap:10px; padding:12px 14px; border:1px solid #e0bebe; border-radius:10px; background:#fff8f8; cursor:pointer; font-weight:600; color:#5f2222; }
         .area-option input { width:auto; margin:0; accent-color:#800000; }
+        .area-search-empty { margin:0; color:#777; font-size:0.9em; }
         .form-actions { display:flex; gap:10px; flex-wrap:wrap; margin-top:14px; }
         .section-title { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:10px; }
+        .visit-search { margin:0 0 20px; }
+        .visit-search label { display:block; margin-bottom:6px; }
+        .visit-search-help { display:block; margin-top:6px; color:#666; font-size:0.86em; }
         .area-card { background:#fff; border-radius:16px; box-shadow:0 2px 14px #e0bebe22; margin-bottom:20px; overflow:hidden; }
         .area-head { display:flex; justify-content:space-between; align-items:center; gap:12px; background:#f9eaea; color:#800000; padding:14px 16px; font-weight:700; }
         .area-head-actions { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
@@ -389,9 +394,10 @@ require_once __DIR__ . '/../includes/top-menu.php';
                 </div>
                 <div class="form-group full">
                     <label>Area *</label>
+                    <input class="area-search" type="search" id="area_search" placeholder="Search area to select" aria-label="Search area options" autocomplete="off">
                     <div class="area-options">
                         <?php foreach ($areas as $index => $area): ?>
-                            <label class="area-option">
+                            <label class="area-option" data-area-option="<?php echo htmlspecialchars((string)$area['area_name'], ENT_QUOTES, 'UTF-8'); ?>">
                                 <input
                                     type="radio"
                                     name="area_id"
@@ -404,6 +410,7 @@ require_once __DIR__ . '/../includes/top-menu.php';
                             </label>
                         <?php endforeach; ?>
                     </div>
+                    <p class="area-search-empty" id="area_search_empty" hidden>No matching area found.</p>
                 </div>
                 <div class="form-group full">
                     <label for="address_line1">Address Line 1</label>
@@ -428,6 +435,11 @@ require_once __DIR__ . '/../includes/top-menu.php';
     <?php if (empty($groupedVisits)): ?>
         <div class="empty-state">No open vastu visits found.</div>
     <?php else: ?>
+        <div class="card visit-search">
+            <label for="visit_search">Search Open Vastu Visits</label>
+            <input type="search" id="visit_search" placeholder="Search by area, name, mobile number, address, vastu type, details or notes" autocomplete="off" aria-describedby="visit_search_help">
+            <span class="visit-search-help" id="visit_search_help">Results update as you type.</span>
+        </div>
         <?php $areaCardIndex = 0; ?>
         <?php foreach ($groupedVisits as $areaName => $rows): ?>
             <?php $areaCardIndex++; $areaPrintId = 'open-area-card-' . $areaCardIndex; ?>
@@ -435,7 +447,7 @@ require_once __DIR__ . '/../includes/top-menu.php';
                 <div class="area-head">
                     <span><?php echo htmlspecialchars($areaName); ?></span>
                     <div class="area-head-actions">
-                        <span class="area-count"><?php echo count($rows); ?> visits</span>
+                        <span class="area-count" data-area-count><?php echo count($rows); ?> visits</span>
                         <button type="button" class="btn-inline btn-print" data-print-area="<?php echo htmlspecialchars($areaPrintId); ?>">Print List</button>
                     </div>
                 </div>
@@ -460,8 +472,26 @@ require_once __DIR__ . '/../includes/top-menu.php';
                         $visitId = (int)($row['id'] ?? 0);
                         $addressLine1 = trim((string)($row['address_line1'] ?? ''));
                         $notes = isset($row['notes']) && is_array($row['notes']) ? $row['notes'] : [];
+                        $visitSearchParts = [
+                            (string)$visitId,
+                            (string)$areaName,
+                            (string)($row['customer_name'] ?? ''),
+                            (string)($row['contact_number'] ?? ''),
+                            (string)($row['vastu_type'] ?? ''),
+                            (string)($row['details'] ?? ''),
+                            $addressLine1,
+                            (string)($row['address_line2'] ?? ''),
+                            (string)($row['landmark'] ?? ''),
+                            (string)($row['status'] ?? ''),
+                            (string)($row['created_at'] ?? ''),
+                            (string)($row['updated_at'] ?? ''),
+                        ];
+                        foreach ($notes as $note) {
+                            $visitSearchParts[] = (string)($note['note_text'] ?? '');
+                        }
+                        $visitSearchText = implode(' ', $visitSearchParts);
                         ?>
-                        <tr>
+                        <tr class="visit-row" data-visit-search="<?php echo htmlspecialchars($visitSearchText, ENT_QUOTES, 'UTF-8'); ?>">
                             <td><?php echo $visitId; ?></td>
                             <td><?php echo htmlspecialchars((string)($row['customer_name'] ?? '')); ?></td>
                             <td><?php echo htmlspecialchars(function_exists('vs_format_mobile_for_display') ? vs_format_mobile_for_display((string)($row['contact_number'] ?? '')) : (string)($row['contact_number'] ?? '')); ?></td>
@@ -570,11 +600,76 @@ require_once __DIR__ . '/../includes/top-menu.php';
                 </table>
             </div>
         <?php endforeach; ?>
+        <div class="empty-state" id="visit_search_empty" hidden>No visits match your search.</div>
     <?php endif; ?>
 </div>
 <script src="../includes/responsive-tables.js"></script>
 <script>
     (function () {
+        function searchKey(value) {
+            return String(value || '').toLocaleLowerCase().replace(/[^\p{L}\p{N}]+/gu, '');
+        }
+
+        function filterAreaOptions() {
+            var searchInput = document.getElementById('area_search');
+            var emptyMessage = document.getElementById('area_search_empty');
+            if (!searchInput) {
+                return;
+            }
+
+            var query = searchKey(searchInput.value);
+            var visibleCount = 0;
+            document.querySelectorAll('[data-area-option]').forEach(function (option) {
+                var matches = searchKey(option.getAttribute('data-area-option')).indexOf(query) !== -1;
+                option.hidden = !matches;
+                if (matches) {
+                    visibleCount++;
+                }
+            });
+
+            if (emptyMessage) {
+                emptyMessage.hidden = visibleCount !== 0;
+            }
+        }
+
+        function filterVisits() {
+            var searchInput = document.getElementById('visit_search');
+            var emptyMessage = document.getElementById('visit_search_empty');
+            if (!searchInput) {
+                return;
+            }
+
+            var query = searchKey(searchInput.value);
+            var visibleVisits = 0;
+            document.querySelectorAll('.area-card[data-print-card]').forEach(function (card) {
+                var visibleInArea = 0;
+                card.querySelectorAll('tr.visit-row[data-visit-search]').forEach(function (row) {
+                    var matches = searchKey(row.getAttribute('data-visit-search')).indexOf(query) !== -1;
+                    row.hidden = !matches;
+                    if (!matches) {
+                        var noteRow = row.nextElementSibling;
+                        if (noteRow && noteRow.hasAttribute('data-note-row')) {
+                            noteRow.hidden = true;
+                        }
+                    }
+                    if (matches) {
+                        visibleInArea++;
+                        visibleVisits++;
+                    }
+                });
+
+                card.hidden = visibleInArea === 0;
+                var count = card.querySelector('[data-area-count]');
+                if (count) {
+                    count.textContent = visibleInArea + (visibleInArea === 1 ? ' visit' : ' visits');
+                }
+            });
+
+            if (emptyMessage) {
+                emptyMessage.hidden = visibleVisits !== 0;
+            }
+        }
+
         function clearPrintTargets() {
             document.querySelectorAll('.area-card.print-target').forEach(function (card) {
                 card.classList.remove('print-target');
@@ -691,6 +786,16 @@ require_once __DIR__ . '/../includes/top-menu.php';
                 closeNoteRow(cancelButton.getAttribute('data-note-cancel'));
             }
         });
+
+        var areaSearch = document.getElementById('area_search');
+        if (areaSearch) {
+            areaSearch.addEventListener('input', filterAreaOptions);
+        }
+
+        var visitSearch = document.getElementById('visit_search');
+        if (visitSearch) {
+            visitSearch.addEventListener('input', filterVisits);
+        }
 
         window.addEventListener('afterprint', clearPrintTargets);
     }());
